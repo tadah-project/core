@@ -171,7 +171,7 @@ examples     =  []
 default      =   []
 value_type   =   ''
 value_format =   ''
-value_N      =   []
+value_N      =   [-2147483647]
 description  =  """See CGRID2B_ for a description."""
 examples     =  []
 
@@ -218,7 +218,7 @@ examples     =  []
 default      =   []
 value_type   =   ''
 value_format =   ''
-value_N      =   []
+value_N      =   [-2147483647]
 description  =  """See SGRID2B_ for a description."""
 examples     =  []
 
