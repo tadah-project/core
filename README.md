@@ -1,5 +1,5 @@
 # Core
-This is core module for Tadah.
+This a is core module for Tadah.
 
 
 ## Getting started
