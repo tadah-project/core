@@ -50,8 +50,8 @@ std::string vec_to_string(std::vector<double> vec,
 //    for (size_t i=0; i<st.natoms(); ++i) {
 //        const Atom &a1 = st.atoms[i];
 //        for (size_t jj=0; jj<st.nn_size(i); ++jj) {
-//            const Eigen::Vector3d &a2pos = st.nn_pos(i,jj);
-//            Eigen::Vector3d delij = a1.position - a2pos;
+//            const Vec3d &a2pos = st.nn_pos(i,jj);
+//            Vec3d delij = a1.position - a2pos;
 //            double rij_sq = delij.transpose() * delij;
 //            if (rij_sq > rc_sq) continue;
 //            double r=sqrt(rij_sq);
