@@ -131,7 +131,6 @@ class Mat6R3C {
 };
 
 
-typedef Vec3d force_type;
 
 class aed_type2 {
     public:
@@ -274,6 +273,9 @@ class aed_type2 {
         {
             return !(*this==v1);
         }
+        inline void resize(const size_t n) {
+            data.resize(n);
+        }
 };
 class aeds_type2{
     // column-wise
@@ -408,5 +410,10 @@ class fd_type {
             return temp;;
         }
 };
+
+typedef Vec3d force_type;
+typedef aed_type2 rho_type;
+typedef aeds_type2 rhos_type;
+
 
 #endif

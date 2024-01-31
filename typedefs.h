@@ -6,17 +6,17 @@
 #include "../LIBS/Eigen/Core"
 
 //typedef Vec3d vec3d;
+//typedef Eigen::Ref<const Eigen::VectorXd> rvec;
 typedef Eigen::VectorXd vec;
-typedef Eigen::Ref<const Eigen::VectorXd> rvec;
 typedef Eigen::MatrixXd mat;
 
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> phi_type;
 typedef Eigen::Matrix<double,Eigen::Dynamic,1> t_type;
+typedef std::vector<double> v_type;
 
 typedef Eigen::Matrix3d stress_type;
-typedef Vec3d force_type;
+//typedef Vec3d force_type;
 
-typedef std::vector<double> v_type;
 
 
 /** Atomic Energy Descriptor (AED) type
@@ -24,11 +24,9 @@ typedef std::vector<double> v_type;
  * Dimensions:
  * [descriptor size]
  *
+ * dim+1 when bias is used
+ *
  */
-typedef Eigen::VectorXd aed_type;
-//typedef Eigen::Ref<Eigen::VectorXd> aed_rtype;
-//typedef Eigen::Ref<const Eigen::VectorXd> aed_type2;
-//typedef Eigen::MatrixXd aeds_type;  // [s,natoms]
 
 /** Force Descriptor (FD) type
  *
@@ -54,7 +52,7 @@ typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 1
  * where n is specific to given descriptor
  *
  */
-typedef Eigen::Ref<Eigen::VectorXd> rho_rtype;
-typedef Eigen::MatrixXd rhos_type;
+//typedef Eigen::Ref<Eigen::VectorXd> rho_type&;
+//typedef Eigen::MatrixXd rhos_type;
 
 #endif
