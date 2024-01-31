@@ -35,12 +35,20 @@ class Normaliser_Core {
     };
 
         /** Normalise AED */
-        void normalise(aed_rtype aed) {
+        void normalise(aed_type2 &aed) {
             size_t n=aed.size();
-            if (bias)
-                aed.tail(n-1) = (aed.tail(n-1) - mean.tail(n-1)).array() / std_dev.array().tail(n-1);
-            else
-                aed = (aed - mean).array() / std_dev.array();
+            if (bias) {
+                for (size_t i=1;i<n;++i) {
+                    aed[i]=(aed[i]-mean[i])/std_dev[i];
+                }
+                //aed.tail(n-1) = (aed.tail(n-1) - mean.tail(n-1)).array() / std_dev.array().tail(n-1);
+            }
+            else {
+                for (size_t i=0;i<n;++i) {
+                    aed[i]=(aed[i]-mean[i])/std_dev[i];
+                }
+                //aed = (aed - mean).array() / std_dev.array();
+            }
         }
 
         /** Normalise FD */
