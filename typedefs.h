@@ -26,9 +26,9 @@ typedef std::vector<double> v_type;
  *
  */
 typedef Eigen::VectorXd aed_type;
-typedef Eigen::Ref<Eigen::VectorXd> aed_rtype;
+//typedef Eigen::Ref<Eigen::VectorXd> aed_rtype;
 //typedef Eigen::Ref<const Eigen::VectorXd> aed_type2;
-typedef Eigen::MatrixXd aeds_type;  // [s,natoms]
+//typedef Eigen::MatrixXd aeds_type;  // [s,natoms]
 
 /** Force Descriptor (FD) type
  *
@@ -36,7 +36,7 @@ typedef Eigen::MatrixXd aeds_type;  // [s,natoms]
  * [descriptor size, 3]
  *
  */
-typedef Eigen::Matrix<double, Eigen::Dynamic, 3> fd_type;
+//typedef Eigen::Matrix<double, Eigen::Dynamic, 3> fd_type;
 
 /** Stress Descriptor (SD) type
  *

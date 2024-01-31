@@ -56,22 +56,36 @@ class Normaliser_Core {
             // fd is nx3
             size_t n=fd.rows();
             if (bias) {
-                for (size_t k=0; k<3; ++k)
-                    fd.col(k).tail(n-1) = fd.col(k).tail(n-1).array() / std_dev.array().tail(n-1);
+                for (size_t k=0; k<3; ++k) {
+                    for (size_t i=1;i<n;++i) {
+                        fd.col(k)(i)=fd.col(k)(i) / std_dev[i];
+                    }
+                    //fd.col(k).tail(n-1) = fd.col(k).tail(n-1).array() / std_dev.array().tail(n-1);
+                }
             }
             else {
-                for (size_t k=0; k<3; ++k)
-                    fd.col(k) = fd.col(k).array() / std_dev.array();
+                for (size_t k=0; k<3; ++k) {
+                    for (size_t i=0;i<n;++i) {
+                        fd.col(k)(i)=fd.col(k)(i) / std_dev[i];
+                    }
+                    //fd.col(k) = fd.col(k).array() / std_dev.array();
+                }
             }
         }
         void normalise(fd_type &fd, size_t k) {
             // fd is nx3
             size_t n=fd.rows();
             if (bias) {
-                fd.col(k).tail(n-1) = fd.col(k).tail(n-1).array() / std_dev.array().tail(n-1);
+                for (size_t i=1;i<n;++i) {
+                    fd.col(k)(i)=fd.col(k)(i) / std_dev[i];
+                }
+                //fd.col(k).tail(n-1) = fd.col(k).tail(n-1).array() / std_dev.array().tail(n-1);
             }
             else {
-                fd.col(k) = fd.col(k).array() / std_dev.array();
+                for (size_t i=0;i<n;++i) {
+                    fd.col(k)(i)=fd.col(k)(i) / std_dev[i];
+                }
+                //fd.col(k) = fd.col(k).array() / std_dev.array();
             }
         }
 

@@ -168,6 +168,14 @@ class aed_type2 {
         {
             return *this;
         }
+        inline aed_type2 operator-() const
+        {
+            aed_type2 temp(*this);
+            for (size_t i=0;i<temp.size();++i) {
+                temp.data[i]*=-1;
+            }
+            return temp;;
+        }
         template <typename T>
             inline aed_type2 &operator+=(const T &v1)
             {
@@ -310,7 +318,6 @@ class aeds_type2{
         inline void setZero()
         {
             for (auto &a:data) a.setZero();
-            //data=std::vector<aed_type2>(data.size(), aed_type2(data[0].size()));
         }
         inline friend std::ostream &operator<<(std::ostream &os, const aeds_type2 &v)
         {
@@ -318,10 +325,78 @@ class aeds_type2{
             return os;
         }
 };
-
-// Those should be removed from here and replaced with something else! TODO
-//typedef Eigen::VectorXd aed_type;
-typedef Eigen::Matrix<double, Eigen::Dynamic, 3> fd_type;
-
+class fd_type {
+    // column-wise????????
+    // data alignment here is just wrong
+    public:
+        std::vector<aed_type2> data;
+        fd_type() {}
+        fd_type(size_t dim):
+            data(3,aed_type2(dim))
+    {}
+        inline double &operator()(size_t i, size_t j)
+        {
+            // to match old implementation
+            return data[j][i];
+        }
+        inline const double &operator()(size_t i, size_t j) const
+        {
+            // to match old implementation
+            return data[j][i];
+        }
+        inline aed_type2 &operator[](size_t i)
+        {
+            return data[i];
+        }
+        size_t cols() const
+        {
+            return data.size();
+        }
+        size_t rows() const
+        {
+            return data[0].size();
+        }
+        //size_t size() const
+        //{
+        //    return data.size();
+        //}
+        inline aed_type2 &col(size_t k)
+        {
+            return data[k];
+        }
+        inline const aed_type2 &col(size_t k) const
+        {
+            return data[k];
+        }
+        inline void resize(size_t dim, size_t natoms)
+        {
+            data.resize(natoms,dim);
+        }
+        inline void setZero()
+        {
+            for (auto &a:data) a.setZero();
+            //data=std::vector<aed_type2>(data.size(), aed_type2(data[0].size()));
+        }
+        inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
+        {
+            for (const aed_type2 &a:v.data) os << a << std::endl;
+            return os;
+        }
+        inline fd_type transpose() const {
+            return *this;
+        }
+        template <typename T>
+            inline friend Vec3d operator*(const fd_type &v1, const T &v2)
+            {
+                Vec3d temp;
+                temp.setZero();
+                for (size_t k=0; k<3; ++k) {
+                    for (size_t i=0;i<v2.size();++i) {
+                        temp[k]+=v1(k,i)*v2[i];
+                    }
+                }
+                return temp;
+            }
+};
 
 #endif
