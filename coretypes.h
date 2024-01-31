@@ -334,15 +334,15 @@ class fd_type {
         fd_type(size_t dim):
             data(3,aed_type2(dim))
     {}
-        inline double &operator()(size_t i, size_t j)
+        inline double &operator()(size_t i, size_t k)
         {
             // to match old implementation
-            return data[j][i];
+            return data[k][i];
         }
-        inline const double &operator()(size_t i, size_t j) const
+        inline const double &operator()(size_t i, size_t k) const
         {
             // to match old implementation
-            return data[j][i];
+            return data[k][i];
         }
         inline aed_type2 &operator[](size_t i)
         {
@@ -397,6 +397,16 @@ class fd_type {
                 }
                 return temp;
             }
+        inline fd_type operator-() const
+        {
+            fd_type temp(*this);
+            for (size_t k=0; k<3; ++k) {
+                for (size_t i=0;i<temp.col(k).size();++i) {
+                    temp(i,k)*=-1;
+                }
+            }
+            return temp;;
+        }
 };
 
 #endif
