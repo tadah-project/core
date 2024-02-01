@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 
+
 class Vec3d {
     public:
         double v[3];
@@ -422,5 +423,22 @@ typedef aed_type2 rho_type;
 typedef aeds_type2 rhos_type;
 typedef std::vector<double> v_type;
 
+////////////////////////////////////////////////////////////////////////////////
+// Define dummy mat class to satisfy Sigma in core model classes. //////////////
+////////////////////////////////////////////////////////////////////////////////
+#ifdef M_MD_BASE_H
+//#define TEMP_MAT_SIGMA
+class mat {
+    public:
+        t_type diagonal() {
+            return t_type();
+        }
+        t_type diagonal() const {
+            return t_type();
+        }
+
+};
+#endif
+/////////////////////////////////////////
 
 #endif
