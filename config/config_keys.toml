@@ -495,3 +495,75 @@ value_format =   ['F', 'BOND_LENGTH','B']
 value_N      =   [-3]
 description  =  """Control for DIMER models. User should not modify this key"""
 examples     =  []
+
+[SIZE2B]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[SIZE3B]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[SIZEMB]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[DSIZE]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[ATOMS]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [2147483647]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[RCUTMAX]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[ESTDEV]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[FSTDEV]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+
+[SSTDEV]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [-6]
+description  =  """Tadah internal key"""
+examples     =  []

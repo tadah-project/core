@@ -36,8 +36,7 @@ void Config::read(std::string fn) {
         for (auto & k: key) k = std::toupper(k);
 
         // 1.0 Check is key allowed
-        auto allowed_key = tdc[key];
-        if (!!allowed_key==0)
+        if (!tdc.contains(key))
             throw std::runtime_error("Disallowed key "+key+" "+value);
         // 2.0 Check if user is permitted to set this key
         if ((internal_keys.count(key)>0))
@@ -45,7 +44,8 @@ void Config::read(std::string fn) {
                     This key is used internally\n\
                     and its value is calculated by the library "+key+" "+value);
         // 3.0 Check for duplicate keys
-        int valN = *allowed_key["value_N"][0].value<int>();
+        const auto& allowed_key = toml::find(tdc, key);
+        int valN  = toml::find<int>(allowed_key, "value_N",0);
         if (c[key].size() >= (size_t)abs(valN))
             throw std::runtime_error("Repeated key "+key+" "+value);
 
@@ -110,30 +110,29 @@ bool Config::check_pot_file() {
 }
 
 void Config::set_defaults() {
-    for (auto&& [k, v] : tdc) {
-        std::string key = std::string(k.str().begin(), k.str().end());
-        toml::array& arr = *tdc[key]["default"].as_array();
-        for (auto &el : arr)
-        {
-            if (!c.count(key)) {
-                if (el.is_string()) {
-                    auto value = *el.value<std::string>();
-                    c[key].push_back(value);
-                }
-                if (el.is_integer()) {
-                    auto value = *el.value<int>();
-                    c[key].push_back(to_string(value));
-                }
-                if (el.is_boolean()) {
-                    auto value = *el.value<bool>();
-                    c[key].push_back(value ? "true" : "false");
-                }
-                if (el.is_floating_point()) {
-                    auto value = *el.value<double>();
-                    c[key].push_back(to_string(value,16));
-                }
-            }
-        }
+    for (const auto& kv : tdc.as_table()) {
+        auto k = kv.first;
+        auto v = kv.second;
+      std::string key = k;
+      auto def  = toml::find(v, "default");
+
+      for (auto &el : def.as_array())
+      {
+          if (!c.count(key)) {
+              if (el.is_string()) {
+                  c[key].push_back(el.as_string());
+              }
+              if (el.is_integer()) {
+                  c[key].push_back(to_string(el.as_integer()));
+              }
+              if (el.is_boolean()) {
+                  c[key].push_back(el.as_boolean() ? "true" : "false");
+              }
+              if (el.is_floating()) {
+                  c[key].push_back(to_string(el.as_floating(),16));
+              }
+          }
+      }
 
     }
 }
@@ -179,18 +178,16 @@ void Config::add(const std::string fn) {
 int Config::read_tadah_configuration() {
     std::string config_keys="config_keys.toml";
     std::string config_dir= TADAH_CONFIG_DIR;
-    fs::path cfile = config_dir;
-    cfile /= config_keys;
+    std::string cfile= TADAH_CONFIG_DIR+std::string("/")+config_keys;
     try
     {
-        tdc = toml::parse_file(cfile.string());
+        tdc = toml::parse(cfile);
     }
-    catch (const toml::parse_error& err)
+    catch (const std::runtime_error& err)
     {
         std::cerr << "Parsing of tadah configuration has failed:\n"
-            << "This is a BUG!\n"
-            << err << "\n";
-        return 1;
+            << "This is a BUG!\n" << std::endl;
+        throw err;
     }
     return 0;
 }

@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 #include "../utils/utils.h"	// for vector printing
-#include "../../LIBS/toml++/toml.hpp"
+#include "../lib/toml11/toml.hpp"
 
 #include <type_traits>
 #include <stdexcept>
@@ -12,10 +12,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
-#include <filesystem>
-
-
-namespace fs = std::filesystem;
+#include <limits>
 
 
 /** \brief A dictionary for key - value pairs.
@@ -223,12 +220,12 @@ class Config {
             void add(const std::string key, T val) {
                 int n=get<int>("OUTPREC");
                 std::string k = to_upper(key);
-                if (!!tdc[k]==0 && internal_keys.count(k)==0) {
+                if (!tdc.contains(k) && internal_keys.count(k)==0) {
                     throw std::runtime_error(
                             "This key is not allowed: "+k+"\n");
                 }
-                auto allowed_key = tdc[k];
-                int valN = *allowed_key["value_N"][0].value<int>();
+                const auto& allowed_key = toml::find(tdc, k);
+                int valN  = toml::find<int>(allowed_key, "value_N",0);
                 if (internal_keys.count(k)>0) {
                     if (c[k].size() >= (size_t)abs(internal_keys.at(k))) {
                         throw std::runtime_error(
@@ -297,7 +294,8 @@ class Config {
         /** \brief Return true if both configs are the same. */
         bool operator==(const Config&) const;
     private:
-        toml::table tdc;
+        //toml::table tdc;
+        toml::value tdc;
         std::map<std::string, std::vector<std::string>> c;
         void read(std::string fn);
 
@@ -305,8 +303,8 @@ class Config {
         friend std::ostream& operator<<(std::ostream& os, const Config& config)
         {
             for (auto pair : config.c) {
-                auto allowed_key = config.tdc[pair.first];
-                int valN = *allowed_key["value_N"][0].value<int>();
+                const auto& allowed_key = toml::find(config.tdc, pair.first);
+                int valN  = toml::find<int>(allowed_key, "value_N",0);
                 if (valN > 1) {
                     for (auto v : pair.second) {
                         os << pair.first << "     " << v << std::endl;
@@ -340,7 +338,7 @@ class Config {
             m["SIZE2B"]=1;
             m["SIZE3B"]=1;
             m["SIZEMB"]=1;
-            m["ATOMS"]=-INT_MAX;   // TODO Do we need it?
+            m["ATOMS"]=-std::numeric_limits<int>::max();   // TODO Do we need it?
             m["RCUTMAX"]=1;
             m["ESTDEV"]=1;
             m["FSTDEV"]=1;
