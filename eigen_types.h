@@ -6,7 +6,7 @@
 typedef Eigen::VectorXd vec;
 typedef Eigen::MatrixXd mat;
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> phi_type;
-typedef Eigen::Matrix<double,Eigen::Dynamic,1> t_type;
+//typedef Eigen::Matrix<double,Eigen::Dynamic,1> t_type;
 typedef Eigen::Matrix3d stress_type;
 typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 11,12,13,22,23,33
 

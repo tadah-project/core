@@ -133,6 +133,7 @@ class Mat6R3C {
 
 
 class aed_type2 {
+    // The aim is to make it a column vector
     public:
         std::vector<double> data;
         aed_type2() {}
@@ -219,7 +220,7 @@ class aed_type2 {
             {
                 double temp=0;
                 for (size_t i=0;i<v1.size();++i) {
-                    temp+=v1[i]*v2[i];
+                    temp+=v1(i)*v2(i);
                 }
                 return temp;
             }
@@ -245,6 +246,10 @@ class aed_type2 {
         }
 
         size_t size() const
+        {
+            return data.size();
+        }
+        size_t rows() const
         {
             return data.size();
         }
@@ -412,6 +417,7 @@ class fd_type {
 };
 
 typedef Vec3d force_type;
+typedef aed_type2 t_type;
 typedef aed_type2 rho_type;
 typedef aeds_type2 rhos_type;
 typedef std::vector<double> v_type;
