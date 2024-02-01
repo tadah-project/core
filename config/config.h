@@ -2,7 +2,6 @@
 #define CONFIG_H
 
 #include "../utils/utils.h"	// for vector printing
-#include "../../LIBS/Eigen/Core"
 #include "../../LIBS/toml++/toml.hpp"
 
 #include <type_traits>

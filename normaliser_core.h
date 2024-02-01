@@ -1,7 +1,6 @@
 #ifndef NORMALISER_CORE_H
 #define NORMALISER_CORE_H
 
-#include "../LIBS/Eigen/Core"
 #include <limits>
 #include <stdexcept>
 #include "config/config.h"
@@ -14,8 +13,9 @@ class Normaliser_Core {
     public:
         bool bias;
         int verbose;
-        Eigen::VectorXd std_dev;
-        Eigen::VectorXd mean;
+
+        v_type std_dev;
+        v_type mean;
 
         Normaliser_Core () {};
         Normaliser_Core (Config &c):
@@ -27,8 +27,8 @@ class Normaliser_Core {
                 std_dev.resize(c.size("NSTDEV"));
                 mean.resize(c.size("NMEAN"));
                 bias = c.template get<bool>("BIAS");
-                c.template get<Eigen::VectorXd>("NSTDEV",std_dev);
-                c.template get<Eigen::VectorXd>("NMEAN",mean);
+                c.template get<v_type>("NSTDEV",std_dev);
+                c.template get<v_type>("NMEAN",mean);
             }
         }
 

@@ -1,23 +1,14 @@
-#ifndef TYPEDEFS_H
-#define TYPEDEFS_H
+#ifndef EIGEN_TYPES_H
+#define EIGEN_TYPES_H
 
-#include <vector>
-#include "coretypes.h"
 #include "../LIBS/Eigen/Core"
 
-//typedef Vec3d vec3d;
-//typedef Eigen::Ref<const Eigen::VectorXd> rvec;
 typedef Eigen::VectorXd vec;
 typedef Eigen::MatrixXd mat;
-
 typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> phi_type;
 typedef Eigen::Matrix<double,Eigen::Dynamic,1> t_type;
-typedef std::vector<double> v_type;
-
 typedef Eigen::Matrix3d stress_type;
-//typedef Vec3d force_type;
-
-
+typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 11,12,13,22,23,33
 
 /** Atomic Energy Descriptor (AED) type
  *
@@ -42,7 +33,6 @@ typedef Eigen::Matrix3d stress_type;
  * [descriptor size,6]
  *
  */
-typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 11,12,13,22,23,33
 
 /** Density array to be used by many-body descriptors... TODO
  *

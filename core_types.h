@@ -1,8 +1,8 @@
-#ifndef CORETYPES_H
-#define CORETYPES_H
+#ifndef CORE_TYPES_H
+#define CORE_TYPES_H
 
-#include "../LIBS/Eigen/Core"
 #include <vector>
+#include <iostream>
 
 class Vec3d {
     public:
@@ -85,9 +85,9 @@ class Vec3d {
             return os;
         }
         bool isApprox(const Vec3d &v1, double EPS) const{
-            if (abs(v[0]-v1[0])>EPS) return false;
-            if (abs(v[1]-v1[1])>EPS) return false;
-            if (abs(v[2]-v1[2])>EPS) return false;
+            if (std::abs(v[0]-v1[0])>EPS) return false;
+            if (std::abs(v[1]-v1[1])>EPS) return false;
+            if (std::abs(v[2]-v1[2])>EPS) return false;
             return true;
         }
         inline bool operator==(const Vec3d &v1) const
@@ -260,7 +260,7 @@ class aed_type2 {
         }
         bool isApprox(const aed_type2 &v1, double EPS) const{
             for (size_t i=0;i<data.size();++i) {
-                if (abs(data[i]-v1[i])>EPS) return false;
+                if (std::abs(data[i]-v1[i])>EPS) return false;
             }
             return true;
         }
@@ -414,6 +414,7 @@ class fd_type {
 typedef Vec3d force_type;
 typedef aed_type2 rho_type;
 typedef aeds_type2 rhos_type;
+typedef std::vector<double> v_type;
 
 
 #endif

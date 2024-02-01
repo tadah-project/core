@@ -8,7 +8,7 @@
 #include <iomanip>
 #include <random>
 
-#include "../typedefs.h"
+#include "../core_types.h"
 
 /** Vector printing to streams */
 template <typename T>
