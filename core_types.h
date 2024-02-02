@@ -5,6 +5,58 @@
 #include <iostream>
 #include <limits>
 
+class Matrix {
+    // column-major order
+    using vec = std::vector<double>;
+    size_t rows_;
+    size_t cols_;
+    vec m_;
+
+    public:
+        Matrix(vec &d, size_t r, size_t c):
+            m_(d),
+            rows_(r),
+            cols_(c)
+    {}
+        Matrix(size_t r, size_t c):
+            m_(r*c),
+            rows_(r),
+            cols_(c)
+    {}
+
+        inline double& operator()(size_t i, size_t j)
+        {
+            return m_[i + rows_*j];
+        }
+
+        inline double operator()(size_t i, size_t j) const
+        {
+            return m_[i + rows_*j];
+        }
+        inline double& operator[](size_t i)
+        {
+            return m_[i];
+        }
+
+        inline double operator[](size_t i) const
+        {
+            return m_[i];
+        }
+
+        inline size_t rows() const {
+            return rows_;
+        }
+        inline size_t cols() const {
+            return cols_;
+        }
+        inline double *data() {
+            return m_.data();
+        }
+        inline bool exists(size_t row, size_t col) const
+        {
+            return (row < rows_ && col < cols_);
+        }
+};
 
 class Vec3d {
     public:
@@ -137,34 +189,34 @@ class Mat6R3C {
 class aed_type2 {
     // The aim is to make it a column vector
     public:
-        std::vector<double> data;
+        std::vector<double> data_;
         aed_type2() {}
         aed_type2(size_t n):
-            data(n)
+            data_(n)
     {}
         template <typename T>
             aed_type2(T &v)
             {
-                data.resize(v.size());
+                data_.resize(v.size());
                 for (size_t i=0; i<v.size(); ++i) {
-                    data[i]=v[i];
+                    data_[i]=v[i];
                 }
             }
         inline double &operator[](size_t i)
         {
-            return data[i];
+            return data_[i];
         }
         inline double &operator()(size_t i)
         {
-            return data[i];
+            return data_[i];
         }
         inline const double &operator[](size_t i) const
         {
-            return data[i];
+            return data_[i];
         }
         inline const double &operator()(size_t i) const
         {
-            return data[i];
+            return data_[i];
         }
         inline aed_type2 transpose() const
         {
@@ -174,30 +226,30 @@ class aed_type2 {
         {
             aed_type2 temp(*this);
             for (size_t i=0;i<temp.size();++i) {
-                temp.data[i]*=-1;
+                temp.data_[i]*=-1;
             }
             return temp;;
         }
         template <typename T>
             inline aed_type2 &operator+=(const T &v1)
             {
-                for (size_t i=0;i<data.size();++i) {
-                    data[i]+=v1[i];
+                for (size_t i=0;i<data_.size();++i) {
+                    data_[i]+=v1[i];
                 }
                 return *this;
             }
         template <typename T>
             inline aed_type2 &operator-=(const T &v1)
             {
-                for (size_t i=0;i<data.size();++i) {
-                    data[i]-=v1[i];
+                for (size_t i=0;i<data_.size();++i) {
+                    data_[i]-=v1[i];
                 }
                 return *this;
             }
         inline aed_type2 &operator*=(const double s)
         {
-            for (size_t i=0;i<data.size();++i) {
-                data[i]*=s;
+            for (size_t i=0;i<data_.size();++i) {
+                data_[i]*=s;
             }
             return *this;
         }
@@ -205,7 +257,7 @@ class aed_type2 {
         {
             aed_type2 temp(v1);
             for (size_t i=0;i<temp.size();++i) {
-                temp.data[i]-=v2.data[i];
+                temp.data_[i]-=v2.data_[i];
             }
             return temp;
         }
@@ -213,7 +265,7 @@ class aed_type2 {
         {
             aed_type2 temp(v1);
             for (size_t i=0;i<temp.size();++i) {
-                temp.data[i]+=v2.data[i];
+                temp.data_[i]+=v2.data_[i];
             }
             return temp;
         }
@@ -242,18 +294,18 @@ class aed_type2 {
             }
         void setZero()
         {
-            for (size_t i=0;i<data.size();++i) {
-                data[i]=0;
+            for (size_t i=0;i<data_.size();++i) {
+                data_[i]=0;
             }
         }
 
         size_t size() const
         {
-            return data.size();
+            return data_.size();
         }
         size_t rows() const
         {
-            return data.size();
+            return data_.size();
         }
 
         inline friend std::ostream &operator<<(std::ostream &os, const aed_type2 &v)
@@ -266,8 +318,8 @@ class aed_type2 {
             return os;
         }
         bool isApprox(const aed_type2 &v1, double EPS) const{
-            for (size_t i=0;i<data.size();++i) {
-                if (std::abs(data[i]-v1[i])>EPS) return false;
+            for (size_t i=0;i<data_.size();++i) {
+                if (std::abs(data_[i]-v1[i])>EPS) return false;
             }
             return true;
         }
@@ -281,62 +333,69 @@ class aed_type2 {
             return !(*this==v1);
         }
         inline void resize(const size_t n) {
-            data.resize(n);
+            data_.resize(n);
+        }
+        double *data() {
+            return data_.data();
+        }
+        const double *data() const {
+            return data_.data();
         }
 };
-class aeds_type2{
+class aeds_type2 {
     // column-wise
     public:
-        std::vector<aed_type2> data;
+        std::vector<aed_type2> data_;
         aeds_type2() {}
         aeds_type2(size_t dim, size_t natoms):
-            data(natoms, aed_type2(dim))
+            data_(natoms, aed_type2(dim))
     {}
         inline double &operator()(size_t i, size_t j)
         {
-            return data[i][j];
+            return data_[i][j];
         }
         inline aed_type2 &operator[](size_t i)
         {
-            return data[i];
+            return data_[i];
         }
         size_t cols() const
         {
-            return data.size();
+            return data_.size();
         }
         size_t rows() const
         {
-            return data[0].size();
+            return data_[0].size();
         }
         size_t size() const
         {
-            return data.size();
+            return data_.size();
         }
         inline aed_type2 &col(size_t i)
         {
-            return data[i];
+            return data_[i];
         }
         inline const aed_type2 &col(size_t i) const
         {
-            return data[i];
+            return data_[i];
         }
         inline void resize(size_t dim, size_t natoms)
         {
-            data.resize(natoms,dim);
+            data_.resize(natoms);
+            for (size_t i = 0; i < natoms; ++i)
+                data_[i].resize(dim);
         }
         inline void setZero()
         {
-            for (auto &a:data) a.setZero();
+            for (auto &a:data_) a.setZero();
         }
         inline friend std::ostream &operator<<(std::ostream &os, const aeds_type2 &v)
         {
-            for (const aed_type2 &a:v.data) os << a << std::endl;
+            for (const aed_type2 &a:v.data_) os << a << std::endl;
             return os;
         }
 };
 class fd_type {
-    // column-wise????????
-    // data alignment here is just wrong
+    // column-wise
     public:
         std::vector<aed_type2> data;
         fd_type() {}
