@@ -228,6 +228,14 @@ class aed_type2 {
                 }
                 return *this;
             }
+        inline aed_type2 &operator+=(const double d)
+            // element wise increment
+        {
+            for (size_t i=0;i<data_.size();++i) {
+                data_[i]+=d;
+            }
+            return *this;
+        }
         template <typename T>
             inline aed_type2 &operator-=(const T &v1)
             {
@@ -236,6 +244,14 @@ class aed_type2 {
                 }
                 return *this;
             }
+        inline aed_type2 &operator-=(const double d)
+            // element wise increment
+        {
+            for (size_t i=0;i<data_.size();++i) {
+                data_[i]-=d;
+            }
+            return *this;
+        }
         inline aed_type2 &operator*=(const double s)
         {
             for (size_t i=0;i<data_.size();++i) {
@@ -341,10 +357,10 @@ class aed_type2 {
             aed_type2 temp(new_data);
             return temp;
         }
-        //inline void operator=(const aed_type2 &v1)
-        //{
-        //    this->data_ = v1.data_;
-        //}
+        /** Return the pointer to the first element of the data array */
+        inline double *ptr() {
+            return &data()[0];
+        }
 };
 class aeds_type2 {
     // column-wise
@@ -534,6 +550,13 @@ class Matrix {
         inline double *data() {
             return m_.data();
         }
+        const double *data() const {
+            return m_.data();
+        }
+        /** Return the pointer to the first element of the data array */
+        inline double *ptr() {
+            return &data()[0];
+        }
         inline bool exists(size_t row, size_t col) const
         {
             return (row < rows_ && col < cols_);
@@ -610,4 +633,41 @@ class Matrix {
                 return temp;
             }
 };
+
+inline aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans='N') {
+    int m = mat.rows();
+    int n = mat.cols();
+    double alpha = 1.0;
+    int lda = m;
+    double *a = &mat.data()[0];
+    double *x = &vec.data()[0];
+    int incx = 1;
+    double beta = 0.0;
+
+    aed_type2 res(trans=='N' ? mat.rows() : mat.cols());
+    double *y = &res.data()[0];
+    int incy = 1;
+
+    dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
+    return res;
+}
+inline aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D) {
+    /** Computes diagonal entries of (M D M^T) where M is m by n
+     * and D is n by n diagonal matrix
+     *
+     * [m,n][n,n][n,m]=[m,m]
+     *
+     * */
+
+    aed_type2 res(M.rows());
+    res.setZero();
+    for (size_t i=0; i<M.rows(); ++i) {
+        for (size_t j=0; j<M.cols(); ++j) {
+            res[i] += D(j,j)*M(i,j)*M(i,j);
+        }
+    }
+
+    return res;
+}
+
 #endif
