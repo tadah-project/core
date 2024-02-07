@@ -1,0 +1,37 @@
+#ifndef LAPACK_H
+#define LAPACK_H
+
+
+extern "C" {
+    /** the Cholesky factorization of a real symmetric
+     *  positive definite matrix a.*/
+    void dpotrf_(char *uplo, int *n, double *a, int *lda, int *info);
+
+    /** Cholesky decomposition for packed matrices*/
+    void dpptrf_(char *uplo, int *n, double *ap, int *info);
+
+    /** LU decomoposition of a general matrix */
+    void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv, int *info);
+
+    /** Compute inverse of the matrix from its  LU factorisation */
+    void dgetri_(int *n, double *a, int *lda, int *ipiv,
+            double *work, int *lwork, int *info);
+
+    void dgesdd_(char *jobz, int *m, int *n, double *a, int *lda,
+            double *s, double *u, int *ldu, double *vt, int *ldvt,
+            double *work, int *lwork, int *iwork, int *info);
+
+    void dgemv_(const char *trans, const int *m, const int *n,
+            const double *alpha, const double *a, const int *lda, const double *x,
+            const int *incx, const double *beta, double *y, const int *incy);
+
+    void dgelsd_ (int *m, int* n, int* nrhs, double *a, int* lda,
+            double *b, int* ldb, double *s, double* rcond, int* rank,
+            double *work, int* lwork, int* iwork, int* info);
+
+    void dgemm_(char *transa, char *transb, int *m, int *n,
+            int *k, double *alpha, double *a, int *lda, double *b, int *ldb,
+            double *beta, double *c, int *ldc);
+
+}
+#endif
