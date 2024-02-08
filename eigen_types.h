@@ -3,12 +3,12 @@
 
 #include "../LIBS/Eigen/Core"
 
-typedef Eigen::VectorXd vec;
-typedef Eigen::MatrixXd mat;
+//typedef Eigen::VectorXd vec;
+//typedef Eigen::MatrixXd mat;
 //typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic> phi_type;
 //typedef Eigen::Matrix<double,Eigen::Dynamic,1> t_type;
-typedef Eigen::Matrix3d stress_type;
-typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 11,12,13,22,23,33
+//typedef Eigen::Matrix3d stress_type;
+//typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 11,12,13,22,23,33
 
 /** Atomic Energy Descriptor (AED) type
  *
@@ -34,7 +34,7 @@ typedef Eigen::Matrix<double, Eigen::Dynamic, 6> sd_type;   // sigma_ij order: 1
  *
  */
 
-/** Density array to be used by many-body descriptors... TODO
+/** Density array to be used by many-body descriptors...
  *
  * Dimensions:
  * [atom i][n]

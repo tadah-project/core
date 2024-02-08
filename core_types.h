@@ -10,6 +10,7 @@ typedef aed_type2 t_type;
 typedef aed_type2 rho_type;
 typedef aeds_type2 rhos_type;
 typedef Matrix phi_type;
+typedef Matrix3d stress_type;
 
 typedef std::vector<double> v_type;
 
