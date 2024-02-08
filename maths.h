@@ -234,10 +234,10 @@ class aed_type2 {
         {
             return data_[i];
         }
-        inline aed_type2 transpose() const
-        {
-            return *this;
-        }
+        //inline aed_type2 transpose() const
+        //{
+        //    return *this;
+        //}
         // Maths
         inline aed_type2 operator-() const
         {
@@ -534,17 +534,17 @@ class fd_type {
             for (const aed_type2 &a:v.data) os << a << std::endl;
             return os;
         }
-        inline fd_type transpose() const {
-            return *this;
-        }
+        //inline fd_type transpose() const {
+        //    return *this;
+        //}
         template <typename T>
-            inline friend Vec3d operator*(const fd_type &v1, const T &v2)
+            inline Vec3d operator*(const T &v2) const
             {
                 Vec3d temp;
                 temp.setZero();
                 for (size_t k=0; k<3; ++k) {
                     for (size_t i=0;i<v2.size();++i) {
-                        temp[k]+=v1(k,i)*v2[i];
+                        temp[k]+=(*this)(i,k)*v2[i];
                     }
                 }
                 return temp;
