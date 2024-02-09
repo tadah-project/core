@@ -566,7 +566,6 @@ class fd_type {
 template <typename D>
 class Matrix_Base {
     // column-major order
-    //using vec = std::vector<double>;
     size_t rows_;
     size_t cols_;
     D m_;
@@ -628,19 +627,13 @@ class Matrix_Base {
         {
             return (row < rows_ && col < cols_);
         }
-        //inline t_type row(size_t row_) {
-        //    /* rows = 5
-        //     * cols = 4
-        //     *
-        //     * ex.
-        //     * r=0 return m_(0,0+cols)
-        //     * r=1 return m_(row_*cols, row_*cols+cols)
-        //     */
-        //    size_t start=row_*cols;
-        //    size_t stop=cols*(1+row_);
-        //    vec temp(m_[start,stop]);
-        //    return aed_type2(temp);
-        //}
+        inline aed_type2 row(size_t r) {
+            aed_type2 temp(cols());
+            for (size_t i=0; i<cols(); ++i) {
+                temp(i)=(*this)(r,i);
+            }
+            return temp;
+        }
         inline void resize(size_t r, size_t c)
         {
             m_.resize(r*c);
