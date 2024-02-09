@@ -33,5 +33,9 @@ extern "C" {
             int *k, double *alpha, double *a, int *lda, double *b, int *ldb,
             double *beta, double *c, int *ldc);
 
+    /** Balance a general real matrix a */
+    void dgebal_(char *job, int *n, double *a, int *lda, int *ilo, int *ihi,
+            double *scale, int *info);
+
 }
 #endif
