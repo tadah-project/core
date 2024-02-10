@@ -1,11 +1,13 @@
 #ifndef LAPACK_H
 #define LAPACK_H
 
-
 extern "C" {
     /** the Cholesky factorization of a real symmetric
      *  positive definite matrix a.*/
     void dpotrf_(char *uplo, int *n, double *a, int *lda, int *info);
+
+    /** Compute inverse using the Cholesky factorisation from dpotrf */
+    void dpotri_(char *uplo, int *n, double *a, int *lda, int *info);
 
     /** Cholesky decomposition for packed matrices*/
     void dpptrf_(char *uplo, int *n, double *ap, int *info);
@@ -37,5 +39,14 @@ extern "C" {
     void dgebal_(char *job, int *n, double *a, int *lda, int *ilo, int *ihi,
             double *scale, int *info);
 
+    void dposv_(char *uplo, int *n, int *nrhs, double *a, int *lda, double *b,
+            int *ldb, int *info);
+
+    void dpocon_(char *uplo, int *n, double *a, int *lda, double *anorm,
+            double *rcond, double *work, int *iwork, int *info);
+
+    double dlange_(char *norm, int *m, int *n, double *a, int *lda, double *work);
+
 }
+
 #endif

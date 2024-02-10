@@ -7,40 +7,8 @@
 #include <limits>
 
 #include <array>
+//#include "lapack.h"
 
-
-extern "C" {
-    /** the Cholesky factorization of a real symmetric
-     *  positive definite matrix a.*/
-    void dpotrf_(char *uplo, int *n, double *a, int *lda, int *info);
-
-    /** Cholesky decomposition for packed matrices*/
-    void dpptrf_(char *uplo, int *n, double *ap, int *info);
-
-    /** LU decomoposition of a general matrix */
-    void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv, int *info);
-
-    /** Compute inverse of the matrix from its  LU factorisation */
-    void dgetri_(int *n, double *a, int *lda, int *ipiv,
-            double *work, int *lwork, int *info);
-
-    void dgesdd_(char *jobz, int *m, int *n, double *a, int *lda,
-            double *s, double *u, int *ldu, double *vt, int *ldvt,
-            double *work, int *lwork, int *iwork, int *info);
-
-    void dgemv_(const char *trans, const int *m, const int *n,
-            const double *alpha, const double *a, const int *lda, const double *x,
-            const int *incx, const double *beta, double *y, const int *incy);
-
-    void dgelsd_ (int *m, int* n, int* nrhs, double *a, int* lda,
-            double *b, int* ldb, double *s, double* rcond, int* rank,
-            double *work, int* lwork, int* iwork, int* info);
-
-    void dgemm_(char *transa, char *transb, int *m, int *n,
-            int *k, double *alpha, double *a, int *lda, double *b, int *ldb,
-            double *beta, double *c, int *ldc);
-
-}
 
 
 class Vec3d {
@@ -856,40 +824,10 @@ typedef Matrix3d_T<> Matrix3d;
 
 
 // Some usefull operations on vectors and matrices
-inline aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans='N') {
-    int m = mat.rows();
-    int n = mat.cols();
-    double alpha = 1.0;
-    int lda = m;
-    double *a = &mat.data()[0];
-    double *x = &vec.data()[0];
-    int incx = 1;
-    double beta = 0.0;
-
-    aed_type2 res(trans=='N' ? mat.rows() : mat.cols());
-    double *y = &res.data()[0];
-    int incy = 1;
-
-    dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-    return res;
-}
-inline aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D) {
-    /** Computes diagonal entries of (M D M^T) where M is m by n
-     * and D is n by n diagonal matrix
-     *
-     * [m,n][n,n][n,m]=[m,m]
-     *
-     * */
-
-    aed_type2 res(M.rows());
-    res.setZero();
-    for (size_t i=0; i<M.rows(); ++i) {
-        for (size_t j=0; j<M.cols(); ++j) {
-            res[i] += D(j,j)*M(i,j)*M(i,j);
-        }
-    }
-
-    return res;
-}
+aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans='N');
+aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D);
+double norm_X(Matrix &A, char norm='1');
+aed_type2 solve_posv(Matrix &A, aed_type2 /*&*/T, char uplo='U');
+double condition_number(Matrix &A, char uplo='U');
 
 #endif
