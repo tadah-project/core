@@ -429,7 +429,7 @@ examples     =  ['`Sigma 2 1.2 2.2 2.3 3.3`']
 default      =   []
 value_type   =   ['string','string']
 value_format =   ['MODEL','FUNCTION']
-value_N      =   [-2]
+value_N      =   [-3]
 description  =  """This key defines the :code:`MODEL` to be used for training. \
 :code:`MODEL` can be any class which inherits from :cpp:class:`M_Base`. \
 :code:`FUNCTION` any child class of :cpp:class`Function_Base`."""
