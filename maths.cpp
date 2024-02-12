@@ -56,7 +56,6 @@ aed_type2 solve_posv(Matrix &A, aed_type2 /*&*/T, char uplo) {
     double *b = T.ptr();
     int n = A.rows();   // A is square
     int nrhs = 1;
-    int lwork = n*n;
     int info;
 
     dposv_(&uplo, &n, &nrhs, a, &n, b, &n, &info);
@@ -78,4 +77,28 @@ double condition_number(Matrix &A, char uplo) {
     delete [] iwork;
 
     return 1/rcond;
+}
+
+
+// aed_type2 class
+
+aed_type2::aed_type2(double* arr, size_t size, size_t stride)
+ {
+     stride_ = stride;
+     size_   = size;
+     data_   = arr;
+ }
+
+aed_type2::aed_type2(double* arr, size_t size, bool copy, size_t stride)
+{
+    stride_= stride;
+    size_ = size;
+    if (copy) {
+        data_ = (double*)malloc(stride_*size_*sizeof(data_));
+        std::memcpy(data_, arr, stride_*size_*sizeof(data_));
+        allocated_ = true;
+    }
+    else {
+        data_ = arr;
+    }
 }
