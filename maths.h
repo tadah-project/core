@@ -14,7 +14,7 @@
 
 class Vec3d {
     public:
-        double v[3];
+        double v[3] = { };
         Vec3d() {}
 
         template <typename T>
@@ -92,7 +92,7 @@ class Vec3d {
         {
             return Vec3d(v[0]*s, v[1]*s, v[2]*s);
         }
-        inline void setZero() { v[0]=0; v[1]=0; v[2]=0; }
+        inline void set_zero() { v[0]=0; v[1]=0; v[2]=0; }
 
         inline friend std::ostream &operator<<(std::ostream &os, const Vec3d &v)
         {
@@ -347,7 +347,7 @@ class aed_type2 {
             }
             return temp;
         }
-        inline void setZero()
+        inline void set_zero()
         {
             for (size_t i=0;i<size();++i) {
                 (*this)[i]=0;
@@ -474,9 +474,9 @@ class aeds_type2 {
             for (size_t i = 0; i < natoms; ++i)
                 data_[i].resize(dim);
         }
-        inline void setZero()
+        inline void set_zero()
         {
-            for (auto &a:data_) a.setZero();
+            for (auto &a:data_) a.set_zero();
         }
         inline friend std::ostream &operator<<(std::ostream &os, const aeds_type2 &v)
         {
@@ -526,9 +526,9 @@ class fd_type {
         {
             data.resize(natoms,dim);
         }
-        inline void setZero()
+        inline void set_zero()
         {
-            for (auto &a:data) a.setZero();
+            for (auto &a:data) a.set_zero();
         }
         inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
         {
@@ -539,7 +539,7 @@ class fd_type {
             inline Vec3d operator*(const T &v2) const
             {
                 Vec3d temp;
-                temp.setZero();
+                temp.set_zero();
                 for (size_t k=0; k<3; ++k) {
                     for (size_t i=0;i<v2.size();++i) {
                         temp[k]+=(*this)(i,k)*v2[i];
@@ -628,7 +628,7 @@ class Matrix_Base {
         /** Provide a view of the r row of the matrix */
         inline aed_type2 row(size_t r) {
             size_t stride = rows();
-            aed_type2 temp(&m_.data()[0], cols(), stride);
+            aed_type2 temp(&m_.data()[r], cols(), stride);
             return temp;
         }
         /** Provide a view of the c column of the matrix */
@@ -643,7 +643,7 @@ class Matrix_Base {
             rows_= r;
             cols_= c;
         }
-        inline void setZero() {
+        inline void set_zero() {
             for (size_t i=0;i<m_.size();++i) {
                 m_[i]=0;
             }
@@ -678,7 +678,7 @@ class Matrix_Base {
                 // naive matrix vector product
                 //m is M x N matrix and v is N x 1 column vector
                 aed_type2 temp((*this).rows());
-                temp.setZero();
+                temp.set_zero();
                 for (size_t i=0; i<(*this).rows(); i++){
                     for (size_t j=0; j<(*this).cols(); j++) {
                         temp(i) += (*this)(i,j)*v(j);
@@ -800,7 +800,7 @@ class Matrix3d_T: public Matrix_Base<T> {
                 // naive matrix vector product
                 //m is M x N matrix and v is N x 1 column vector
                 Vec3d temp;
-                temp.setZero();
+                temp.set_zero();
                 for (size_t i=0; i<3; i++){
                     for (size_t j=0; j<3; j++) {
                         temp(i) += (*this)(i,j)*v(j);

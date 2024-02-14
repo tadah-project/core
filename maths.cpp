@@ -29,7 +29,7 @@ aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D) {
      * */
 
     aed_type2 res(M.rows());
-    res.setZero();
+    res.set_zero();
     for (size_t i=0; i<M.rows(); ++i) {
         for (size_t j=0; j<M.cols(); ++j) {
             res[i] += D(j,j)*M(i,j)*M(i,j);
@@ -42,7 +42,7 @@ double norm_X(Matrix &A, char norm) {
     double *a = A.ptr();
     int m=(int)A.rows();
     int n=(int)A.cols();
-    double *work;
+    double *work = NULL;
     if (norm=='I') work = new double[n];
 
     double res = dlange_(&norm, &m, &n, a, &m, work);

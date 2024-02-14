@@ -1,7 +1,6 @@
 #ifndef PERIODIC_TABLE_H
 #define PERIODIC_TABLE_H
 
-#include <iostream>
 #include <string>
 #include <map>
 #include "element.h"
@@ -14,7 +13,7 @@ struct PeriodicTable {
         const Element &find_by_name(const std::string &s) const {
             return name.at(s);
         }
-        const Element &find_by_symbol(const std::string &s) const {
+        const Element &find_by_symbol(const char *s) const {
             return symbol.at(s);
         }
         const Element &find_by_Z(const int &s) const {
@@ -23,17 +22,23 @@ struct PeriodicTable {
 
         void add(const Element e) {
             symbol[e.symbol] = e;
-            name[e.name] = e;
             Z[e.Z] = e;
         }
-        void add(const std::string &symbol_, const std::string &name_, const int Z_) {
-            Element e(symbol_, name_, Z_);
+        void add(const char *symbol_, const char *name_, const int Z_) {
+            Element e(symbol_, Z_);
             symbol[symbol_] = e;
             name[name_] = e;
             Z[Z_] = e;
         }
     private:
-        std::map<std::string, Element> symbol;   // symbol:Element
+  struct cmp_str
+  {
+    bool operator()(char const *a, char const *b) const
+    {
+      return a[0]==b[0] && a[1]==b[1];
+    }
+  };
+        std::map<const char*, Element, cmp_str> symbol;   // symbol:Element
         std::map<std::string, Element> name;   // name:Element
         std::map<int, Element> Z;   // Z:Element
         void fill() {
