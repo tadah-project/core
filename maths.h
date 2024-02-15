@@ -481,55 +481,44 @@ public:
     return os;
   }
 };
+
 class fd_type {
   // column-wise
 public:
-  std::vector<aed_type2> data;
-  fd_type() {}
-  fd_type(size_t dim):
-    data(3,aed_type2(dim))
-  {}
+  size_t rows_=0;
+  std::vector<double> data;
+  aed_type2 aed_type2_ptr[3];
+  fd_type();
+  fd_type(size_t dim);
   inline double &operator()(size_t i, size_t k)
   {
-    // to match old implementation
-    return data[k][i];
+    return data[3*i+k];
   }
   inline const double &operator()(size_t i, size_t k) const
   {
-    // to match old implementation
-    return data[k][i];
+    return data[3*i+k];
   }
-  inline aed_type2 &operator[](size_t i)
+  inline aed_type2 &operator[](size_t k)
   {
-    return data[i];
+    return aed_type2_ptr[k];
   }
-  size_t cols() const
+  inline const aed_type2 &operator()(size_t k) const
   {
-    return data.size();
+    return aed_type2_ptr[k];
   }
   size_t rows() const
   {
-    return data[0].size();
-  }
-  inline aed_type2 col(size_t k)
-  {
-    return aed_type2(&data[k][0], data[k].size());
-  }
-  inline const aed_type2 &col(size_t k) const
-  {
-    return data[k];
-  }
-  inline void resize(size_t dim, size_t natoms)
-  {
-    data.resize(natoms,dim);
+    return rows_;
   }
   inline void set_zero()
   {
-    for (auto &a:data) a.set_zero();
+    for (size_t i=0; i<3*rows_; ++i) data[i]=0;
   }
   inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
   {
-    for (const aed_type2 &a:v.data) os << a << std::endl;
+    os << v.aed_type2_ptr[0] << std::endl;
+    os << v.aed_type2_ptr[1] << std::endl;
+    os << v.aed_type2_ptr[2] << std::endl;
     return os;
   }
   template <typename T>
@@ -548,11 +537,11 @@ public:
   {
     fd_type temp(*this);
     for (size_t k=0; k<3; ++k) {
-      for (size_t i=0;i<temp.col(k).size();++i) {
+      for (size_t i=0;i<temp(k).size();++i) {
         temp(i,k)*=-1;
       }
     }
-    return temp;;
+    return temp;
   }
 };
 

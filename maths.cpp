@@ -96,9 +96,22 @@ aed_type2::aed_type2(double* arr, size_t size, bool copy, size_t stride)
     if (copy) {
         data_ = (double*)malloc(stride_*size_*sizeof(data_));
         std::memcpy(data_, arr, stride_*size_*sizeof(data_));
-        allocated_ = true;
     }
     else {
         data_ = arr;
     }
 }
+
+// fd_type
+fd_type::fd_type() 
+{}
+
+fd_type::fd_type(size_t dim):
+  rows_(dim),
+  data(3*dim)
+{
+  aed_type2_ptr[0] = aed_type2(&data[0],dim,(size_t)1);
+  aed_type2_ptr[1] = aed_type2(&data[dim],dim,(size_t)1);
+  aed_type2_ptr[2] = aed_type2(&data[2*dim],dim,(size_t)1);
+}
+
