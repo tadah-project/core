@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <utility>
 #include <vector>
 #include <iostream>
 #include <limits>
@@ -163,7 +164,7 @@ class aed_type2 {
   // so either v1*v2 and v2*v1 always give dot product
   size_t size_= 0;
   size_t stride_= 1;
-  bool allocated_=false;
+  bool allocated_=false;  // false is required for viewing
 public:
   double *data_ = NULL;
   aed_type2() {}
@@ -183,11 +184,11 @@ public:
     size_= other.size_;
     stride_ = other.stride_;
 
-    if (size_ > 0) {
+    //if (size_ > 0) {
       data_ = (double*)malloc(stride_*size_*sizeof(data_));
       std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
       allocated_ = true;
-    }
+    //}
   }
   aed_type2 &operator=(aed_type2 other) {
     std::swap(size_, other.size_);
@@ -235,14 +236,14 @@ public:
   //    return *this;
   //}
   // Maths
-  inline aed_type2 operator-() const
-  {
-    aed_type2 temp(*this);
-    for (size_t i=0;i<size();++i) {
-      temp[i]*=-1;
-    }
-    return temp;;
-  }
+  //inline aed_type2 operator-() const
+  //{
+  //  aed_type2 temp(*this);
+  //  for (size_t i=0;i<size();++i) {
+  //    temp[i]*=-1;
+  //  }
+  //  return temp;;
+  //}
   template <typename T>
   inline aed_type2 &operator+=(const T &v1)
   {
@@ -484,10 +485,11 @@ public:
 
 class fd_type {
   // column-wise
-public:
+
   size_t rows_=0;
   std::vector<double> data;
   aed_type2 aed_type2_ptr[3];
+public:
   fd_type();
   fd_type(size_t dim);
   inline double &operator()(size_t i, size_t k)
@@ -525,7 +527,6 @@ public:
   inline Vec3d operator*(const T &v2) const
   {
     Vec3d temp;
-    temp.set_zero();
     for (size_t k=0; k<3; ++k) {
       for (size_t i=0;i<v2.size();++i) {
         temp[k]+=(*this)(i,k)*v2[i];
@@ -533,16 +534,28 @@ public:
     }
     return temp;
   }
-  inline fd_type operator-() const
+  inline fd_type operator-(const fd_type &v2) const
   {
-    fd_type temp(*this);
-    for (size_t k=0; k<3; ++k) {
-      for (size_t i=0;i<temp(k).size();++i) {
-        temp(i,k)*=-1;
-      }
-    }
+    fd_type temp(v2.rows());
+    for (size_t i=0;i<3*rows();++i)
+      temp.data[i] = data[i]-v2.data[i];
     return temp;
   }
+  inline void operator*=(double s) 
+  {
+    for (size_t i=0;i<3*rows();++i)
+      data[i]*=s;
+  }
+  //inline fd_type operator-() const
+  //{
+  //  fd_type temp(*this);
+  //  for (size_t k=0; k<3; ++k) {
+  //    for (size_t i=0;i<temp(k).size();++i) {
+  //      temp(i,k)*=-1;
+  //    }
+  //  }
+  //  return temp;
+  //}
 };
 
 
