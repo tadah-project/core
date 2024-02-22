@@ -863,11 +863,4 @@ typedef Matrix3d_T<> Matrix3d;
 
 
 
-// Some usefull operations on vectors and matrices
-aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans='N');
-aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D);
-double norm_X(Matrix &A, char norm='1');
-aed_type2 solve_posv(Matrix &A, aed_type2 /*&*/T, char uplo='U');
-double condition_number(Matrix &A, char uplo='U');
-
 #endif

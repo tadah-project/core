@@ -1,6 +1,7 @@
 #ifndef LAPACK_H
 #define LAPACK_H
 
+#include "maths.h"
 extern "C" {
     /** the Cholesky factorization of a real symmetric
      *  positive definite matrix a.*/
@@ -48,5 +49,15 @@ extern "C" {
     double dlange_(char *norm, int *m, int *n, double *a, int *lda, double *work);
 
 }
+
+
+// Some usefull operations on vectors and matrices
+aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans='N');
+aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D);
+double norm_X(Matrix &A, char norm='1');
+aed_type2 solve_posv(Matrix &A, aed_type2 /*&*/T, char uplo='U');
+double condition_number(Matrix &A, char uplo='U');
+
+
 
 #endif
