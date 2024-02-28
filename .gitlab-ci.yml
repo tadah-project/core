@@ -26,4 +26,4 @@ deploy-prod:
 trigger_job:
   stage: build
   trigger:
-    project: Ta-dah/Ta-dah.MLIP
+    project: tadah/tadah.mlip
