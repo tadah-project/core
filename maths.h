@@ -744,6 +744,26 @@ public:
     }
     return temp;
   }
+//  template <typename... T>
+//      friend Matrix_Base<D> operator<<(Matrix_Base<D> &mat,T... list)
+//      {
+//          size_t i=0;
+//          for( const auto elem : {list...} )
+//          {
+//              mat.data()[i++]=elem ;
+//          }
+//          return mat;
+//      }
+  template <typename... T>
+      void load(T... list)
+      {
+          size_t i=0;
+          for( const auto elem : {list...} )
+          {
+              m_[rows()*(i%cols()) + i/cols()]=elem ;
+              i++;
+          }
+      }
 };
 template<typename T=std::vector<double>>
 class Matrix_T: public Matrix_Base<T> {
