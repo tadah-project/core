@@ -24,7 +24,7 @@ private:
   }
 
 public:
-  char symbol[2];
+  char symbol[3];
   int Z;
   Element() {};
   Element(const char *symbol_, const int Z_, bool check_=true)
@@ -35,7 +35,9 @@ public:
     Z=Z_;
   };
   bool operator==(const Element& other) const {
-    return this->symbol == other.symbol && this->Z == other.Z;
+    return this->symbol[0] == other.symbol[0]
+        && this->symbol[1] == other.symbol[1]
+        && this->Z == other.Z;
   };
   bool operator<(const Element& other) const {
     return this->Z < other.Z;
