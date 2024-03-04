@@ -1,3 +1,6 @@
+variables:
+  DEBUG_DIR: "build_debug"
+  RELEASE_DIR: "build_release"
 stages:
   - build
   - build.tests
@@ -5,8 +8,7 @@ stages:
   - trigger
 
 before_script:
-  - DEBUG_DIR=build_debug
-  - RELEASE_DIR=build_release
+
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:~/.local/bin
