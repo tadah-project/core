@@ -10,10 +10,6 @@ stages:
 before_script:
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
-  - export PATH=$PATH:~/.local/bin
-  - export CPATH=$CPATH:~/.local/include
-  - export LIBRARY_PATH=$LIBRARY_PATH:~/.local/lib
-  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.local/lib
   - export OMP_NUM_THREADS=4
 
 build-debug:
@@ -67,7 +63,7 @@ build-release-static:
   needs: [build-release-shared]
   script:
     - cd ${RELEASE_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=~/.local
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF
     - make -j ${OMP_NUM_THREADS}
 
 
