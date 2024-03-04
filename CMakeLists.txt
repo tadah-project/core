@@ -35,7 +35,10 @@ if(TADAH_ENABLE_OPENMP)
     target_link_libraries(tadah.core.obj PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
+
 add_library(tadah.core STATIC $<TARGET_OBJECTS:tadah.core.obj>)
+find_package(LAPACK)
+target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
 
 if(NOT DEFINED CONFIG_FILE_DIR)
     set(CONFIG_FILE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config")
