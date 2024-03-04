@@ -24,7 +24,7 @@ build-debug:
 
 build-tests:
   variables: 
-    GIT_CLEAN_FLAGS: -ffdx -e build/
+    GIT_CLEAN_FLAGS: -ffdx -e ${DEBUG_DIR}
   stage: build.tests
   needs: [build-debug]
   script:
