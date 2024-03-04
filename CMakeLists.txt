@@ -1,9 +1,17 @@
 cmake_minimum_required(VERSION 3.12)
 project(Tadah.CORE)
 
-# guard against in-source builds
-if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-    message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt and CMakeFiles dir. ")
+# Guard against in-source builds
+# Also, make sure user does not accidently invoke cmake .. from the source dir
+# of the module in case module is added as a submodule.
+get_filename_component(MODULE_TEST ${CMAKE_BINARY_DIR} NAME)
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR}
+        OR ${MODULE_TEST} STREQUAL "CORE"
+        )
+    message(FATAL_ERROR "
+    In-source builds not allowed.
+    Please make a new directory (called a build directory) and run CMake from there.
+    You may need to remove CMakeCache.txt and CMakeFiles dir. ")
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
