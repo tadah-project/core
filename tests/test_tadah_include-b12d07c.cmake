@@ -1,5 +1,0 @@
-if(EXISTS "/home/s1351949/PROJECTS/tadah.mlip/CORE/tests/test_tadah_tests-b12d07c.cmake")
-  include("/home/s1351949/PROJECTS/tadah.mlip/CORE/tests/test_tadah_tests-b12d07c.cmake")
-else()
-  add_test(test_tadah_NOT_BUILT-b12d07c test_tadah_NOT_BUILT-b12d07c)
-endif()
