@@ -8,7 +8,6 @@ stages:
   - trigger
 
 before_script:
-
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:~/.local/bin
@@ -70,7 +69,6 @@ build-release-static:
     - cd ${RELEASE_DIR}
     - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=~/.local
     - make -j ${OMP_NUM_THREADS}
-    - make install
 
 
 trigger_job:
