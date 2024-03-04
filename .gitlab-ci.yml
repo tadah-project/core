@@ -19,7 +19,7 @@ build-debug:
   stage: build
   script:
     - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug"
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug
     - make -j ${OMP_NUM_THREADS}
 
 build-tests:
@@ -58,7 +58,7 @@ build-release-shared:
   stage: build
   script:
     - cd ${RELEASE_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON "
+    - cmake .. -DCMAKE_BUILD_TYPE=Release -DTADAH_ENABLE_OPENMP=ON
     - make -j ${OMP_NUM_THREADS}
 
 build-release-static:
