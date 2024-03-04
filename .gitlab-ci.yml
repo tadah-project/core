@@ -16,7 +16,7 @@ build-debug:
   stage: build
   script:
     - cd ${DEBUG_DIR}
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug
+    - cmake .. -DCMAKE_CXX_FLAGS="-g -O1 -fsanitize=address -Wall -Wpedantic -pedantic-errors -Wextra --coverage"
     - make -j ${OMP_NUM_THREADS}
 
 build-tests:
@@ -48,7 +48,7 @@ run-tests-2:
   script:
     - cd ${DEBUG_DIR}
     - make test
-    - gcovr --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*' -r ..
+    - gcovr --exclude='.*/Eigen/.*' --exclude='.*/catch2/.*' --exclude='.*/tests/.*' --exclude='.*/CLI11/.*' --exclude='.*/toml11/.*'  --exclude='.*/CMakeFiles/.*' -r ..
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build-release-shared:
