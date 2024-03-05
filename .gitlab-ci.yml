@@ -35,9 +35,9 @@ build-tests:
     - rm -rf _deps
     - find . -name "*.a" -exec rm {} +
     - find . -name "*.o" -exec rm {} +
-  #artifacts:
-  #  paths:
-  #    - "${DEBUG_DIR}"
+  artifacts:
+    paths:
+      - "${DEBUG_DIR}"
 
 run-tests-1:
   stage: run.tests
