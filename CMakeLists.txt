@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 project(Tadah.CORE)
 
+get_directory_property(hasParent PARENT_DIRECTORY)
+
 # Guard against in-source builds
 # Also, make sure user does not accidently invoke cmake .. from the source dir
 # of the module in case module is added as a submodule.
@@ -35,15 +37,14 @@ if(TADAH_ENABLE_OPENMP)
     target_link_libraries(tadah.core.obj PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
-
 add_library(tadah.core STATIC $<TARGET_OBJECTS:tadah.core.obj>)
 find_package(LAPACK)
 target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
 
 if(NOT DEFINED CONFIG_FILE_DIR)
     set(CONFIG_FILE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config")
+    add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
 endif()
-add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
 
 include(CTest) 
 if(TADAH_BUILD_TESTS)

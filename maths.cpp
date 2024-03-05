@@ -36,4 +36,3 @@ fd_type::fd_type(size_t dim):
   aed_type2_ptr[1] = aed_type2(&data[dim],dim,(size_t)1);
   aed_type2_ptr[2] = aed_type2(&data[2*dim],dim,(size_t)1);
 }
-

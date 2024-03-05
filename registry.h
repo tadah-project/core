@@ -10,6 +10,7 @@
 template< typename T, typename ... Args>
 using Factory = std::function< T* (Args ...) >;
 
+namespace CONFIG {
 template< typename Base, typename ... Args >
 struct Registry {
 
@@ -36,6 +37,7 @@ Base* factory(const std::string &type, Args ... args ) {
         << " does not exist." << std::endl;
     throw std::runtime_error(oss.str());
     // return nullptr;
+}
 }
 
 #endif
