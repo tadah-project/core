@@ -72,10 +72,7 @@ if(NOT DEFINED CONFIG_FILE_DIR)
     add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
 endif()
 
-include(CTest) 
 if(TADAH_BUILD_TESTS)
+    include(CTest) 
     add_subdirectory(tests)
 endif()
-
-#set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
-list(APPEND CMAKE_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
