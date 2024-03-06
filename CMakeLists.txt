@@ -77,4 +77,5 @@ if(TADAH_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
+#set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
+list(APPEND CMAKE_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/catch2)
