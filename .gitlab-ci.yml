@@ -74,6 +74,7 @@ trigger_job:
   needs: [run-tests-1, build-release-shared, build-release-static]
   trigger:
     project: tadah/models
-  variables:
-    # this is to overcome gitlab bug
-    GIT_CLONE_PATH: $CI_BUILDS_DIR/
+  inherit:
+    variables: false # this job won't inherit any variables
+  variables: # variables set by this job will still be passed to the child-pipeline
+    inherit: "This comes from the parent pipeline"
