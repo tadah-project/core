@@ -74,3 +74,6 @@ trigger_job:
   needs: [run-tests-1, build-release-shared, build-release-static]
   trigger:
     project: tadah/models
+  variables:
+    # this is to overcome gitlab bug
+    GIT_CLONE_PATH: $CI_BUILDS_DIR/
