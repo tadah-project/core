@@ -49,7 +49,6 @@ TEST_CASE( "Testing norm_X()", "[lapack]" ) {
     m(0,1)=2.0;
     m(1,0)=3.0;
     m(1,1)=4.0;
-    std::cout << std::setprecision(15) << norm_X(m,'m') << std::endl;
     REQUIRE_THAT( norm_X(m,'m'), Catch::Matchers::WithinAbs(0.25, 1e-12) );
     REQUIRE_THAT( norm_X(m,'o'), Catch::Matchers::WithinAbs(0.1666666666667, 1e-12) );
     REQUIRE_THAT( norm_X(m,'i'), Catch::Matchers::WithinAbs(0.14285714285714, 1e-12) );

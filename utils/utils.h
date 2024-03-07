@@ -112,6 +112,8 @@ int get_index(std::vector<T> v, T K) {
     }
     return index;
 }
+std::string vec_to_string(std::vector<double> vec,
+        std::string delim=" ");
 
 //std::vector<double> calc_rho(Structure &st);
 #endif

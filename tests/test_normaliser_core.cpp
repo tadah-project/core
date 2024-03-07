@@ -23,8 +23,9 @@ TEST_CASE( "Testing Normaliser_Core::normalise(aed)", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
     aed_type2 a(c.size("NMEAN"));    // zeros
+    a.set_zero();
 
-    // should fail too
+    // should fail too b/c we subtract mean
     REQUIRE_NOTHROW(norm.normalise(a));
     REQUIRE_THAT( a.mean(), !Catch::Matchers::WithinAbs(0, 1e-12) );
 
@@ -39,7 +40,10 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd)", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
+    f.set_zero();
     REQUIRE_NOTHROW(norm.normalise(f));
+
+    // should not fail as we calc 0/st_dev
     REQUIRE_THAT( f(0).mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
     REQUIRE_THAT( f(1).mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
     REQUIRE_THAT( f(2).mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
@@ -54,6 +58,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd,k)", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
+    f.set_zero();
     REQUIRE_NOTHROW(norm.normalise(f,0));
     REQUIRE_NOTHROW(norm.normalise(f,1));
     REQUIRE_NOTHROW(norm.normalise(f,2));
@@ -74,6 +79,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(aed) nobias", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
     aed_type2 a(c.size("NMEAN"));    // zeros
+    a.set_zero();
 
     REQUIRE_THAT( a.mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
 
@@ -91,6 +97,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd) nobias", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
+    f.set_zero();
     REQUIRE_NOTHROW(norm.normalise(f));
     REQUIRE_THAT( f(0).mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
     REQUIRE_THAT( f(1).mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
@@ -106,6 +113,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd,k) nobias", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
+    f.set_zero();
     REQUIRE_NOTHROW(norm.normalise(f,0));
     REQUIRE_NOTHROW(norm.normalise(f,1));
     REQUIRE_NOTHROW(norm.normalise(f,2));

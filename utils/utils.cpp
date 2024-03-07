@@ -27,7 +27,7 @@ size_t max_number(size_t n) {
 
 // convert vector to string
 std::string vec_to_string(std::vector<double> vec,
-        std::string delim=" ") {
+        std::string delim) {
     std::stringstream ss;
     for (auto &v:vec) ss << std::setprecision(15)
         << v << delim;
