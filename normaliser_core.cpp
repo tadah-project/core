@@ -1,6 +1,6 @@
 #include "normaliser_core.h"
 
-Normaliser_Core::Normaliser_Core () {};
+Normaliser_Core::Normaliser_Core () {}
 Normaliser_Core::Normaliser_Core (Config &c):
     bias(c.get<bool>("BIAS")),
     verbose(c.get<int>("VERBOSE"))
