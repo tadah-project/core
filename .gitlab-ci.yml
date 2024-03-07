@@ -9,9 +9,10 @@ stages:
   - trigger
 
 before_script:
+  - echo ${DEBUG_DIR}
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
-  - export PATH=$PATH:${INSTALL_PATH}/bin:/some/random/path
+  - export PATH=$PATH:${INSTALL_PATH}/bin
   - export CPATH=$CPATH:${INSTALL_PATH}/include
   - export LIBRARY_PATH=$LIBRARY_PATH:${INSTALL_PATH}/lib
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${INSTALL_PATH}/lib
