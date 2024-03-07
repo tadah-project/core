@@ -40,11 +40,11 @@ double norm_X(Matrix &A, char norm) {
     int m=(int)A.rows();
     int n=(int)A.cols();
     double *work = NULL;
-    if (norm=='I') work = new double[n];
+    if (norm=='I' || norm=='i') work = new double[n];
 
     double res = dlange_(&norm, &m, &n, a, &m, work);
 
-    if (norm=='I') delete [] work;
+    if (norm=='I' || norm=='i') delete [] work;
 
     return 1.0/res;
 }

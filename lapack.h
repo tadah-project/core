@@ -58,6 +58,4 @@ double norm_X(Matrix &A, char norm='1');
 aed_type2 solve_posv(Matrix &A, aed_type2 /*&*/T, char uplo='U');
 double condition_number(Matrix &A, char uplo='U');
 
-
-
 #endif
