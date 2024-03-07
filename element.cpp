@@ -26,5 +26,5 @@ bool Element::operator<(const Element& other) const {
     return this->Z < other.Z;
 }
 bool Element::operator>(const Element& other) const {
-    return !(*this).Z<other.Z;
+    return !((*this).Z<other.Z);
 }
