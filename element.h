@@ -25,4 +25,17 @@ struct Element {
         bool operator<(const Element& other) const;
         bool operator>(const Element& other) const;
 };
+
+namespace std {
+    template <>
+        class hash<Element> {
+            public:
+                size_t operator()(const Element &e) const
+                {
+                    std::hash<int> hash_f;
+                    return hash_f(e.Z);
+                }
+        };
+}
+
 #endif
