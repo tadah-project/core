@@ -9,22 +9,22 @@ void Element::check(const std::string &symbol, const int Z) {
         throw std::runtime_error("Atomic number Z > 118");
 }
 
-Element::Element() {};
+Element::Element() {}
 Element::Element(const char *symbol_, const int Z_, bool check_)
 {
     if (check_) check(symbol_, Z_);
     symbol[0]=symbol_[0];
     symbol[1]=symbol_[1];
     Z=Z_;
-};
+}
 bool Element::operator==(const Element& other) const {
     return this->symbol[0] == other.symbol[0]
         && this->symbol[1] == other.symbol[1]
         && this->Z == other.Z;
-};
+}
 bool Element::operator<(const Element& other) const {
     return this->Z < other.Z;
-};
+}
 bool Element::operator>(const Element& other) const {
     return !(*this).Z<other.Z;
-};
+}
