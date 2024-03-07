@@ -2,6 +2,7 @@
 #include "lapack.h"
 
 
+
 // aed_type2 class
 
 aed_type2::aed_type2(double* arr, size_t size, size_t stride)
