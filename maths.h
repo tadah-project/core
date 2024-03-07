@@ -428,9 +428,7 @@ class aed_type2 {
     }
     private:
     double random_num(double lower, double upper) {
-        double lower_bound = 0;
-        double upper_bound = 10000;
-        std::uniform_real_distribution<double> unif(lower_bound,upper_bound);
+        std::uniform_real_distribution<double> unif(lower,upper);
         std::default_random_engine re;
         return unif(re);
     }

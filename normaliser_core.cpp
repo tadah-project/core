@@ -15,7 +15,7 @@ Normaliser_Core::Normaliser_Core (Config &c):
         }
     }
 
-};
+}
 
 /** Normalise AED */
 void Normaliser_Core::normalise(aed_type2 &aed) {
