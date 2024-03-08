@@ -38,7 +38,7 @@ run-tests-1:
   script:
     - cd ${DEBUG_DIR}
     - make test
-    - gcovr --exclude-directories 'debug_dir|tests|lib' -r ..
+    - cd ..; gcovr --exclude-directories 'debug_dir|tests|lib'
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build-release-shared:
