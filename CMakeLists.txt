@@ -49,7 +49,7 @@ include(${PROJECT_SOURCE_DIR}/lib/cmrc-master/CMakeRC.cmake)
 cmrc_add_resource_library(
     config-resources
     ALIAS config::rc
-    NAMESPACE CONFIG
+    NAMESPACE CORE
     ${PROJECT_SOURCE_DIR}/config/config_keys.toml
     )
 
@@ -67,11 +67,11 @@ add_library(tadah.core.obj OBJECT
     ${UTILS_SRC}
     )
 
-target_link_libraries(tadah.core.obj PUBLIC config::rc)
+target_link_libraries(tadah.core.obj PRIVATE config::rc)
 
 if(TADAH_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
-    target_link_libraries(tadah.core.obj PUBLIC OpenMP::OpenMP_CXX)
+    target_link_libraries(tadah.core.obj PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
 add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>)
