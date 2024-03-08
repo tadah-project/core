@@ -51,6 +51,7 @@ file(GLOB_RECURSE CONFIG_SRC CONFIGURE_DEPENDS "config/*.cpp" "config/*.h" "conf
 file(GLOB_RECURSE LIBS_SRC CONFIGURE_DEPENDS "lib/*.cpp" "lib/*.h" "lib/*.hpp")
 file(GLOB_RECURSE UTILS_SRC CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
 
+
 add_library(tadah.core.obj OBJECT
     ${CORE_SRC}
     ${CONFIG_SRC}
@@ -76,3 +77,10 @@ if(TADAH_BUILD_TESTS)
     include(CTest) 
     add_subdirectory(tests)
 endif()
+
+set(TADAH_CORE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include/tadah/CORE)
+file(GLOB CORE_H CONFIGURE_DEPENDS "*.h" "*.hpp")
+install(FILES ${CORE_H} DESTINATION ${TADAH_CORE_INSTALL_DIR})
+install(DIRECTORY config DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp|.+.toml)")
+install(DIRECTORY lib DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
+install(DIRECTORY utils DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
