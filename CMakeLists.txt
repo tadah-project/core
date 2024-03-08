@@ -58,8 +58,6 @@ file(GLOB_RECURSE CONFIG_SRC CONFIGURE_DEPENDS "config/*.cpp" "config/*.h" "conf
 file(GLOB_RECURSE LIBS_SRC CONFIGURE_DEPENDS "lib/*.cpp" "lib/*.h" "lib/*.hpp")
 file(GLOB_RECURSE UTILS_SRC CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
 
-
-
 add_library(tadah.core.obj OBJECT
     ${CORE_SRC}
     ${CONFIG_SRC}
@@ -75,9 +73,10 @@ if(TADAH_ENABLE_OPENMP)
 endif()
 
 add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>)
+target_link_libraries(tadah.core PRIVATE config::rc)
+
 find_package(LAPACK)
 target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
-target_link_libraries(tadah.core PUBLIC config::rc)
 
 if(NOT DEFINED CONFIG_FILE_DIR)
     set(CONFIG_FILE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config")
