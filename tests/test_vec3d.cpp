@@ -60,4 +60,10 @@ TEST_CASE( "Testing Vec3d op", "[maths]" ) {
     v7 = v1.cross(v6);
     REQUIRE((v7[0]==-3 && v7[1]==6 && v7[2]==-3));
 }
+TEST_CASE( "Testing Vec3d ostream", "[element]" ) {
+    Vec3d v(1,2,3);
+    std::stringstream ss;
+    ss << v;
+    REQUIRE_THAT(ss.str(), Catch::Matchers::Equals("1  2  3"));
+}
     
