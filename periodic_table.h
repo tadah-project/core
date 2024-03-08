@@ -154,12 +154,12 @@ struct PeriodicTable {
             add("Ds","Darmstadtium",110);
             add("Rg","Roentgenium",111);
             add("Cn","Copernicium",112);
-            add("Uut","Ununtrium",113);
+            add("Nh","Ununtrium",113);
             add("Fl","Flerovium",114);
-            add("Uup","Ununpentium",115);
+            add("Mc","Ununpentium",115);
             add("Lv","Livermorium",116);
-            add("Uus","Ununseptium",117);
-            add("Uuo","Ununoctium",118);
+            add("Ts","Ununseptium",117);
+            add("Og","Ununoctium",118);
 
         }
 };
