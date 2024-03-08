@@ -1,7 +1,7 @@
 #include "element.h"
 
 void Element::check(const std::string &symbol, const int Z) {
-    if (symbol.size() > 3)
+    if (symbol.size() > 2)
         throw std::runtime_error("Wrong symbol: "+symbol);
     if (Z < 1)
         throw std::runtime_error("Atomic number Z < 1");

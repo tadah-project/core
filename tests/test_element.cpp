@@ -4,7 +4,7 @@
 
 TEST_CASE( "Testing Element class constructor", "[element]" ) {
 
-    Element empty();
+    REQUIRE_NOTHROW(Element());
 
     char symbol1[]="Ti";
     int Z1 = 22;
@@ -18,6 +18,11 @@ TEST_CASE( "Testing Element class constructor", "[element]" ) {
     Element e3(symbol3,Z3);
     REQUIRE(!(e1==e3));
     REQUIRE(!(e2==e3));
+}
+TEST_CASE( "Testing Element class constructor 2", "[element]" ) {
+    REQUIRE_THROWS(Element("Ti",0));
+    REQUIRE_THROWS(Element("Ti",119));
+    REQUIRE_THROWS(Element("Tii",22));
 }
 TEST_CASE( "Testing Element class copy operator", "[element]" ) {
     char symbol1[]="Ti";
