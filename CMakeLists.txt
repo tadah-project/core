@@ -65,15 +65,13 @@ add_library(tadah.core.obj OBJECT
     ${UTILS_SRC}
     )
 
-target_link_libraries(tadah.core.obj PUBLIC config::rc)
-
 if(TADAH_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
     target_link_libraries(tadah.core.obj PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>)
-target_link_libraries(tadah.core PUBLIC config::rc)
+add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>
+    $<TARGET_OBJECTS:config::rc>)
 
 find_package(LAPACK)
 target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
@@ -86,6 +84,7 @@ endif()
 set(TADAH_CORE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include/tadah/CORE)
 file(GLOB CORE_H CONFIGURE_DEPENDS "*.h" "*.hpp")
 install(FILES ${CORE_H} DESTINATION ${TADAH_CORE_INSTALL_DIR})
+install(FILES lib/cmrc-master/cmrc.hpp DESTINATION ${CMAKE_INSTALL_PREFIX}/include/cmrc)
 install(DIRECTORY config DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp|.+.toml)")
 install(DIRECTORY lib DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
 install(DIRECTORY utils DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
