@@ -3,6 +3,7 @@
 
 #include "../utils/utils.h"	// for vector printing
 #include "../lib/toml11/toml.hpp"
+#include <cmrc/cmrc.hpp>
 
 #include <type_traits>
 #include <stdexcept>

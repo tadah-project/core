@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(Tadah.CORE)
 
-get_directory_property(hasParent PARENT_DIRECTORY)
-
 # Guard against in-source builds
 # Also, make sure user does not accidently invoke cmake .. from the source dir
 # of the module in case module is added as a submodule.
@@ -46,10 +44,20 @@ if (BUILD_SHARED_LIBS)
     endif("${isSystemDir}" STREQUAL "-1")
 endif()
 
+# embedd config.toml into core library
+include(${PROJECT_SOURCE_DIR}/lib/cmrc-master/CMakeRC.cmake)
+cmrc_add_resource_library(
+    config-resources
+    ALIAS config::rc
+    NAMESPACE CONFIG
+    ${PROJECT_SOURCE_DIR}/config/config_keys.toml
+    )
+
 file(GLOB CORE_SRC CONFIGURE_DEPENDS "*.cpp" "*.h" "*.hpp")
 file(GLOB_RECURSE CONFIG_SRC CONFIGURE_DEPENDS "config/*.cpp" "config/*.h" "config/*.hpp")
 file(GLOB_RECURSE LIBS_SRC CONFIGURE_DEPENDS "lib/*.cpp" "lib/*.h" "lib/*.hpp")
 file(GLOB_RECURSE UTILS_SRC CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
+
 
 
 add_library(tadah.core.obj OBJECT
@@ -59,6 +67,8 @@ add_library(tadah.core.obj OBJECT
     ${UTILS_SRC}
     )
 
+target_link_libraries(tadah.core.obj PUBLIC config::rc)
+
 if(TADAH_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
     target_link_libraries(tadah.core.obj PUBLIC OpenMP::OpenMP_CXX)
@@ -67,6 +77,7 @@ endif()
 add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>)
 find_package(LAPACK)
 target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
+target_link_libraries(tadah.core PUBLIC config::rc)
 
 if(NOT DEFINED CONFIG_FILE_DIR)
     set(CONFIG_FILE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config")
