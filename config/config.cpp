@@ -176,12 +176,13 @@ void Config::add(const std::string fn) {
     postprocess();
 }
 int Config::read_tadah_configuration() {
-    std::string config_keys="config_keys.toml";
-    std::string config_dir= TADAH_CONFIG_DIR;
-    std::string cfile= TADAH_CONFIG_DIR+std::string("/")+config_keys;
+    auto fs = cmrc::CORE::get_filesystem();
+    auto toml_file = fs.open("config/config_keys.toml");
+    std::stringstream ss;
+    ss << toml_file.begin();
     try
     {
-        tdc = toml::parse(cfile);
+        tdc = toml::parse(ss);
     }
     catch (const std::runtime_error& err)
     {

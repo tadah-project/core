@@ -15,6 +15,7 @@
 #include <map>
 #include <limits>
 
+CMRC_DECLARE(CORE);
 
 /** \brief A dictionary for key - value pairs.
  *
