@@ -6,7 +6,7 @@ file(GLOB tests_src "*.cpp")
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests_data DESTINATION .)
 
 add_executable(test_core ${tests_src})
-target_link_libraries(test_core PRIVATE Catch2 tadah.core)
+target_link_libraries(test_core PRIVATE Catch2 tadah.core config::rc)
 find_package(LAPACK)
 target_link_libraries (test_core PRIVATE ${LAPACK_LIBRARIES})
 
