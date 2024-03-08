@@ -74,7 +74,7 @@ add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>
     $<TARGET_OBJECTS:config::rc>)
 
 find_package(LAPACK)
-target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
+target_link_libraries (tadah.core PUBLIC ${LAPACK_LIBRARIES})
 
 if(TADAH_BUILD_TESTS)
     include(CTest) 
