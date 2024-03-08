@@ -78,11 +78,6 @@ target_link_libraries(tadah.core PRIVATE config::rc)
 find_package(LAPACK)
 target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
 
-if(NOT DEFINED CONFIG_FILE_DIR)
-    set(CONFIG_FILE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config")
-    add_compile_definitions("TADAH_CONFIG_DIR=\"${CONFIG_FILE_DIR}\"")
-endif()
-
 if(TADAH_BUILD_TESTS)
     include(CTest) 
     add_subdirectory(tests)
