@@ -65,7 +65,7 @@ add_library(tadah.core.obj OBJECT
     ${UTILS_SRC}
     )
 
-target_link_libraries(tadah.core.obj PRIVATE config::rc)
+target_link_libraries(tadah.core.obj PUBLIC config::rc)
 
 if(TADAH_ENABLE_OPENMP)
     find_package(OpenMP REQUIRED)
@@ -73,7 +73,7 @@ if(TADAH_ENABLE_OPENMP)
 endif()
 
 add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>)
-target_link_libraries(tadah.core PRIVATE config::rc)
+target_link_libraries(tadah.core PUBLIC config::rc)
 
 find_package(LAPACK)
 target_link_libraries (tadah.core PRIVATE ${LAPACK_LIBRARIES})
