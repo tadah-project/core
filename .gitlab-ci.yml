@@ -9,7 +9,10 @@ stages:
   - trigger
 
 before_script:
-  - sudo apt install -y cmake g++ gcovr
+  - apk update
+  - apk add cmake
+  - apk add g++
+  - apk add gcovr
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
