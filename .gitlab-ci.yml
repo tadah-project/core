@@ -9,7 +9,6 @@ stages:
   - trigger
 
 before_script:
-  - apt-get update && apt-get -y install cmake
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
