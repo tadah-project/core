@@ -14,6 +14,7 @@ before_script:
   - apk add g++
   - apk add gcovr
   - apk add make
+  - apk add blas
   - apk add lapack
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
