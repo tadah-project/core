@@ -9,7 +9,7 @@ stages:
   - trigger
 
 before_script:
-  - apt install -y cmake g++ gcovr
+  - sudo apt install -y cmake g++ gcovr
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
