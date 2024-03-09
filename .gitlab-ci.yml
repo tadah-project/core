@@ -13,6 +13,7 @@ before_script:
   - apk add cmake
   - apk add g++
   - apk add gcovr
+  - apk add make
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
