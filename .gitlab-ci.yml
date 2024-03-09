@@ -10,10 +10,11 @@ stages:
 
 before_script:
   - apk update
-  - apk add cmake
-  - apk add g++
-  - apk add gcovr
-  - apk add make
+  #- apk add cmake
+  #- apk add g++
+  #- apk add gcovr
+  #- apk add make
+  - apk add lapack
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
