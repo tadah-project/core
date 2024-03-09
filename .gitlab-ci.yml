@@ -14,8 +14,8 @@ before_script:
   - apk add g++
   - apk add gcovr
   - apk add make
-  - apk add blas
-  - apk add lapack
+  - apk add libblas-dev
+  - apk add liblapack-dev
   - mkdir -p ${DEBUG_DIR}
   - mkdir -p ${RELEASE_DIR}
   - export PATH=$PATH:${INSTALL_PATH}/bin
