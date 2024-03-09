@@ -72,7 +72,8 @@ endif()
 
 add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>
     $<TARGET_OBJECTS:config::rc>)
-target_link_libraries(tadah.core.obj PRIVATE config::rc)
+target_link_libraries(tadah.core.obj PUBLIC config::rc)
+target_link_libraries(tadah.core PUBLIC config::rc)
 
 find_package(LAPACK)
 target_link_libraries (tadah.core PUBLIC ${LAPACK_LIBRARIES})
