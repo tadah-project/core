@@ -313,7 +313,6 @@ TEST_CASE( "Testing Config add", "[config]" ) {
     Config c2;
     c2.clear();
     c2.add(valid_config.path().string());
-    c2.set_defaults();
     c2.postprocess();
     REQUIRE(c1==c2);
   }
