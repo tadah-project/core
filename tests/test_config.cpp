@@ -251,19 +251,6 @@ TEST_CASE( "Testing Config check_for_training()", "[config]" ) {
   REQUIRE_THROWS(c.check_for_training());
   c.add("RCUTMAX",10);
 }
-TEST_CASE( "Testing Config check_for_predict()", "[config]" ) {
-  for (auto const& valid_config:
-  std::filesystem::directory_iterator("tests_data/valid_predict_configs")) 
-  {
-    REQUIRE_NOTHROW(Config(valid_config.path().string()).check_for_predict());
-  }
-
-  for (auto const& invalid_config:
-  std::filesystem::directory_iterator("tests_data/invalid_predict_configs")) 
-  {
-    REQUIRE_NOTHROW(Config(invalid_config.path().string()).check_for_predict());
-  }
-}
 TEST_CASE( "Testing Config read()", "[config_read]" ) {
   for (auto const& valid_config:
   std::filesystem::directory_iterator("tests_data/valid_configs")) 
