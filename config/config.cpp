@@ -184,6 +184,7 @@ size_t Config::remove(const std::string key) {
 }
 void Config::add(const std::string fn) {
     read(fn);
+    set_defaults();
     postprocess();
 }
 void Config::read_tadah_configuration() {
