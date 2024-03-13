@@ -80,7 +80,7 @@ examples     =  ['RCUTMB 4.9']
 default      =   []
 value_type   =   ['string']
 value_format =   ['/path/to/dbfile ...']
-value_N      =   [-2147483647]
+value_N      =   [2147483647]
 description  =  """Absolute or relative path to the database file. \
 The relative path is to the script working directory. \
 More than one dataset can be included. \

@@ -35,21 +35,7 @@ void Config::read(std::string fn) {
         // enforce UPPERCASE KEY
         for (auto & k: key) k = std::toupper(k);
 
-        // 1.0 Check is key allowed
-        if (!tdc.contains(key))
-            throw std::runtime_error("Disallowed key "+key+" "+value);
-        // 2.0 Check if user is permitted to set this key
-        if ((internal_keys.count(key)>0))
-            throw std::runtime_error("User cannot set this key.\n\
-                    This key is used internally\n\
-                    and its value is calculated by the library "+key+" "+value);
-        // 3.0 Check for duplicate keys
-        const auto& allowed_key = toml::find(tdc, key);
-        int valN  = toml::find<int>(allowed_key, "value_N",0);
-        if (c[key].size() >= (size_t)abs(valN))
-            throw std::runtime_error("Repeated key "+key+" "+value);
-
-        // end of checks, proceed...
+        check(key,value);
         c[key].push_back(value);
         while (iss >> value) {
             if (value[0]=='#') break;
@@ -78,27 +64,53 @@ void Config::postprocess() {
     //}
 }
 
+bool Config::check(std::string &key, std::string &value) { 
+  // 1.0 Check is key allowed
+  if (!tdc.contains(key))
+    throw std::runtime_error("Disallowed key "+key+" "+value);
+  // 2.0 Check if user is permitted to set this key
+  if ((internal_keys.count(key)>0))
+    throw std::runtime_error("User cannot set this key.\n\
+This key is used internally\n\
+and its value is calculated by the library "+key+" "+value);
+  // 3.0 Check for duplicate keys
+  const auto& allowed_key = toml::find(tdc, key);
+  int valN  = toml::find<int>(allowed_key, "value_N",0);
+  if (c[key].size() >= (size_t)abs(valN))
+    throw std::runtime_error("Repeated key "+key+" "+value);
+
+  // end of checks, proceed...
+
+  return true;
+}
 bool Config::check_for_training() {
-
-    if ((*this).get<bool>("INIT2B")==false &&
-        (*this).get<bool>("INIT3B")==false &&
-        (*this).get<bool>("INITMB")==false) {
-        throw std::runtime_error("At least one type must be initialised (true) \n\
-                in a config file: INIT2B, INIT3B, INITMB.\n");
+    if (!exist("DBFILE")) {
+        throw std::runtime_error("DBFILE not specified. Check your settings.\n");
     }
-
-    if (get<double>("RCUTMAX")<=0)
-        throw std::runtime_error("RCUTMAX is zero. Check your settings.\n");
+    if (!(*this).get<bool>("INIT2B") &&
+        !(*this).get<bool>("INIT3B") &&
+        !(*this).get<bool>("INITMB")) {
+        throw std::runtime_error("At least one type must be initialised (true) \n\
+                in the config object: INIT2B, INIT3B, INITMB.\n");
+    }
 
     if (!c.count("TYPE2B") && !c.count("TYPE3B")
             && !c.count("TYPEMB") )
         throw std::runtime_error("At least one type must be specified \n\
-                in a config file: TYPE2B, TYPE3B, TYPEMB.\n");
+                in the config object: TYPE2B, TYPE3B, TYPEMB.\n");
 
     if (!c.count("RCTYPE2B") && !c.count("RCTYPE3B")
             && !c.count("RCTYPEMB") )
         throw std::runtime_error("At least one type must be specified \n\
-                in a config file: RCTYPE2B, RCTYPE3B, RCTYPEMB.\n");
+                in the config object: RCTYPE2B, RCTYPE3B, RCTYPEMB.\n");
+
+    if (!exist("RCUT2B") && !exist("RCUT3B")
+            && !exist("RCUTMB") )
+        throw std::runtime_error("At least one type must be specified \n\
+                in the config object: RCUT2B, RCUT3B, RCUTMB.\n");
+
+    if (get<double>("RCUTMAX")<=0)
+        throw std::runtime_error("RCUTMAX is zero. Check your settings.\n");
 
     return true;
 }
@@ -172,10 +184,8 @@ size_t Config::remove(const std::string key) {
 }
 void Config::add(const std::string fn) {
     read(fn);
-    set_defaults();
-    postprocess();
 }
-int Config::read_tadah_configuration() {
+void Config::read_tadah_configuration() {
     auto fs = cmrc::CORE::get_filesystem();
     auto toml_file = fs.open("config/config_keys.toml");
     std::stringstream ss;
@@ -190,5 +200,7 @@ int Config::read_tadah_configuration() {
             << "This is a BUG!\n" << std::endl;
         throw err;
     }
-    return 0;
+}
+void Config::clear() {
+  c.clear();
 }
