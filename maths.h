@@ -296,13 +296,15 @@ public:
 
   /** Overwrite wih random values */
   void random(
-    double seed=std::chrono::system_clock::now().time_since_epoch().count(),
-    double lower=-1e4, double upper=1e4) {
+    int seed=std::chrono::system_clock::now().time_since_epoch().count(),
+    double lower=-1e4, double upper=1e4
+  ) {
     std::uniform_real_distribution<double> unif(lower,upper);
-    std::default_random_engine re(seed);
+    std::default_random_engine engine(seed);
     for (size_t i=0; i<size(); ++i)
-      (*this)(i) = unif(re);
+      (*this)(i) = unif(engine);
   }
+
 };
 
 inline std::ostream &operator<<(std::ostream &os, const aed_type2 &v)
@@ -445,11 +447,15 @@ public:
   //  return temp;
   //}
   void random(
-    double seed=std::chrono::system_clock::now().time_since_epoch().count(),
+    int seed=std::chrono::system_clock::now().time_since_epoch().count(),
     double lower=-1e4, double upper=1e4) {
-    (*this)(0).random(seed,lower,upper);
-    (*this)(1).random(seed,lower,upper);
-    (*this)(2).random(seed,lower,upper);
+    std::uniform_real_distribution<double> unif(lower,upper);
+    std::default_random_engine engine(seed);
+    for (size_t i=0; i<rows(); ++i) {
+      (*this)(i,0) = unif(engine);
+      (*this)(i,1) = unif(engine);
+      (*this)(i,2) = unif(engine);
+    }
   }
 };
 
