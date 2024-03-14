@@ -39,14 +39,14 @@ void Normaliser_Core::normalise(fd_type &fd) {
     if (bias) {
         for (size_t k=0; k<3; ++k) {
             for (size_t i=1;i<n;++i) {
-                fd[k](i)=fd(k)(i) / std_dev[i];
+                fd(i,k)=fd(i,k) / std_dev[i];
             }
         }
     }
     else {
         for (size_t k=0; k<3; ++k) {
             for (size_t i=0;i<n;++i) {
-                fd[k](i)=fd(k)(i) / std_dev[i];
+                fd(i,k)=fd(i,k) / std_dev[i];
             }
         }
     }
@@ -56,12 +56,12 @@ void Normaliser_Core::normalise(fd_type &fd, size_t k) {
     size_t n=fd.rows();
     if (bias) {
         for (size_t i=1;i<n;++i) {
-            fd[k](i)=fd(k)(i) / std_dev[i];
+            fd(i,k)=fd(i,k) / std_dev[i];
         }
     }
     else {
         for (size_t i=0;i<n;++i) {
-            fd[k](i)=fd(k)(i) / std_dev[i];
+            fd(i,k)=fd(i,k) / std_dev[i];
         }
     }
 }

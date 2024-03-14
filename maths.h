@@ -375,16 +375,17 @@ class fd_type {
   size_t rows_=0;
   std::vector<double> data;
   aed_type2 aed_type2_ptr[3];
+
 public:
   fd_type();
   fd_type(size_t dim);
   inline double &operator()(size_t i, size_t k)
   {
-    return data[3*i+k];
+    return data[i+k*rows_];
   }
   inline const double &operator()(size_t i, size_t k) const
   {
-    return data[3*i+k];
+    return data[i+k*rows_];
   }
   inline aed_type2 &operator[](size_t k)
   {

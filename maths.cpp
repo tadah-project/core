@@ -1,6 +1,4 @@
 #include "maths.h"
-#include "lapack.h"
-
 
 
 // aed_type2 class
@@ -34,6 +32,6 @@ fd_type::fd_type(size_t dim):
   data(3*dim)
 {
   aed_type2_ptr[0] = aed_type2(&data[0],dim,(size_t)1);
-  aed_type2_ptr[1] = aed_type2(&data[1],dim,(size_t)1);
-  aed_type2_ptr[2] = aed_type2(&data[2],dim,(size_t)1);
+  aed_type2_ptr[1] = aed_type2(&data[dim],dim,(size_t)1);
+  aed_type2_ptr[2] = aed_type2(&data[2*dim],dim,(size_t)1);
 }
