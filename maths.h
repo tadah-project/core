@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <random>
+#include <chrono>
 
 #include <array>
 
@@ -294,9 +295,10 @@ public:
   }
 
   /** Overwrite wih random values */
-  void random(double lower=-1e4, double upper=1e4) {
+  void random(double seed=std::chrono::system_clock::now().time_since_epoch().count(),
+              double lower=-1e4, double upper=1e4) {
     std::uniform_real_distribution<double> unif(lower,upper);
-    std::default_random_engine re;
+    std::default_random_engine re(seed);
     for (size_t i=0; i<size(); ++i)
       (*this)(i) = unif(re);
   }
