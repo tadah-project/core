@@ -31,279 +31,275 @@ public:
 
 
 class aed_type2 {
-    // Simple vector class
-    //
-    // Operator * is only defined for the dot product
-    // so either v1*v2 and v2*v1 always give dot product
-    size_t size_= 0;
-    size_t stride_= 1;
-    bool allocated_=false;  // false is required for viewing
-    public:
-    double *data_ = NULL;
-    aed_type2() {}
-    aed_type2(size_t n, size_t s=1):
-        size_(n),
-        stride_(s),
-        allocated_(true),
-        data_((double*)malloc(s*n*sizeof(data_)))
-    {}
-    ~aed_type2() {
-        if (allocated_)
-            free(data_);
+  // Simple vector class
+  //
+  // Operator * is only defined for the dot product
+  // so either v1*v2 and v2*v1 always give dot product
+  size_t size_= 0;
+  size_t stride_= 1;
+  bool allocated_=false;  // false is required for viewing
+public:
+  double *data_ = NULL;
+  aed_type2() {}
+  aed_type2(size_t n, size_t s=1):
+    size_(n),
+    stride_(s),
+    allocated_(true),
+    data_((double*)malloc(s*n*sizeof(data_)))
+  {}
+  ~aed_type2() {
+    if (allocated_)
+      free(data_);
+  }
+  aed_type2(const aed_type2 &other) {
+    // the other might be a view vector
+
+    size_= other.size_;
+    stride_ = other.stride_;
+
+    //if (size_ > 0) {
+    data_ = (double*)malloc(stride_*size_*sizeof(data_));
+    std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
+    allocated_ = true;
+    //}
+  }
+  aed_type2 &operator=(aed_type2 other) {
+    std::swap(size_, other.size_);
+    std::swap(allocated_, other.allocated_);
+    std::swap(stride_, other.stride_);
+    std::swap(data_, other.data_);
+    return *this;
+  }
+  template <typename T>
+  aed_type2(T &v)
+  {
+    resize(v.size());
+    size_ = v.size();
+    //TODO stride???
+    for (size_t i=0; i<v.size(); ++i) {
+      data_[i]=v[i];
     }
-    aed_type2(const aed_type2 &other) {
-        // the other might be a view vector
+  }
 
-        size_= other.size_;
-        stride_ = other.stride_;
+  /** This constructor does not allocate memory */
+  aed_type2(double* arr, size_t size, size_t stride=1);
 
-        //if (size_ > 0) {
-        data_ = (double*)malloc(stride_*size_*sizeof(data_));
-        std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
+  /** Allocated if copy is true otherwise provides a view to arr */
+  aed_type2(double* arr, size_t size, bool copy, size_t stride=1);
+
+  //aed_type2(double* arr, size_t size, bool copy=true, size_t stride=1);
+  inline double &operator[](size_t i)
+  {
+    return data_[i*stride_];
+  }
+  inline double &operator()(size_t i)
+  {
+    return data_[i*stride_];
+  }
+  inline const double &operator[](size_t i) const
+  {
+    return data_[i*stride_];
+  }
+  inline const double &operator()(size_t i) const
+  {
+    return data_[i*stride_];
+  }
+  //inline aed_type2 transpose() const
+  //{
+  //    return *this;
+  //}
+  // Maths
+  //inline aed_type2 operator-() const
+  //{
+  //  aed_type2 temp(*this);
+  //  for (size_t i=0;i<size();++i) {
+  //    temp[i]*=-1;
+  //  }
+  //  return temp;;
+  //}
+  template <typename T>
+  inline aed_type2 &operator+=(const T &v1)
+  {
+    for (size_t i=0;i<size();++i) {
+      (*this)[i]+=v1[i];
+    }
+    return *this;
+  }
+  inline aed_type2 &operator+=(const double d)
+  // element wise increment
+  {
+    for (size_t i=0;i<size();++i) {
+      (*this)[i]+=d;
+    }
+    return *this;
+  }
+  inline aed_type2 operator+(const double d) const
+  // element wise increment
+  {
+    aed_type2 temp(*this);
+    for (size_t i=0;i<size();++i) {
+      temp[i]+=d;
+    }
+    return temp;
+  }
+  template <typename T>
+  inline aed_type2 &operator-=(const T &v1)
+  {
+    for (size_t i=0;i<size();++i) {
+      (*this)[i]-=v1[i];
+    }
+    return *this;
+  }
+  inline aed_type2 &operator-=(const double d)
+  // element wise decrement
+  {
+    for (size_t i=0;i<size();++i) {
+      (*this)[i]-=d;
+    }
+    return *this;
+  }
+  inline aed_type2 operator-(const double d) const
+  // element wise decrement
+  {
+    aed_type2 temp(*this);
+    for (size_t i=0;i<size();++i) {
+      temp[i]-=d;
+    }
+    return temp;
+  }
+  inline aed_type2 &operator*=(const double s)
+  {
+    for (size_t i=0;i<size();++i) {
+      (*this)[i]*=s;
+    }
+    return *this;
+  }
+  template <typename T>
+  inline aed_type2 operator-(const T &v2) const
+  {
+    aed_type2 temp(*(this));
+    for (size_t i=0;i<size();++i) {
+      temp[i]-=v2[i];
+    }
+    return temp;
+  }
+  template <typename T>
+  inline aed_type2 operator+(const T &v2) const
+  {
+    aed_type2 temp((*this));
+    for (size_t i=0;i<size();++i) {
+      temp[i]+=v2[i];
+    }
+    return temp;
+  }
+  template <typename T>
+  inline double operator*(const T &v2) const
+  {
+    double temp=0;
+    for (size_t i=0;i<size();++i) {
+      temp+=(*this)(i)*v2(i);
+    }
+    return temp;
+  }
+  inline aed_type2 operator*(const double s) const
+  {
+    aed_type2 temp(*(this));
+    for (size_t i=0;i<size();++i) {
+      temp[i]*=s;
+    }
+    return temp;
+  }
+  inline friend aed_type2 operator*(const double s,
+                                    const aed_type2 &v)
+  {
+    aed_type2 temp(v);
+    for (size_t i=0;i<v.size();++i) {
+      temp[i]*=s;
+    }
+    return temp;
+  }
+  inline void set_zero()
+  {
+    for (size_t i=0;i<size();++i) {
+      (*this)[i]=0;
+    }
+  }
+
+  size_t size() const
+  {
+    return size_;
+  }
+  size_t rows() const
+  {
+    return size_;
+  }
+  bool isApprox(const aed_type2 &v1, double EPS) const{
+    for (size_t i=0;i<size();++i) {
+      if (std::abs((*this)[i]-v1[i])>EPS) return false;
+    }
+    return true;
+  }
+  inline bool operator==(const aed_type2 &v1) const
+  {
+    double EPS = std::numeric_limits<double>::epsilon();
+    return this->isApprox(v1, EPS);
+  }
+  inline bool operator!=(const aed_type2 &v1) const
+  {
+    return !(*this==v1);
+  }
+  inline void resize(const size_t n) {
+    if (n != size_) {
+      if (allocated_) {
+        data_ = (double*)realloc(data_, stride_*n*sizeof(data_));
+        size_ = n;
+      }
+      else {
+        data_ = (double*)malloc(stride_*n*sizeof(data_));
+        size_ = n;
         allocated_ = true;
-        //}
+      }
     }
-    aed_type2 &operator=(aed_type2 other) {
-        std::swap(size_, other.size_);
-        std::swap(allocated_, other.allocated_);
-        std::swap(stride_, other.stride_);
-        std::swap(data_, other.data_);
-        return *this;
+  }
+  double *data() {
+    return data_;
+  }
+  const double *data() const {
+    return data_;
+  }
+  aed_type2 copy(size_t nelements, size_t start=0) {
+    if (nelements+start>size())
+      throw std::runtime_error("Out of range\n");
+    aed_type2 temp(nelements);
+    for (size_t i=0; i<nelements; ++i) {
+      temp[i]=(*this)[start+i];
     }
-    template <typename T>
-        aed_type2(T &v)
-        {
-            resize(v.size());
-            size_ = v.size();
-            //TODO stride???
-            for (size_t i=0; i<v.size(); ++i) {
-                data_[i]=v[i];
-            }
-        }
+    return temp;
+  }
+  /** Return the pointer to the first element of the data array */
+  inline double *ptr() {
+    return &data()[0];
+  }
+  inline double mean() const {
+    double mean=0;
+    for (size_t i=0; i<size(); ++i)
+      mean+=(*this)(i);
+    return mean/size();
+  }
+  inline double std_dev(double mean, double N) const {
+    double stdev=0;
+    for (size_t i=0; i<size(); ++i)
+      stdev += (((*this)(i)-mean))*((*this)(i)-mean);
+    return std::sqrt(stdev/N);
+  }
 
-    /** This constructor does not allocate memory */
-    aed_type2(double* arr, size_t size, size_t stride=1);
-
-    /** Allocated if copy is true otherwise provides a view to arr */
-    aed_type2(double* arr, size_t size, bool copy, size_t stride=1);
-
-    //aed_type2(double* arr, size_t size, bool copy=true, size_t stride=1);
-    inline double &operator[](size_t i)
-    {
-        return data_[i*stride_];
-    }
-    inline double &operator()(size_t i)
-    {
-        return data_[i*stride_];
-    }
-    inline const double &operator[](size_t i) const
-    {
-        return data_[i*stride_];
-    }
-    inline const double &operator()(size_t i) const
-    {
-        return data_[i*stride_];
-    }
-    //inline aed_type2 transpose() const
-    //{
-    //    return *this;
-    //}
-    // Maths
-    //inline aed_type2 operator-() const
-    //{
-    //  aed_type2 temp(*this);
-    //  for (size_t i=0;i<size();++i) {
-    //    temp[i]*=-1;
-    //  }
-    //  return temp;;
-    //}
-    template <typename T>
-        inline aed_type2 &operator+=(const T &v1)
-        {
-            for (size_t i=0;i<size();++i) {
-                (*this)[i]+=v1[i];
-            }
-            return *this;
-        }
-    inline aed_type2 &operator+=(const double d)
-        // element wise increment
-    {
-        for (size_t i=0;i<size();++i) {
-            (*this)[i]+=d;
-        }
-        return *this;
-    }
-    inline aed_type2 operator+(const double d) const
-        // element wise increment
-    {
-        aed_type2 temp(*this);
-        for (size_t i=0;i<size();++i) {
-            temp[i]+=d;
-        }
-        return temp;
-    }
-    template <typename T>
-        inline aed_type2 &operator-=(const T &v1)
-        {
-            for (size_t i=0;i<size();++i) {
-                (*this)[i]-=v1[i];
-            }
-            return *this;
-        }
-    inline aed_type2 &operator-=(const double d)
-        // element wise decrement
-    {
-        for (size_t i=0;i<size();++i) {
-            (*this)[i]-=d;
-        }
-        return *this;
-    }
-    inline aed_type2 operator-(const double d) const
-        // element wise decrement
-    {
-        aed_type2 temp(*this);
-        for (size_t i=0;i<size();++i) {
-            temp[i]-=d;
-        }
-        return temp;
-    }
-    inline aed_type2 &operator*=(const double s)
-    {
-        for (size_t i=0;i<size();++i) {
-            (*this)[i]*=s;
-        }
-        return *this;
-    }
-    template <typename T>
-        inline aed_type2 operator-(const T &v2) const
-        {
-            aed_type2 temp(*(this));
-            for (size_t i=0;i<size();++i) {
-                temp[i]-=v2[i];
-            }
-            return temp;
-        }
-    template <typename T>
-        inline aed_type2 operator+(const T &v2) const
-        {
-            aed_type2 temp((*this));
-            for (size_t i=0;i<size();++i) {
-                temp[i]+=v2[i];
-            }
-            return temp;
-        }
-    template <typename T>
-        inline double operator*(const T &v2) const
-        {
-            double temp=0;
-            for (size_t i=0;i<size();++i) {
-                temp+=(*this)(i)*v2(i);
-            }
-            return temp;
-        }
-    inline aed_type2 operator*(const double s) const
-    {
-        aed_type2 temp(*(this));
-        for (size_t i=0;i<size();++i) {
-            temp[i]*=s;
-        }
-        return temp;
-    }
-    inline friend aed_type2 operator*(const double s,
-            const aed_type2 &v)
-    {
-        aed_type2 temp(v);
-        for (size_t i=0;i<v.size();++i) {
-            temp[i]*=s;
-        }
-        return temp;
-    }
-    inline void set_zero()
-    {
-        for (size_t i=0;i<size();++i) {
-            (*this)[i]=0;
-        }
-    }
-
-    size_t size() const
-    {
-        return size_;
-    }
-    size_t rows() const
-    {
-        return size_;
-    }
-    bool isApprox(const aed_type2 &v1, double EPS) const{
-        for (size_t i=0;i<size();++i) {
-            if (std::abs((*this)[i]-v1[i])>EPS) return false;
-        }
-        return true;
-    }
-    inline bool operator==(const aed_type2 &v1) const
-    {
-        double EPS = std::numeric_limits<double>::epsilon();
-        return this->isApprox(v1, EPS);
-    }
-    inline bool operator!=(const aed_type2 &v1) const
-    {
-        return !(*this==v1);
-    }
-    inline void resize(const size_t n) {
-        if (n != size_) {
-            if (allocated_) {
-                data_ = (double*)realloc(data_, stride_*n*sizeof(data_));
-                size_ = n;
-            }
-            else {
-                data_ = (double*)malloc(stride_*n*sizeof(data_));
-                size_ = n;
-                allocated_ = true;
-            }
-        }
-    }
-    double *data() {
-        return data_;
-    }
-    const double *data() const {
-        return data_;
-    }
-    aed_type2 copy(size_t nelements, size_t start=0) {
-        if (nelements+start>size())
-            throw std::runtime_error("Out of range\n");
-        aed_type2 temp(nelements);
-        for (size_t i=0; i<nelements; ++i) {
-            temp[i]=(*this)[start+i];
-        }
-        return temp;
-    }
-    /** Return the pointer to the first element of the data array */
-    inline double *ptr() {
-        return &data()[0];
-    }
-    inline double mean() const {
-        double mean=0;
-        for (size_t i=0; i<size(); ++i)
-            mean+=(*this)(i);
-        return mean/size();
-    }
-    inline double std_dev(double mean, double N) const {
-        double stdev=0;
-        for (size_t i=0; i<size(); ++i)
-            stdev += (((*this)(i)-mean))*((*this)(i)-mean);
-        return std::sqrt(stdev/N);
-    }
-
-    /** Overwrite wih random values */
-    void random() {
-        for (size_t i=0; i<size(); ++i)
-            (*this)(i) = random_num(-1e4,1e4);
-    }
-    private:
-    double random_num(double lower, double upper) {
-        std::uniform_real_distribution<double> unif(lower,upper);
-        std::default_random_engine re;
-        return unif(re);
-    }
+  /** Overwrite wih random values */
+  void random(double lower=-1e4, double upper=1e4) {
+    std::uniform_real_distribution<double> unif(lower,upper);
+    std::default_random_engine re;
+    for (size_t i=0; i<size(); ++i)
+      (*this)(i) = unif(re);
+  }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const aed_type2 &v)
@@ -446,9 +442,9 @@ public:
   //  return temp;
   //}
   void random() {
-      (*this)(0).random();
-      (*this)(1).random();
-      (*this)(2).random();
+    (*this)(0).random();
+    (*this)(1).random();
+    (*this)(2).random();
   }
 };
 
@@ -638,26 +634,26 @@ public:
     }
     return temp;
   }
-//  template <typename... T>
-//      friend Matrix_Base<D> operator<<(Matrix_Base<D> &mat,T... list)
-//      {
-//          size_t i=0;
-//          for( const auto elem : {list...} )
-//          {
-//              mat.data()[i++]=elem ;
-//          }
-//          return mat;
-//      }
+  //  template <typename... T>
+  //      friend Matrix_Base<D> operator<<(Matrix_Base<D> &mat,T... list)
+  //      {
+  //          size_t i=0;
+  //          for( const auto elem : {list...} )
+  //          {
+  //              mat.data()[i++]=elem ;
+  //          }
+  //          return mat;
+  //      }
   template <typename... T>
-      void load(T... list)
-      {
-          size_t i=0;
-          for( const auto elem : {list...} )
-          {
-              m_[rows()*(i%cols()) + i/cols()]=elem ;
-              i++;
-          }
-      }
+  void load(T... list)
+  {
+    size_t i=0;
+    for( const auto elem : {list...} )
+    {
+      m_[rows()*(i%cols()) + i/cols()]=elem ;
+      i++;
+    }
+  }
 };
 template<typename T=std::vector<double>>
 class Matrix_T: public Matrix_Base<T> {
