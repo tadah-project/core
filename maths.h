@@ -388,8 +388,8 @@ public:
 class fd_type {
   // column-wise
   size_t rows_=0;
-  //aed_type2 *aed_type2_ptr[3];
-  std::vector<aed_type2*> aed_type2_ptr;
+  aed_type2 *aed_type2_ptr[3];
+  //std::vector<aed_type2*> aed_type2_ptr;
 
 public:
   std::vector<double> data;
@@ -422,10 +422,10 @@ public:
   }
   inline void set_zero()
   {
-    //for (size_t i=0; i<3*rows_; ++i) data[i]=0;
-    aed_type2_ptr[0]->set_zero();
-    aed_type2_ptr[1]->set_zero();
-    aed_type2_ptr[2]->set_zero();
+    for (size_t i=0; i<3*rows_; ++i) data[i]=0;
+    //aed_type2_ptr[0]->set_zero();
+    //aed_type2_ptr[1]->set_zero();
+    //aed_type2_ptr[2]->set_zero();
   }
   inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
   {
