@@ -372,7 +372,8 @@ public:
 class fd_type {
   // column-wise
   size_t rows_=0;
-  aed_type2 *aed_type2_ptr[3];
+  //aed_type2 *aed_type2_ptr[3];
+  std::vector<aed_type2*> aed_type2_ptr;
 
 public:
   std::vector<double> data;
