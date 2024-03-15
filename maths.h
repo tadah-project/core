@@ -371,12 +371,11 @@ public:
 
 class fd_type {
   // column-wise
-
   size_t rows_=0;
-  std::vector<double> data;
   aed_type2 *aed_type2_ptr[3];
 
 public:
+  std::vector<double> data;
   fd_type();
   ~fd_type();
   fd_type(size_t dim);
@@ -462,6 +461,8 @@ public:
       (*this)(i,2) = unif(engine);
     }
   }
+
+
 };
 
 
