@@ -65,6 +65,7 @@ public:
     //}
   }
   aed_type2 &operator=(aed_type2 other) {
+    std::cout << "swapping" << std::endl;
     std::swap(size_, other.size_);
     std::swap(allocated_, other.allocated_);
     std::swap(stride_, other.stride_);
