@@ -74,8 +74,9 @@ public:
     // ... and allocate?
     // One solution is just to always copy but this is much slower
 
-    if(!allocated_)
+    if(!allocated_) {
       std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
+    }
     else {
       std::swap(size_, other.size_);
       std::swap(allocated_, other.allocated_);
