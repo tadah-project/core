@@ -406,7 +406,10 @@ public:
   }
   inline void set_zero()
   {
-    for (size_t i=0; i<3*rows_; ++i) data[i]=0;
+    //for (size_t i=0; i<3*rows_; ++i) data[i]=0;
+    aed_type2_ptr[0]->set_zero();
+    aed_type2_ptr[1]->set_zero();
+    aed_type2_ptr[2]->set_zero();
   }
   inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
   {
