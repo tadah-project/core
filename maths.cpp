@@ -31,7 +31,12 @@ fd_type::fd_type(size_t dim):
   rows_(dim),
   data(3*dim)
 {
-  aed_type2_ptr[0] = aed_type2(&data[0],dim,(size_t)1);
-  aed_type2_ptr[1] = aed_type2(&data[dim],dim,(size_t)1);
-  aed_type2_ptr[2] = aed_type2(&data[2*dim],dim,(size_t)1);
+  aed_type2_ptr[0] = new aed_type2(&data[0],dim,(size_t)1);
+  aed_type2_ptr[1] = new aed_type2(&data[dim],dim,(size_t)1);
+  aed_type2_ptr[2] = new aed_type2(&data[2*dim],dim,(size_t)1);
+}
+fd_type::~fd_type() {
+  delete aed_type2_ptr[0];
+  delete aed_type2_ptr[1];
+  delete aed_type2_ptr[2];
 }

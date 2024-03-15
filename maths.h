@@ -374,10 +374,11 @@ class fd_type {
 
   size_t rows_=0;
   std::vector<double> data;
-  aed_type2 aed_type2_ptr[3];
+  aed_type2 *aed_type2_ptr[3];
 
 public:
   fd_type();
+  ~fd_type();
   fd_type(size_t dim);
   inline double &operator()(size_t i, size_t k)
   {
@@ -389,15 +390,15 @@ public:
   }
   inline aed_type2 &operator[](size_t k)
   {
-    return aed_type2_ptr[k];
+    return *aed_type2_ptr[k];
   }
   inline const aed_type2 &operator()(size_t k) const
   {
-    return aed_type2_ptr[k];
+    return *aed_type2_ptr[k];
   }
   inline aed_type2 &operator()(size_t k)
   {
-    return aed_type2_ptr[k];
+    return *aed_type2_ptr[k];
   }
   size_t rows() const
   {
@@ -409,9 +410,9 @@ public:
   }
   inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
   {
-    os << v.aed_type2_ptr[0] << std::endl;
-    os << v.aed_type2_ptr[1] << std::endl;
-    os << v.aed_type2_ptr[2] << std::endl;
+    os << *v.aed_type2_ptr[0] << std::endl;
+    os << *v.aed_type2_ptr[1] << std::endl;
+    os << *v.aed_type2_ptr[2] << std::endl;
     return os;
   }
   template <typename T>
