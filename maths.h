@@ -65,11 +65,21 @@ public:
     //}
   }
   aed_type2 &operator=(aed_type2 other) {
-    std::cout << "swapping" << std::endl;
-    std::swap(size_, other.size_);
-    std::swap(allocated_, other.allocated_);
-    std::swap(stride_, other.stride_);
-    std::swap(data_, other.data_);
+    // this is probably not the brightest idea
+    // as this could be potentially abused
+    // also how should this work for vector views?
+    //std::cout << "swapping" << std::endl;
+    //std::swap(size_, other.size_);
+    //std::swap(allocated_, other.allocated_);
+    //std::swap(stride_, other.stride_);
+    //std::swap(data_, other.data_);
+
+
+    // assume size, stride are the same??
+    // or shall we change dimensions first?
+    // ... and allocate?
+    std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
+
     return *this;
   }
   template <typename T>
