@@ -452,7 +452,14 @@ public:
       temp.data[i] = data[i]-v2.data[i];
     return temp;
   }
-  inline void operator*=(double s) 
+  inline fd_type operator+(const fd_type &v2) const
+  {
+    fd_type temp(v2.rows());
+    for (size_t i=0;i<3*rows();++i)
+      temp.data[i] = data[i]+v2.data[i];
+    return temp;
+  }
+  inline void operator*=(double s)
   {
     for (size_t i=0;i<3*rows();++i)
       data[i]*=s;
@@ -478,7 +485,6 @@ public:
       (*this)(i,2) = unif(engine);
     }
   }
-
 
 };
 
