@@ -485,6 +485,17 @@ public:
       (*this)(i,2) = unif(engine);
     }
   }
+  bool isApprox(const fd_type &v1, double EPS) const{
+    for (size_t i=0;i<3*rows();++i) {
+      if (std::abs(data[i]-v1.data[i])>EPS) return false;
+    }
+    return true;
+  }
+  inline bool operator==(const fd_type &v1) const
+  {
+    double EPS = std::numeric_limits<double>::epsilon();
+    return this->isApprox(v1, EPS);
+  }
 
 };
 
