@@ -88,11 +88,11 @@ template <typename F>
 double central_difference(F f, double val, double h) {
     return (f(val+h)-f(val-h))/(2.0*h);
 }
-//template <typename A, typename B,
-//typename F, double(F::*func)(A&, B&)>
-//double central_difference(F *p, A& a, B&b, double h=1e-12) {
-//    return (p->func(a*(b+h))-p->func(a*(b-h)))/(2.0*h);
-//}
+template <typename A, typename B,
+typename F, double(F::*func)(A&, B&)>
+double central_difference(F *p, A& a, B&b, double h=1e-12) {
+    return (p->func(a*(b+h))-p->func(a*(b-h)))/(2.0*h);
+}
 size_t number_of_digits (size_t i);
 size_t max_number(size_t i);    // max_number(6) -> 999999
 
