@@ -504,11 +504,11 @@ public:
 template <typename D>
 class Matrix_Base {
   // column-major order
-  size_t rows_;
-  size_t cols_;
 
 public:
   D m_;
+  size_t rows_;
+  size_t cols_;
   Matrix_Base<D>() {};
   Matrix_Base<D>(D &d, size_t r, size_t c):
     rows_(r),
@@ -525,17 +525,17 @@ public:
     cols_(c),
     m_(r*c)
   {}
-  Matrix_Base<D> (const Matrix_Base<D> &other) {
-      (*this).resize(other.rows(), other.cols());
-      for (size_t i=0; i<size(); ++i)
-          (*this)[i]=other[i];
-  }
-  Matrix_Base<D> &operator=(Matrix_Base<D> other) {
-    std::swap(rows_, other.rows_);
-    std::swap(cols_, other.cols_);
-    std::swap(m_, other.m_);
-    return (*this);
-  }
+  //Matrix_Base<D> (const Matrix_Base<D> &other) {
+  //    (*this).resize(other.rows(), other.cols());
+  //    for (size_t i=0; i<size(); ++i)
+  //        (*this)[i]=other[i];
+  //}
+  //Matrix_Base<D> &operator=(Matrix_Base<D> other) {
+  //  std::swap(rows_, other.rows_);
+  //  std::swap(cols_, other.cols_);
+  //  std::swap(m_, other.m_);
+  //  return (*this);
+  //}
 
   inline double& operator()(size_t i, size_t j)
   {
