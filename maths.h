@@ -705,6 +705,15 @@ public:
       i++;
     }
   }
+  void random(
+    int seed=std::chrono::system_clock::now().time_since_epoch().count(),
+    double lower=-1e4, double upper=1e4
+  ) {
+    std::uniform_real_distribution<double> unif(lower,upper);
+    std::default_random_engine engine(seed);
+    for (size_t i=0; i<size(); ++i)
+      (*this)[i] = unif(engine);
+  }
 };
 template<typename T=std::vector<double>>
 class Matrix_T: public Matrix_Base<T> {
