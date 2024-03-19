@@ -588,12 +588,6 @@ public:
     aed_type2 temp(&m_.data()[start], rows());
     return temp;
   }
-  inline void resize(size_t r, size_t c)
-  {
-    m_.resize(r*c);
-    rows_= r;
-    cols_= c;
-  }
   inline void set_zero() {
     for (size_t i=0;i<m_.size();++i) {
       m_[i]=0;
@@ -739,6 +733,12 @@ public:
   Matrix_T(size_t r, size_t c):
     Matrix_Base<T>(r,c)
   {}
+  inline void resize(size_t r, size_t c)
+  {
+    Matrix_Base<T>::m_.resize(r*c);
+    Matrix_Base<T>::rows_= r;
+    Matrix_Base<T>::cols_= c;
+  }
 };
 typedef Matrix_T<> Matrix;
 
