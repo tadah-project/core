@@ -525,6 +525,16 @@ public:
     cols_(c),
     m_(r*c)
   {}
+  Matrix_Base (Matrix_Base &other) {
+      (*this).resize(other.size());
+      for (size_t i=0; i<size(); ++i)
+          *(this)[i]=other[i];
+  }
+  Matrix_Base &operator=(Matrix_Base other) {
+      std::swap(rows_, other.rows_);
+      std::swap(cols_, other.cols_);
+      std::swap(m_, other.m_);
+  }
 
   inline double& operator()(size_t i, size_t j)
   {
