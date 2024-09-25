@@ -567,3 +567,27 @@ value_format =   'N'
 value_N      =   [-6]
 description  =  """Tadah internal key"""
 examples     =  []
+
+[MPIWPCKG]
+default      =   [50]
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [2147483647]
+description  =  """The number of structures in a single MPI work package"""
+examples     =  []
+
+[MBLOCK]
+default      =   [64]
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [2147483647]
+description  =  """ScalaPACK row block size MB"""
+examples     =  []
+
+[NBLOCK]
+default      =   [64]
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [2147483647]
+description  =  """ScalaPACK column block size NB"""
+examples     =  []
