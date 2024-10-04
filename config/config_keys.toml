@@ -489,7 +489,7 @@ It prints potential file every N steps to directory DIR."""
 examples     =  ['HPOEVERY potfiles 100']
 
 [DIMER]
-default      =   ['false 0 false']
+default      =   ['false', '0' ,false']
 value_type   =   ['bool','double','bool']
 value_format =   ['F', 'BOND_LENGTH','B']
 value_N      =   [-3]
