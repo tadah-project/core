@@ -302,6 +302,10 @@ public:
 
   /** \brief Return true if both configs are the same. */
   bool operator==(const Config&) const;
+
+  std::vector<char> serialize();
+  void deserialize(const std::vector<char>& buffer);
+
 private:
   //toml::table tdc;
   toml::value tdc;
@@ -375,10 +379,6 @@ private:
          */
   static const std::map<std::string,int> internal_keys;
   const static std::string knf;//="Key not found: ";
-
-  std::vector<char> serialize();
-  void deserialize(const std::vector<char>& buffer);
-
 };
 
 
