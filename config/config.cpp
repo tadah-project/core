@@ -206,3 +206,77 @@ void Config::read_tadah_configuration() {
 void Config::clear() {
   c.clear();
 }
+
+
+#ifdef TADAH_BUILD_MPI
+#include <iostream>
+#include <map>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <mpi.h>
+
+// Serialize the map to a vector of chars
+std::vector<char> Config::serializeMap(const std::map<std::string, std::vector<std::string>>& myMap) {
+    std::vector<char> buffer;
+
+    for (const auto& [key, vec] : myMap) {
+        size_t keySize = key.size();
+        buffer.insert(buffer.end(),
+                      reinterpret_cast<const char*>(&keySize),
+                      reinterpret_cast<const char*>(&keySize) + sizeof(keySize));
+        buffer.insert(buffer.end(), key.begin(), key.end());
+
+        size_t vecSize = vec.size();
+        buffer.insert(buffer.end(),
+                      reinterpret_cast<const char*>(&vecSize),
+                      reinterpret_cast<const char*>(&vecSize) + sizeof(vecSize));
+
+        for (const std::string& str : vec) {
+            size_t strSize = str.size();
+            buffer.insert(buffer.end(),
+                          reinterpret_cast<const char*>(&strSize),
+                          reinterpret_cast<const char*>(&strSize) + sizeof(strSize));
+            buffer.insert(buffer.end(), str.begin(), str.end());
+        }
+    }
+
+    return buffer;
+}
+
+// Deserialize the map from a vector of chars
+std::map<std::string, std::vector<std::string>> Config::deserializeMap(const std::vector<char>& buffer) {
+    std::map<std::string, std::vector<std::string>> myMap;
+    size_t pos = 0;
+
+    while (pos < buffer.size()) {
+        size_t keySize;
+        std::memcpy(&keySize, &buffer[pos], sizeof(keySize));
+        pos += sizeof(keySize);
+
+        std::string key(buffer.begin() + pos, buffer.begin() + pos + keySize);
+        pos += keySize;
+
+        size_t vecSize;
+        std::memcpy(&vecSize, &buffer[pos], sizeof(vecSize));
+        pos += sizeof(vecSize);
+
+        std::vector<std::string> vec;
+        for (size_t i = 0; i < vecSize; ++i) {
+            size_t strSize;
+            std::memcpy(&strSize, &buffer[pos], sizeof(strSize));
+            pos += sizeof(strSize);
+
+            std::string str(buffer.begin() + pos, buffer.begin() + pos + strSize);
+            pos += strSize;
+
+            vec.push_back(str);
+        }
+
+        myMap[key] = vec;
+    }
+
+    return myMap;
+}
+#endif
+
