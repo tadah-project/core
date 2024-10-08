@@ -207,15 +207,6 @@ void Config::clear() {
   c.clear();
 }
 
-
-#ifdef TADAH_BUILD_MPI
-#include <iostream>
-#include <map>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <mpi.h>
-
 // Serialize the map to a vector of chars
 std::vector<char> Config::serializeMap(const std::map<std::string, std::vector<std::string>>& myMap) {
     std::vector<char> buffer;
@@ -278,5 +269,4 @@ std::map<std::string, std::vector<std::string>> Config::deserializeMap(const std
 
     return myMap;
 }
-#endif
 
