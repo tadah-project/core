@@ -208,7 +208,7 @@ void Config::clear() {
 }
 
 // Serialize the map to a vector of chars
-std::vector<char> Config::serializeMap() {
+std::vector<char> Config::serialize() {
     std::vector<char> buffer;
 
     for (const auto& [key, vec] : c) {
@@ -236,7 +236,7 @@ std::vector<char> Config::serializeMap() {
 }
 
 // Deserialize the map from a vector of chars
-void Config::deserializeMap(const std::vector<char>& buffer) {
+void Config::deserialize(const std::vector<char>& buffer) {
     
     size_t pos = 0;
 
