@@ -208,10 +208,10 @@ void Config::clear() {
 }
 
 // Serialize the map to a vector of chars
-std::vector<char> Config::serializeMap(const std::map<std::string, std::vector<std::string>>& myMap) {
+std::vector<char> Config::serializeMap() {
     std::vector<char> buffer;
 
-    for (const auto& [key, vec] : myMap) {
+    for (const auto& [key, vec] : c) {
         size_t keySize = key.size();
         buffer.insert(buffer.end(),
                       reinterpret_cast<const char*>(&keySize),
@@ -236,8 +236,8 @@ std::vector<char> Config::serializeMap(const std::map<std::string, std::vector<s
 }
 
 // Deserialize the map from a vector of chars
-std::map<std::string, std::vector<std::string>> Config::deserializeMap(const std::vector<char>& buffer) {
-    std::map<std::string, std::vector<std::string>> myMap;
+void Config::deserializeMap(const std::vector<char>& buffer) {
+    
     size_t pos = 0;
 
     while (pos < buffer.size()) {
@@ -264,9 +264,8 @@ std::map<std::string, std::vector<std::string>> Config::deserializeMap(const std
             vec.push_back(str);
         }
 
-        myMap[key] = vec;
+        c[key] = vec;
     }
 
-    return myMap;
 }
 
