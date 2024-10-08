@@ -375,5 +375,12 @@ private:
          */
   static const std::map<std::string,int> internal_keys;
   const static std::string knf;//="Key not found: ";
+
+  std::vector<char> serializeMap(const std::map<std::string, std::vector<std::string>>& myMap);
+  std::map<std::string, std::vector<std::string>> deserializeMap(const std::vector<char>& buffer);
+
 };
+
+
+
 #endif
