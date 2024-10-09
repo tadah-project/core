@@ -19,8 +19,6 @@ Config& Config::operator=(const Config& other)
         //read_tadah_configuration();
         c = other.c;
         tdc = other.tdc;
-        internal_keys = other.internal_keys;
-        knf = other.knf;
         set_defaults();
         postprocess();
     }
