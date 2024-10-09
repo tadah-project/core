@@ -106,8 +106,8 @@ public:
   /** \brief Create object with default values. */
   Config();
 
-  Config(const Config &other);
-  Config &operator=(const Config& other);
+  //Config(const Config &other);
+  //Config &operator=(const Config& other);
 
   /** \brief Create object and read config values from the file.
          *
