@@ -6,6 +6,20 @@ Config::Config()
     read_tadah_configuration();
     set_defaults();
 }
+Config::Config(const Config &other)
+{
+    *this = other;
+}
+Config& operator=(const Config& other)
+{
+    if(this != &other) {
+    read_tadah_configuration();
+    c = other.c;
+    set_defaults();
+    postprocess();
+    }
+    return *this;
+}
 
 Config::Config(std::string fn) {
 
