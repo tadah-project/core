@@ -16,8 +16,11 @@ Config& Config::operator=(const Config& other)
     std::cout << "Copy assignment 1" << std::endl;
     if(this != &other) {
         std::cout << "Copy assignment 2" << std::endl;
-        read_tadah_configuration();
+        //read_tadah_configuration();
         c = other.c;
+        tds = other.tdc;
+        internal_keys = other.internal_keys;
+        knf = other.knf;
         set_defaults();
         postprocess();
     }
