@@ -6,7 +6,7 @@ Config::Config()
     read_tadah_configuration();
     set_defaults();
 }
-
+/*
 Config::Config(const Config &other)
 {
     std::cout << "Copy constructor" << std::endl;
@@ -27,7 +27,7 @@ Config& Config::operator=(const Config& other)
     }
     return *this;
 }
-
+*/
 Config::Config(std::string fn) {
 
     read_tadah_configuration();
