@@ -10,7 +10,7 @@ Config::Config(const Config &other)
 {
     *this = other;
 }
-Config& operator=(const Config& other)
+Config& Config::operator=(const Config& other)
 {
     if(this != &other) {
     read_tadah_configuration();
