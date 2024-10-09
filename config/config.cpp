@@ -8,15 +8,18 @@ Config::Config()
 }
 Config::Config(const Config &other)
 {
+    std::cout << "Copy constructor" << std::endl;
     *this = other;
 }
 Config& Config::operator=(const Config& other)
 {
+    std::cout << "Copy assignment 1" << std::endl;
     if(this != &other) {
-    read_tadah_configuration();
-    c = other.c;
-    set_defaults();
-    postprocess();
+        std::cout << "Copy assignment 2" << std::endl;
+        read_tadah_configuration();
+        c = other.c;
+        set_defaults();
+        postprocess();
     }
     return *this;
 }
