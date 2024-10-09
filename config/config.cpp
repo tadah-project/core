@@ -70,7 +70,6 @@ void Config::postprocess() {
     // calculate and set max cutoff distance
     double c2b=0, c3b=0,cmb=0;
     int n=get<int>("OUTPREC");
-    std::cout << "posprocess call 1" << std::endl;
 
     if (c.count("INIT2B") && (*this).get<bool>("INIT2B"))
         c2b=get<double>("RCUT2B");
@@ -80,7 +79,6 @@ void Config::postprocess() {
         c3b=get<double>("RCUTMB");
     //if(c2b+c3b+cmb>std::numeric_limits<double>::min())
     c["RCUTMAX"]= std::vector<std::string>(1,to_string(std::max(cmb,std::max(c2b,c3b)),n));
-    std::cout << "posprocess call 2 " << c["RCUTMAX"] << std::endl;
     //else {
     //    throw std::runtime_error("RCUTMAX is zero. Check your settings.\n");
     //}
