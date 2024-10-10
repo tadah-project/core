@@ -115,5 +115,18 @@ int get_index(std::vector<T> v, T K) {
 std::string vec_to_string(std::vector<double> vec,
         std::string delim=" ");
 
+/** Print C++ parameter pack
+ *
+ * Example:
+ *  print_pp(std::cout,args...);
+ */
+template <typename Arg, typename... Args>
+void print_pp(std::ostream& out, Arg&& arg, Args&&... args)
+{
+    out << std::forward<Arg>(arg);
+    using expander = int[];
+    (void)expander{0, (void(out << ',' << std::forward<Args>(args)), 0)...};
+}
+
 //std::vector<double> calc_rho(Structure &st);
 #endif
