@@ -1,7 +1,3 @@
-# This file contains all available KEY/VALUE pairs as used by Ta-dah!
-# along with the expected VALUE type and format.
-#
-
 [TYPE2B]
 default      =   []
 value_type   =   ['string']
@@ -10,6 +6,7 @@ value_N      =   [1]
 description  =  """Type of a two-body descriptor to be used. \
 Every two-body descriptor inherits from :cpp:class:`D2_Base`."""
 examples     =  ['TYPE2B D2_LJ','TYPE2B D2_Blip']
+is_internal  =   [0]
 
 [TYPE3B]
 default      =   []
@@ -18,6 +15,7 @@ value_format =   ['D3_NAME']
 value_N      =   [1]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
+is_internal  =   [0]
 
 [TYPEMB]
 default      =   []
@@ -27,6 +25,7 @@ value_N      =   [1]
 description  =  """Type of a many-body descriptor to be used. \
 Every many-body descriptor inherits from :cpp:class:`DM_Base`."""
 examples     =  ['TYPEMB DM_EAD']
+is_internal  =   [0]
 
 [RCTYPE2B]
 default      =   []
@@ -35,6 +34,7 @@ value_format =   ['Cut_NAME']
 value_N      =   [1]
 description  =  """Cutoff type to be used with a two-body descriptor."""
 examples     =  ['RCTYPE2B Cut_Cos']
+is_internal  =   [0]
 
 [RCTYPE3B]
 default      =   []
@@ -43,6 +43,7 @@ value_format =   ['Cut_NAME']
 value_N      =   [1]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
+is_internal  =   [0]
 
 [RCTYPEMB]
 default      =   []
@@ -51,6 +52,7 @@ value_format =   ['Cut_NAME']
 value_N      =   [1]
 description  =  """Cutoff type to be used with a many-body descriptor."""
 examples     =  ['RCTYPEMB Cut_Cos']
+is_internal  =   [0]
 
 [RCUT2B]
 default      =   []
@@ -59,6 +61,7 @@ value_format =   ['N']
 value_N      =   [1]
 description  =  """Cutoff distance used by the two-body descriptor."""
 examples     =  ['RCUT2B 6.7']
+is_internal  =   [0]
 
 [RCUT3B]
 default      =   []
@@ -67,6 +70,7 @@ value_format =   ['N']
 value_N      =   [1]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
+is_internal  =   [0]
 
 [RCUTMB]
 default      =   []
@@ -75,6 +79,7 @@ value_format =   ['N']
 value_N      =   [1]
 description  =  """Cutoff distance used by the many-body descriptor."""
 examples     =  ['RCUTMB 4.9']
+is_internal  =   [0]
 
 [DBFILE]
 default      =   []
@@ -89,6 +94,7 @@ or by repeating KEY multiple times."""
 examples     =  [
 'DBFILE /path/to/dbfile',
 'DBFILE /path/to/dbfile1 /path/to/dbfile2']
+is_internal  =   [0]
 
 [INIT2B]
 default      =   [false]
@@ -97,6 +103,7 @@ value_format =   ['true | false']
 value_N      =   [1]
 description  =  """If set to true the two-body descriptor will be calculated."""
 examples     =  ['INIT2B true']
+is_internal  =   [0]
 
 [INIT3B]
 default      =   [false]
@@ -107,6 +114,7 @@ description  =  """This is a dummy flag as Ta-dah! does not calculate \
 three body descriptors. Three body interactions can be included with some \
 of the many-body descriptors."""
 examples     =  []
+is_internal  =   [0]
 
 [INITMB]
 default      =   [false]
@@ -115,7 +123,7 @@ value_format =   ['true | false']
 value_N      =   [1]
 description  =  """If set to true the many-body descriptor will be calculated."""
 examples     =  ['INITMB true']
-
+is_internal  =   [0]
 
 [OUTPREC]
 default      =   [10]
@@ -124,6 +132,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Number of decimal places used when dumping a potential file."""
 examples     =  ['OUTPREC 12']
+is_internal  =   [0]
 
 [CGRID2B]
 default      =   []
@@ -140,12 +149,14 @@ In most cases the maximum value should be smaller than the cutoff distance \
 used for the two-body descriptor. \
 Note, that not all descriptors use this parameter, e.g., :cpp:class:`D2_LJ` has a fixed grid."""
 examples     =  []
+is_internal  =   [0]
 [CGRID2B.manual]
 value_type   =   ['double']
 value_format =   ['N1 N2 N3 ...']
 value_N      =   []
 description  =  """Provide grid manually. Each number must be greater than zero."""
 examples     =  ['CGRID2B 1.14 3.45 4.55 6.73']
+is_internal  =   [0]
 [CGRID2B.auto]
 value_type   =   ['int', 'int', 'double', 'double']
 value_format =   ['-A', 'N', 'min', 'max']
@@ -158,6 +169,7 @@ Note the minus in front of :code:`-A`. \
 Algorithm :code:`-1` provides evenly spaced points between `min` and `max` on a linear scale. \
 Algorithm :code:`-2` as above but on the log scale."""
 examples     =  ['CGRID2B -1 6 1.0 6.73', 'CGRID2B -2 6 1.0 6.73']
+is_internal  =   [0]
 
 [CGRID3B]
 default      =   []
@@ -166,6 +178,7 @@ value_format =   ''
 value_N      =   []
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
+is_internal  =   [0]
 
 [CGRIDMB]
 default      =   []
@@ -174,7 +187,7 @@ value_format =   ''
 value_N      =   [-2147483647]
 description  =  """See CGRID2B_ for a description."""
 examples     =  []
-
+is_internal  =   [0]
 
 [SGRID2B]
 default      =   []
@@ -187,12 +200,14 @@ Similarly to CGRID2B_, the parameter list can be provided or generated automatic
 This KEY is usually employed together with CGRID2B_.
 """
 examples     =  []
+is_internal  =   [0]
 [SGRID2B.manual]
 value_type   =   ['double']
 value_format =   ['N1 N2 N3 ...']
 value_N      =   []
 description  =  """Provide grid manually. Each number must be greater than zero."""
 examples     =  ['SGRID2B 1.14 3.45 4.55 6.73']
+is_internal  =   [0]
 [SGRID2B.auto]
 value_type   =   ['int', 'int', 'double', 'double']
 value_format =   ['-A', 'N', 'min', 'max']
@@ -205,6 +220,7 @@ Note the minus in front of :code:`-A`. \
 Algorithm :code:`-1` provides evenly spaced points between :code:`min` and :code:`max` on a linear scale. \
 Algorithm :code:`-2` as above but on the log scale."""
 examples     =  ['SGRID2B -1 6 1.0 6.73', 'SGRID2B -2 6 1.0 6.73']
+is_internal  =   [0]
 
 [SGRID3B]
 default      =   []
@@ -213,6 +229,7 @@ value_format =   ''
 value_N      =   []
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
+is_internal  =   [0]
 
 [SGRIDMB]
 default      =   []
@@ -221,6 +238,7 @@ value_format =   ''
 value_N      =   [-2147483647]
 description  =  """See SGRID2B_ for a description."""
 examples     =  []
+is_internal  =   [0]
 
 [AGRIDMB]
 default      =   []
@@ -231,6 +249,7 @@ description  =  """This KEY controls the 'size' of an angular grid \
 for some many-body descriptors. The exact meaning depends on the \
 particular descriptor."""
 examples     =  ['AGRIDMB 2']
+is_internal  =   [0]
 
 [AGRID3B]
 default      =   []
@@ -239,6 +258,7 @@ value_format =   ''
 value_N      =   []
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
+is_internal  =   [0]
 
 [SEMBFUNC]
 default      =   []
@@ -249,6 +269,7 @@ description  =  """A number of shape parameters of the embedding function. \
 It is used by some many-bod descriptors, e.g., \
 It controls the depth of the function in :cpp:class:`F_RLR`. """
 examples    =  ['SEMBFUNC 0.14 0.45 1.00 1.1']
+is_internal  =   [0]
 
 [CEMBFUNC]
 default      =   []
@@ -259,6 +280,7 @@ description  =  """A number of position parameters of the embedding function. \
 It is used by some many-bod descriptors, e.g., \
 It controls where x-intercept is in :cpp:class:`F_RLR`. """
 examples     =  ['CEMBFUNC 0.14 0.45 1.00 1.1']
+is_internal  =   [0]
 
 [FORCE]
 default      =   [false]
@@ -268,6 +290,7 @@ value_N      =   [1]
 description  =  """Set to true to calculate force descriptors and/or use \
 forces during the training process."""
 examples     =  []
+is_internal  =   [0]
 
 [STRESS]
 default      =   [false]
@@ -277,6 +300,7 @@ value_N      =   [1]
 description  =  """Set to true to calculate stress descriptors and/or use \
 virial stress during the training process."""
 examples     =  []
+is_internal  =   [0]
 
 [MPARAMS]
 default      =   []
@@ -287,6 +311,7 @@ description  =  """List of parameters used by some models. \
 See model description for more details. \
 Note that many models do not require this parameter at all."""
 examples     =  ['MPARAMS 0.1']
+is_internal  =   [0]
 
 [SBASIS]
 default      =   []
@@ -297,6 +322,7 @@ description  =  """The number of basis functions to use when \
 constructing the :cpp:class:`DesignMatrix`. \
 Note that many models do not require this parameter at all."""
 examples     =  ['SBASIS 10']
+is_internal  =   [0]
 
 [NORM]
 default      =   [false]
@@ -306,6 +332,7 @@ value_N      =   [1]
 description  =  """Set true to standardise descriptors. \
 Note that this usually make sense only when energies are being used for fitting."""
 examples     =  ['NORM true']
+is_internal  =   [0]
 
 [LAMBDA]
 default      =   [0]
@@ -319,6 +346,7 @@ If :code:`N>0` than :math:`\\lambda` is set to this value of :code:`N`. \
 If :code:`N<0` than evidence-approximation algorithm is used \
 to estimate the value of :math:`\\lambda`. """
 examples     =  ['LAMBDA -1', 'LAMBDA 1e-4']
+is_internal  =   [0]
 
 [ALPHA]
 default      =   [1.0]
@@ -328,6 +356,7 @@ value_N      =   [1]
 description  =  """Weight precision hyper-parameter. \
 Starting guess used in evidence approximation algorithm."""
 examples     =  ['ALPHA 0.23']
+is_internal  =   [0]
 
 [BETA]
 default      =   [1.0]
@@ -337,6 +366,7 @@ value_N      =   [1]
 description  =  """Noise precision hyper-parameter. \
 Starting guess used in evidence approximation algorithm."""
 examples     =  ['BETA 0.0001']
+is_internal  =   [0]
 
 [SETFL]
 default      =   []
@@ -345,6 +375,7 @@ value_format =   ['/path/to/dbfile']
 value_N      =   [1]
 description  =  """Path to setfl file with eam potential."""
 examples     =  ['SETFL Ta1_Ravelo_2013.eam.alloy']
+is_internal  =   [0]
 
 [BIAS]
 default      =   [true]
@@ -354,6 +385,7 @@ value_N      =   [1]
 description  =  """Controls whether to append 1 to every descriptor. \
 Increases DSIZE by 1. """
 examples     =  ['BIAS false']
+is_internal  =   [0]
 
 [VERBOSE]
 default      =   [0]
@@ -363,6 +395,7 @@ value_N      =   [1]
 description  =  """Set verbosity level.\
 For :code:`N>0` it provides detailed output for diagnostic purposes."""
 examples     =  ['VERBOSE 1']
+is_internal  =   [0]
 
 [EWEIGHT]
 default      =   [1.0]
@@ -377,6 +410,7 @@ in a dataset file. \
 The combined scalling factor is: \
 EWEIGHT*(configuration eweight)/(number of atoms)"""
 examples     =  ['EWEIGHT 0.96']
+is_internal  =   [0]
 
 [FWEIGHT]
 default      =   [1.0]
@@ -391,6 +425,7 @@ in a dataset file. \
 The combined scalling factor is: \
 FWEIGHT*(configuration fweight)/(number of atoms)/3"""
 examples     =  ['FWEIGHT 1e-2']
+is_internal  =   [0]
 
 [SWEIGHT]
 default      =   [1.0]
@@ -405,6 +440,7 @@ in a dataset file.\
 The combined scalling factor is:\
 SWEIGHT*(configuration sweight)/6"""
 examples     =  ['SWEIGHT 1e-1']
+is_internal  =   [0]
 
 [WEIGHTS]
 default      =   []
@@ -413,6 +449,7 @@ value_format =   ['N1 N2 N3 ...']
 value_N      =   [-2147483647]
 description  =  """The machine learned coefficients for the model."""
 examples     =  ['WEIGHTS 0.12 1.2 0.3']
+is_internal  =   [0]
 
 [SIGMA]
 default      =   []
@@ -424,6 +461,7 @@ Bayesian Linear Regression :cpp:class:`M_BLR`. \
 The :math:`\\Sigma` matrix is :math:`N\\times N`. It is stored \
 in column major order, i.e., it is stored column by column. """
 examples     =  ['`Sigma 2 1.2 2.2 2.3 3.3`']
+is_internal  =   [0]
 
 [MODEL]
 default      =   []
@@ -436,7 +474,7 @@ description  =  """This key defines the :code:`MODEL` to be used for training. \
 examples     =  ['MODEL M_BLR BF_Linear',
 'MODEL M_BLR BF_Polynomial2',
 'MODEL M_KRR Kern_Linear']
-
+is_internal  =   [0]
 
 [NSTDEV]
 default      =   []
@@ -448,6 +486,7 @@ of the columns of the :cpp:class:`DesignMatrix`. \
 The size of the vector is equal to the \
 number of columns of the :cpp:class:`DesignMatrix`."""
 examples     =  []
+is_internal  =   [0]
 
 [NMEAN]
 default      =   []
@@ -458,6 +497,7 @@ description  =  """Mean values for the columns of the :cpp:class:`DesignMatrix`.
 This vector is obained during standardisation (see NORM_) \
 of the :cpp:class:`DesignMatrix`."""
 examples     =  []
+is_internal  =   [0]
 
 [BASIS]
 default      =   []
@@ -466,6 +506,7 @@ value_format =   ['N1 N2 N3 ...']
 value_N      =   [-2147483647]
 description  =  """Basis vectors used by non-linear KRR model."""
 examples     =  []
+is_internal  =   [0]
 
 [CHECKPRESS]
 default      =   []
@@ -477,6 +518,7 @@ When true LAMMPS interface will throw an error on NaN pressure. \
 This KEY is only valid when potential file is used with LAMMPS. \
 It has no effect on training or prediction."""
 examples     =  []
+is_internal  =   [0]
 
 [HPOEVERY]
 default      =   []
@@ -487,6 +529,7 @@ description  =  """<EXPERIMENTAL>. \
 This KEY is used during hyperparameter optimisation with HPO. \
 It prints potential file every N steps to directory DIR."""
 examples     =  ['HPOEVERY potfiles 100']
+is_internal  =   [0]
 
 [DIMER]
 default      =   [false, 0, false]
@@ -495,6 +538,7 @@ value_format =   ['F', 'BOND_LENGTH','B']
 value_N      =   [-3]
 description  =  """Control for DIMER models. User should not modify this key"""
 examples     =  []
+is_internal  =   [0]
 
 [SIZE2B]
 default      =   []
@@ -503,6 +547,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [SIZE3B]
 default      =   []
@@ -511,6 +556,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [SIZEMB]
 default      =   []
@@ -519,6 +565,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [DSIZE]
 default      =   []
@@ -527,6 +574,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [ATOMS]
 default      =   []
@@ -535,6 +583,7 @@ value_format =   'N'
 value_N      =   [2147483647]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [RCUTMAX]
 default      =   []
@@ -543,6 +592,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [ESTDEV]
 default      =   []
@@ -551,6 +601,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [FSTDEV]
 default      =   []
@@ -559,6 +610,7 @@ value_format =   'N'
 value_N      =   [1]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [SSTDEV]
 default      =   []
@@ -567,6 +619,7 @@ value_format =   'N'
 value_N      =   [-6]
 description  =  """Tadah internal key"""
 examples     =  []
+is_internal  =   [1]
 
 [MPIWPCKG]
 default      =   [50]
@@ -575,6 +628,7 @@ value_format =   'N'
 value_N      =   [2147483647]
 description  =  """The number of structures in a single MPI work package"""
 examples     =  []
+is_internal  =   [0]
 
 [MBLOCK]
 default      =   [64]
@@ -583,6 +637,7 @@ value_format =   'N'
 value_N      =   [2147483647]
 description  =  """ScalaPACK row block size MB"""
 examples     =  []
+is_internal  =   [0]
 
 [NBLOCK]
 default      =   [64]
@@ -591,3 +646,4 @@ value_format =   'N'
 value_N      =   [2147483647]
 description  =  """ScalaPACK column block size NB"""
 examples     =  []
+is_internal  =   [0]
