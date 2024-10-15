@@ -308,10 +308,10 @@ public:
 
   std::vector<char> serialize();
   void deserialize(const std::vector<char>& buffer);
-
+  toml::value tdc;
 private:
   //toml::table tdc;
-  toml::value tdc;
+
   std::map<std::string, std::vector<std::string>> c;
   void read(std::string fn);
 
