@@ -1,9 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "../utils/utils.h"	// for vector printing
-#include "../lib/toml11/toml.hpp"
+#include <toml.hpp>
 #include <cmrc/cmrc.hpp>
+#include <tadah/core/utils.h>
 
 #include <type_traits>
 #include <stdexcept>

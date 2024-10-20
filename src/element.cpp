@@ -1,4 +1,4 @@
-#include "element.h"
+#include <tadah/core/element.h>
 
 void Element::check(const std::string &symbol, const int Z) {
     if (symbol.size() > 2)

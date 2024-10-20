@@ -1,8 +1,8 @@
 #ifndef NORMALISER_CORE_H
 #define NORMALISER_CORE_H
 
-#include "config/config.h"
-#include "core_types.h"
+#include <tadah/core/config.h>
+#include <tadah/core/core_types.h>
 
 // We do calculate and store st. dev. and mean
 // for the first column of Phi matrix

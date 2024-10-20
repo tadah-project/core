@@ -1,4 +1,4 @@
-#include "config.h"
+#include <tadah/core/config.h>
 #include <sstream>
 
 Config::Config()

@@ -1,7 +1,7 @@
 #ifndef MATHS_H
 #define MATHS_H
 
-#include "vec3d.h"
+#include <tadah/core/vec3d.h>
 
 #include <cmath>
 #include <cstring>

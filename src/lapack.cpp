@@ -1,4 +1,4 @@
-#include "lapack.h"
+#include <tadah/core/lapack.h>
 // Some usefull operations on vectors and matrices
 aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans) {
     int m = mat.rows();

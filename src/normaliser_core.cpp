@@ -1,4 +1,4 @@
-#include "normaliser_core.h"
+#include <tadah/core/normaliser_core.h>
 
 Normaliser_Core::Normaliser_Core () {}
 Normaliser_Core::Normaliser_Core (Config &c):

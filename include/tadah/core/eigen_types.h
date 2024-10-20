@@ -1,7 +1,7 @@
 #ifndef EIGEN_TYPES_H
 #define EIGEN_TYPES_H
 
-#include "../LIBS/Eigen/Core"
+//#include "../LIBS/Eigen/Core"
 
 //typedef Eigen::VectorXd vec;
 //typedef Eigen::MatrixXd mat;

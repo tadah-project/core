@@ -1,4 +1,4 @@
-#include "utils.h"
+#include <tadah/core/utils.h>
 #include <stdexcept>
 
 v_type logspace(double start, double stop, int num, double base) {

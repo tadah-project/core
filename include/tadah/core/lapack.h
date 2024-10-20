@@ -1,7 +1,8 @@
 #ifndef LAPACK_H
 #define LAPACK_H
 
-#include "maths.h"
+#include <tadah/core/maths.h>
+
 extern "C" {
     /** the Cholesky factorization of a real symmetric
      *  positive definite matrix a.*/

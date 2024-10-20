@@ -3,7 +3,7 @@
 
 #include <string>
 #include <map>
-#include "element.h"
+#include <tadah/core/element.h>
 
 struct PeriodicTable {
     public:

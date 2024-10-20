@@ -7,8 +7,8 @@ project(Tadah.CORE)
 get_filename_component(MODULE_TEST ${CMAKE_BINARY_DIR} NAME)
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR}
         OR ${MODULE_TEST} STREQUAL "CORE"
-        )
-    message(FATAL_ERROR "
+)
+  message(FATAL_ERROR "
     In-source builds not allowed.
     Please make a new directory (called a build directory) and run CMake from there.
     You may need to remove CMakeCache.txt and CMakeFiles dir. ")
@@ -19,74 +19,66 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(BUILD_SHARED_LIBS)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
 if (BUILD_SHARED_LIBS)
-    # Always full RPATH
-    # use, i.e. don't skip the full RPATH for the build tree
-    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+  # Always full RPATH
+  # use, i.e. don't skip the full RPATH for the build tree
+  set(CMAKE_SKIP_BUILD_RPATH FALSE)
 
-    # when building, don't use the install RPATH already
-    # (but later on when installing)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+  # when building, don't use the install RPATH already
+  # (but later on when installing)
+  set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 
+  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+  # add the automatically determined parts of the RPATH
+  # which point to directories outside the build tree to the install RPATH
+  set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+  # the RPATH to be used when installing, but only if it's not a system directory
+  list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
+  if("${isSystemDir}" STREQUAL "-1")
     set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-
-    # add the automatically determined parts of the RPATH
-    # which point to directories outside the build tree to the install RPATH
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-    # the RPATH to be used when installing, but only if it's not a system directory
-    list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${CMAKE_INSTALL_PREFIX}/lib" isSystemDir)
-    if("${isSystemDir}" STREQUAL "-1")
-        set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-    endif("${isSystemDir}" STREQUAL "-1")
+  endif("${isSystemDir}" STREQUAL "-1")
 endif()
 
-# embedd config.toml into core library
-include(${PROJECT_SOURCE_DIR}/lib/cmrc-master/CMakeRC.cmake)
+add_subdirectory(external/toml11)
+# embedd config.toml into tadah.core library
+include(${PROJECT_SOURCE_DIR}/external/cmrc-master/CMakeRC.cmake)
 cmrc_add_resource_library(
     config-resources
     ALIAS config::rc
     NAMESPACE CORE
     ${PROJECT_SOURCE_DIR}/config/config_keys.toml
-    )
+)
 
-file(GLOB CORE_SRC CONFIGURE_DEPENDS "*.cpp" "*.h" "*.hpp")
-file(GLOB_RECURSE CONFIG_SRC CONFIGURE_DEPENDS "config/*.cpp" "config/*.h" "config/*.hpp")
-file(GLOB_RECURSE LIBS_SRC CONFIGURE_DEPENDS "lib/*.cpp" "lib/*.h" "lib/*.hpp")
-file(GLOB_RECURSE UTILS_SRC CONFIGURE_DEPENDS "utils/*.cpp" "utils/*.h" "utils/*.hpp")
+file(GLOB CORE_SRC CONFIGURE_DEPENDS "src/*.cpp")
+add_library(tadah.core ${CORE_SRC})
 
-add_library(tadah.core.obj OBJECT
-    ${CORE_SRC}
-    ${CONFIG_SRC}
-    ${LIBS_SRC}
-    ${UTILS_SRC}
-    )
+target_include_directories(tadah.core PUBLIC include)
 
 if(TADAH_ENABLE_OPENMP)
-    find_package(OpenMP REQUIRED)
-    target_link_libraries(tadah.core.obj PRIVATE OpenMP::OpenMP_CXX)
+  find_package(OpenMP REQUIRED)
+  target_link_libraries(tadah.core PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
-add_library(tadah.core $<TARGET_OBJECTS:tadah.core.obj>
-    $<TARGET_OBJECTS:config::rc>)
-target_link_libraries(tadah.core.obj PUBLIC config::rc)
 target_link_libraries(tadah.core PUBLIC config::rc)
+target_link_libraries(tadah.core PRIVATE toml11)
 
 find_package(LAPACK)
 target_link_libraries (tadah.core PUBLIC ${LAPACK_LIBRARIES})
 
 if(TADAH_BUILD_TESTS)
-    include(CTest) 
-    add_subdirectory(tests)
+  include(CTest) 
+  add_subdirectory(tests)
 endif()
 
-set(TADAH_CORE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include/tadah/CORE)
-file(GLOB CORE_H CONFIGURE_DEPENDS "*.h" "*.hpp")
-install(FILES ${CORE_H} DESTINATION ${TADAH_CORE_INSTALL_DIR})
-install(FILES lib/cmrc-master/cmrc/cmrc.hpp DESTINATION ${CMAKE_INSTALL_PREFIX}/include/cmrc)
-install(DIRECTORY config DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp|.+.toml)")
-install(DIRECTORY lib DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
-install(DIRECTORY utils DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
+#set(TADAH_CORE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include/tadah/CORE)
+#file(GLOB CORE_H CONFIGURE_DEPENDS "*.h" "*.hpp")
+#install(FILES ${CORE_H} DESTINATION ${TADAH_CORE_INSTALL_DIR})
+#install(FILES lib/cmrc-master/cmrc/cmrc.hpp DESTINATION ${CMAKE_INSTALL_PREFIX}/include/cmrc)
+#install(DIRECTORY config DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp|.+.toml)")
+#install(DIRECTORY lib DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
+#install(DIRECTORY utils DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
