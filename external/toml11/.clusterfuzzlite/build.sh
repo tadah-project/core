@@ -3,4 +3,4 @@
 $CXX $CFLAGS $LIB_FUZZING_ENGINE \
   $SRC/toml11/.clusterfuzzlite/parse_fuzzer.cpp \
   -o $OUT/parse_fuzzer \
-  -I$SRC/toml11/include/
+  -I$SRC/toml11/

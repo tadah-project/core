@@ -1,10 +1,6 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "doctest.h"
+#include <toml.hpp>
 
-#include "utility.hpp"
-
-#include <toml11/value.hpp>
-#include <toml11/find.hpp>
+#include "unit_test.hpp"
 
 #include <array>
 #include <deque>
@@ -17,179 +13,235 @@
 #include <string_view>
 #endif
 
-#define TOML11_TEST_FIND_OR_EXACT(ty, init_expr, opt_expr)\
-    {                                                     \
-        const ty init init_expr ;                         \
-        const ty opt  opt_expr ;                          \
-        const value_type v = toml::table{{"key", init}};  \
-        CHECK_NE(init, opt);                              \
-        CHECK_EQ(init, toml::find_or(v, "key", opt));     \
-    }
+using test_value_types = std::tuple<
+    toml::basic_value<toml::discard_comments>,
+    toml::basic_value<toml::preserve_comments>,
+    toml::basic_value<toml::discard_comments,  std::map, std::deque>,
+    toml::basic_value<toml::preserve_comments, std::map, std::deque>
+>;
 
-TEST_CASE("testing toml::find_or with toml types")
+namespace test
 {
-    using value_type = toml::value;
-    using boolean_type         = typename value_type::boolean_type        ;
-    using integer_type         = typename value_type::integer_type        ;
-    using floating_type        = typename value_type::floating_type       ;
-    using string_type          = typename value_type::string_type         ;
-    using local_time_type      = typename value_type::local_time_type     ;
-    using local_date_type      = typename value_type::local_date_type     ;
-    using local_datetime_type  = typename value_type::local_datetime_type ;
-    using offset_datetime_type = typename value_type::offset_datetime_type;
-    using array_type           = typename value_type::array_type          ;
-    using table_type           = typename value_type::table_type          ;
+template<typename charT, typename traits, typename T, typename Alloc>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os, const std::vector<T, Alloc>& v)
+{
+    os << "[ ";
+    for(const auto& i : v) {os << i << ' ';}
+    os << ']';
+    return os;
+}
+template<typename charT, typename traits, typename T, typename Alloc>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os, const std::deque<T, Alloc>& v)
+{
+    os << "[ ";
+    for(const auto& i : v) {os << i << ' ';}
+    os << ']';
+    return os;
+}
+template<typename charT, typename traits, typename T, typename Alloc>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os, const std::list<T, Alloc>& v)
+{
+    os << "[ ";
+    for(const auto& i : v) {os << i << ' ';}
+    os << ']';
+    return os;
+}
+template<typename charT, typename traits,
+         typename Key, typename Value, typename Comp, typename Alloc>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os,
+           const std::map<Key, Value, Comp, Alloc>& v)
+{
+    os << "[ ";
+    for(const auto& i : v) {os << '{' << i.first << ", " << i.second << "} ";}
+    os << ']';
+    return os;
+}
+template<typename charT, typename traits,
+         typename Key, typename Value, typename Hash, typename Eq, typename Alloc>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os,
+           const std::unordered_map<Key, Value, Hash, Eq, Alloc>& v)
+{
+    os << "[ ";
+    for(const auto& i : v) {os << '{' << i.first << ", " << i.second << "} ";}
+    os << ']';
+    return os;
+}
+} // test
 
-    TOML11_TEST_FIND_OR_EXACT(boolean_type,         ( true), (false))
-    TOML11_TEST_FIND_OR_EXACT(integer_type,         (   42), (   54))
-    TOML11_TEST_FIND_OR_EXACT(floating_type,        ( 3.14), ( 2.71))
-    TOML11_TEST_FIND_OR_EXACT(string_type,          ("foo"), ("bar"))
-    TOML11_TEST_FIND_OR_EXACT(local_time_type,      (12, 30, 45), (6, 0, 30))
-    TOML11_TEST_FIND_OR_EXACT(local_date_type,      (2019, toml::month_t::Apr, 1),
-                                                    (1999, toml::month_t::Jan, 2))
-    TOML11_TEST_FIND_OR_EXACT(local_datetime_type,
+#define TOML11_TEST_FIND_OR_EXACT(toml_type, init_expr, opt_expr)\
+    {                                                           \
+        using namespace test;                                   \
+        const toml::toml_type init init_expr ;                  \
+        const toml::toml_type opt  opt_expr ;                   \
+        const value_type v{{"key", init}};                      \
+        BOOST_TEST(init != opt);                                \
+        BOOST_TEST(init == toml::find_or(v, "key", opt));       \
+    }                                                           \
+    /**/
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_find_or_exact, value_type, test_value_types)
+{
+    TOML11_TEST_FIND_OR_EXACT(boolean,         ( true), (false))
+    TOML11_TEST_FIND_OR_EXACT(integer,         (   42), (   54))
+    TOML11_TEST_FIND_OR_EXACT(floating,        ( 3.14), ( 2.71))
+    TOML11_TEST_FIND_OR_EXACT(string,          ("foo"), ("bar"))
+    TOML11_TEST_FIND_OR_EXACT(local_time,      (12, 30, 45), (6, 0, 30))
+    TOML11_TEST_FIND_OR_EXACT(local_date,      (2019, toml::month_t::Apr, 1),
+                                              (1999, toml::month_t::Jan, 2))
+    TOML11_TEST_FIND_OR_EXACT(local_datetime,
             (toml::local_date(2019, toml::month_t::Apr, 1), toml::local_time(12, 30, 45)),
             (toml::local_date(1999, toml::month_t::Jan, 2), toml::local_time( 6,  0, 30))
             )
-    TOML11_TEST_FIND_OR_EXACT(offset_datetime_type,
+    TOML11_TEST_FIND_OR_EXACT(offset_datetime,
             (toml::local_date(2019, toml::month_t::Apr, 1), toml::local_time(12, 30, 45), toml::time_offset( 9, 0)),
             (toml::local_date(1999, toml::month_t::Jan, 2), toml::local_time( 6,  0, 30), toml::time_offset(-3, 0))
             )
-    TOML11_TEST_FIND_OR_EXACT(array_type, ({1,2,3,4,5}), ({6,7,8,9,10}));
-    TOML11_TEST_FIND_OR_EXACT(table_type, ({{"key1", 42}, {"key2", "foo"}}),
-                                          ({{"key1", 54}, {"key2", "bar"}}));
+    {
+        const typename value_type::array_type init{1,2,3,4,5};
+        const typename value_type::array_type opt {6,7,8,9,10};
+        const value_type v{{"key", init}};
+        BOOST_TEST(init != opt);
+        BOOST_TEST(init == toml::find_or(v, "key", opt));
+    }
+    {
+        const typename value_type::table_type init{{"key1", 42}, {"key2", "foo"}};
+        const typename value_type::table_type opt {{"key1", 54}, {"key2", "bar"}};
+        const value_type v{{"key", init}};
+        BOOST_TEST(init != opt);
+        BOOST_TEST(init == toml::find_or(v, "key", opt));
+    }
 }
 #undef TOML11_TEST_FIND_OR_EXACT
 
-#define TOML11_TEST_FIND_OR_MOVE(ty, init_expr, opt_expr)   \
-    {                                                       \
-        const ty init init_expr ;                           \
-        ty       opt  opt_expr ;                            \
-        value_type v = toml::table{{"key", init}};          \
-        CHECK_NE(init, opt);                                \
+#define TOML11_TEST_FIND_OR_MOVE(toml_type, init_expr, opt_expr)   \
+    {                                                              \
+        using namespace test;                                      \
+        const toml::toml_type init init_expr ;                     \
+        toml::toml_type opt  opt_expr ;                            \
+        value_type v{{"key", init}};                               \
+        BOOST_TEST(init != opt);                                   \
         const auto moved = toml::find_or(std::move(v), "key", std::move(opt));\
-        CHECK_EQ(init, moved);                              \
-    }
+        BOOST_TEST(init == moved);                                 \
+    }                                                              \
+    /**/
 
-TEST_CASE("testing toml::find_or with moved argument")
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_find_or_move, value_type, test_value_types)
 {
-    using value_type = toml::value;
-    using boolean_type         = typename value_type::boolean_type        ;
-    using integer_type         = typename value_type::integer_type        ;
-    using floating_type        = typename value_type::floating_type       ;
-    using string_type          = typename value_type::string_type         ;
-    using local_time_type      = typename value_type::local_time_type     ;
-    using local_date_type      = typename value_type::local_date_type     ;
-    using local_datetime_type  = typename value_type::local_datetime_type ;
-    using offset_datetime_type = typename value_type::offset_datetime_type;
-    using array_type           = typename value_type::array_type          ;
-    using table_type           = typename value_type::table_type          ;
-
-
-    TOML11_TEST_FIND_OR_MOVE(boolean_type,         ( true), (false))
-    TOML11_TEST_FIND_OR_MOVE(integer_type,         (   42), (   54))
-    TOML11_TEST_FIND_OR_MOVE(floating_type,        ( 3.14), ( 2.71))
-    TOML11_TEST_FIND_OR_MOVE(string_type,          ("foo"), ("bar"))
-    TOML11_TEST_FIND_OR_MOVE(local_time_type,      (12, 30, 45), (6, 0, 30))
-    TOML11_TEST_FIND_OR_MOVE(local_date_type,      (2019, toml::month_t::Apr, 1),
+    TOML11_TEST_FIND_OR_MOVE(boolean,         ( true), (false))
+    TOML11_TEST_FIND_OR_MOVE(integer,         (   42), (   54))
+    TOML11_TEST_FIND_OR_MOVE(floating,        ( 3.14), ( 2.71))
+    TOML11_TEST_FIND_OR_MOVE(string,          ("foo"), ("bar"))
+    TOML11_TEST_FIND_OR_MOVE(local_time,      (12, 30, 45), (6, 0, 30))
+    TOML11_TEST_FIND_OR_MOVE(local_date,      (2019, toml::month_t::Apr, 1),
                                               (1999, toml::month_t::Jan, 2))
-    TOML11_TEST_FIND_OR_MOVE(local_datetime_type,
+    TOML11_TEST_FIND_OR_MOVE(local_datetime,
             (toml::local_date(2019, toml::month_t::Apr, 1), toml::local_time(12, 30, 45)),
             (toml::local_date(1999, toml::month_t::Jan, 2), toml::local_time( 6,  0, 30))
             )
-    TOML11_TEST_FIND_OR_MOVE(offset_datetime_type,
+    TOML11_TEST_FIND_OR_MOVE(offset_datetime,
             (toml::local_date(2019, toml::month_t::Apr, 1), toml::local_time(12, 30, 45), toml::time_offset( 9, 0)),
             (toml::local_date(1999, toml::month_t::Jan, 2), toml::local_time( 6,  0, 30), toml::time_offset(-3, 0))
             )
-    TOML11_TEST_FIND_OR_MOVE(array_type, ({1,2,3,4,5}), ({6,7,8,9,10}));
-    TOML11_TEST_FIND_OR_MOVE(table_type, ({{"key1", 42}, {"key2", "foo"}}),
-                                         ({{"key1", 54}, {"key2", "bar"}}));
+    {
+        typename value_type::array_type init{1,2,3,4,5};
+        typename value_type::array_type opt {6,7,8,9,10};
+        value_type v{{"key", init}};
+        BOOST_TEST(init != opt);
+        const auto moved = toml::find_or(std::move(v), "key", std::move(opt));
+        BOOST_TEST(init == moved);
+    }
+    {
+        typename value_type::table_type init{{"key1", 42}, {"key2", "foo"}};
+        typename value_type::table_type opt {{"key1", 54}, {"key2", "bar"}};
+        value_type v{{"key", init}};
+        BOOST_TEST(init != opt);
+        const auto moved = toml::find_or(std::move(v), "key", std::move(opt));
+        BOOST_TEST(init == moved);
+    }
 }
 #undef TOML11_TEST_FIND_OR_MOVE
 
 
-#define TOML11_TEST_FIND_OR_MODIFY(ty, init_expr, opt_expr)\
-    {                                                      \
-        const ty init init_expr ;                          \
-              ty opt1 opt_expr ;                           \
-              ty opt2 opt_expr ;                           \
-        value_type v = toml::table{{"key", init}};         \
-        CHECK_NE(init, opt1);                              \
-        toml::find_or(v, "key", opt2) = opt1;              \
-        CHECK_EQ(opt1, toml::find<ty>(v, "key"));          \
-    }
-
-TEST_CASE("testing find_or with modification")
+#define TOML11_TEST_FIND_OR_MODIFY(toml_type, init_expr, opt_expr)\
+    {                                                             \
+        using namespace test;                                     \
+        const toml::toml_type init init_expr ;                    \
+        toml::toml_type       opt1 opt_expr ;                     \
+        toml::toml_type       opt2 opt_expr ;                     \
+        value_type v{{"key", init}};                              \
+        BOOST_TEST(init != opt1);                                 \
+        toml::find_or(v, "key", opt2) = opt1;                     \
+        BOOST_TEST(opt1 == toml::find<toml::toml_type>(v, "key"));\
+    }                                                             \
+    /**/
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_find_or_modify, value_type, test_value_types)
 {
-    using value_type = toml::value;
-    using boolean_type         = typename value_type::boolean_type        ;
-    using integer_type         = typename value_type::integer_type        ;
-    using floating_type        = typename value_type::floating_type       ;
-    using string_type          = typename value_type::string_type         ;
-    using local_time_type      = typename value_type::local_time_type     ;
-    using local_date_type      = typename value_type::local_date_type     ;
-    using local_datetime_type  = typename value_type::local_datetime_type ;
-    using offset_datetime_type = typename value_type::offset_datetime_type;
-    using array_type           = typename value_type::array_type          ;
-    using table_type           = typename value_type::table_type          ;
-
-    TOML11_TEST_FIND_OR_MODIFY(boolean_type,         ( true), (false))
-    TOML11_TEST_FIND_OR_MODIFY(integer_type,         (   42), (   54))
-    TOML11_TEST_FIND_OR_MODIFY(floating_type,        ( 3.14), ( 2.71))
-    TOML11_TEST_FIND_OR_MODIFY(string_type,          ("foo"), ("bar"))
-    TOML11_TEST_FIND_OR_MODIFY(local_time_type,      (12, 30, 45), (6, 0, 30))
-    TOML11_TEST_FIND_OR_MODIFY(local_date_type,      (2019, toml::month_t::Apr, 1),
+    TOML11_TEST_FIND_OR_MODIFY(boolean,         ( true), (false))
+    TOML11_TEST_FIND_OR_MODIFY(integer,         (   42), (   54))
+    TOML11_TEST_FIND_OR_MODIFY(floating,        ( 3.14), ( 2.71))
+    TOML11_TEST_FIND_OR_MODIFY(string,          ("foo"), ("bar"))
+    TOML11_TEST_FIND_OR_MODIFY(local_time,      (12, 30, 45), (6, 0, 30))
+    TOML11_TEST_FIND_OR_MODIFY(local_date,      (2019, toml::month_t::Apr, 1),
                                               (1999, toml::month_t::Jan, 2))
-    TOML11_TEST_FIND_OR_MODIFY(local_datetime_type,
+    TOML11_TEST_FIND_OR_MODIFY(local_datetime,
             (toml::local_date(2019, toml::month_t::Apr, 1), toml::local_time(12, 30, 45)),
             (toml::local_date(1999, toml::month_t::Jan, 2), toml::local_time( 6,  0, 30))
             )
-    TOML11_TEST_FIND_OR_MODIFY(offset_datetime_type,
+    TOML11_TEST_FIND_OR_MODIFY(offset_datetime,
             (toml::local_date(2019, toml::month_t::Apr, 1), toml::local_time(12, 30, 45), toml::time_offset( 9, 0)),
             (toml::local_date(1999, toml::month_t::Jan, 2), toml::local_time( 6,  0, 30), toml::time_offset(-3, 0))
             )
-
-    TOML11_TEST_FIND_OR_MODIFY(array_type, ({1,2,3,4,5}), ({6,7,8,9,10}));
-    TOML11_TEST_FIND_OR_MODIFY(table_type, ({{"key1", 42}, {"key2", "foo"}}),
-                                           ({{"key1", 54}, {"key2", "bar"}}));
+    {
+        typename value_type::array_type init{1,2,3,4,5};
+        typename value_type::array_type opt1{6,7,8,9,10};
+        typename value_type::array_type opt2{6,7,8,9,10};
+        BOOST_TEST(init != opt1);
+        value_type v{{"key", init}};
+        toml::find_or(v, "key", opt2) = opt1;
+        BOOST_TEST(opt1 == toml::find<typename value_type::array_type>(v, "key"));
+    }
+    {
+        typename value_type::table_type init{{"key1", 42}, {"key2", "foo"}};
+        typename value_type::table_type opt1{{"key1", 54}, {"key2", "bar"}};
+        typename value_type::table_type opt2{{"key1", 54}, {"key2", "bar"}};
+        value_type v{{"key", init}};
+        BOOST_TEST(init != opt1);
+        toml::find_or(v, "key", opt2) = opt1;
+        BOOST_TEST(opt1 == toml::find<typename value_type::table_type>(v, "key"));
+    }
 }
 #undef TOML11_TEST_FIND_OR_MODIFY
 
-#define TOML11_TEST_FIND_OR_FALLBACK(init_type, opt_type)          \
-    {                                                              \
-        value_type v1(init_type);                                  \
-        CHECK_EQ(opt_type, toml::find_or(v1, "key", opt_type));    \
-        value_type v2 = toml::table{{"different_key", init_type}}; \
-        CHECK_EQ(opt_type, toml::find_or(v2, "key", opt_type));    \
-    }
+#define TOML11_TEST_FIND_OR_FALLBACK(init_type, opt_type)         \
+    {                                                             \
+        using namespace test;                                     \
+        value_type v(init_type);                                  \
+        BOOST_TEST(opt_type == toml::find_or(v, "key", opt_type));\
+    }                                                             \
+    /**/
 
-TEST_CASE("testing toml::find_or returns fallback if failed")
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_find_or_fallback, value_type, test_value_types)
 {
-    using value_type = toml::value;
-    using boolean_type         = typename value_type::boolean_type        ;
-    using integer_type         = typename value_type::integer_type        ;
-    using floating_type        = typename value_type::floating_type       ;
-    using string_type          = typename value_type::string_type         ;
-    using local_time_type      = typename value_type::local_time_type     ;
-    using local_date_type      = typename value_type::local_date_type     ;
-    using local_datetime_type  = typename value_type::local_datetime_type ;
-    using offset_datetime_type = typename value_type::offset_datetime_type;
-    using array_type           = typename value_type::array_type          ;
-    using table_type           = typename value_type::table_type          ;
-
-    const boolean_type         boolean        (true);
-    const integer_type         integer        (42);
-    const floating_type        floating       (3.14);
-    const string_type          string         ("foo");
-    const local_time_type      local_time     (12, 30, 45);
-    const local_date_type      local_date     (2019, toml::month_t::Apr, 1);
-    const local_datetime_type  local_datetime (
+    const toml::boolean         boolean        (true);
+    const toml::integer         integer        (42);
+    const toml::floating        floating       (3.14);
+    const toml::string          string         ("foo");
+    const toml::local_time      local_time     (12, 30, 45);
+    const toml::local_date      local_date     (2019, toml::month_t::Apr, 1);
+    const toml::local_datetime  local_datetime (
             toml::local_date(2019, toml::month_t::Apr, 1),
             toml::local_time(12, 30, 45));
-    const offset_datetime_type offset_datetime(
+    const toml::offset_datetime offset_datetime(
             toml::local_date(2019, toml::month_t::Apr, 1),
             toml::local_time(12, 30, 45), toml::time_offset( 9, 0));
 
+    using array_type = typename value_type::array_type;
+    using table_type = typename value_type::table_type;
     const array_type array{1, 2, 3, 4, 5};
     const table_type table{{"key1", 42}, {"key2", "foo"}};
 
@@ -295,46 +347,46 @@ TEST_CASE("testing toml::find_or returns fallback if failed")
 }
 #undef TOML11_TEST_FIND_OR_FALLBACK
 
-TEST_CASE("testing find_or; converting to an integer")
+BOOST_AUTO_TEST_CASE(test_find_or_integer)
 {
     {
-        toml::value v = toml::table{{"num", 42}};
-        CHECK_EQ(42u, toml::find_or(v, "num", 0u));
-        CHECK_EQ(0u , toml::find_or(v, "foo", 0u));
+        toml::value v{{"num", 42}};
+        BOOST_TEST(42u == toml::find_or(v, "num", 0u));
+        BOOST_TEST(0u ==  toml::find_or(v, "foo", 0u));
     }
     {
-        toml::value v = toml::table{{"num", 42}};
+        toml::value v{{"num", 42}};
         const auto moved = toml::find_or(std::move(v), "num", 0u);
-        CHECK_EQ(42u, moved);
+        BOOST_TEST(42u == moved);
     }
     {
-        toml::value v = toml::table{{"num", 42}};
+        toml::value v{{"num", 42}};
         const auto moved = toml::find_or(std::move(v), "foo", 0u);
-        CHECK_EQ(0u,  moved);
+        BOOST_TEST(0u ==  moved);
     }
 }
 
-TEST_CASE("testing find_or; converting to a floating")
+BOOST_AUTO_TEST_CASE(test_find_or_floating)
 {
     {
-        toml::value v1 = toml::table{{"key", 42}};
-        toml::value v2 = toml::table{{"key", 3.14}};
-        CHECK_EQ(2.71f, toml::find_or(v1, "key", 2.71f));
+        toml::value v1{{"key", 42}};
+        toml::value v2{{"key", 3.14}};
+        BOOST_TEST(2.71f == toml::find_or(v1, "key", 2.71f));
         const double ref(3.14);
-        CHECK_EQ(static_cast<float>(ref), toml::find_or(v2, "key", 2.71f));
+        BOOST_TEST(static_cast<float>(ref) == toml::find_or(v2, "key", 2.71f));
     }
     {
-        toml::value v1 = toml::table{{"key", 42}};
-        toml::value v2 = toml::table{{"key", 3.14}};
+        toml::value v1{{"key", 42}};
+        toml::value v2{{"key", 3.14}};
         const auto moved1 = toml::find_or(std::move(v1), "key", 2.71f);
         const auto moved2 = toml::find_or(std::move(v2), "key", 2.71f);
-        CHECK_EQ(2.71f, moved1);
+        BOOST_TEST(2.71f == moved1);
         const double ref(3.14);
-        CHECK_EQ(static_cast<float>(ref), moved2);
+        BOOST_TEST(static_cast<float>(ref) == moved2);
     }
 }
 
-TEST_CASE("testing find_or; converting to a string")
+BOOST_AUTO_TEST_CASE(test_find_or_string)
 {
     {
         toml::value v1 = toml::table{{"key", "foobar"}};
@@ -343,21 +395,21 @@ TEST_CASE("testing find_or; converting to a string")
         std::string       s1("bazqux");
         const std::string s2("bazqux");
 
-        CHECK_EQ("foobar", toml::find_or(v1, "key", s1));
-        CHECK_EQ("bazqux", toml::find_or(v2, "key", s1));
+        BOOST_TEST("foobar" == toml::find_or(v1, "key", s1));
+        BOOST_TEST("bazqux" == toml::find_or(v2, "key", s1));
 
         std::string& v1r = toml::find_or(v1, "key", s1);
         std::string& s1r = toml::find_or(v2, "key", s1);
 
-        CHECK_EQ("foobar", v1r);
-        CHECK_EQ("bazqux", s1r);
+        BOOST_TEST("foobar" == v1r);
+        BOOST_TEST("bazqux" == s1r);
 
-        CHECK_EQ("foobar", toml::find_or(v1, "key", s2));
-        CHECK_EQ("bazqux", toml::find_or(v2, "key", s2));
+        BOOST_TEST("foobar" == toml::find_or(v1, "key", s2));
+        BOOST_TEST("bazqux" == toml::find_or(v2, "key", s2));
 
-        CHECK_EQ("foobar", toml::find_or(std::move(v1), "key", std::move(s1)));
+        BOOST_TEST("foobar" == toml::find_or(std::move(v1), "key", std::move(s1)));
         s1 = "bazqux"; // restoring moved value
-        CHECK_EQ("bazqux", toml::find_or(std::move(v2), "key", std::move(s1)));
+        BOOST_TEST("bazqux" == toml::find_or(std::move(v2), "key", std::move(s1)));
     }
     {
         toml::value v1 = toml::table{{"key", "foobar"}};
@@ -368,8 +420,8 @@ TEST_CASE("testing find_or; converting to a string")
         const auto moved1 = toml::find_or(std::move(v1), "key", s1);
         const auto moved2 = toml::find_or(std::move(v2), "key", s1);
 
-        CHECK_EQ("foobar", moved1);
-        CHECK_EQ("bazqux", moved2);
+        BOOST_TEST("foobar" == moved1);
+        BOOST_TEST("bazqux" == moved2);
     }
     {
         toml::value v1 = toml::table{{"key", "foobar"}};
@@ -381,8 +433,8 @@ TEST_CASE("testing find_or; converting to a string")
         const auto moved1 = toml::find_or(std::move(v1), "key", std::move(s1));
         const auto moved2 = toml::find_or(std::move(v2), "key", std::move(s2));
 
-        CHECK_EQ("foobar", moved1);
-        CHECK_EQ("bazqux", moved2);
+        BOOST_TEST("foobar" == moved1);
+        BOOST_TEST("bazqux" == moved2);
     }
 
     // string literal
@@ -390,12 +442,12 @@ TEST_CASE("testing find_or; converting to a string")
         toml::value v1 = toml::table{{"key", "foobar"}};
         toml::value v2 = toml::table{{"key",42}};
 
-        CHECK_EQ("foobar", toml::find_or(v1, "key", "bazqux"));
-        CHECK_EQ("bazqux", toml::find_or(v2, "key", "bazqux"));
+        BOOST_TEST("foobar" == toml::find_or(v1, "key", "bazqux"));
+        BOOST_TEST("bazqux" == toml::find_or(v2, "key", "bazqux"));
 
-        const auto lit = "bazqux";
-        CHECK_EQ("foobar", toml::find_or(v1, "key", lit));
-        CHECK_EQ("bazqux", toml::find_or(v2, "key", lit));
+        const char* lit = "bazqux";
+        BOOST_TEST("foobar" == toml::find_or(v1, "key", lit));
+        BOOST_TEST("bazqux" == toml::find_or(v2, "key", lit));
     }
     {
         toml::value v1 = toml::table{{"key", "foobar"}};
@@ -404,8 +456,8 @@ TEST_CASE("testing find_or; converting to a string")
         const auto moved1 = toml::find_or(std::move(v1), "key", "bazqux");
         const auto moved2 = toml::find_or(std::move(v2), "key", "bazqux");
 
-        CHECK_EQ("foobar", moved1);
-        CHECK_EQ("bazqux", moved2);
+        BOOST_TEST("foobar" == moved1);
+        BOOST_TEST("bazqux" == moved2);
     }
     {
         toml::value v1 = toml::table{{"key", "foobar"}};
@@ -415,261 +467,72 @@ TEST_CASE("testing find_or; converting to a string")
         const auto moved1 = toml::find_or(std::move(v1), "key", lit);
         const auto moved2 = toml::find_or(std::move(v2), "key", lit);
 
-        CHECK_EQ("foobar", moved1);
-        CHECK_EQ("bazqux", moved2);
+        BOOST_TEST("foobar" == moved1);
+        BOOST_TEST("bazqux" == moved2);
     }
+
 }
 
-TEST_CASE("testing find_or; converting to a map")
+BOOST_AUTO_TEST_CASE(test_find_or_map)
 {
     using map_type = std::map<std::string, std::string>;
     {
-        const toml::value v1 = toml::table{
-            {"key", toml::table{{"key", "value"}}}
+        const toml::value v1{
+            {"key", {{"key", "value"}}}
         };
 
         const auto key  = toml::find_or(v1, "key",  map_type{});
         const auto key2 = toml::find_or(v1, "key2", map_type{});
 
-        CHECK_UNARY(!key.empty());
-        CHECK_UNARY(key2.empty());
+        BOOST_TEST(!key.empty());
+        BOOST_TEST(key2.empty());
 
-        CHECK_EQ(key.size()   , 1u);
-        CHECK_EQ(key.at("key"), "value");
+        BOOST_TEST(key.size()    == 1u);
+        BOOST_TEST(key.at("key") == "value");
     }
     {
-        toml::value v1 = toml::table{
-            {"key", toml::table{{"key", "value"}}}
+        toml::value v1{
+            {"key", {{"key", "value"}}}
         };
 
         const auto key  = toml::find_or<map_type>(v1, "key",  map_type{});
         const auto key2 = toml::find_or<map_type>(v1, "key2", map_type{});
 
-        CHECK_UNARY(!key.empty());
-        CHECK_UNARY(key2.empty());
+        BOOST_TEST(!key.empty());
+        BOOST_TEST(key2.empty());
 
-        CHECK_EQ(key.size()   , 1u);
-        CHECK_EQ(key.at("key"), "value");
+        BOOST_TEST(key.size()    == 1u);
+        BOOST_TEST(key.at("key") == "value");
     }
 
     {
-        toml::value v1 = toml::table{
-            {"key", toml::table{{"key", "value"}}}
+        toml::value v1{
+            {"key", {{"key", "value"}}}
         };
         toml::value v2(v1);
 
         const auto key  = toml::find_or(std::move(v1), "key",  map_type{});
         const auto key2 = toml::find_or(std::move(v2), "key2", map_type{});
 
-        CHECK_UNARY(!key.empty());
-        CHECK_UNARY(key2.empty());
+        BOOST_TEST(!key.empty());
+        BOOST_TEST(key2.empty());
 
-        CHECK_EQ(key.size()   , 1u);
-        CHECK_EQ(key.at("key"), "value");
+        BOOST_TEST(key.size()    == 1u);
+        BOOST_TEST(key.at("key") == "value");
     }
     {
-        toml::value v1 = toml::table{
-            {"key", toml::table{{"key", "value"}}}
+        toml::value v1{
+            {"key", {{"key", "value"}}}
         };
         toml::value v2(v1);
 
         const auto key  = toml::find_or<map_type>(std::move(v1), "key",  map_type{});
         const auto key2 = toml::find_or<map_type>(std::move(v2), "key2", map_type{});
 
-        CHECK_UNARY(!key.empty());
-        CHECK_UNARY(key2.empty());
+        BOOST_TEST(!key.empty());
+        BOOST_TEST(key2.empty());
 
-        CHECK_EQ(key.size()   , 1u);
-        CHECK_EQ(key.at("key"), "value");
-    }
-}
-
-TEST_CASE("testing find_or(val, keys..., opt)")
-{
-    // &, using type deduction
-    {
-        toml::value v(
-            toml::table{ {"foo",
-                toml::table{ {"bar",
-                    toml::table{ {"baz",
-                        "qux"
-                    } }
-                } }
-            } }
-        );
-        std::string opt("hoge");
-
-        auto& v1 = toml::find_or(v, "foo", "bar", "baz", opt);
-        auto& v2 = toml::find_or(v, "foo", "bar", "qux", opt);
-
-        CHECK_EQ(v1, "qux");
-        CHECK_EQ(v2, "hoge");
-
-        // v1 and v2 are mutable
-        v1 = "hoge";
-        v2 = "fuga";
-
-        CHECK_EQ(v1, "hoge");
-        CHECK_EQ(v2, "fuga");
-    }
-    // the same with deeper table
-    {
-        toml::value v(
-            toml::table{ {"A",
-            toml::table{ {"B",
-            toml::table{ {"C",
-            toml::table{ {"D",
-            toml::table{ {"E",
-            toml::table{ {"F",
-                "foo"
-            } }
-            } }
-            } }
-            } }
-            } }
-            } }
-        );
-        std::string opt("bar");
-
-        auto& v1 = toml::find_or(v, "A", "B", "C", "D", "E", "F", opt);
-        auto& v2 = toml::find_or(v, "A", "B", "C", "D", "E", "G", opt);
-
-        CHECK_EQ(v1, "foo");
-        CHECK_EQ(v2, "bar");
-
-        // v1 and v2 are mutable
-        v1 = "hoge";
-        v2 = "fuga";
-
-        CHECK_EQ(v1, "hoge");
-        CHECK_EQ(v2, "fuga");
-    }
-
-    // const&, type deduction
-    {
-        const toml::value v(
-            toml::table{ {"foo",
-                toml::table{ {"bar",
-                    toml::table{ {"baz",
-                        "qux"
-                    } }
-                } }
-            } }
-        );
-        std::string opt("hoge");
-
-        const auto& v1 = toml::find_or(v, "foo", "bar", "baz", opt);
-        const auto& v2 = toml::find_or(v, "foo", "bar", "qux", opt);
-
-        CHECK_EQ(v1, "qux");
-        CHECK_EQ(v2, "hoge");
-    }
-    {
-        toml::value v(
-            toml::table{ {"A",
-            toml::table{ {"B",
-            toml::table{ {"C",
-            toml::table{ {"D",
-            toml::table{ {"E",
-            toml::table{ {"F",
-                "foo"
-            } }
-            } }
-            } }
-            } }
-            } }
-            } }
-        );
-        std::string opt("bar");
-
-        const auto& v1 = toml::find_or(v, "A", "B", "C", "D", "E", "F", opt);
-        const auto& v2 = toml::find_or(v, "A", "B", "C", "D", "E", "G", opt);
-
-        CHECK_EQ(v1, "foo");
-        CHECK_EQ(v2, "bar");
-    }
-
-    // explicitly specify type, doing type conversion
-    {
-        const toml::value v(
-            toml::table{ {"foo",
-                toml::table{ {"bar",
-                    toml::table{ {"baz",
-                        42
-                    } }
-                } }
-            } }
-        );
-        int opt = 6 * 9;
-
-        auto v1 = toml::find_or<int>(v, "foo", "bar", "baz", opt);
-        auto v2 = toml::find_or<int>(v, "foo", "bar", "qux", opt);
-
-        CHECK_EQ(v1, 42);
-        CHECK_EQ(v2, 6*9);
-    }
-    {
-        toml::value v(
-            toml::table{ {"A",
-            toml::table{ {"B",
-            toml::table{ {"C",
-            toml::table{ {"D",
-            toml::table{ {"E",
-            toml::table{ {"F",
-                42
-            } }
-            } }
-            } }
-            } }
-            } }
-            } }
-        );
-        int opt = 6 * 9;
-
-        auto v1 = toml::find_or<int>(v, "A", "B", "C", "D", "E", "F", opt);
-        auto v2 = toml::find_or<int>(v, "A", "B", "C", "D", "E", "G", opt);
-
-        CHECK_EQ(v1, 42);
-        CHECK_EQ(v2, 6*9);
-    }
-
-    // the value exists, but type is different from the expected.
-    {
-        const toml::value v(
-            toml::table{ {"foo",
-                toml::table{ {"bar",
-                    toml::table{ {"baz",
-                        42
-                    } }
-                } }
-            } }
-        );
-        auto v1 = toml::find_or<std::string>(v, "foo", "bar", "baz", "hoge");
-        auto v2 = toml::find_or<double     >(v, "foo", "bar", "baz", 3.14);
-
-        CHECK_EQ(v1, "hoge");
-        CHECK_EQ(v2, 3.14);
-    }
-    {
-        const toml::value v(
-            toml::table{ {"A",
-            toml::table{ {"B",
-            toml::table{ {"C",
-            toml::table{ {"D",
-            toml::table{ {"E",
-            toml::table{ {"F",
-                42
-            } }
-            } }
-            } }
-            } }
-            } }
-            } }
-        );
-        auto v1 = toml::find_or<std::string>(v, "A", "B", "C", "D", "E", "F", "bar");
-        auto v2 = toml::find_or<double     >(v, "A", "B", "C", "D", "E", "F", 3.14);
-
-        CHECK_EQ(v1, "bar");
-        CHECK_EQ(v2, 3.14);
+        BOOST_TEST(key.size()    == 1u);
+        BOOST_TEST(key.at("key") == "value");
     }
 }

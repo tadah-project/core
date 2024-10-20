@@ -1,86 +1,121 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.5)
+enable_testing()
 
-# project_source_dir has not been set yet
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/toml11/version.hpp" TOML11_MAJOR_VERSION_STRING
-    REGEX "#define TOML11_VERSION_MAJOR ([0-9]+)")
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/toml11/version.hpp" TOML11_MINOR_VERSION_STRING
-    REGEX "#define TOML11_VERSION_MINOR ([0-9]+)")
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/include/toml11/version.hpp" TOML11_PATCH_VERSION_STRING
-    REGEX "#define TOML11_VERSION_PATCH ([0-9]+)")
+project(toml11 VERSION 3.8.1)
 
-string(REGEX REPLACE "#define TOML11_VERSION_MAJOR ([0-9]+)" "\\1" TOML11_VERSION_MAJOR "${TOML11_MAJOR_VERSION_STRING}")
-string(REGEX REPLACE "#define TOML11_VERSION_MINOR ([0-9]+)" "\\1" TOML11_VERSION_MINOR "${TOML11_MINOR_VERSION_STRING}")
-string(REGEX REPLACE "#define TOML11_VERSION_PATCH ([0-9]+)" "\\1" TOML11_VERSION_PATCH "${TOML11_PATCH_VERSION_STRING}")
+option(toml11_BUILD_TEST "Build toml tests" OFF)
+option(toml11_INSTALL "Install CMake targets during install step." ON)
+option(toml11_TEST_WITH_ASAN  "use LLVM address sanitizer" OFF)
+option(toml11_TEST_WITH_UBSAN "use LLVM undefined behavior sanitizer" OFF)
 
-project(toml11 LANGUAGES CXX VERSION "${TOML11_VERSION_MAJOR}.${TOML11_VERSION_MINOR}.${TOML11_VERSION_PATCH}")
-
-include(CTest) # to use ${BUILD_TESTING}
-
-option(TOML11_PRECOMPILE "precompile toml11 library" OFF)
-
-include(CMakeDependentOption)
-cmake_policy(PUSH)
-cmake_policy(SET CMP0127 OLD) # syntax of condition changed in 3.22
-cmake_dependent_option(TOML11_INSTALL "install toml11 library" ON
-    "${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME}" OFF)
-cmake_dependent_option(TOML11_BUILD_EXAMPLES "build toml11 examples" OFF
-    "${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME}" OFF)
-cmake_dependent_option(TOML11_BUILD_TESTS "build toml11 unit tests" OFF
-    "${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME}; ${BUILD_TESTING}" OFF)
-cmake_dependent_option(TOML11_BUILD_TOML_TESTS "build toml11 toml-test encoder & decoder" OFF
-    "${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME}" OFF)
-cmake_policy(POP)
-
-cmake_dependent_option(TOML11_TEST_WITH_ASAN  "build toml11 unit tests with asan" OFF
-    "${TOML11_BUILD_TESTS}" OFF)
-cmake_dependent_option(TOML11_TEST_WITH_UBSAN "build toml11 unit tests with ubsan" OFF
-    "${TOML11_BUILD_TESTS}" OFF)
-
-if(${TOML11_TEST_WITH_ASAN} AND ${TOML11_TEST_WITH_UBSAN})
-    message(FATAL_ERROR "trying to build tests with BOTH asan and ubsan")
-endif()
+option(TOML11_USE_UNRELEASED_TOML_FEATURES
+    "use features in toml-lang/toml master while testing" OFF)
 
 include(CheckCXXCompilerFlag)
-check_cxx_compiler_flag("-Wall"                 TOML11_COMPILER_SUPPORTS_WALL)
-check_cxx_compiler_flag("-Wextra"               TOML11_COMPILER_SUPPORTS_WEXTRA)
-check_cxx_compiler_flag("-Wpedantic"            TOML11_COMPILER_SUPPORTS_WPEDANTIC)
-check_cxx_compiler_flag("-Werror"               TOML11_COMPILER_SUPPORTS_WERROR)
-check_cxx_compiler_flag("-Wsign-conversion"     TOML11_COMPILER_SUPPORTS_WSIGN_CONVERSION)
-check_cxx_compiler_flag("-Wconversion"          TOML11_COMPILER_SUPPORTS_WCONVERSION)
-check_cxx_compiler_flag("-Wduplicated-cond"     TOML11_COMPILER_SUPPORTS_WDUPLICATED_COND)
-check_cxx_compiler_flag("-Wduplicated-branches" TOML11_COMPILER_SUPPORTS_WDUPLICATED_BRANCHES)
-check_cxx_compiler_flag("-Wlogical-op"          TOML11_COMPILER_SUPPORTS_WLOGICAL_OP)
-check_cxx_compiler_flag("-Wdouble-promotion"    TOML11_COMPILER_SUPPORTS_WDOUBLE_PROMOTION)
-check_cxx_compiler_flag("-Wrange-loop-analysis" TOML11_COMPILER_SUPPORTS_WRANGE_LOOP_ANALYSIS)
-check_cxx_compiler_flag("-Wundef"               TOML11_COMPILER_SUPPORTS_WUNDEF)
-check_cxx_compiler_flag("-Wshadow"              TOML11_COMPILER_SUPPORTS_WSHADOW)
-
-include(GNUInstallDirs)
-set(TOML11_INSTALL_CMAKE_DIR   ${CMAKE_INSTALL_LIBDIR}/cmake/toml11)
-set(TOML11_INSTALL_INCLUDE_DIR ${CMAKE_INSTALL_INCLUDEDIR})
-set(TOML11_CONFIG_DIR          ${CMAKE_CURRENT_BINARY_DIR}/cmake)
-set(TOML11_CONFIG              ${TOML11_CONFIG_DIR}/toml11Config.cmake)
-set(TOML11_CONFIG_VERSION      ${TOML11_CONFIG_DIR}/toml11ConfigVersion.cmake)
-
-# root project?
-if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+if("${CMAKE_VERSION}" VERSION_GREATER 3.1)
+    set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Boolean specifying whether compiler specific extensions are requested.")
     if(NOT DEFINED CMAKE_CXX_STANDARD)
-        set(CMAKE_CXX_STANDARD 11)
+        message(FATAL_ERROR "CMAKE_CXX_STANDARD is not defined. \
+The C++ standard whose features are requested to *build* all targets. \
+Remember that toml11 is a header only library that does NOT require compilation to use.")
     endif()
-    if(NOT DEFINED CMAKE_CXX_EXTENSIONS)
-        set(CMAKE_CXX_EXTENSIONS OFF)
-    endif()
-    if(NOT DEFINED CMAKE_CXX_STANDARD_REQUIRED)
-        set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    endif()
-
-    if(${TOML11_BUILD_TESTS} OR ${TOML11_BUILD_TOML_TESTS})
-        add_subdirectory(tests)
-    endif()
-
-    if(${TOML11_BUILD_EXAMPLES})
-        add_subdirectory(examples)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Boolean describing whether the value of CXX_STANDARD is a requirement.")
+else()
+    # Manually check for C++11 compiler flag.
+    CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+    CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+    CHECK_CXX_COMPILER_FLAG("-std=gnu++11" COMPILER_SUPPORTS_GNU11)
+    CHECK_CXX_COMPILER_FLAG("-std=gnu++0x" COMPILER_SUPPORTS_GNU0X)
+    if(COMPILER_SUPPORTS_CXX11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    elseif(COMPILER_SUPPORTS_CXXOX)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+    elseif(COMPILER_SUPPORTS_GNU11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+    elseif(COMPILER_SUPPORTS_GNU0X)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++0x")
+    else()
+        if(MSVC)
+            if(MSVC_VERSION LESS 1900)
+                message(SEND_ERROR "MSVC < 14.0 is not supported. Please update your compiler or use mingw")
+            endif()
+        else()
+            message(SEND_ERROR "The ${CMAKE_CXX_COMPILER} compiler lacks C++11 support. Use another compiler.")
+        endif()
     endif()
 endif()
 
-add_subdirectory(src)
+if(MSVC)
+#     add_definitions("/Zc:__cplusplus")  # define __cplusplus value correctly
+    add_definitions("/utf-8")           # enable to use u8"" literal
+    if(MSVC_VERSION LESS 1910)
+        message(STATUS "MSVC < 1910. DEFINE_CONVERSION_NON_INTRUSIVE is disabled")
+        add_definitions(-DTOML11_WITHOUT_DEFINE_NON_INTRUSIVE)
+    elseif(MSVC_VERSION LESS 1920)
+        add_definitions("/experimental:preprocessor") # MSVC 2017
+    else()
+        add_definitions("/Zc:preprocessor") # MSVC 2019
+    endif()
+endif()
+
+# Set some common directories
+include(GNUInstallDirs)
+set(toml11_install_cmake_dir         ${CMAKE_INSTALL_LIBDIR}/cmake/toml11)
+set(toml11_install_include_dir       ${CMAKE_INSTALL_INCLUDEDIR})
+set(toml11_config_dir                ${CMAKE_CURRENT_BINARY_DIR}/cmake/)
+set(toml11_config                    ${toml11_config_dir}/toml11Config.cmake)
+set(toml11_config_version            ${toml11_config_dir}/toml11ConfigVersion.cmake)
+
+add_library(toml11 INTERFACE)
+target_include_directories(toml11 INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${toml11_install_include_dir}>
+)
+add_library(toml11::toml11 ALIAS toml11)
+
+# Write config and version config files
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${toml11_config_version}
+    VERSION ${toml11_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+if (toml11_INSTALL)
+    configure_package_config_file(
+        cmake/toml11Config.cmake.in
+        ${toml11_config}
+        INSTALL_DESTINATION ${toml11_install_cmake_dir}
+        PATH_VARS toml11_install_cmake_dir
+    )
+
+    # Install config files
+    install(FILES ${toml11_config} ${toml11_config_version}
+        DESTINATION ${toml11_install_cmake_dir}
+    )
+
+    # Install header files
+    install(
+        FILES toml.hpp
+        DESTINATION "${toml11_install_include_dir}"
+    )
+    install(
+        DIRECTORY "toml"
+        DESTINATION "${toml11_install_include_dir}"
+        FILES_MATCHING PATTERN "*.hpp"
+    )
+
+    # Export targets and install them
+    install(TARGETS toml11
+        EXPORT toml11Targets
+    )
+    install(EXPORT toml11Targets
+        FILE toml11Targets.cmake
+        DESTINATION ${toml11_install_cmake_dir}
+        NAMESPACE toml11::
+    )
+endif()
+
+if (toml11_BUILD_TEST)
+    add_subdirectory(tests)
+endif ()
