@@ -75,10 +75,11 @@ if(TADAH_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
 
-#set(TADAH_CORE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include/tadah/CORE)
-#file(GLOB CORE_H CONFIGURE_DEPENDS "*.h" "*.hpp")
-#install(FILES ${CORE_H} DESTINATION ${TADAH_CORE_INSTALL_DIR})
-#install(FILES lib/cmrc-master/cmrc/cmrc.hpp DESTINATION ${CMAKE_INSTALL_PREFIX}/include/cmrc)
-#install(DIRECTORY config DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp|.+.toml)")
-#install(DIRECTORY lib DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
-#install(DIRECTORY utils DESTINATION ${TADAH_CORE_INSTALL_DIR} FILES_MATCHING REGEX "(.+.h|.+.hpp)")
+# Installation rules
+install(TARGETS tadah.core
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+install(DIRECTORY include/
+    DESTINATION include
+)
