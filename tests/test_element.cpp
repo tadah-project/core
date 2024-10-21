@@ -1,5 +1,5 @@
 #include "catch2/catch.hpp"
-#include "../element.h"
+#include <tadah/core/element.h>
 #include <sstream>
 
 TEST_CASE( "Testing Element class constructor", "[element]" ) {

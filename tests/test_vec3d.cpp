@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
-#include "../core_types.h"
-#include "../vec3d.h"
+#include <tadah/core/core_types.h>
+#include <tadah/core/vec3d.h>
 #include <iomanip>
 
 TEST_CASE( "Testing Vec3d()", "[maths]" ) {

@@ -1,5 +1,6 @@
 #include "catch2/catch.hpp"
-#include "../config/config.h"
+#include <tadah/core/config.h>
+
 #include <filesystem>
 #include <sstream>
 

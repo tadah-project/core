@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
-#include "../utils/utils.h"
-#include "../core_types.h"
+#include <tadah/core/utils.h>
+#include <tadah/core/core_types.h>
 #include <iomanip>
 
 TEST_CASE( "Testing logspace() 1", "[utils]" ) {
