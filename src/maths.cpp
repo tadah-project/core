@@ -4,23 +4,18 @@
 // aed_type2 class
 
 aed_type2::aed_type2(double* arr, size_t size, size_t stride)
- {
-     stride_ = stride;
-     size_   = size;
-     data_   = arr;
- }
-
-aed_type2::aed_type2(double* arr, size_t size, bool copy, size_t stride)
 {
-    stride_= stride;
-    size_ = size;
-    if (copy) {
-        data_ = (double*)malloc(stride_*size_*sizeof(data_));
-        std::memcpy(data_, arr, stride_*size_*sizeof(data_));
-    }
-    else {
-        data_ = arr;
-    }
+  stride_ = stride;
+  size_   = size;
+  data_   = arr;
+}
+
+aed_type2::aed_type2(const double* arr, size_t size, size_t stride)
+{
+  stride_= stride;
+  size_ = size;
+  data_ = (double*)malloc(stride_*size_*sizeof(data_));
+  std::memcpy(data_, arr, stride_*size_*sizeof(data_));
 }
 
 // fd_type

@@ -101,10 +101,9 @@ public:
   /** This constructor does not allocate memory */
   aed_type2(double* arr, size_t size, size_t stride=1);
 
-  /** Allocated if copy is true otherwise provides a view to arr */
-  aed_type2(double* arr, size_t size, bool copy, size_t stride=1);
+  /** This constructor does allocate memory */
+  aed_type2(const double* arr, size_t size, size_t stride=1);
 
-  //aed_type2(double* arr, size_t size, bool copy=true, size_t stride=1);
   inline double &operator[](size_t i)
   {
     return data_[i*stride_];
@@ -688,6 +687,11 @@ public:
     for (size_t i=0; i<rows(); ++i) {
       temp(i)=data()[i+start];
     }
+    return temp;
+  }
+  inline aed_type2 row(size_t r) const {
+    size_t stride = rows();
+    aed_type2 temp(&m_.data()[r], cols(), stride);
     return temp;
   }
   //  template <typename... T>
