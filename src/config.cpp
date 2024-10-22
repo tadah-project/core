@@ -231,7 +231,10 @@ void Config::clear() {
 std::vector<char> Config::serialize() {
     std::vector<char> buffer;
 
-    for (const auto& [key, vec] : c) {
+    for (const auto& item : c) {
+        const std::string& key = item.first;
+        const std::vector<std::string>& vec = item.second;
+
         size_t keySize = key.size();
         buffer.insert(buffer.end(),
                       reinterpret_cast<const char*>(&keySize),
