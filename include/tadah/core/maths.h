@@ -587,6 +587,18 @@ public:
     aed_type2 temp(&m_.data()[start], rows());
     return temp;
   }
+  /** Provide a copy of the r row of the matrix */
+  inline aed_type2 col(size_t c) const {
+    size_t start = rows()*c;
+    aed_type2 temp(&m_.data()[start], rows());
+    return temp;
+  }
+  /** Provide a copy of the c column of the matrix */
+  inline aed_type2 row(size_t r) const {
+    size_t stride = rows();
+    aed_type2 temp(&m_.data()[r], cols(), stride);
+    return temp;
+  }
   inline void set_zero() {
     for (size_t i=0;i<m_.size();++i) {
       m_[i]=0;
@@ -679,20 +691,6 @@ public:
   {
     double EPS = std::numeric_limits<double>::epsilon();
     return this->isApprox(v1, EPS);
-  }
-  inline aed_type2 col(size_t c) const {
-    size_t start = rows()*c;
-
-    aed_type2 temp(rows());
-    for (size_t i=0; i<rows(); ++i) {
-      temp(i)=data()[i+start];
-    }
-    return temp;
-  }
-  inline aed_type2 row(size_t r) const {
-    size_t stride = rows();
-    aed_type2 temp(&m_.data()[r], cols(), stride);
-    return temp;
   }
   //  template <typename... T>
   //      friend Matrix_Base<D> operator<<(Matrix_Base<D> &mat,T... list)
