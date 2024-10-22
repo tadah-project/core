@@ -3,6 +3,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <sstream>
+#include <string>
 #include <limits>
 
 class Vec3d {
