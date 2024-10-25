@@ -55,7 +55,10 @@ cmrc_add_resource_library(
 )
 
 file(GLOB CORE_SRC CONFIGURE_DEPENDS "src/*.cpp")
-add_library(tadah.core ${CORE_SRC})
+add_library(tadah.core 
+    ${CORE_SRC}
+    $<TARGET_OBJECTS:config-resources>
+    )
 
 target_include_directories(tadah.core PUBLIC include)
 target_include_directories(tadah.core PUBLIC ${CMAKE_BINARY_DIR}/_cmrc/include)
