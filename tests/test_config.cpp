@@ -1,6 +1,8 @@
 #include "catch2/catch.hpp"
-#include "../config/config.h"
-#include <filesystem>
+#include <tadah/core/config.h>
+
+#include <dirent.h>
+#include <sys/types.h>
 #include <sstream>
 
 
@@ -200,16 +202,35 @@ TEST_CASE( "Testing Config check()", "[config]" ) {
 
 }
 TEST_CASE( "Testing Config check_for_training()", "[config]" ) {
-  for (auto const& valid_config:
-  std::filesystem::directory_iterator("tests_data/valid_train_configs")) 
-  {
-    REQUIRE_NOTHROW(Config(valid_config.path().string()).check_for_training());
+
+  std::string path = "tests_data/valid_train_configs";
+  DIR* dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      std::string filename(entry->d_name);
+      if (filename != "." && filename != "..") {
+        REQUIRE_NOTHROW(Config(path+"/"+filename).check_for_training());
+      }
+    }
+    closedir(dir);
+  } else {
+    std::cerr << "Failed to open directory." << std::endl;
   }
 
-  for (auto const& invalid_config:
-  std::filesystem::directory_iterator("tests_data/invalid_train_configs")) 
-  {
-    REQUIRE_THROWS(Config(invalid_config.path().string()).check_for_training());
+  path = "tests_data/invalid_train_configs";
+  dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      std::string filename(entry->d_name);
+      if (filename != "." && filename != "..") {
+        REQUIRE_THROWS(Config(path+"/"+filename).check_for_training());
+      }
+    }
+    closedir(dir);
+  } else {
+    std::cerr << "Failed to open directory." << std::endl;
   }
 
   Config c;
@@ -252,15 +273,34 @@ TEST_CASE( "Testing Config check_for_training()", "[config]" ) {
   c.add("RCUTMAX",10);
 }
 TEST_CASE( "Testing Config read()", "[config_read]" ) {
-  for (auto const& valid_config:
-  std::filesystem::directory_iterator("tests_data/valid_configs")) 
-  {
-    Config(valid_config.path().string());
+  std::string path = "tests_data/valid_configs";
+  DIR* dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      std::string filename(entry->d_name);
+      if (filename != "." && filename != "..") {
+        REQUIRE_NOTHROW(Config(path+"/"+filename));
+      }
+    }
+    closedir(dir);
+  } else {
+    std::cerr << "Failed to open directory." << std::endl;
   }
-  for (auto const& invalid_config :
-  std::filesystem::directory_iterator("tests_data/invalid_configs")) 
-  {
-    REQUIRE_THROWS(Config(invalid_config.path().string()));
+
+  path = "tests_data/invalid_configs";
+  dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      std::string filename(entry->d_name);
+      if (filename != "." && filename != "..") {
+        REQUIRE_THROWS(Config(path+"/"+filename));
+      }
+    }
+    closedir(dir);
+  } else {
+    std::cerr << "Failed to open directory." << std::endl;
   }
 
   Config c("tests_data/valid_configs/valid_config1");
@@ -306,13 +346,23 @@ TEST_CASE( "Testing Config <<", "[config]" ) {
                Contains("ALPHA"+space+"1"));
 }
 TEST_CASE( "Testing Config add", "[config]" ) {
-  for (auto const& valid_config:
-  std::filesystem::directory_iterator("tests_data/valid_configs")) 
-  {
-    Config c1(valid_config.path().string());
-    Config c2;
-    c2.clear();
-    c2.add(valid_config.path().string());
-    REQUIRE(c1==c2);
+  std::string path = "tests_data/valid_configs";
+  DIR* dir = opendir(path.c_str());
+  if (dir) {
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+      std::string filename(entry->d_name);
+      if (filename != "." && filename != "..") {
+        REQUIRE_NOTHROW(Config(path+"/"+filename));
+        Config c1(Config(path+"/"+filename));
+        Config c2;
+        c2.clear();
+        c2.add(path+"/"+filename);
+        REQUIRE(c1==c2);
+      }
+    }
+    closedir(dir);
+  } else {
+    std::cerr << "Failed to open directory." << std::endl;
   }
 }

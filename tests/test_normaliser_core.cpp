@@ -1,6 +1,6 @@
 #include "catch2/catch.hpp"
-#include "../normaliser_core.h"
-#include "../core_types.h"
+#include <tadah/core/normaliser_core.h>
+#include <tadah/core/core_types.h>
 
 TEST_CASE( "Testing Normaliser_Core()", "[create]" ) {
     REQUIRE_NOTHROW(Normaliser_Core());
