@@ -58,6 +58,7 @@ file(GLOB CORE_SRC CONFIGURE_DEPENDS "src/*.cpp")
 add_library(tadah.core ${CORE_SRC})
 
 target_include_directories(tadah.core PUBLIC include)
+target_include_directories(tadah.core PUBLIC ${CMAKE_BINARY_DIR}/_cmrc/include)
 
 if(TADAH_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)
@@ -81,5 +82,6 @@ install(TARGETS tadah.core
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib)
 install(DIRECTORY include/
+${CMAKE_BINARY_DIR}/_cmrc/include/
     DESTINATION include
 )
