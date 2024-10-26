@@ -140,33 +140,39 @@ bool Config::check_for_predict() {
 bool Config::check_pot_file() {
     return true;
 }
-
 void Config::set_defaults() {
-    for (const auto& kv : tdc.as_table()) {
-        auto k = kv.first;
-        auto v = kv.second;
-      std::string key = k;
-      auto def  = toml::find(v, "default");
+  for (const auto& kv : tdc.as_table()) {
+    auto k = kv.first;
+    auto v = kv.second;
+    std::string key = k;
 
-      for (auto &el : def.as_array())
-      {
-          if (!c.count(key)) {
-              if (el.is_string()) {
-                  c[key].push_back(el.as_string());
-              }
-              if (el.is_integer()) {
-                  c[key].push_back(to_string(el.as_integer()));
-              }
-              if (el.is_boolean()) {
-                  c[key].push_back(el.as_boolean() ? "true" : "false");
-              }
-              if (el.is_floating()) {
-                  c[key].push_back(to_string(el.as_floating(),16));
-              }
-          }
-      }
+    if (c.count(key) && !c[key].empty()) { 
+      continue;
+    } // the value is already set
 
+    if (!v.contains("default") || !v["default"].is_array()) {
+      continue;
     }
+
+    auto def  = toml::find(v, "default").as_array();
+
+    if (def.empty()) continue;
+
+    for (auto &el : def) {
+      if (el.is_string()) {
+        c[key].push_back(el.as_string());
+      }
+      if (el.is_integer()) {
+        c[key].push_back(to_string(el.as_integer()));
+      }
+      if (el.is_boolean()) {
+        c[key].push_back(el.as_boolean() ? "true" : "false");
+      }
+      if (el.is_floating()) {
+        c[key].push_back(to_string(el.as_floating(),16));
+      }
+    }
+  }
 }
 void Config::clear_internal_keys() {
     for (auto it = c.cbegin(); it != c.cend() /* not hoisted */; /* no increment */)

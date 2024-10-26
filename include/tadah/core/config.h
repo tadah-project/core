@@ -319,27 +319,31 @@ private:
   friend std::ostream& operator<<(std::ostream& os, const Config& config)
   {
     std::string space="     ";
-    for (auto pair : config.c) {
-      const auto& allowed_key = toml::find(config.tdc, pair.first);
-      int valN  = toml::find<int>(allowed_key, "value_N",0);
-      if (valN > 1) {
-        for (auto v : pair.second) {
-          os << pair.first << space << v << std::endl;
+    for (auto p : config.c) {
+      auto value = toml::find(config.tdc, p.first);
+
+      int valN = 0;
+      if (value.contains("value_N") && value["value_N"].is_array()) {
+        const auto& array = value["value_N"].as_array();
+        if (!array.empty() && array.front().is_integer()) {
+          valN = array.front().as_integer();
         }
       }
-      else if (valN < 1) {
-        os << pair.first;
-        for (auto v : pair.second) {
+
+      if (valN > 0) {
+        for (auto v : p.second) {
+          os << p.first << space << v << std::endl;
+        }
+      }
+      else if (valN < 0) {
+        os << p.first;
+        for (auto v : p.second) {
           os << space << v;
         }
         os << std::endl;
       }
       else {
-        os << pair.first;
-        for (auto v : pair.second) {
-          os << space << v;
-        }
-        os << std::endl;
+        continue;
       }
     }
     return os;
