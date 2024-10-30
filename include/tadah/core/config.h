@@ -295,7 +295,6 @@ private:
     m["SIZE2B"]=1;
     m["SIZE3B"]=1;
     m["SIZEMB"]=1;
-    m["ATOMS"]=-std::numeric_limits<int>::max();   // TODO Do we need it?
     m["RCUTMAX"]=1;
     m["ESTDEV"]=1;
     m["FSTDEV"]=1;
