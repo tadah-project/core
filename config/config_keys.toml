@@ -511,28 +511,6 @@ description  =  """Basis vectors used by non-linear KRR model."""
 examples     =  []
 is_internal  =   [false]
 
-[CHECKPRESS]
-default      =   []
-value_type   =   ['bool']
-value_format =   ['true | false']
-value_N      =   [1]
-description  =  """This KEY is used for debugging purposes. \
-When true LAMMPS interface will throw an error on NaN pressure. \
-This KEY is only valid when potential file is used with LAMMPS. \
-It has no effect on training or prediction."""
-examples     =  []
-is_internal  =   [false]
-
-[HPOEVERY]
-default      =   []
-value_type   =   ['string','int']
-value_format =   ['DIR','N']
-value_N      =   [-2]
-description  =  """This KEY is used during hyperparameter optimisation with HPO. \
-It prints potential file every N steps to directory DIR."""
-examples     =  ['HPOEVERY potfiles 100']
-is_internal  =   [false]
-
 [DIMER]
 default      =   [false, 0, false]
 value_type   =   ['bool','double','bool']
