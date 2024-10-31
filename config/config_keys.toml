@@ -524,7 +524,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['double']
 value_format =   'N'
-value_N      =   [2147483647]
+value_N      =   [-2147483647]
 description  =  """Weights are sorted by the atomic number of the corresponding atom, with the lowest Z value first. \
 WATOMS.size()==ATOMS.size()"""
 examples     =  []
@@ -534,7 +534,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   'N'
-value_N      =   [2147483647]
+value_N      =   [-2147483647]
 description  =  """List of unique atoms sorted by Z. This key is set by the library. User should not set it."""
 examples     =  []
 is_internal  =   [false]

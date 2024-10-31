@@ -17,10 +17,10 @@ struct Element {
     }
 
   public:
-    char symbol[3];
+    std::string symbol;
     int Z;
     Element();
-    Element(const char *symbol_, const int Z_, bool check_=true);
+    Element(const std::string &symbol_, const int Z_, bool check_=true);
     bool operator==(const Element& other) const;
     bool operator<(const Element& other) const;
     bool operator>(const Element& other) const;
