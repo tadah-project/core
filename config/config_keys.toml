@@ -511,35 +511,31 @@ description  =  """Basis vectors used by non-linear KRR model."""
 examples     =  []
 is_internal  =   [false]
 
-[CHECKPRESS]
-default      =   []
-value_type   =   ['bool']
-value_format =   ['true | false']
-value_N      =   [1]
-description  =  """This KEY is used for debugging purposes. \
-When true LAMMPS interface will throw an error on NaN pressure. \
-This KEY is only valid when potential file is used with LAMMPS. \
-It has no effect on training or prediction."""
-examples     =  []
-is_internal  =   [false]
-
-[HPOEVERY]
-default      =   []
-value_type   =   ['string','int']
-value_format =   ['DIR','N']
-value_N      =   [-2]
-description  =  """<EXPERIMENTAL>. \
-This KEY is used during hyperparameter optimisation with HPO. \
-It prints potential file every N steps to directory DIR."""
-examples     =  ['HPOEVERY potfiles 100']
-is_internal  =   [false]
-
 [DIMER]
 default      =   [false, 0, false]
 value_type   =   ['bool','double','bool']
 value_format =   ['F', 'BOND_LENGTH','B']
 value_N      =   [-3]
 description  =  """Control for DIMER models. User should not modify this key"""
+examples     =  ['DIMER true 1.104 true']
+is_internal  =   [false]
+
+[WATOMS]
+default      =   []
+value_type   =   ['double']
+value_format =   'N'
+value_N      =   [-2147483647]
+description  =  """Weights are sorted by the atomic number of the corresponding atom, with the lowest Z value first. \
+WATOMS.size()==ATOMS.size()"""
+examples     =  []
+is_internal  =   [false]
+
+[ATOMS]
+default      =   []
+value_type   =   ['string']
+value_format =   'N'
+value_N      =   [-2147483647]
+description  =  """List of unique atoms sorted by Z. This key is set by the library. User should not set it."""
 examples     =  []
 is_internal  =   [false]
 
@@ -548,7 +544,7 @@ default      =   []
 value_type   =   ['int']
 value_format =   'N'
 value_N      =   [1]
-description  =  """Tadah internal key"""
+description  =  """Size of 2B descriptor"""
 examples     =  []
 is_internal  =   [true]
 
@@ -557,7 +553,7 @@ default      =   []
 value_type   =   ['int']
 value_format =   'N'
 value_N      =   [1]
-description  =  """Tadah internal key"""
+description  =  """Size of 3B descriptor"""
 examples     =  []
 is_internal  =   [true]
 
@@ -566,7 +562,7 @@ default      =   []
 value_type   =   ['int']
 value_format =   'N'
 value_N      =   [1]
-description  =  """Tadah internal key"""
+description  =  """Size of MB descriptor"""
 examples     =  []
 is_internal  =   [true]
 
@@ -575,16 +571,7 @@ default      =   []
 value_type   =   ['int']
 value_format =   'N'
 value_N      =   [1]
-description  =  """Tadah internal key"""
-examples     =  []
-is_internal  =   [true]
-
-[ATOMS]
-default      =   []
-value_type   =   ['int']
-value_format =   'N'
-value_N      =   [2147483647]
-description  =  """Tadah internal key"""
+description  =  """The total size of the descriptor. 2B+3B+MB+bias"""
 examples     =  []
 is_internal  =   [true]
 

@@ -119,7 +119,6 @@ TEST_CASE( "Testing Config clear_internal_keys()", "[config_clear_internal_keys]
     c2.add("SIZE2B",4);
     c2.add("SIZE3B",3);
     c2.add("SIZEMB",3);
-    c2.add("ATOMS",std::vector<std::string>{"Ti","Nb", "O"});
     c2.add("RCUTMAX",3.5);
     c2.add("ESTDEV",0.1444);
     c2.add("FSTDEV",0.1444);
