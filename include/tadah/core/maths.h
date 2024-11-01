@@ -493,6 +493,8 @@ public:
     cols_(c),
     m_(r*c)
   {}
+  Matrix_Base<D>(int r, int c, std::initializer_list<double> values) 
+    : rows_(r), cols_(c), m_(values) {}
   //Matrix_Base<D> (const Matrix_Base<D> &other) {
   //    (*this).resize(other.rows(), other.cols());
   //    for (size_t i=0; i<size(); ++i)
@@ -703,6 +705,9 @@ public:
   {};
   Matrix_T(size_t r, size_t c):
     Matrix_Base<T>(r,c)
+  {}
+  Matrix_T(int r, int c, std::initializer_list<double> values):
+    Matrix_Base<T>(r,c,values)
   {}
   inline void resize(size_t r, size_t c)
   {
