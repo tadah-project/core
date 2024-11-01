@@ -29,8 +29,6 @@ public:
   }
 };
 
-
-
 class aed_type2 {
   // Simple vector class
   //
@@ -54,48 +52,18 @@ public:
   }
   aed_type2(const aed_type2 &other) {
     // the other might be a view vector
-
     size_= other.size_;
     stride_ = other.stride_;
-
-    //if (size_ > 0) {
     data_ = (double*)malloc(stride_*size_*sizeof(data_));
     std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
     allocated_ = true;
-    //}
   }
   aed_type2 &operator=(aed_type2 other) {
-    // this is probably not the brightest idea
-    // as this could be potentially abused
-    // also how should this work for vector views?
-    //std::cout << "swapping" << std::endl;
-    // assume size, stride are the same??
-    // or shall we change dimensions first?
-    // ... and allocate?
-    // One solution is just to always copy but this is much slower
-
     std::swap(size_, other.size_);
-    std::swap(allocated_, other.allocated_);
     std::swap(stride_, other.stride_);
-    if(!allocated_) {
-      std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
-    }
-    else {
-      std::swap(data_, other.data_);
-
-    }
-
+    std::swap(data_, other.data_);
+    std::swap(allocated_, other.allocated_);
     return *this;
-  }
-  template <typename T>
-  aed_type2(T &v)
-  {
-    resize(v.size());
-    size_ = v.size();
-    //TODO stride???
-    for (size_t i=0; i<v.size(); ++i) {
-      data_[i]=v[i];
-    }
   }
 
   /** This constructor does not allocate memory */
@@ -257,6 +225,7 @@ public:
   }
   inline bool operator==(const aed_type2 &v1) const
   {
+    if (size()!=v1.size()) return false;
     double EPS = std::numeric_limits<double>::epsilon();
     return this->isApprox(v1, EPS);
   }
@@ -524,6 +493,8 @@ public:
     cols_(c),
     m_(r*c)
   {}
+  Matrix_Base<D>(int r, int c, std::initializer_list<double> values) 
+    : rows_(r), cols_(c), m_(values) {}
   //Matrix_Base<D> (const Matrix_Base<D> &other) {
   //    (*this).resize(other.rows(), other.cols());
   //    for (size_t i=0; i<size(); ++i)
@@ -734,6 +705,9 @@ public:
   {};
   Matrix_T(size_t r, size_t c):
     Matrix_Base<T>(r,c)
+  {}
+  Matrix_T(int r, int c, std::initializer_list<double> values):
+    Matrix_Base<T>(r,c,values)
   {}
   inline void resize(size_t r, size_t c)
   {

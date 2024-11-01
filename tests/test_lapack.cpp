@@ -55,10 +55,10 @@ TEST_CASE( "Testing norm_X()", "[lapack]" ) {
     REQUIRE_THAT( norm_X(m,'e'), Catch::Matchers::WithinAbs(0.18257418583505, 1e-12) );
 }
 TEST_CASE( "Testing T_MDMT_diag()", "[lapack]" ) {
-    Matrix d(2,2);
+    Matrix d(2,2);  // must be diagonal
     d(0,0)=1.0;
-    d(0,1)=2.0;
-    d(1,0)=3.0;
+    d(0,1)=0.0;
+    d(1,0)=0.0;
     d(1,1)=4.0;
 
     Matrix m(3,2);
