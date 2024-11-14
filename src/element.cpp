@@ -1,4 +1,5 @@
 #include <tadah/core/element.h>
+#include <tadah/core/periodic_table.h>
 
 void Element::check(const std::string &symbol, const int Z) {
   if (symbol.size() > 2)
@@ -10,6 +11,12 @@ void Element::check(const std::string &symbol, const int Z) {
 }
 
 Element::Element() {}
+Element::Element(const std::string &symbol_) {
+  *this = PeriodicTable::find_by_symbol(symbol_);
+}
+Element::Element(const int Z_) {
+  *this = PeriodicTable::find_by_Z(Z_);
+}
 Element::Element(const std::string &symbol_, const int Z_, bool check_)
 {
   if (check_) check(symbol_, Z_);
