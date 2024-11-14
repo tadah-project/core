@@ -20,6 +20,8 @@ struct Element {
     std::string symbol;
     int Z;
     Element();
+    Element(const std::string &symbol_);
+    Element(const int Z_);
     Element(const std::string &symbol_, const int Z_, bool check_=true);
     bool operator==(const Element& other) const;
     bool operator<(const Element& other) const;
