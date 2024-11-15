@@ -129,4 +129,7 @@ void print_pp(std::ostream& out, Arg&& arg, Args&&... args)
 }
 
 //std::vector<double> calc_rho(Structure &st);
+
+bool is_blank_line(const std::string& line);
+
 #endif

@@ -65,3 +65,11 @@ std::string to_upper(const std::string s) {
     std::transform(str.begin(), str.end(),str.begin(), ::toupper);
     return str;
 }
+bool is_blank_line(const std::string& line) {
+    for (char c : line) {
+        if (!std::isspace(static_cast<unsigned char>(c))) {
+            return false;
+        }
+    }
+    return true;
+}

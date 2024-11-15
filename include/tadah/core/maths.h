@@ -798,6 +798,35 @@ public:
 
     return minv;
   }
+  inline Matrix3d_T<T> &operator+=(const double d)
+  {
+    for (size_t i=0;i<9;++i) {
+      Matrix_Base<T>::m_[i]+=d;
+    }
+    return *this;
+  }
+  inline Matrix3d_T<T> &operator-=(const double d)
+  {
+    for (size_t i=0;i<9;++i) {
+      Matrix_Base<T>::m_[i]-=d;
+    }
+    return *this;
+  }
+  inline Matrix3d_T<T> &operator+=(const int d)
+  {
+    for (size_t i=0;i<9;++i) {
+      Matrix_Base<T>::m_[i]+=d;
+    }
+    return *this;
+  }
+  inline Matrix3d_T<T> &operator-=(const int d)
+  {
+    for (size_t i=0;i<9;++i) {
+      Matrix_Base<T>::m_[i]-=d;
+    }
+    return *this;
+  }
+
   template <typename D>
   inline Matrix3d_T<T> &operator+=(const D &m)
   {
@@ -811,6 +840,22 @@ public:
   {
     for (size_t i=0;i<9;++i) {
       Matrix_Base<T>::m_[i]-=m.data()[i];
+    }
+    return *this;
+  }
+  template <typename D>
+  inline Matrix3d_T<T> &operator*=(const D fac)
+  {
+    for (size_t i=0;i<9;++i) {
+      Matrix_Base<T>::m_[i]*=fac;
+    }
+    return *this;
+  }
+  template <typename D>
+  inline Matrix3d_T<T> &operator/=(const D fac)
+  {
+    for (size_t i=0;i<9;++i) {
+      Matrix_Base<T>::m_[i]/=fac;
     }
     return *this;
   }
