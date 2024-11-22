@@ -47,4 +47,3 @@ trigger:
   stage: trigger
   trigger:
     project: tadah/models
-    strategy: depend
