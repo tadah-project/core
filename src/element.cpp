@@ -17,20 +17,28 @@ Element::Element(const std::string &symbol_) {
 Element::Element(const int Z_) {
   *this = PeriodicTable::find_by_Z(Z_);
 }
-Element::Element(const std::string &symbol_, const int Z_, bool check_)
+Element::Element(const std::string &symbol_, 
+                 const int Z_, bool check_)
 {
   if (check_) check(symbol_, Z_);
   symbol=symbol_;
   Z=Z_;
 }
 bool Element::operator==(const Element& other) const {
-  return this->symbol[0] == other.symbol[0]
-    && this->symbol[1] == other.symbol[1]
-    && this->Z == other.Z;
+  return this->symbol == other.symbol
+  && this->Z == other.Z;
 }
 bool Element::operator<(const Element& other) const {
   return this->Z < other.Z;
 }
 bool Element::operator>(const Element& other) const {
   return this->Z > other.Z;
+}
+namespace std {
+    template <>
+    struct hash<Element> {
+        size_t operator()(const Element &e) const {
+            return hash<int>()(e.Z);
+        }
+    };
 }

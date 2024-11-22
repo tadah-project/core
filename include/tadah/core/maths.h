@@ -15,17 +15,21 @@
 #include <array>
 
 class Mat6R3C {
-  // !! Row major order !!
 public:
-  int rows=6;
-  int cols=3;
-  double m[18];
-  inline double &operator()(const size_t i, const size_t j)
-  {
-    return m[i*cols + j];
+  static const int rows = 6;
+  static const int cols = 3;
+  double m[rows * cols] = {}; // Zero-initialize
+
+  inline double &operator()(const size_t i, const size_t j) {
+    return m[i * cols + j];
   }
-  inline Vec3d row(const size_t r) {
-    return Vec3d(m[r*cols],m[r*cols+1],m[r*cols+2]);
+
+  inline const double &operator()(const size_t i, const size_t j) const {
+    return m[i * cols + j];
+  }
+
+  inline Vec3d row(const size_t r) const {
+    return Vec3d(m[r * cols], m[r * cols + 1], m[r * cols + 2]);
   }
 };
 
@@ -474,9 +478,9 @@ class Matrix_Base {
   // column-major order
 
 public:
-  D m_;
   size_t rows_;
   size_t cols_;
+  D m_;
   Matrix_Base<D>() {};
   Matrix_Base<D>(D &d, size_t r, size_t c):
     rows_(r),
