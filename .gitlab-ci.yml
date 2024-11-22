@@ -44,7 +44,6 @@ build_release_static:
     - make -j ${CPU_BUILD}
 
 
-
 trigger:
   stage: trigger
   trigger:
