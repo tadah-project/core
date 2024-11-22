@@ -30,7 +30,7 @@ void PeriodicTable::add(const Element& e) {
 }
 
 void PeriodicTable::add(const std::string& symbol_, const std::string& name_, int Z_) {
-  Element e(symbol_.c_str(), Z_);
+  Element e(symbol_, Z_);
   symbol[symbol_] = e;
   name[name_] = e;
   Z[Z_] = e;

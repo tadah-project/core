@@ -1,7 +1,11 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/element.h>
+#include <tadah/core/periodic_table.h>
 #include <sstream>
 
+TEST_CASE("Testing Element PeriodicTable Initialization") {
+    PeriodicTable::initialize();
+}
 TEST_CASE( "Testing Element class constructor", "[element]" ) {
 
     REQUIRE_NOTHROW(Element());

@@ -11,7 +11,7 @@ struct Element {
 
     friend std::ostream& operator<<(std::ostream& os, const Element& element)
     {
-      os << "Symbol: " << element.symbol[0] << element.symbol[1] << std::endl;
+      os << "Symbol: " << element.symbol << std::endl;
       os << "Atomic Number: " << element.Z << std::endl;
       return os;
     }
@@ -27,17 +27,9 @@ struct Element {
     bool operator<(const Element& other) const;
     bool operator>(const Element& other) const;
 };
-
 namespace std {
-  template <>
-    class hash<Element> {
-      public:
-        size_t operator()(const Element &e) const
-        {
-          std::hash<int> hash_f;
-          return hash_f(e.Z);
-        }
-    };
+    template <>
+    struct hash<Element>;
 }
 
 #endif
