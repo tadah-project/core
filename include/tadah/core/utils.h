@@ -1,5 +1,7 @@
-#ifndef CORE_UTILS_H
-#define CORE_UTILS_H
+#ifndef UTILS_H
+#define UTILS_H
+#include <tadah/core/core_types.h>
+
 #include <iterator>
 #include <algorithm>
 #include <vector>
@@ -8,7 +10,6 @@
 #include <iomanip>
 #include <random>
 
-#include <tadah/core/core_types.h>
 
 /** Vector printing to streams */
 template <typename T>
@@ -131,5 +132,55 @@ void print_pp(std::ostream& out, Arg&& arg, Args&&... args)
 //std::vector<double> calc_rho(Structure &st);
 
 bool is_blank_line(const std::string& line);
+
+/**
+ * @brief Checks if a line is blank (empty or only contains whitespace).
+ * 
+ * @param line The string to check.
+ * @return true if the line is blank, false otherwise.
+ */
+bool is_blank_line(const std::string& line);
+
+/**
+ * @brief Divides a number into approximately equal parts.
+ * 
+ * @param number The number to divide.
+ * @param n The number of parts to divide into.
+ * @return A vector containing the parts.
+ */
+std::vector<size_t> divide_into_parts(size_t number, size_t n);
+
+/**
+ * @brief Divides a number according to specified percentages.
+ * 
+ * @param number The total number to divide.
+ * @param percentages A vector of percentages to divide by.
+ * @return A vector containing the divided parts based on percentages.
+ */
+std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages);
+
+/**
+ * @brief Checks if a string represents a number.
+ * 
+ * @param s The string to check.
+ * @return true if the string is numeric, false otherwise.
+ */
+bool isNumber(const std::string& s);
+
+/**
+ * @brief Trims leading and trailing spaces from a string.
+ * 
+ * @param str The string to trim.
+ * @return A new string with leading and trailing spaces removed.
+ */
+std::string trim(const std::string& str);
+
+/**
+ * @brief Parses a string of indices, handling ranges and steps.
+ * 
+ * @param input The string containing indices to parse.
+ * @return A vector of unique indices extracted from the string.
+ */
+std::vector<size_t> parse_indices(const std::string& input);
 
 #endif
