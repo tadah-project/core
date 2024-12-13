@@ -47,3 +47,4 @@ trigger:
   stage: trigger
   trigger:
     project: tadah/models
+    branch: $CI_COMMIT_REF_NAME
