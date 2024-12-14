@@ -2,7 +2,7 @@
 default      =   []
 value_type   =   ['string']
 value_format =   ['D2_NAME']
-value_N      =   [1]
+value_N      =   [-3]
 description  =  """Type of a two-body descriptor to be used. \
 Every two-body descriptor inherits from :cpp:class:`D2_Base`."""
 examples     =  ['TYPE2B D2_LJ','TYPE2B D2_Blip']
@@ -12,7 +12,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   ['D3_NAME']
-value_N      =   [1]
+value_N      =   [-3]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
 is_internal  =   [false]
@@ -21,7 +21,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   ['DM_NAME']
-value_N      =   [1]
+value_N      =   [-3]
 description  =  """Type of a many-body descriptor to be used. \
 Every many-body descriptor inherits from :cpp:class:`DM_Base`."""
 examples     =  ['TYPEMB DM_EAD']
