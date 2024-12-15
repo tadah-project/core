@@ -32,7 +32,7 @@ fd_type::fd_type(size_t dim):
   aed_type2_ptr[2] = new aed_type2(&data[2*dim],dim,(size_t)1);
 }
 fd_type::~fd_type() {
-  //delete aed_type2_ptr[0];
-  //delete aed_type2_ptr[1];
-  //delete aed_type2_ptr[2];
+  // if (aed_type2_ptr[0]) delete aed_type2_ptr[0];
+  // if (aed_type2_ptr[1]) delete aed_type2_ptr[1];
+  // if (aed_type2_ptr[2]) delete aed_type2_ptr[2];
 }

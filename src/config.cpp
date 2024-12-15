@@ -185,21 +185,45 @@ void Config::clear_internal_keys() {
         }
     }
 }
-
-const std::vector<std::string>& Config::operator()(const std::string key) const{
-    if (c.count(to_upper(key))==0)
-        throw std::runtime_error(knf+to_upper(key));
-    return c.at(to_upper(key));
+const std::vector<std::string>& Config::operator()(const std::string key) const {
+    try {
+        if (c.count(to_upper(key)) == 0)
+            throw std::runtime_error(knf + to_upper(key));
+        return c.at(to_upper(key));
+    } catch (const std::exception &e) {
+        std::cerr << "Error accessing key '" << key << "': " << e.what() << "\n";
+        throw;
+    } catch (...) {
+        std::cerr << "Unknown error accessing key '" << key << "'.\n";
+        throw;
+    }
 }
+
 size_t Config::size(const std::string key) const {
-    if (c.count(to_upper(key))==0)
-        throw std::runtime_error(knf+to_upper(key));
-    return c.at(to_upper(key)).size();
-}
-bool Config::exist(const std::string key) const {
-    return c.count(to_upper(key));
+    try {
+        if (c.count(to_upper(key)) == 0)
+            throw std::runtime_error(knf + to_upper(key));
+        return c.at(to_upper(key)).size();
+    } catch (const std::exception &e) {
+        std::cerr << "Error getting size for key '" << key << "': " << e.what() << "\n";
+        throw;
+    } catch (...) {
+        std::cerr << "Unknown error getting size for key '" << key << "'.\n";
+        throw;
+    }
 }
 
+bool Config::exist(const std::string key) const {
+    try {
+        return c.count(to_upper(key));
+    } catch (const std::exception &e) {
+        std::cerr << "Error checking existence of key '" << key << "': " << e.what() << "\n";
+        return false;
+    } catch (...) {
+        std::cerr << "Unknown error checking existence of key '" << key << "'.\n";
+        return false;
+    }
+}
 const std::map<std::string,int> Config:: internal_keys =  Config::create_internal_keys();
 const std::string Config::knf = "Key not found: ";
 bool Config::operator==(const Config &ctest) const {
