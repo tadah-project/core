@@ -15,6 +15,7 @@
 #include <array>
 
 class Mat6R3C {
+  // row major, but why
 public:
   static const int rows = 6;
   static const int cols = 3;
@@ -312,9 +313,9 @@ public:
   aeds_type2(size_t dim, size_t natoms):
     data_(natoms, aed_type2(dim))
   {}
-  inline double &operator()(size_t i, size_t j)
+  inline double &operator()(size_t r, size_t c)
   {
-    return data_[i][j];
+    return data_[c][r];
   }
   inline aed_type2 &operator[](size_t i)
   {
