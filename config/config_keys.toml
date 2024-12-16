@@ -2,7 +2,7 @@
 default      =   []
 value_type   =   ['string']
 value_format =   ['D2_NAME']
-value_N      =   [-3]
+value_N      =   [-2147483647]
 description  =  """Type of a two-body descriptor to be used. \
 Every two-body descriptor inherits from :cpp:class:`D2_Base`."""
 examples     =  ['TYPE2B D2_LJ','TYPE2B D2_Blip']
@@ -12,7 +12,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   ['D3_NAME']
-value_N      =   [-3]
+value_N      =   [-2147483647]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
 is_internal  =   [false]
@@ -21,7 +21,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   ['DM_NAME']
-value_N      =   [-3]
+value_N      =   [-2147483647]
 description  =  """Type of a many-body descriptor to be used. \
 Every many-body descriptor inherits from :cpp:class:`DM_Base`."""
 examples     =  ['TYPEMB DM_EAD']
@@ -40,7 +40,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   ['Cut_NAME']
-value_N      =   [1]
+value_N      =   [-2147483647]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
 is_internal  =   [false]
@@ -49,7 +49,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['string']
 value_format =   ['Cut_NAME']
-value_N      =   [1]
+value_N      =   [-2147483647]
 description  =  """Cutoff type to be used with a many-body descriptor."""
 examples     =  ['RCTYPEMB Cut_Cos']
 is_internal  =   [false]
@@ -67,7 +67,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['double']
 value_format =   ['N']
-value_N      =   [1]
+value_N      =   [-2147483647]
 description  =  """Dummy. See INIT3B_."""
 examples     =  []
 is_internal  =   [false]
@@ -76,7 +76,7 @@ is_internal  =   [false]
 default      =   []
 value_type   =   ['double']
 value_format =   ['N']
-value_N      =   [1]
+value_N      =   [-2147483647]
 description  =  """Cutoff distance used by the many-body descriptor."""
 examples     =  ['RCUTMB 4.9']
 is_internal  =   [false]
@@ -576,6 +576,33 @@ examples     =  []
 is_internal  =   [true]
 
 [RCUTMAX]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+is_internal  =   [true]
+
+[RCUT2BMAX]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+is_internal  =   [true]
+
+[RCUT3BMAX]
+default      =   []
+value_type   =   ['int']
+value_format =   'N'
+value_N      =   [1]
+description  =  """Tadah internal key"""
+examples     =  []
+is_internal  =   [true]
+
+[RCUTMBMAX]
 default      =   []
 value_type   =   ['int']
 value_format =   'N'

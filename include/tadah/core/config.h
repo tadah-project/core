@@ -184,6 +184,7 @@ public:
     while (iss >> std::boolalpha >> value) {
       c[k].push_back(to_string(value,n));
     }
+    postprocess();
   }
 
   /** Remove the key from the config.
@@ -296,6 +297,9 @@ private:
     m["SIZE3B"]=1;
     m["SIZEMB"]=1;
     m["RCUTMAX"]=1;
+    m["RCUT2BMAX"]=1;
+    m["RCUT3BMAX"]=1;
+    m["RCUTMBMAX"]=1;
     m["ESTDEV"]=1;
     m["FSTDEV"]=1;
     m["SSTDEV"]=-6;

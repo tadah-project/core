@@ -3,8 +3,9 @@
 
 Config::Config()
 {
-    read_tadah_configuration();
-    set_defaults();
+  read_tadah_configuration();
+  set_defaults();
+  postprocess();
 }
 /*
 Config::Config(const Config &other)
@@ -64,24 +65,42 @@ void Config::read(std::string fn) {
         }
     }
     ifs.close();
+  postprocess();
 }
 
 void Config::postprocess() {
-    // calculate and set max cutoff distance
-    double c2b=0, c3b=0,cmb=0;
-    int n=get<int>("OUTPREC");
+  // calculate and set max cutoff distance
+  double c2b=0, c3b=0,cmb=0;
+  double temp=0;
+  int n= exist("OUTPREC") ? get<int>("OUTPREC") : 6;
+  c.erase("RCUT2BMAX");
+  c.erase("RCUT3BMAX");
+  c.erase("RCUTMBMAX");
+  c.erase("RCUTMAX");
 
-    if (c.count("INIT2B") && (*this).get<bool>("INIT2B"))
-        c2b=get<double>("RCUT2B");
-    if (c.count("INIT3B") && (*this).get<bool>("INIT3B"))
-        c3b=get<double>("RCUT3B");
-    if (c.count("INITMB") && (*this).get<bool>("INITMB"))
-        c3b=get<double>("RCUTMB");
-    //if(c2b+c3b+cmb>std::numeric_limits<double>::min())
-    c["RCUTMAX"]= std::vector<std::string>(1,to_string(std::max(cmb,std::max(c2b,c3b)),n));
-    //else {
-    //    throw std::runtime_error("RCUTMAX is zero. Check your settings.\n");
-    //}
+  if (c.count("INIT2B") && (*this).get<bool>("INIT2B") && c.count("RCUT2B")) {
+    for (size_t i = 0; i < size("RCUT2B"); ++i) {
+      double temp = get<double>("RCUT2B", i);
+      if (temp > c2b) c2b = temp;
+    }
+  }
+  if (c.count("INIT3B") && (*this).get<bool>("INIT3B") && c.count("RCUT3B")) {
+    for (size_t i=0; i<size("RCUT3B"); ++i) {
+      temp=get<double>("RCUT3B",i);
+      if(temp>c3b) c3b = temp;
+    }
+  }
+  if (c.count("INITMB") && (*this).get<bool>("INITMB") && c.count("RCUTMB")) {
+    for (size_t i=0; i<size("RCUTMB"); ++i) {
+      temp=get<double>("RCUTMB",i);
+      if(temp>cmb) cmb = temp;
+    }
+  }
+  if (c2b) c["RCUT2BMAX"]= std::vector<std::string>(1,to_string(c2b,n));
+  if (c3b) c["RCUT3BMAX"]= std::vector<std::string>(1,to_string(c3b,n));
+  if (cmb) c["RCUTMBMAX"]= std::vector<std::string>(1,to_string(cmb,n));
+  double max = std::max(cmb,std::max(c2b,c3b));
+  if (max) c["RCUTMAX"]= std::vector<std::string>(1,to_string(max,n));
 }
 
 bool Config::check(std::string &key, std::string &value) { 
@@ -129,8 +148,8 @@ bool Config::check_for_training() {
         throw std::runtime_error("At least one type must be specified \n\
                 in the config object: RCUT2B, RCUT3B, RCUTMB.\n");
 
-    if (get<double>("RCUTMAX")<=0)
-        throw std::runtime_error("RCUTMAX is zero. Check your settings.\n");
+     if (get<double>("RCUTMAX")<=0)
+         throw std::runtime_error("RCUTMAX cannot be set. Check your settings.\n");
 
     return true;
 }
@@ -175,15 +194,15 @@ void Config::set_defaults() {
   }
 }
 void Config::clear_internal_keys() {
-    for (auto it = c.cbegin(); it != c.cend() /* not hoisted */; /* no increment */)
-    {
-        if (internal_keys.count(it->first)>0) {
-            c.erase(it++);    // or "it = m.erase(it)" since C++11
-        }
-        else {
-            ++it;
-        }
+  for (auto it = c.cbegin(); it != c.cend() /* not hoisted */; /* no increment */)
+  {
+    if (internal_keys.count(it->first)>0) {
+      c.erase(it++);    // or "it = m.erase(it)" since C++11
     }
+    else {
+      ++it;
+    }
+  }
 }
 const std::vector<std::string>& Config::operator()(const std::string key) const {
     try {
@@ -230,7 +249,9 @@ bool Config::operator==(const Config &ctest) const {
     return c==ctest.c;
 }
 size_t Config::remove(const std::string key) {
-    return c.erase(to_upper(key));
+  size_t rv =  c.erase(to_upper(key));
+  postprocess();
+  return rv;
 }
 void Config::add(const std::string fn) {
     read(fn);
