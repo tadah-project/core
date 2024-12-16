@@ -243,26 +243,6 @@ description  =  """See SGRID2B_ for a description."""
 examples     =  []
 is_internal  =   [false]
 
-[AGRIDMB]
-default      =   []
-value_type   =   ['int']
-value_format =   ['N']
-value_N      =   [1]
-description  =  """This KEY controls the 'size' of an angular grid \
-for some many-body descriptors. The exact meaning depends on the \
-particular descriptor."""
-examples     =  ['AGRIDMB 2']
-is_internal  =   [false]
-
-[AGRID3B]
-default      =   []
-value_type   =   ''
-value_format =   ''
-value_N      =   []
-description  =  """Dummy. See INIT3B_."""
-examples     =  []
-is_internal  =   [false]
-
 [SEMBFUNC]
 default      =   []
 value_type   =   ['double']
