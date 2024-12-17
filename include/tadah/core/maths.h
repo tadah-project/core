@@ -43,13 +43,13 @@ class aed_type2 {
   size_t stride_= 1;
   bool allocated_=false;  // false is required for viewing
 public:
-  double *data_ = NULL;
+  double *data_ = nullptr;
   aed_type2() {}
   aed_type2(size_t n, size_t s=1):
     size_(n),
     stride_(s),
     allocated_(true),
-    data_((double*)malloc(s*n*sizeof(data_)))
+    data_((double*)malloc(s*n*sizeof(double)))
   {}
   ~aed_type2() {
     if (allocated_)
@@ -59,8 +59,8 @@ public:
     // the other might be a view vector
     size_= other.size_;
     stride_ = other.stride_;
-    data_ = (double*)malloc(stride_*size_*sizeof(data_));
-    std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
+    data_ = (double*)malloc(stride_*size_*sizeof(double));
+    std::memcpy(data_, other.data_, stride_*size_*sizeof(double));
     allocated_ = true;
   }
   aed_type2 &operator=(aed_type2 other) {
@@ -361,8 +361,7 @@ public:
 class fd_type {
   // column-wise
   size_t rows_=0;
-  aed_type2 *aed_type2_ptr[3];
-  //std::vector<aed_type2*> aed_type2_ptr;
+  aed_type2* aed_type2_ptr[3] = {nullptr, nullptr, nullptr};
 
 public:
   std::vector<double> data;
@@ -396,9 +395,6 @@ public:
   inline void set_zero()
   {
     for (size_t i=0; i<3*rows_; ++i) data[i]=0;
-    //aed_type2_ptr[0]->set_zero();
-    //aed_type2_ptr[1]->set_zero();
-    //aed_type2_ptr[2]->set_zero();
   }
   inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
   {
