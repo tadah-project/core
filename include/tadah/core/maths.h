@@ -373,176 +373,192 @@ public:
 };
 
 class fd_type {
-  size_t rows_ = 0;
-  double* data_ = nullptr;
-  aed_type2* aed_type2_ptr[3] = {nullptr, nullptr, nullptr};
+    size_t rows_ = 0;
+    double* data_ = nullptr;
+    aed_type2* aed_type2_ptr[3] = {nullptr, nullptr, nullptr};
 
 public:
-  fd_type() {}
+    fd_type() {}
 
-  fd_type(size_t dim) : rows_(dim) {
-    data_ = static_cast<double*>(malloc(3 * dim * sizeof(double)));
-    for (int i = 0; i < 3; ++i) {
-      aed_type2_ptr[i] = new aed_type2(&data_[i * dim], dim, 1, false);
+    fd_type(size_t dim) : rows_(dim) {
+        data_ = static_cast<double*>(malloc(3 * dim * sizeof(double)));
+        std::fill(data_, data_ + 3 * rows_, 0.0);
+        for (int i = 0; i < 3; ++i) {
+            aed_type2_ptr[i] = new aed_type2(&data_[i * dim], dim, 1, false);
+        }
     }
-  }
 
-  ~fd_type() {
-    for (int i = 0; i < 3; ++i) {
-      delete aed_type2_ptr[i];
+    ~fd_type() {
+        // for (int i = 0; i < 3; ++i) {
+        //     delete aed_type2_ptr[i];
+        // }
+        free(data_);
     }
-    free(data_);
-  }
 
-  fd_type(const fd_type& other) : rows_(other.rows_) {
-    data_ = static_cast<double*>(malloc(3 * rows_ * sizeof(double)));
-    std::memcpy(data_, other.data_, 3 * rows_ * sizeof(double));
-    for (int i = 0; i < 3; ++i) {
+    fd_type(const fd_type& other) : rows_(other.rows_) {
+        data_ = (double*)(malloc(3 * rows_ * sizeof(double)));
+        std::memcpy(data_, other.data_, 3 * rows_ * sizeof(double));
+        for (int i = 0; i < 3; ++i) {
+            aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
+        }
+    }
+
+    fd_type& operator=(const fd_type& other) {
+        if (this != &other) {
+            // for (auto& ptr : aed_type2_ptr) {
+            //     delete ptr;
+            // }
+            free(data_);
+            rows_ = other.rows_;
+            data_ = (double*)(malloc(3 * rows_ * sizeof(double)));
+            std::memcpy(data_, other.data_, 3 * rows_ * sizeof(double));
+            for (int i = 0; i < 3; ++i) {
+                aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
+            }
+        }
+        return *this;
+    }
+
+    fd_type(fd_type&& other) noexcept : rows_(other.rows_), data_(other.data_) {
+        for (int i = 0; i < 3; ++i) {
       aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
-      //aed_type2_ptr[i] = other.aed_type2_ptr[i] ? new aed_type2(*other.aed_type2_ptr[i]) : nullptr; // TODO or create pointers?
+            // aed_type2_ptr[i] = other.aed_type2_ptr[i];
+            other.aed_type2_ptr[i] = nullptr;
+        }
+        other.data_ = nullptr;
+        other.rows_ = 0;
     }
-  }
 
-  fd_type& operator=(const fd_type& other) {
-    if (this != &other) {
-      for (auto& ptr : aed_type2_ptr) {
-        delete ptr;
-      }
-      free(data_);
-      rows_ = other.rows_;
-      data_ = static_cast<double*>(malloc(3 * rows_ * sizeof(double)));
-      std::memcpy(data_, other.data_, 3 * rows_ * sizeof(double));
-      for (int i = 0; i < 3; ++i) {
-        aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
-        // aed_type2_ptr[i] = other.aed_type2_ptr[i] ? new aed_type2(*other.aed_type2_ptr[i]) : nullptr;
-      }
+    fd_type& operator=(fd_type&& other) noexcept {
+        if (this != &other) {
+            // for (auto& ptr : aed_type2_ptr) {
+            //     delete ptr;
+            // }
+            free(data_);
+            rows_ = other.rows_;
+            data_ = other.data_;
+            for (int i = 0; i < 3; ++i) {
+      aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
+                // aed_type2_ptr[i] = other.aed_type2_ptr[i];
+                other.aed_type2_ptr[i] = nullptr;
+            }
+            other.data_ = nullptr;
+            other.rows_ = 0;
+        }
+        return *this;
     }
-    return *this;
-  }
 
-  fd_type(fd_type&& other) noexcept : rows_(other.rows_), data_(other.data_) {
-    std::copy(other.aed_type2_ptr, other.aed_type2_ptr + 3, aed_type2_ptr);
-    other.data_ = nullptr;
-    for (int i = 0; i < 3; ++i) {
-      other.aed_type2_ptr[i] = nullptr;
+    double& operator()(size_t i, size_t k) {
+        return data_[i + k * rows_];
     }
-  }
 
-  fd_type& operator=(fd_type&& other) noexcept {
-    if (this != &other) {
-      for (auto& ptr : aed_type2_ptr) {
-        delete ptr;
-      }
-      free(data_);
-      rows_ = other.rows_;
-      data_ = other.data_;
-      std::copy(other.aed_type2_ptr, other.aed_type2_ptr + 3, aed_type2_ptr);
-      other.data_ = nullptr;
-      for (int i = 0; i < 3; ++i) {
-        other.aed_type2_ptr[i] = nullptr;
-      }
+    const double& operator()(size_t i, size_t k) const {
+        return data_[i + k * rows_];
     }
-    return *this;
-  }
 
-  double& operator()(size_t i, size_t k) {
-    return data_[i + k * rows_];
-  }
-
-  const double& operator()(size_t i, size_t k) const {
-    return data_[i + k * rows_];
-  }
-
-  aed_type2& operator[](size_t k) {
-    return *aed_type2_ptr[k];
-  }
-
-  const aed_type2& operator()(size_t k) const {
-    return *aed_type2_ptr[k];
-  }
-
-  aed_type2& operator()(size_t k) {
-    return *aed_type2_ptr[k];
-  }
-
-  size_t rows() const {
-    return rows_;
-  }
-
-  void set_zero() {
-    std::fill(data_, data_ + 3 * rows_, 0.0);
-  }
-
-  double* ptr() {
-    return data_;
-  }
-
-  const double* ptr() const {
-    return data_;
-  }
-
-  friend std::ostream& operator<<(std::ostream& os, const fd_type& v) {
-    for (int i = 0; i < 3; ++i) {
-      if (v.aed_type2_ptr[i]) {
-        os << *(v.aed_type2_ptr[i]) << std::endl;
-      }
+    aed_type2& operator[](size_t k) {
+        return *aed_type2_ptr[k];
     }
-    return os;
-  }
 
-  template <typename T>
-  Vec3d operator*(const T& v2) const {
-    Vec3d temp;
-    for (size_t k = 0; k < 3; ++k) {
-      for (size_t i = 0; i < rows_; ++i) {
-        temp[k] += (*this)(i, k) * v2[i];
-      }
+    const aed_type2& operator()(size_t k) const {
+        return *aed_type2_ptr[k];
     }
-    return temp;
-  }
 
-  fd_type operator-(const fd_type& v2) const {
-    fd_type temp(rows_);
-    for (size_t i = 0; i < 3 * rows_; ++i) {
-      temp.data_[i] = data_[i] - v2.data_[i];
+    aed_type2& operator()(size_t k) {
+        return *aed_type2_ptr[k];
     }
-    return temp;
-  }
 
-  fd_type operator+(const fd_type& v2) const {
-    fd_type temp(rows_);
-    for (size_t i = 0; i < 3 * rows_; ++i) {
-      temp.data_[i] = data_[i] + v2.data_[i];
+    size_t rows() const {
+        return rows_;
     }
-    return temp;
-  }
 
-  void operator*=(double s) {
-    for (size_t i = 0; i < 3 * rows_; ++i) {
-      data_[i] *= s;
+    void set_zero() {
+        std::fill(data_, data_ + 3 * rows_, 0.0);
     }
-  }
 
-  void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(), double lower = -1e4, double upper = 1e4) {
-    std::uniform_real_distribution<double> unif(lower, upper);
+    double* ptr() {
+        return data_;
+    }
+
+    const double* ptr() const {
+        return data_;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const fd_type& v) {
+        for (int i = 0; i < 3; ++i) {
+            if (v.aed_type2_ptr[i]) {
+                os << *(v.aed_type2_ptr[i]) << std::endl;
+            }
+        }
+        return os;
+    }
+
+    template <typename T>
+    Vec3d operator*(const T& v2) const {
+        Vec3d temp;
+        for (size_t k = 0; k < 3; ++k) {
+            for (size_t i = 0; i < v2.size(); ++i) {
+                temp[k] += (*this)(i, k) * v2[i];
+            }
+        }
+        return temp;
+    }
+
+    fd_type operator-(const fd_type& v2) const {
+        fd_type temp(rows_);
+        for (size_t i = 0; i < 3 * rows_; ++i) {
+            temp.data_[i] = data_[i] - v2.data_[i];
+        }
+        return temp;
+    }
+
+    fd_type operator+(const fd_type& v2) const {
+        fd_type temp(rows_);
+        for (size_t i = 0; i < 3 * rows_; ++i) {
+            temp.data_[i] = data_[i] + v2.data_[i];
+        }
+        return temp;
+    }
+
+    void operator*=(double s) {
+        for (size_t i = 0; i < 3 * rows_; ++i) {
+            data_[i] *= s;
+        }
+    }
+    void random(
+    int seed=std::chrono::system_clock::now().time_since_epoch().count(),
+    double lower=-1e4, double upper=1e4) {
+    std::uniform_real_distribution<double> unif(lower,upper);
     std::default_random_engine engine(seed);
-    for (size_t i = 0; i < 3 * rows_; ++i) {
-      data_[i] = unif(engine);
+    for (size_t i=0; i<rows(); ++i) {
+      (*this)(i,0) = unif(engine);
+      (*this)(i,1) = unif(engine);
+      (*this)(i,2) = unif(engine);
     }
   }
 
-  bool isApprox(const fd_type& v1, double EPS) const {
-    for (size_t i = 0; i < 3 * rows_; ++i) {
-      if (std::abs(data_[i] - v1.data_[i]) > EPS) return false;
-    }
-    return true;
-  }
 
-  bool operator==(const fd_type& v1) const {
-    double EPS = std::numeric_limits<double>::epsilon();
-    return isApprox(v1, EPS);
-  }
+    // void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(), double lower = -1e4, double upper = 1e4) {
+    //     std::uniform_real_distribution<double> unif(lower, upper);
+    //     std::default_random_engine engine(seed);
+    //     for (size_t i = 0; i < 3 * rows_; ++i) {
+    //         data_[i] = unif(engine);
+    //     }
+    // }
+
+    bool isApprox(const fd_type& v1, double EPS) const {
+        for (size_t i = 0; i < 3 * rows_; ++i) {
+            if (std::abs(data_[i] - v1.data_[i]) > EPS) return false;
+        }
+        return true;
+    }
+
+    bool operator==(const fd_type& v1) const {
+        double EPS = std::numeric_limits<double>::epsilon();
+        return isApprox(v1, EPS);
+    }
 };
+
 
 template <typename D>
 class Matrix_Base {
