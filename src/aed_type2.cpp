@@ -50,6 +50,7 @@ void aed_type2::resize(const size_t n) {
     }
     size_ = n;
   }
+  std::fill(data_, data_ + stride_ * n, 0.0);
 }
 
 aed_type2 aed_type2::copy(size_t nelements, size_t start) const {
