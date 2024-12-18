@@ -87,14 +87,3 @@ void aed_type2::random(int seed, double lower, double upper) {
         (*this)[i] = unif(engine);
     }
 }
-
-void aeds_type2::resize(size_t dim, size_t natoms) {
-  data_.resize(natoms);
-  for (size_t i = 0; i < natoms; ++i)
-    data_[i].resize(dim);
-}
-
-void aeds_type2::set_zero() {
-  for (auto& a : data_) a.set_zero();
-}
-

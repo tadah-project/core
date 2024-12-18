@@ -4,6 +4,7 @@
 #include <tadah/core/maths.h>
 #include <tadah/core/fd_type.h>
 #include <tadah/core/aed_type2.h>
+#include <tadah/core/aeds_type.h>
 
 #include <vector>
 

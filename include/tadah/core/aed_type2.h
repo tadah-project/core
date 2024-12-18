@@ -218,51 +218,52 @@ inline std::ostream& operator<<(std::ostream& os, const aed_type2& v) {
     return os;
 }
 
-class aeds_type2 {
-public:
-    std::vector<aed_type2> data_;
 
-    inline aeds_type2() {}
-
-    inline aeds_type2(size_t dim, size_t natoms)
-        : data_(natoms, aed_type2(dim)) {}
-
-    inline double& operator()(size_t r, size_t c) {
-        return data_[c][r];
-    }
-
-    inline aed_type2& operator[](size_t i) {
-        return data_[i];
-    }
-
-    inline size_t cols() const {
-        return data_.size();
-    }
-
-    inline size_t rows() const {
-        return data_[0].size();
-    }
-
-    inline size_t size() const {
-        return data_.size();
-    }
-
-    inline aed_type2& col(size_t i) {
-        return data_[i];
-    }
-
-    inline const aed_type2& col(size_t i) const {
-        return data_[i];
-    }
-
-    void resize(size_t dim, size_t natoms);
-    void set_zero();
-
-    friend std::ostream& operator<<(std::ostream& os, const aeds_type2& v) {
-        for (const aed_type2& a : v.data_) os << a << std::endl;
-        return os;
-    }
-};
+// class aeds_type2 {
+// public:
+//     std::vector<aed_type2> data_;
+//
+//     inline aeds_type2() {}
+//
+//     inline aeds_type2(size_t dim, size_t natoms)
+//         : data_(natoms, aed_type2(dim)) {}
+//
+//     inline double& operator()(size_t r, size_t c) {
+//         return data_[c][r];
+//     }
+//
+//     inline aed_type2& operator[](size_t i) {
+//         return data_[i];
+//     }
+//
+//     inline size_t cols() const {
+//         return data_.size();
+//     }
+//
+//     inline size_t rows() const {
+//         return data_[0].size();
+//     }
+//
+//     inline size_t size() const {
+//         return data_.size();
+//     }
+//
+//     inline aed_type2& col(size_t i) {
+//         return data_[i];
+//     }
+//
+//     inline const aed_type2& col(size_t i) const {
+//         return data_[i];
+//     }
+//
+//     void resize(size_t dim, size_t natoms);
+//     void set_zero();
+//
+//     friend std::ostream& operator<<(std::ostream& os, const aeds_type2& v) {
+//         for (const aed_type2& a : v.data_) os << a << std::endl;
+//         return os;
+//     }
+// };
 
 #endif // AED_TYPE2_H
 
