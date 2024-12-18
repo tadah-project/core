@@ -35,6 +35,7 @@ public:
   aed_type2(size_t n, size_t s = 1) 
   : size_(n), stride_(s), allocated_(true) {
     data_ = (double*)malloc(s * n * sizeof(double));
+        std::fill(data_, data_ + s * n, 0.0);
   }
 
   // Constructor for owning resources with customizable stride
