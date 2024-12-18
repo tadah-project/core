@@ -1,7 +1,7 @@
 #ifndef AEDS_TYPE_H
 #define AEDS_TYPE_H
 
-#include <tadah/core/aed_type2.h>
+#include <tadah/core/aed_type.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -11,7 +11,7 @@ class aeds_type2 {
     double* data_ = nullptr;
     size_t dim_ = 0;
     size_t natoms_ = 0;
-    aed_type2** aptr = nullptr;
+    aed_type** aptr = nullptr;
 
 public:
     aeds_type2();
@@ -31,19 +31,19 @@ public:
         return data_[r * natoms_ + c];
     }
 
-    inline aed_type2& operator[](size_t i) {
+    inline aed_type& operator[](size_t i) {
         return *aptr[i];
     }
 
-    inline const aed_type2& operator[](size_t i) const {
+    inline const aed_type& operator[](size_t i) const {
         return *aptr[i];
     }
 
-    inline aed_type2& col(size_t i) {
+    inline aed_type& col(size_t i) {
         return *aptr[i];
     }
 
-    inline const aed_type2& col(size_t i) const {
+    inline const aed_type& col(size_t i) const {
         return *aptr[i];
     }
 

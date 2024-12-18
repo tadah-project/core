@@ -1,5 +1,5 @@
 #include <tadah/core/aeds_type.h>
-#include <tadah/core/aed_type2.h>
+#include <tadah/core/aed_type.h>
 
 aeds_type2::aeds_type2() {}
 
@@ -8,9 +8,9 @@ aeds_type2::aeds_type2(size_t dim, size_t natoms)
     data_ = static_cast<double*>(malloc(dim * natoms * sizeof(double)));
     std::fill(data_, data_ + dim * natoms, 0.0);
 
-    aptr = new aed_type2*[natoms];
+    aptr = new aed_type*[natoms];
     for (size_t i = 0; i < natoms; ++i) {
-        aptr[i] = new aed_type2(&data_[i * dim], dim);
+        aptr[i] = new aed_type(&data_[i * dim], dim);
     }
 }
 
@@ -19,9 +19,9 @@ aeds_type2::aeds_type2(const aeds_type2& other)
     data_ = static_cast<double*>(malloc(dim_ * natoms_ * sizeof(double)));
     std::memcpy(data_, other.data_, dim_ * natoms_ * sizeof(double));
 
-    aptr = new aed_type2*[natoms_];
+    aptr = new aed_type*[natoms_];
     for (size_t i = 0; i < natoms_; ++i) {
-        aptr[i] = new aed_type2(&data_[i * dim_], dim_);
+        aptr[i] = new aed_type(&data_[i * dim_], dim_);
     }
 }
 
@@ -55,9 +55,9 @@ aeds_type2& aeds_type2::operator=(const aeds_type2& other) {
         data_ = static_cast<double*>(malloc(dim_ * natoms_ * sizeof(double)));
         std::memcpy(data_, other.data_, dim_ * natoms_ * sizeof(double));
 
-        aptr = new aed_type2*[natoms_];
+        aptr = new aed_type*[natoms_];
         for (size_t i = 0; i < natoms_; ++i) {
-            aptr[i] = new aed_type2(&data_[i * dim_], dim_);
+            aptr[i] = new aed_type(&data_[i * dim_], dim_);
         }
     }
     return *this;
@@ -96,9 +96,9 @@ void aeds_type2::resize(size_t dim, size_t natoms) {
     data_ = static_cast<double*>(realloc(data_, dim * natoms * sizeof(double)));
     std::fill(data_, data_ + dim * natoms, 0.0);
 
-    aptr = new aed_type2*[natoms];
+    aptr = new aed_type*[natoms];
     for (size_t i = 0; i < natoms; ++i) {
-        aptr[i] = new aed_type2(&data_[i * dim], dim);
+        aptr[i] = new aed_type(&data_[i * dim], dim);
     }
 }
 

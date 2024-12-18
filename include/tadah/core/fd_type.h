@@ -1,7 +1,7 @@
 #ifndef FD_TYPE_H
 #define FD_TYPE_H
 
-#include <tadah/core/aed_type2.h>
+#include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 
 #include <cstdlib>
@@ -15,7 +15,7 @@
 class fd_type {
   size_t rows_ = 0;
   double* data_ = nullptr;
-  aed_type2* aed_type2_ptr[3] = {nullptr, nullptr, nullptr};
+  aed_type* aed_type2_ptr[3] = {nullptr, nullptr, nullptr};
 
 public:
 
@@ -25,7 +25,7 @@ public:
     data_ = static_cast<double*>(malloc(3 * dim * sizeof(double)));
     std::fill(data_, data_ + 3 * rows_, 0.0);
     for (int i = 0; i < 3; ++i) {
-      aed_type2_ptr[i] = new aed_type2(&data_[i * dim], dim, 1, false);
+      aed_type2_ptr[i] = new aed_type(&data_[i * dim], dim, 1, false);
     }
   }
 
@@ -49,9 +49,9 @@ public:
     return data_[i + k * rows_];
   }
 
-  aed_type2& operator[](size_t k);
-  const aed_type2& operator()(size_t k) const;
-  aed_type2& operator()(size_t k);
+  aed_type& operator[](size_t k);
+  const aed_type& operator()(size_t k) const;
+  aed_type& operator()(size_t k);
 
   inline size_t rows() const { return rows_; }
   inline void set_zero() {

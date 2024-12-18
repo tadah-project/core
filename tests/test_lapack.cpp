@@ -19,10 +19,10 @@ TEST_CASE( "Testing solve_posv() 1", "[lapack]" ) {
     m(1,0)=6;
     m(1,1)=20;
 
-    aed_type2 a(2);
+    aed_type a(2);
     a(0)=11.11;
     a(1)=21.12;
-    aed_type2 res=solve_posv(m,a,'U');
+    aed_type res=solve_posv(m,a,'U');
     REQUIRE_THAT( res(0), Catch::Matchers::WithinAbs(23.87, 1e-12) );
     REQUIRE_THAT( res(1), Catch::Matchers::WithinAbs(-6.10499999999998, 1e-12) );
 }
@@ -35,10 +35,10 @@ TEST_CASE( "Testing solve_posv() 2", "[lapack]" ) {
     m(1,0)=6;
     m(1,1)=14;
 
-    aed_type2 a(2);
+    aed_type a(2);
     a(0)=11.11;
     a(1)=21.12;
-    aed_type2 res=solve_posv(m,a,'U');
+    aed_type res=solve_posv(m,a,'U');
     REQUIRE_THAT( res(0), Catch::Matchers::WithinAbs(11.11, 1e-12) );
     REQUIRE_THAT( res(1), Catch::Matchers::WithinAbs(21.12, 1e-12) );
 }
@@ -68,7 +68,7 @@ TEST_CASE( "Testing T_MDMT_diag()", "[lapack]" ) {
     m(1,1)=4.0;
     m(2,0)=5.0;
     m(2,1)=6.0;
-    aed_type2 res =  T_MDMT_diag(m,d);
+    aed_type res =  T_MDMT_diag(m,d);
     REQUIRE(res(0)==17);
     REQUIRE(res(1)==73);
     REQUIRE(res(2)==169);
@@ -80,10 +80,10 @@ TEST_CASE( "Testing T_dgemv()", "[lapack]" ) {
     m(1,0)=6;
     m(1,1)=14;
 
-    aed_type2 a(2);
+    aed_type a(2);
     a(0)=11.11;
     a(1)=21.12;
-    aed_type2 res=T_dgemv(m,a,'T');
+    aed_type res=T_dgemv(m,a,'T');
     REQUIRE_THAT( res(0), Catch::Matchers::WithinAbs(148.94, 1e-12) );
     REQUIRE_THAT( res(1), Catch::Matchers::WithinAbs(362.34, 1e-12) );
 }

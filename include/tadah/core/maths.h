@@ -1,7 +1,7 @@
 #ifndef MATHS_H
 #define MATHS_H
 
-#include <tadah/core/aed_type2.h>
+#include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 
 #include <cmath>
@@ -95,27 +95,27 @@ public:
     return (row < rows_ && col < cols_);
   }
   /** Provide a view of the r row of the matrix */
-  inline aed_type2 row(size_t r) {
+  inline aed_type row(size_t r) {
     size_t stride = rows();
-    aed_type2 temp(&m_.data()[r], cols(), stride);
+    aed_type temp(&m_.data()[r], cols(), stride);
     return temp;
   }
   /** Provide a view of the c column of the matrix */
-  inline aed_type2 col(size_t c) {
+  inline aed_type col(size_t c) {
     size_t start = rows()*c;
-    aed_type2 temp(&m_.data()[start], rows());
+    aed_type temp(&m_.data()[start], rows());
     return temp;
   }
   /** Provide a copy of the r row of the matrix */
-  inline aed_type2 col(size_t c) const {
+  inline aed_type col(size_t c) const {
     size_t start = rows()*c;
-    aed_type2 temp(&m_.data()[start], rows());
+    aed_type temp(&m_.data()[start], rows());
     return temp;
   }
   /** Provide a copy of the c column of the matrix */
-  inline aed_type2 row(size_t r) const {
+  inline aed_type row(size_t r) const {
     size_t stride = rows();
-    aed_type2 temp(&m_.data()[r], cols(), stride);
+    aed_type temp(&m_.data()[r], cols(), stride);
     return temp;
   }
   inline void set_zero() {
@@ -127,10 +127,10 @@ public:
     // Number of coefficients in the matrix
     return m_.size();
   }
-  //inline t_pred operator*(const aed_type2) {
+  //inline t_pred operator*(const aed_type) {
   //}
-  inline aed_type2 diagonal() const {
-    aed_type2 temp(rows());
+  inline aed_type diagonal() const {
+    aed_type temp(rows());
     for (size_t i=0; i<rows(); ++i) {
       temp(i)=(*this)(i,i);
     }
@@ -148,11 +148,11 @@ public:
     return os;
   }
   template <typename T>
-  inline aed_type2 operator*(const T &v) const
+  inline aed_type operator*(const T &v) const
   {
     // naive matrix vector product
     //m is M x N matrix and v is N x 1 column vector
-    aed_type2 temp((*this).rows());
+    aed_type temp((*this).rows());
     temp.set_zero();
     for (size_t i=0; i<(*this).rows(); i++){
       for (size_t j=0; j<(*this).cols(); j++) {
@@ -206,7 +206,7 @@ public:
     }
     return true;
   }
-  inline bool operator==(const aed_type2 &v1) const
+  inline bool operator==(const aed_type &v1) const
   {
     double EPS = std::numeric_limits<double>::epsilon();
     return this->isApprox(v1, EPS);

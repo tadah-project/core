@@ -1,0 +1,127 @@
+#define CATCH_AED_TYPE_MAIN
+#include "catch2/catch.hpp"
+#include <tadah/core/aed_type.h>
+
+TEST_CASE("aed_type default constructor") {
+    aed_type vec;
+    REQUIRE(vec.size() == 0);
+}
+
+TEST_CASE("aed_type parameterized constructor") {
+    size_t size = 5;
+    aed_type vec(size);
+    REQUIRE(vec.size() == size);
+    for (size_t i = 0; i < size; ++i) {
+        REQUIRE(vec[i] == 0.0);
+    }
+}
+
+TEST_CASE("aed_type from array constructor") {
+    double data[] = {1.1, 2.2, 3.3};
+    aed_type vec(data, 3);
+    REQUIRE(vec.size() == 3);
+    REQUIRE(vec[0] == 1.1);
+    REQUIRE(vec[1] == 2.2);
+    REQUIRE(vec[2] == 3.3);
+}
+
+TEST_CASE("aed_type copy constructor") {
+    double data[] = {4.4, 5.5};
+    aed_type vec1(data, 2);
+    aed_type vec2(vec1);
+    REQUIRE(vec2.size() == vec1.size());
+    REQUIRE(vec2[0] == vec1[0]);
+    REQUIRE(vec2[1] == vec1[1]);
+}
+
+TEST_CASE("aed_type move constructor") {
+    aed_type vec1(3);
+    vec1[0] = 1.1; vec1[1] = 2.2; vec1[2] = 3.3;
+    aed_type vec2(std::move(vec1));
+    REQUIRE(vec2.size() == 3);
+}
+
+TEST_CASE("aed_type arithmetic operations") {
+    aed_type vec(3);
+    vec[0] = 1.0; vec[1] = 2.0; vec[2] = 3.0;
+    vec += 1.0;
+    vec *= 2.0;
+    vec -= 1.0;
+
+    REQUIRE(vec[0] == 3.0);
+    REQUIRE(vec[1] == 5.0);
+    REQUIRE(vec[2] == 7.0);
+
+    aed_type vec2 = vec + 3.0;
+    REQUIRE(vec2[0] == 6.0);
+
+    vec2 = vec - 1.0;
+    REQUIRE(vec2[0] == 2.0);
+}
+
+TEST_CASE("aed_type dot product") {
+    double data[] = {1.0, 2.0};
+    aed_type vec1(data, 2);
+    aed_type vec2 = vec1;
+    double result = vec1 * vec2;
+    REQUIRE(result == 5.0);  // 1*1 + 2*2
+}
+
+TEST_CASE("aed_type equality check") {
+    double data[] = {1.0, 2.0, 3.0};
+    aed_type vec1(data, 3);
+    aed_type vec2(vec1);
+    REQUIRE(vec1 == vec2);
+    REQUIRE_FALSE(vec1 != vec2);
+}
+
+TEST_CASE("aed_type set zero and resize") {
+    aed_type vec(3);
+    vec[0] = 1.0; vec[1] = 2.0; vec[2] = 3.0;
+    vec.set_zero();
+    for (size_t i = 0; i < vec.size(); ++i) {
+        REQUIRE(vec[i] == 0.0);
+    }
+
+    vec.resize(5);
+    REQUIRE(vec.size() == 5);
+    for (size_t i = 0; i < vec.size(); ++i) {
+        REQUIRE(vec[i] == 0.0);
+    }
+}
+
+TEST_CASE("aed_type random generation") {
+    aed_type vec(5);
+    vec.random();
+    bool allZero = true;
+    for (size_t i = 0; i < vec.size(); ++i) {
+        if (vec[i] != 0.0) {
+            allZero = false;
+            break;
+        }
+    }
+    REQUIRE_FALSE(allZero);
+}
+
+TEST_CASE("aed_type mean and std deviation") {
+    double data[] = {1.0, 2.0, 3.0, 4.0};
+    aed_type vec(data, 4);
+
+    double mean = vec.mean();
+    REQUIRE(mean == Approx(2.5));
+
+    double stddev = vec.std_dev(mean, 4);
+    REQUIRE(stddev == Approx(1.11803));
+}
+
+TEST_CASE("aed_type copy method") {
+    double data[] = {1.0, 2.0, 3.0};
+    aed_type vec(data, 3);
+
+    aed_type vec_copy = vec.copy(2);
+
+    REQUIRE(vec_copy.size() == 2);
+    REQUIRE(vec_copy[0] == 1.0);
+    REQUIRE(vec_copy[1] == 2.0);
+}
+

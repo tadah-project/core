@@ -22,7 +22,7 @@ TEST_CASE( "Testing Normaliser_Core(Config&)", "[create]" ) {
 TEST_CASE( "Testing Normaliser_Core::normalise(aed)", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
-    aed_type2 a(c.size("NMEAN"));    // zeros
+    aed_type a(c.size("NMEAN"));    // zeros
     a.set_zero();
 
     // should fail too b/c we subtract mean
@@ -78,7 +78,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd,k)", "[method]" ) {
 TEST_CASE( "Testing Normaliser_Core::normalise(aed) nobias", "[method]" ) {
     Config c("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
-    aed_type2 a(c.size("NMEAN"));    // zeros
+    aed_type a(c.size("NMEAN"));    // zeros
     a.set_zero();
 
     REQUIRE_THAT( a.mean(), Catch::Matchers::WithinAbs(0, 1e-12) );
@@ -136,7 +136,7 @@ TEST_CASE( "Testing Normaliser_Core normaliser value", "[method]" ) {
     size_t n = 2;
     norm.mean = {0.1, 0.2};
     norm.std_dev = {0.3, 0.4};
-    aed_type2 a(n);
+    aed_type a(n);
     a[0] = 1.0;
     a[1] = 2.0;
 

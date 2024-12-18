@@ -1,12 +1,12 @@
 #include <tadah/core/fd_type.h>
-#include <tadah/core/aed_type2.h>
+#include <tadah/core/aed_type.h>
 
 
 fd_type::fd_type(const fd_type& other) : rows_(other.rows_) {
   data_ = static_cast<double*>(malloc(3 * rows_ * sizeof(double)));
   std::memcpy(data_, other.data_, 3 * rows_ * sizeof(double));
   for (int i = 0; i < 3; ++i) {
-    aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
+    aed_type2_ptr[i] = new aed_type(&data_[i * rows_], rows_, 1, false);
   }
 }
 
@@ -20,7 +20,7 @@ fd_type& fd_type::operator=(const fd_type& other) {
     data_ = static_cast<double*>(malloc(3 * rows_ * sizeof(double)));
     std::memcpy(data_, other.data_, 3 * rows_ * sizeof(double));
     for (int i = 0; i < 3; ++i) {
-      aed_type2_ptr[i] = new aed_type2(&data_[i * rows_], rows_, 1, false);
+      aed_type2_ptr[i] = new aed_type(&data_[i * rows_], rows_, 1, false);
     }
   }
   return *this;
@@ -53,15 +53,15 @@ fd_type& fd_type::operator=(fd_type&& other) noexcept {
   return *this;
 }
 
-aed_type2& fd_type::operator[](size_t k) {
+aed_type& fd_type::operator[](size_t k) {
   return *aed_type2_ptr[k];
 }
 
-const aed_type2& fd_type::operator()(size_t k) const {
+const aed_type& fd_type::operator()(size_t k) const {
   return *aed_type2_ptr[k];
 }
 
-aed_type2& fd_type::operator()(size_t k) {
+aed_type& fd_type::operator()(size_t k) {
   return *aed_type2_ptr[k];
 }
 

@@ -1,6 +1,6 @@
 #include <tadah/core/lapack.h>
 // Some usefull operations on vectors and matrices
-aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans) {
+aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
   int m = mat.rows();
   int n = mat.cols();
   double alpha = 1.0;
@@ -10,7 +10,7 @@ aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans) {
   int incx = 1;
   double beta = 0.0;
 
-  aed_type2 res(trans=='N' ? mat.rows() : mat.cols());
+  aed_type res(trans=='N' ? mat.rows() : mat.cols());
   double *y = &res.data()[0];
   int incy = 1;
 
@@ -23,9 +23,9 @@ aed_type2 T_dgemv(Matrix &mat, aed_type2 &vec, char trans) {
  * [m,n][n,n][n,m]=[m,m]
  *
  */
-aed_type2 T_MDMT_diag(const Matrix &M, const Matrix &D) {
+aed_type T_MDMT_diag(const Matrix &M, const Matrix &D) {
 
-  aed_type2 res(M.rows());
+  aed_type res(M.rows());
   res.set_zero();
   for (size_t i=0; i<M.rows(); ++i) {
     for (size_t j=0; j<M.cols(); ++j) {
@@ -48,7 +48,7 @@ double norm_X(Matrix &A, char norm) {
 
   return 1.0/res;
 }
-aed_type2 solve_posv(Matrix &A, aed_type2 /*&*/T, char uplo) {
+aed_type solve_posv(Matrix &A, aed_type /*&*/T, char uplo) {
   double *a = A.ptr();
   double *b = T.ptr();
   int n = A.rows();   // A is square
