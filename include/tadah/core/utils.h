@@ -160,12 +160,28 @@ std::vector<size_t> divide_into_parts(size_t number, size_t n);
 std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages);
 
 /**
+ * @brief Checks if a double represents an integer.
+ * 
+ * @param d The double to check.
+ * @return true if the double represents an integer.
+ */
+bool is_integer(double d);
+
+/**
+ * @brief Checks if a string represents an integer.
+ * 
+ * @param s The string to check.
+ * @return true if the string is an integer.
+ */
+bool is_integer(const std::string& s);
+
+/**
  * @brief Checks if a string represents a number.
  * 
  * @param s The string to check.
  * @return true if the string is numeric, false otherwise.
  */
-bool isNumber(const std::string& s);
+bool is_number(const std::string& s);
 
 /**
  * @brief Trims leading and trailing spaces from a string.

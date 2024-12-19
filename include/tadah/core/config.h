@@ -308,21 +308,6 @@ private:
   }
 
   void read_tadah_configuration();
-
-  /** Config file allowed keys and their multiplicity
-         *
-         * abs(N)=1 max one key provided in a config file
-         * abs(N)>1 more than one key can be provided in a config file:
-         *
-         * Negative key value indicates how key - value(s) are printed.
-         *
-         * Positive:
-         * DBFILE 1
-         * DBFILE 2
-         *
-         * Negative:
-         * WEIGHTS 1 2 3 4
-         */
   static const std::map<std::string,int> internal_keys;
   const static std::string knf;//="Key not found: ";
 };
