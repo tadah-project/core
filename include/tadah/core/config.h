@@ -88,9 +88,13 @@ public:
     if (c.count(to_upper(key))==0)
       throw std::runtime_error(knf+key);
     int i=0;
-    for (auto v : c.at(to_upper(key))) {
-      std::istringstream iss(v);
-      iss >> value[i++];
+    try {
+      for (auto v : c.at(to_upper(key))) {
+        std::istringstream iss(v);
+        iss >> value[i++];
+      }
+    } catch (...) {
+      throw std::runtime_error("Config: Failed getting reading/writing to an array "+key);
     }
   }
 
