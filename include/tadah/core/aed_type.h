@@ -10,204 +10,215 @@
 #include <chrono>
 
 class aed_type {
-    double *data_ = nullptr;
-    size_t size_ = 0;
-    size_t stride_ = 1;
-    bool allocated_ = false;
+  double *data_ = nullptr;
+  size_t size_ = 0;
+  size_t stride_ = 1;
+  bool allocated_ = false;
 
 public:
-    inline aed_type() : data_(nullptr), size_(0), stride_(1), allocated_(false) {}
 
-    inline aed_type(size_t n, size_t s = 1)
-        : size_(n), stride_(s), allocated_(true) {
-        data_ = static_cast<double*>(malloc(s * n * sizeof(double)));
-        std::fill(data_, data_ + s * n, 0.0);
+  inline aed_type(std::initializer_list<double> init) {
+    size_ = init.size();
+    data_ = static_cast<double*>(malloc(size_ * sizeof(double)));
+    allocated_=true;
+    size_t i = 0;
+    for (double value : init) {
+      data_[i++] = value;
     }
+  }
 
-    inline aed_type(const double* arr, size_t size, size_t stride = 1)
-        : size_(size), stride_(stride), allocated_(true) {
-        data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-        std::memcpy(data_, arr, size_ * stride_ * sizeof(double));
+  inline aed_type() : data_(nullptr), size_(0), stride_(1), allocated_(false) {}
+
+  inline aed_type(size_t n, size_t s = 1)
+  : size_(n), stride_(s), allocated_(true) {
+    data_ = static_cast<double*>(malloc(s * n * sizeof(double)));
+    std::fill(data_, data_ + s * n, 0.0);
+  }
+
+  inline aed_type(const double* arr, size_t size, size_t stride = 1)
+  : size_(size), stride_(stride), allocated_(true) {
+    data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
+    std::memcpy(data_, arr, size_ * stride_ * sizeof(double));
+  }
+
+  inline aed_type(double* arr, size_t size, size_t stride = 1, bool allocated = false)
+  : data_(arr), size_(size), stride_(stride), allocated_(allocated) {}
+
+  inline aed_type(const aed_type& other)
+  : size_(other.size_), stride_(other.stride_), allocated_(true) {
+    data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
+    std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
+  }
+
+  inline aed_type(aed_type&& other) noexcept
+  : data_(other.data_), size_(other.size_), stride_(other.stride_), allocated_(other.allocated_) {
+    other.data_ = nullptr;
+    other.allocated_ = false;
+  }
+
+  inline ~aed_type() {
+    if (allocated_) {
+      free(data_);
     }
+  }
 
-    inline aed_type(double* arr, size_t size, size_t stride = 1, bool allocated = false)
-        : data_(arr), size_(size), stride_(stride), allocated_(allocated) {}
+  aed_type& operator=(const aed_type& other);
+  aed_type& operator=(aed_type&& other) noexcept;
 
-    inline aed_type(const aed_type& other)
-        : size_(other.size_), stride_(other.stride_), allocated_(true) {
-        data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-        std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
+  inline double& operator[](size_t i) {
+    return data_[i * stride_];
+  }
+
+  inline const double& operator[](size_t i) const {
+    return data_[i * stride_];
+  }
+
+  inline double& operator()(size_t i) {
+    return data_[i * stride_];
+  }
+
+  inline const double& operator()(size_t i) const {
+    return data_[i * stride_];
+  }
+
+  template <typename T>
+  inline aed_type& operator+=(const T& v1) {
+    for (size_t i = 0; i < size(); ++i) {
+      (*this)[i] += v1[i];
     }
+    return *this;
+  }
 
-    inline aed_type(aed_type&& other) noexcept
-        : data_(other.data_), size_(other.size_), stride_(other.stride_), allocated_(other.allocated_) {
-        other.data_ = nullptr;
-        other.allocated_ = false;
+  inline aed_type& operator+=(const double d) {
+    for (size_t i = 0; i < size(); ++i) {
+      (*this)[i] += d;
     }
+    return *this;
+  }
 
-    inline ~aed_type() {
-        if (allocated_) {
-            free(data_);
-        }
+  inline aed_type operator+(const double d) const {
+    aed_type temp(*this);
+    for (size_t i = 0; i < size(); ++i) {
+      temp[i] += d;
     }
+    return temp;
+  }
 
-    aed_type& operator=(const aed_type& other);
-    aed_type& operator=(aed_type&& other) noexcept;
-
-    inline double& operator[](size_t i) {
-        return data_[i * stride_];
+  template <typename T>
+  inline aed_type& operator-=(const T& v1) {
+    for (size_t i = 0; i < size(); ++i) {
+      (*this)[i] -= v1[i];
     }
+    return *this;
+  }
 
-    inline const double& operator[](size_t i) const {
-        return data_[i * stride_];
+  inline aed_type& operator-=(const double d) {
+    for (size_t i = 0; i < size(); ++i) {
+      (*this)[i] -= d;
     }
+    return *this;
+  }
 
-    inline double& operator()(size_t i) {
-        return data_[i * stride_];
+  inline aed_type operator-(const double d) const {
+    aed_type temp(*this);
+    for (size_t i = 0; i < size(); ++i) {
+      temp[i] -= d;
     }
+    return temp;
+  }
 
-    inline const double& operator()(size_t i) const {
-        return data_[i * stride_];
+  inline aed_type& operator*=(const double s) {
+    for (size_t i = 0; i < size(); ++i) {
+      (*this)[i] *= s;
     }
+    return *this;
+  }
 
-    template <typename T>
-    inline aed_type& operator+=(const T& v1) {
-        for (size_t i = 0; i < size(); ++i) {
-            (*this)[i] += v1[i];
-        }
-        return *this;
+  template <typename T>
+  inline aed_type operator-(const T& v2) const {
+    aed_type temp(*this);
+    for (size_t i = 0; i < size(); ++i) {
+      temp[i] -= v2[i];
     }
+    return temp;
+  }
 
-    inline aed_type& operator+=(const double d) {
-        for (size_t i = 0; i < size(); ++i) {
-            (*this)[i] += d;
-        }
-        return *this;
+  template <typename T>
+  inline aed_type operator+(const T& v2) const {
+    aed_type temp(*this);
+    for (size_t i = 0; i < size(); ++i) {
+      temp[i] += v2[i];
     }
+    return temp;
+  }
 
-    inline aed_type operator+(const double d) const {
-        aed_type temp(*this);
-        for (size_t i = 0; i < size(); ++i) {
-            temp[i] += d;
-        }
-        return temp;
+  template <typename T>
+  inline double operator*(const T& v2) const {
+    double result = 0;
+    for (size_t i = 0; i < size(); ++i) {
+      result += (*this)[i] * v2[i];
     }
+    return result;
+  }
 
-    template <typename T>
-    inline aed_type& operator-=(const T& v1) {
-        for (size_t i = 0; i < size(); ++i) {
-            (*this)[i] -= v1[i];
-        }
-        return *this;
+  inline aed_type operator*(const double s) const {
+    aed_type temp(*this);
+    for (size_t i = 0; i < size(); ++i) {
+      temp[i] *= s;
     }
+    return temp;
+  }
 
-    inline aed_type& operator-=(const double d) {
-        for (size_t i = 0; i < size(); ++i) {
-            (*this)[i] -= d;
-        }
-        return *this;
+  friend inline aed_type operator*(const double s, const aed_type& v) {
+    aed_type temp(v);
+    for (size_t i = 0; i < v.size(); ++i) {
+      temp[i] *= s;
     }
+    return temp;
+  }
 
-    inline aed_type operator-(const double d) const {
-        aed_type temp(*this);
-        for (size_t i = 0; i < size(); ++i) {
-            temp[i] -= d;
-        }
-        return temp;
+  inline void set_zero() {
+    for (size_t i = 0; i < size(); ++i) {
+      (*this)[i] = 0;
     }
+  }
 
-    inline aed_type& operator*=(const double s) {
-        for (size_t i = 0; i < size(); ++i) {
-            (*this)[i] *= s;
-        }
-        return *this;
-    }
+  inline size_t size() const {
+    return size_;
+  }
 
-    template <typename T>
-    inline aed_type operator-(const T& v2) const {
-        aed_type temp(*this);
-        for (size_t i = 0; i < size(); ++i) {
-            temp[i] -= v2[i];
-        }
-        return temp;
-    }
+  inline size_t rows() const {
+    return size_;
+  }
 
-    template <typename T>
-    inline aed_type operator+(const T& v2) const {
-        aed_type temp(*this);
-        for (size_t i = 0; i < size(); ++i) {
-            temp[i] += v2[i];
-        }
-        return temp;
-    }
+  bool isApprox(const aed_type& v1, double EPS) const;
 
-    template <typename T>
-    inline double operator*(const T& v2) const {
-        double result = 0;
-        for (size_t i = 0; i < size(); ++i) {
-            result += (*this)[i] * v2[i];
-        }
-        return result;
-    }
+  inline bool operator==(const aed_type& v1) const {
+    if (size() != v1.size()) return false;
+    double EPS = std::numeric_limits<double>::epsilon();
+    return isApprox(v1, EPS);
+  }
 
-    inline aed_type operator*(const double s) const {
-        aed_type temp(*this);
-        for (size_t i = 0; i < size(); ++i) {
-            temp[i] *= s;
-        }
-        return temp;
-    }
+  inline bool operator!=(const aed_type& v1) const {
+    return !(*this == v1);
+  }
 
-    friend inline aed_type operator*(const double s, const aed_type& v) {
-        aed_type temp(v);
-        for (size_t i = 0; i < v.size(); ++i) {
-            temp[i] *= s;
-        }
-        return temp;
-    }
+  void resize(const size_t n);
 
-    inline void set_zero() {
-        for (size_t i = 0; i < size(); ++i) {
-            (*this)[i] = 0;
-        }
-    }
+  double* data();
+  const double* data() const;
 
-    inline size_t size() const {
-        return size_;
-    }
+  aed_type copy(size_t nelements, size_t start = 0) const;
 
-    inline size_t rows() const {
-        return size_;
-    }
+  inline double* ptr() {
+    return data_;
+  }
 
-    bool isApprox(const aed_type& v1, double EPS) const;
+  double mean() const;
+  double std_dev(double mean, double N) const;
 
-    inline bool operator==(const aed_type& v1) const {
-        if (size() != v1.size()) return false;
-        double EPS = std::numeric_limits<double>::epsilon();
-        return isApprox(v1, EPS);
-    }
-
-    inline bool operator!=(const aed_type& v1) const {
-        return !(*this == v1);
-    }
-
-    void resize(const size_t n);
-
-    double* data();
-    const double* data() const;
-
-    aed_type copy(size_t nelements, size_t start = 0) const;
-
-    inline double* ptr() {
-        return data_;
-    }
-
-    double mean() const;
-    double std_dev(double mean, double N) const;
-
-    void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(),
-                double lower = -1e4, double upper = 1e4);
+  void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(),
+              double lower = -1e4, double upper = 1e4);
 };
 
 inline std::ostream& operator<<(std::ostream& os, const aed_type& v) {

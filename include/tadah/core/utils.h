@@ -199,4 +199,36 @@ std::string trim(const std::string& str);
  */
 std::vector<size_t> parse_indices(const std::string& input);
 
+/**
+ * @brief Move specified columns in place to the right end of the matrix.
+ *
+ * This function rearranges the columns of the matrix such that the columns
+ * specified by indices are moved to the right, and returns a mapping
+ * of the original index to the new index.
+ *
+ * @param matrix The matrix whose columns are to be rearranged.
+ * @param indices A vector of column indices to move to the right.
+ * @return A vector mapping original column indices to their new positions.
+ */
+std::vector<size_t> move_columns_in_place(Matrix& matrix, const std::vector<size_t>& indices);
+
+/**
+ * @brief Reverses the column arrangement of the matrix using a given column map.
+ *
+ * The function restores the original column order of the matrix based on a mapping
+ * that was used to rearrange the columns initially.
+ * 
+ * @param matrix The matrix that needs its columns restored to the original order.
+ * @param column_map A vector mapping current column indices to their original positions.
+ */
+void reverse_columns(Matrix& matrix, const std::vector<size_t>& column_map);
+
+/**
+ * @brief Reverses a vector arrangement using a given map.
+ *
+ * @param vec The vector to restore.
+ * @param original_map A mapping of the rearranged indices to original positions.
+ */
+void reverse_vector(t_type& vec, const std::vector<size_t>& original_map);
+
 #endif

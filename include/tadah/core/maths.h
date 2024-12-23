@@ -25,35 +25,17 @@ public:
   size_t rows_;
   size_t cols_;
   D m_;
-  Matrix_Base<D>() {};
-  Matrix_Base<D>(D &d, size_t r, size_t c):
-    rows_(r),
-    cols_(c),
-    m_(d)
-  {}
-  Matrix_Base<D>(double *d, size_t r, size_t c):
-    rows_(r),
-    cols_(c),
-    m_(d,d+r*c)
-  {}
-  Matrix_Base<D>(size_t r, size_t c):
-    rows_(r),
-    cols_(c),
-    m_(r*c)
-  {}
-  Matrix_Base<D>(int r, int c, std::initializer_list<double> values) 
-  : rows_(r), cols_(c), m_(values) {}
-  //Matrix_Base<D> (const Matrix_Base<D> &other) {
-  //    (*this).resize(other.rows(), other.cols());
-  //    for (size_t i=0; i<size(); ++i)
-  //        (*this)[i]=other[i];
-  //}
-  //Matrix_Base<D> &operator=(Matrix_Base<D> other) {
-  //  std::swap(rows_, other.rows_);
-  //  std::swap(cols_, other.cols_);
-  //  std::swap(m_, other.m_);
-  //  return (*this);
-  //}
+
+  inline Matrix_Base<D>() {};
+  inline Matrix_Base<D>(D data, size_t rows, size_t cols)
+  : rows_(rows), cols_(cols), m_(data) {}
+
+  inline void swap_columns(size_t col1, size_t col2) {
+    // double *matrix = this->ptr();
+    for (size_t i = 0; i < rows(); ++i) {
+      std::swap(m_[i + col1 * rows()], m_[i + col2 * rows()]);
+    }
+  }
 
   inline double& operator()(size_t i, size_t j)
   {
@@ -80,16 +62,6 @@ public:
   inline size_t cols() const {
     return cols_;
   }
-  inline double *data() {
-    return m_.data();
-  }
-  const double *data() const {
-    return m_.data();
-  }
-  /** Return the pointer to the first element of the data array */
-  inline double *ptr() {
-    return &data()[0];
-  }
   inline bool exists(size_t row, size_t col) const
   {
     return (row < rows_ && col < cols_);
@@ -97,25 +69,25 @@ public:
   /** Provide a view of the r row of the matrix */
   inline aed_type row(size_t r) {
     size_t stride = rows();
-    aed_type temp(&m_.data()[r], cols(), stride);
+    aed_type temp(&m_[r], cols(), stride);
     return temp;
   }
   /** Provide a view of the c column of the matrix */
   inline aed_type col(size_t c) {
     size_t start = rows()*c;
-    aed_type temp(&m_.data()[start], rows());
+    aed_type temp(&m_[start], rows());
     return temp;
   }
   /** Provide a copy of the r row of the matrix */
   inline aed_type col(size_t c) const {
     size_t start = rows()*c;
-    aed_type temp(&m_.data()[start], rows());
+    aed_type temp(&m_[start], rows());
     return temp;
   }
   /** Provide a copy of the c column of the matrix */
   inline aed_type row(size_t r) const {
     size_t stride = rows();
-    aed_type temp(&m_.data()[r], cols(), stride);
+    aed_type temp(&m_[r], cols(), stride);
     return temp;
   }
   inline void set_zero() {
@@ -174,7 +146,7 @@ public:
   {
     Matrix_Base<D> temp(*this);
     for (size_t i=0;i<temp.size();++i) {
-      temp.data()[i]*=-1;
+      temp[i]*=-1;
     }
     return temp;;
   }
@@ -182,7 +154,7 @@ public:
   inline Matrix_Base<D> &operator+=(const T &m)
   {
     for (size_t i=0;i<m_.size();++i) {
-      m_[i]+=m.data()[i];
+      m_[i]+=m[i];
     }
     return *this;
   }
@@ -190,7 +162,7 @@ public:
   inline Matrix_Base<D> &operator-=(const T &m)
   {
     for (size_t i=0;i<m_.size();++i) {
-      m_[i]-=m.data()[i];
+      m_[i]-=m[i];
     }
     return *this;
   }
@@ -202,7 +174,7 @@ public:
   }
   bool isApprox(const Matrix_Base<D> &m, double EPS) const {
     for (size_t i=0;i<size();++i) {
-      if (std::abs(data()[i]-m.data()[i])>EPS) return false;
+      if (std::abs((*this)[i]-m[i])>EPS) return false;
     }
     return true;
   }
@@ -240,6 +212,24 @@ public:
     for (size_t i=0; i<size(); ++i)
       (*this)[i] = unif(engine);
   }
+  inline double *data() {
+    return &(*this)[0];
+  }
+  const double *data() const {
+    return &(*this)[0];
+  }
+  /** Return the pointer to the first element of the data array */
+  inline double *ptr() {
+    return &(*this)[0];
+  }
+  /** Return the pointer to the c column */
+  inline double *ptr(size_t c) {
+    return ptr() + c*rows();
+  }
+  /** Return the pointer to the (r,c) */
+  inline double *ptr(size_t r, size_t c) {
+    return ptr() + c*rows() + r;
+  }
 };
 template<typename T=std::vector<double>>
 class Matrix_T: public Matrix_Base<T> {
@@ -249,13 +239,13 @@ public:
     Matrix_Base<T>(d,r,c)
   {}
   Matrix_T(double *d, size_t r, size_t c):
-    Matrix_Base<T>(d,r,c)
+    Matrix_Base<T>(T(d,d+r*c),r,c)
   {};
   Matrix_T(size_t r, size_t c):
-    Matrix_Base<T>(r,c)
+    Matrix_Base<T>(T(r*c),r,c)
   {}
   Matrix_T(int r, int c, std::initializer_list<double> values):
-    Matrix_Base<T>(r,c,values)
+    Matrix_Base<T>(values,r,c)
   {}
   inline void resize(size_t r, size_t c)
   {
@@ -265,6 +255,26 @@ public:
   }
 };
 typedef Matrix_T<> Matrix;
+
+class MatrixView: public Matrix_Base<double*> {
+public:
+  inline MatrixView(double* d, size_t rows, size_t cols):
+    Matrix_Base<double*>(d, rows, cols) {}
+
+  // Full view of the matrix
+  template <typename D>
+  inline MatrixView(Matrix_Base<D>& other):
+    Matrix_Base<double*>(other.ptr(), other.rows, other.cols)
+  {}
+
+  // View to a matrix starting at column c
+  template <typename D>
+  inline MatrixView(Matrix_Base<D>& other, size_t c):
+    Matrix_Base<double*>(other.ptr(c), other.rows(), other.cols()-c)  {}
+};
+
+
+// typedef Matrix_Base<double*> MatrixView;
 
 template<typename T=std::array<double,9>>
 class Matrix3d_T: public Matrix_Base<T> {
@@ -379,7 +389,7 @@ public:
   inline Matrix3d_T<T> &operator+=(const D &m)
   {
     for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]+=m.data()[i];
+      Matrix_Base<T>::m_[i]+=m[i];
     }
     return *this;
   }
@@ -387,7 +397,7 @@ public:
   inline Matrix3d_T<T> &operator-=(const D &m)
   {
     for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]-=m.data()[i];
+      Matrix_Base<T>::m_[i]-=m[i];
     }
     return *this;
   }
@@ -410,7 +420,6 @@ public:
 };
 
 class Mat6R3C {
-  // row major, but why
 public:
   static const int rows = 6;
   static const int cols = 3;
@@ -430,7 +439,5 @@ public:
 };
 
 typedef Matrix3d_T<> Matrix3d;
-
-
 
 #endif
