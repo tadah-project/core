@@ -210,7 +210,32 @@ std::vector<size_t> parse_indices(const std::string& input);
  * @param indices A vector of column indices to move to the right.
  * @return A vector mapping original column indices to their new positions.
  */
-std::vector<size_t> move_columns_in_place(Matrix& matrix, const std::vector<size_t>& indices);
+template <typename T>
+std::vector<size_t> move_columns_in_place(Matrix_Base<T>& matrix, const std::vector<size_t>& indices) {
+  size_t N = matrix.cols();
+  size_t num_indices = indices.size();
+  size_t boundary = N - num_indices;
+
+  std::vector<size_t> column_map(N);
+  for (size_t i = 0; i < N; ++i) {
+    column_map[i] = i;
+  }
+
+  size_t insertPos = 0;
+
+  for (size_t i = 0; i < N; ++i) {
+    if (insertPos < boundary && 
+      std::find(indices.begin(), indices.end(), i) == indices.end()) {
+      matrix.swap_columns(insertPos, i);
+
+      std::swap(column_map[insertPos], column_map[i]);
+
+      insertPos++;
+    }
+  }
+
+  return column_map;
+}
 
 /**
  * @brief Reverses the column arrangement of the matrix using a given column map.
@@ -221,7 +246,17 @@ std::vector<size_t> move_columns_in_place(Matrix& matrix, const std::vector<size
  * @param matrix The matrix that needs its columns restored to the original order.
  * @param column_map A vector mapping current column indices to their original positions.
  */
-void reverse_columns(Matrix& matrix, const std::vector<size_t>& column_map);
+template <typename T>
+void reverse_columns(Matrix_Base<T> &matrix, const std::vector<size_t>& column_map) {
+    std::vector<size_t> temp_map = column_map;
+    for (size_t i = 0; i < temp_map.size(); ++i) {
+        while (temp_map[i] != i) {
+            size_t original_pos = temp_map[i];
+            matrix.swap_columns(i, original_pos);
+            std::swap(temp_map[i], temp_map[original_pos]);
+        }
+    }
+}
 
 /**
  * @brief Reverses a vector arrangement using a given map.

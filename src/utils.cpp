@@ -213,42 +213,6 @@ std::vector<size_t> parse_indices(const std::string& input) {
     return result;
 }
 
-std::vector<size_t> move_columns_in_place(Matrix& matrix, const std::vector<size_t>& indices) {
-  size_t N = matrix.cols();
-  size_t num_indices = indices.size();
-  size_t boundary = N - num_indices;
-
-  std::vector<size_t> column_map(N);
-  for (size_t i = 0; i < N; ++i) {
-    column_map[i] = i;
-  }
-
-  size_t insertPos = 0;
-
-  for (size_t i = 0; i < N; ++i) {
-    if (insertPos < boundary && 
-      std::find(indices.begin(), indices.end(), i) == indices.end()) {
-      matrix.swap_columns(insertPos, i);
-
-      std::swap(column_map[insertPos], column_map[i]);
-
-      insertPos++;
-    }
-  }
-
-  return column_map;
-}
-void reverse_columns(Matrix& matrix, const std::vector<size_t>& column_map) {
-    std::vector<size_t> temp_map = column_map;
-    for (size_t i = 0; i < temp_map.size(); ++i) {
-        while (temp_map[i] != i) {
-            size_t original_pos = temp_map[i];
-            matrix.swap_columns(i, original_pos);
-            std::swap(temp_map[i], temp_map[original_pos]);
-        }
-    }
-}
-
 void reverse_vector(t_type& vec, const std::vector<size_t>& original_map) {
     t_type temp_vec = vec;
     for (size_t i = 0; i < original_map.size(); ++i) {
