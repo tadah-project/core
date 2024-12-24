@@ -192,12 +192,30 @@ bool is_number(const std::string& s);
 std::string trim(const std::string& str);
 
 /**
+ * @brief Combines a vector of strings into a single string, with each element separated by a space.
+ * 
+ * @param vec The vector of strings to join.
+ * @return A single string containing all elements of the vector, separated by spaces.
+ */
+std::string join(const std::vector<std::string>& vec);
+
+/**
  * @brief Parses a string of indices, handling ranges and steps.
  * 
  * @param input The string containing indices to parse.
  * @return A vector of unique indices extracted from the string.
  */
 std::vector<size_t> parse_indices(const std::string& input);
+
+
+/**
+ * @brief Parses a vector of strings containing raw indices from user configuration, handling ranges and steps.
+ * 
+ * @param input The vector of strings containing indices to parse.
+ * @return A vector of unique indices extracted from the input.
+ */
+std::vector<size_t> parse_indices(const std::vector<std::string>& input);
+
 
 /**
  * @brief Move specified columns in place to the right end of the matrix.
@@ -265,5 +283,4 @@ void reverse_columns(Matrix_Base<T> &matrix, const std::vector<size_t>& column_m
  * @param original_map A mapping of the rearranged indices to original positions.
  */
 void reverse_vector(t_type& vec, const std::vector<size_t>& original_map);
-
 #endif

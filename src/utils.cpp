@@ -135,6 +135,17 @@ std::string trim(const std::string& str) {
     return str.substr(first, (last - first + 1));
 }
 
+std::string join(const std::vector<std::string>& vec) {
+    std::ostringstream oss;
+    if (!vec.empty()) {
+        oss << vec[0];
+        for (size_t i = 1; i < vec.size(); ++i) {
+            oss << ' ' << vec[i];
+        }
+    }
+    return oss.str();
+}
+
 std::vector<size_t> parse_indices(const std::string& input) {
     std::vector<size_t> result;
     std::set<size_t> uniqueNumbers;
@@ -212,6 +223,10 @@ std::vector<size_t> parse_indices(const std::string& input) {
 
     return result;
 }
+std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
+  std::string input_str = join(input);
+  return parse_indices(input_str);
+}
 
 void reverse_vector(t_type& vec, const std::vector<size_t>& original_map) {
     t_type temp_vec = vec;
@@ -219,3 +234,4 @@ void reverse_vector(t_type& vec, const std::vector<size_t>& original_map) {
         vec[original_map[i]] = temp_vec[i];
     }
 }
+
