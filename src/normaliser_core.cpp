@@ -18,7 +18,7 @@ Normaliser_Core::Normaliser_Core (Config &c):
 }
 
 /** Normalise AED */
-void Normaliser_Core::normalise(aed_type2 &aed) {
+void Normaliser_Core::normalise(aed_type &aed) {
     size_t n=aed.size();
     if (bias) {
         for (size_t i=1;i<n;++i) {

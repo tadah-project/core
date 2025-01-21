@@ -1,477 +1,21 @@
 #ifndef MATHS_H
 #define MATHS_H
 
+#include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 
 #include <cmath>
-#include <cstring>
+#include <stdexcept>
 #include <utility>
 #include <vector>
-#include <iostream>
 #include <limits>
 #include <random>
+#include <iostream>
+#include <random>
 #include <chrono>
+#include <cstring> // for std::memcpy
 
 #include <array>
-
-class Mat6R3C {
-public:
-  static const int rows = 6;
-  static const int cols = 3;
-  double m[rows * cols] = {}; // Zero-initialize
-
-  inline double &operator()(const size_t i, const size_t j) {
-    return m[i * cols + j];
-  }
-
-  inline const double &operator()(const size_t i, const size_t j) const {
-    return m[i * cols + j];
-  }
-
-  inline Vec3d row(const size_t r) const {
-    return Vec3d(m[r * cols], m[r * cols + 1], m[r * cols + 2]);
-  }
-};
-
-class aed_type2 {
-  // Simple vector class
-  //
-  // Operator * is only defined for the dot product
-  // so either v1*v2 and v2*v1 always give dot product
-  size_t size_= 0;
-  size_t stride_= 1;
-  bool allocated_=false;  // false is required for viewing
-public:
-  double *data_ = NULL;
-  aed_type2() {}
-  aed_type2(size_t n, size_t s=1):
-    size_(n),
-    stride_(s),
-    allocated_(true),
-    data_((double*)malloc(s*n*sizeof(data_)))
-  {}
-  ~aed_type2() {
-    if (allocated_)
-      free(data_);
-  }
-  aed_type2(const aed_type2 &other) {
-    // the other might be a view vector
-    size_= other.size_;
-    stride_ = other.stride_;
-    data_ = (double*)malloc(stride_*size_*sizeof(data_));
-    std::memcpy(data_, other.data_, stride_*size_*sizeof(data_));
-    allocated_ = true;
-  }
-  aed_type2 &operator=(aed_type2 other) {
-    std::swap(size_, other.size_);
-    std::swap(stride_, other.stride_);
-    std::swap(data_, other.data_);
-    std::swap(allocated_, other.allocated_);
-    return *this;
-  }
-
-  /** This constructor does not allocate memory */
-  aed_type2(double* arr, size_t size, size_t stride=1);
-
-  /** This constructor does allocate memory */
-  aed_type2(const double* arr, size_t size, size_t stride=1);
-
-  inline double &operator[](size_t i)
-  {
-    return data_[i*stride_];
-  }
-  inline double &operator()(size_t i)
-  {
-    return data_[i*stride_];
-  }
-  inline const double &operator[](size_t i) const
-  {
-    return data_[i*stride_];
-  }
-  inline const double &operator()(size_t i) const
-  {
-    return data_[i*stride_];
-  }
-  //inline aed_type2 transpose() const
-  //{
-  //    return *this;
-  //}
-  // Maths
-  //inline aed_type2 operator-() const
-  //{
-  //  aed_type2 temp(*this);
-  //  for (size_t i=0;i<size();++i) {
-  //    temp[i]*=-1;
-  //  }
-  //  return temp;;
-  //}
-  template <typename T>
-  inline aed_type2 &operator+=(const T &v1)
-  {
-    for (size_t i=0;i<size();++i) {
-      (*this)[i]+=v1[i];
-    }
-    return *this;
-  }
-  inline aed_type2 &operator+=(const double d)
-  // element wise increment
-  {
-    for (size_t i=0;i<size();++i) {
-      (*this)[i]+=d;
-    }
-    return *this;
-  }
-  inline aed_type2 operator+(const double d) const
-  // element wise increment
-  {
-    aed_type2 temp(*this);
-    for (size_t i=0;i<size();++i) {
-      temp[i]+=d;
-    }
-    return temp;
-  }
-  template <typename T>
-  inline aed_type2 &operator-=(const T &v1)
-  {
-    for (size_t i=0;i<size();++i) {
-      (*this)[i]-=v1[i];
-    }
-    return *this;
-  }
-  inline aed_type2 &operator-=(const double d)
-  // element wise decrement
-  {
-    for (size_t i=0;i<size();++i) {
-      (*this)[i]-=d;
-    }
-    return *this;
-  }
-  inline aed_type2 operator-(const double d) const
-  // element wise decrement
-  {
-    aed_type2 temp(*this);
-    for (size_t i=0;i<size();++i) {
-      temp[i]-=d;
-    }
-    return temp;
-  }
-  inline aed_type2 &operator*=(const double s)
-  {
-    for (size_t i=0;i<size();++i) {
-      (*this)[i]*=s;
-    }
-    return *this;
-  }
-  template <typename T>
-  inline aed_type2 operator-(const T &v2) const
-  {
-    aed_type2 temp(*(this));
-    for (size_t i=0;i<size();++i) {
-      temp[i]-=v2[i];
-    }
-    return temp;
-  }
-  template <typename T>
-  inline aed_type2 operator+(const T &v2) const
-  {
-    aed_type2 temp((*this));
-    for (size_t i=0;i<size();++i) {
-      temp[i]+=v2[i];
-    }
-    return temp;
-  }
-  template <typename T>
-  inline double operator*(const T &v2) const
-  {
-    double temp=0;
-    for (size_t i=0;i<size();++i) {
-      temp+=(*this)(i)*v2(i);
-    }
-    return temp;
-  }
-  inline aed_type2 operator*(const double s) const
-  {
-    aed_type2 temp(*(this));
-    for (size_t i=0;i<size();++i) {
-      temp[i]*=s;
-    }
-    return temp;
-  }
-  inline friend aed_type2 operator*(const double s,
-                                    const aed_type2 &v)
-  {
-    aed_type2 temp(v);
-    for (size_t i=0;i<v.size();++i) {
-      temp[i]*=s;
-    }
-    return temp;
-  }
-  inline void set_zero()
-  {
-    for (size_t i=0;i<size();++i) {
-      (*this)[i]=0;
-    }
-  }
-
-  size_t size() const
-  {
-    return size_;
-  }
-  size_t rows() const
-  {
-    return size_;
-  }
-  bool isApprox(const aed_type2 &v1, double EPS) const{
-    for (size_t i=0;i<size();++i) {
-      if (std::abs((*this)[i]-v1[i])>EPS) return false;
-    }
-    return true;
-  }
-  inline bool operator==(const aed_type2 &v1) const
-  {
-    if (size()!=v1.size()) return false;
-    double EPS = std::numeric_limits<double>::epsilon();
-    return this->isApprox(v1, EPS);
-  }
-  inline bool operator!=(const aed_type2 &v1) const
-  {
-    return !(*this==v1);
-  }
-  inline void resize(const size_t n) {
-    if (n != size_) {
-      if (allocated_) {
-        data_ = (double*)realloc(data_, stride_*n*sizeof(data_));
-        size_ = n;
-      }
-      else {
-        data_ = (double*)malloc(stride_*n*sizeof(data_));
-        size_ = n;
-        allocated_ = true;
-      }
-    }
-  }
-  double *data() {
-    return data_;
-  }
-  const double *data() const {
-    return data_;
-  }
-  aed_type2 copy(size_t nelements, size_t start=0) {
-    if (nelements+start>size())
-      throw std::runtime_error("Out of range\n");
-    aed_type2 temp(nelements);
-    for (size_t i=0; i<nelements; ++i) {
-      temp[i]=(*this)[start+i];
-    }
-    return temp;
-  }
-  /** Return the pointer to the first element of the data array */
-  inline double *ptr() {
-    return &data()[0];
-  }
-  inline double mean() const {
-    double mean=0;
-    for (size_t i=0; i<size(); ++i)
-      mean+=(*this)(i);
-    return mean/size();
-  }
-  inline double std_dev(double mean, double N) const {
-    double stdev=0;
-    for (size_t i=0; i<size(); ++i)
-      stdev += (((*this)(i)-mean))*((*this)(i)-mean);
-    return std::sqrt(stdev/N);
-  }
-
-  /** Overwrite wih random values */
-  void random(
-    int seed=std::chrono::system_clock::now().time_since_epoch().count(),
-    double lower=-1e4, double upper=1e4
-  ) {
-    std::uniform_real_distribution<double> unif(lower,upper);
-    std::default_random_engine engine(seed);
-    for (size_t i=0; i<size(); ++i)
-      (*this)(i) = unif(engine);
-  }
-
-};
-
-inline std::ostream &operator<<(std::ostream &os, const aed_type2 &v)
-{
-  for (size_t i=0;i<v.size()-1;++i) {
-    os << v[i] << "  ";
-  }
-  os << v[v.size()-1];
-  return os;
-}
-
-class aeds_type2 {
-  // column-wise
-public:
-  std::vector<aed_type2> data_;
-  aeds_type2() {}
-  aeds_type2(size_t dim, size_t natoms):
-    data_(natoms, aed_type2(dim))
-  {}
-  inline double &operator()(size_t i, size_t j)
-  {
-    return data_[i][j];
-  }
-  inline aed_type2 &operator[](size_t i)
-  {
-    return data_[i];
-  }
-  size_t cols() const
-  {
-    return data_.size();
-  }
-  size_t rows() const
-  {
-    return data_[0].size();
-  }
-  size_t size() const
-  {
-    return data_.size();
-  }
-  inline aed_type2 &col(size_t i)
-  {
-    return data_[i];
-  }
-  inline const aed_type2 &col(size_t i) const
-  {
-    return data_[i];
-  }
-  inline void resize(size_t dim, size_t natoms)
-  {
-    data_.resize(natoms);
-    for (size_t i = 0; i < natoms; ++i)
-      data_[i].resize(dim);
-  }
-  inline void set_zero()
-  {
-    for (auto &a:data_) a.set_zero();
-  }
-  inline friend std::ostream &operator<<(std::ostream &os, const aeds_type2 &v)
-  {
-    for (const aed_type2 &a:v.data_) os << a << std::endl;
-    return os;
-  }
-};
-
-class fd_type {
-  // column-wise
-  size_t rows_=0;
-  aed_type2 *aed_type2_ptr[3];
-  //std::vector<aed_type2*> aed_type2_ptr;
-
-public:
-  std::vector<double> data;
-  fd_type();
-  ~fd_type();
-  fd_type(size_t dim);
-  inline double &operator()(size_t i, size_t k)
-  {
-    return data[i+k*rows_];
-  }
-  inline const double &operator()(size_t i, size_t k) const
-  {
-    return data[i+k*rows_];
-  }
-  inline aed_type2 &operator[](size_t k)
-  {
-    return *aed_type2_ptr[k];
-  }
-  inline const aed_type2 &operator()(size_t k) const
-  {
-    return *aed_type2_ptr[k];
-  }
-  inline aed_type2 &operator()(size_t k)
-  {
-    return *aed_type2_ptr[k];
-  }
-  size_t rows() const
-  {
-    return rows_;
-  }
-  inline void set_zero()
-  {
-    for (size_t i=0; i<3*rows_; ++i) data[i]=0;
-    //aed_type2_ptr[0]->set_zero();
-    //aed_type2_ptr[1]->set_zero();
-    //aed_type2_ptr[2]->set_zero();
-  }
-  inline friend std::ostream &operator<<(std::ostream &os, const fd_type &v)
-  {
-    os << *v.aed_type2_ptr[0] << std::endl;
-    os << *v.aed_type2_ptr[1] << std::endl;
-    os << *v.aed_type2_ptr[2] << std::endl;
-    return os;
-  }
-  template <typename T>
-  inline Vec3d operator*(const T &v2) const
-  {
-    Vec3d temp;
-    for (size_t k=0; k<3; ++k) {
-      for (size_t i=0;i<v2.size();++i) {
-        temp[k]+=(*this)(i,k)*v2[i];
-      }
-    }
-    return temp;
-  }
-  inline fd_type operator-(const fd_type &v2) const
-  {
-    fd_type temp(v2.rows());
-    for (size_t i=0;i<3*rows();++i)
-      temp.data[i] = data[i]-v2.data[i];
-    return temp;
-  }
-  inline fd_type operator+(const fd_type &v2) const
-  {
-    fd_type temp(v2.rows());
-    for (size_t i=0;i<3*rows();++i)
-      temp.data[i] = data[i]+v2.data[i];
-    return temp;
-  }
-  inline void operator*=(double s)
-  {
-    for (size_t i=0;i<3*rows();++i)
-      data[i]*=s;
-  }
-  //inline fd_type operator-() const
-  //{
-  //  fd_type temp(*this);
-  //  for (size_t k=0; k<3; ++k) {
-  //    for (size_t i=0;i<temp(k).size();++i) {
-  //      temp(i,k)*=-1;
-  //    }
-  //  }
-  //  return temp;
-  //}
-  void random(
-    int seed=std::chrono::system_clock::now().time_since_epoch().count(),
-    double lower=-1e4, double upper=1e4) {
-    std::uniform_real_distribution<double> unif(lower,upper);
-    std::default_random_engine engine(seed);
-    for (size_t i=0; i<rows(); ++i) {
-      (*this)(i,0) = unif(engine);
-      (*this)(i,1) = unif(engine);
-      (*this)(i,2) = unif(engine);
-    }
-  }
-  bool isApprox(const fd_type &v1, double EPS) const{
-    for (size_t i=0;i<3*rows();++i) {
-      if (std::abs(data[i]-v1.data[i])>EPS) return false;
-    }
-    return true;
-  }
-  inline bool operator==(const fd_type &v1) const
-  {
-    double EPS = std::numeric_limits<double>::epsilon();
-    return this->isApprox(v1, EPS);
-  }
-
-};
-
-
 
 template <typename D>
 class Matrix_Base {
@@ -481,35 +25,17 @@ public:
   size_t rows_;
   size_t cols_;
   D m_;
-  Matrix_Base<D>() {};
-  Matrix_Base<D>(D &d, size_t r, size_t c):
-    rows_(r),
-    cols_(c),
-    m_(d)
-  {}
-  Matrix_Base<D>(double *d, size_t r, size_t c):
-    rows_(r),
-    cols_(c),
-    m_(d,d+r*c)
-  {}
-  Matrix_Base<D>(size_t r, size_t c):
-    rows_(r),
-    cols_(c),
-    m_(r*c)
-  {}
-  Matrix_Base<D>(int r, int c, std::initializer_list<double> values) 
-    : rows_(r), cols_(c), m_(values) {}
-  //Matrix_Base<D> (const Matrix_Base<D> &other) {
-  //    (*this).resize(other.rows(), other.cols());
-  //    for (size_t i=0; i<size(); ++i)
-  //        (*this)[i]=other[i];
-  //}
-  //Matrix_Base<D> &operator=(Matrix_Base<D> other) {
-  //  std::swap(rows_, other.rows_);
-  //  std::swap(cols_, other.cols_);
-  //  std::swap(m_, other.m_);
-  //  return (*this);
-  //}
+
+  inline Matrix_Base<D>() {};
+  inline Matrix_Base<D>(D data, size_t rows, size_t cols)
+  : rows_(rows), cols_(cols), m_(data) {}
+
+  inline void swap_columns(size_t col1, size_t col2) {
+    // double *matrix = this->ptr();
+    for (size_t i = 0; i < rows(); ++i) {
+      std::swap(m_[i + col1 * rows()], m_[i + col2 * rows()]);
+    }
+  }
 
   inline double& operator()(size_t i, size_t j)
   {
@@ -536,42 +62,32 @@ public:
   inline size_t cols() const {
     return cols_;
   }
-  inline double *data() {
-    return m_.data();
-  }
-  const double *data() const {
-    return m_.data();
-  }
-  /** Return the pointer to the first element of the data array */
-  inline double *ptr() {
-    return &data()[0];
-  }
   inline bool exists(size_t row, size_t col) const
   {
     return (row < rows_ && col < cols_);
   }
   /** Provide a view of the r row of the matrix */
-  inline aed_type2 row(size_t r) {
+  inline aed_type row(size_t r) {
     size_t stride = rows();
-    aed_type2 temp(&m_.data()[r], cols(), stride);
+    aed_type temp(&m_[r], cols(), stride);
     return temp;
   }
   /** Provide a view of the c column of the matrix */
-  inline aed_type2 col(size_t c) {
+  inline aed_type col(size_t c) {
     size_t start = rows()*c;
-    aed_type2 temp(&m_.data()[start], rows());
+    aed_type temp(&m_[start], rows());
     return temp;
   }
   /** Provide a copy of the r row of the matrix */
-  inline aed_type2 col(size_t c) const {
+  inline aed_type col(size_t c) const {
     size_t start = rows()*c;
-    aed_type2 temp(&m_.data()[start], rows());
+    aed_type temp(&m_[start], rows());
     return temp;
   }
   /** Provide a copy of the c column of the matrix */
-  inline aed_type2 row(size_t r) const {
+  inline aed_type row(size_t r) const {
     size_t stride = rows();
-    aed_type2 temp(&m_.data()[r], cols(), stride);
+    aed_type temp(&m_[r], cols(), stride);
     return temp;
   }
   inline void set_zero() {
@@ -583,10 +99,10 @@ public:
     // Number of coefficients in the matrix
     return m_.size();
   }
-  //inline t_pred operator*(const aed_type2) {
+  //inline t_pred operator*(const aed_type) {
   //}
-  inline aed_type2 diagonal() const {
-    aed_type2 temp(rows());
+  inline aed_type diagonal() const {
+    aed_type temp(rows());
     for (size_t i=0; i<rows(); ++i) {
       temp(i)=(*this)(i,i);
     }
@@ -604,11 +120,11 @@ public:
     return os;
   }
   template <typename T>
-  inline aed_type2 operator*(const T &v) const
+  inline aed_type operator*(const T &v) const
   {
     // naive matrix vector product
     //m is M x N matrix and v is N x 1 column vector
-    aed_type2 temp((*this).rows());
+    aed_type temp((*this).rows());
     temp.set_zero();
     for (size_t i=0; i<(*this).rows(); i++){
       for (size_t j=0; j<(*this).cols(); j++) {
@@ -630,7 +146,7 @@ public:
   {
     Matrix_Base<D> temp(*this);
     for (size_t i=0;i<temp.size();++i) {
-      temp.data()[i]*=-1;
+      temp[i]*=-1;
     }
     return temp;;
   }
@@ -638,7 +154,7 @@ public:
   inline Matrix_Base<D> &operator+=(const T &m)
   {
     for (size_t i=0;i<m_.size();++i) {
-      m_[i]+=m.data()[i];
+      m_[i]+=m[i];
     }
     return *this;
   }
@@ -646,7 +162,7 @@ public:
   inline Matrix_Base<D> &operator-=(const T &m)
   {
     for (size_t i=0;i<m_.size();++i) {
-      m_[i]-=m.data()[i];
+      m_[i]-=m[i];
     }
     return *this;
   }
@@ -658,11 +174,11 @@ public:
   }
   bool isApprox(const Matrix_Base<D> &m, double EPS) const {
     for (size_t i=0;i<size();++i) {
-      if (std::abs(data()[i]-m.data()[i])>EPS) return false;
+      if (std::abs((*this)[i]-m[i])>EPS) return false;
     }
     return true;
   }
-  inline bool operator==(const aed_type2 &v1) const
+  inline bool operator==(const aed_type &v1) const
   {
     double EPS = std::numeric_limits<double>::epsilon();
     return this->isApprox(v1, EPS);
@@ -696,6 +212,24 @@ public:
     for (size_t i=0; i<size(); ++i)
       (*this)[i] = unif(engine);
   }
+  inline double *data() {
+    return &(*this)[0];
+  }
+  const double *data() const {
+    return &(*this)[0];
+  }
+  /** Return the pointer to the first element of the data array */
+  inline double *ptr() {
+    return &(*this)[0];
+  }
+  /** Return the pointer to the c column */
+  inline double *ptr(size_t c) {
+    return ptr() + c*rows();
+  }
+  /** Return the pointer to the (r,c) */
+  inline double *ptr(size_t r, size_t c) {
+    return ptr() + c*rows() + r;
+  }
 };
 template<typename T=std::vector<double>>
 class Matrix_T: public Matrix_Base<T> {
@@ -705,13 +239,13 @@ public:
     Matrix_Base<T>(d,r,c)
   {}
   Matrix_T(double *d, size_t r, size_t c):
-    Matrix_Base<T>(d,r,c)
+    Matrix_Base<T>(T(d,d+r*c),r,c)
   {};
   Matrix_T(size_t r, size_t c):
-    Matrix_Base<T>(r,c)
+    Matrix_Base<T>(T(r*c),r,c)
   {}
   Matrix_T(int r, int c, std::initializer_list<double> values):
-    Matrix_Base<T>(r,c,values)
+    Matrix_Base<T>(values,r,c)
   {}
   inline void resize(size_t r, size_t c)
   {
@@ -721,6 +255,26 @@ public:
   }
 };
 typedef Matrix_T<> Matrix;
+
+class MatrixView: public Matrix_Base<double*> {
+public:
+  inline MatrixView(double* d, size_t rows, size_t cols):
+    Matrix_Base<double*>(d, rows, cols) {}
+
+  // Full view of the matrix
+  template <typename D>
+  inline MatrixView(Matrix_Base<D>& other):
+    Matrix_Base<double*>(other.ptr(), other.rows, other.cols)
+  {}
+
+  // View to a matrix starting at column c
+  template <typename D>
+  inline MatrixView(Matrix_Base<D>& other, size_t c):
+    Matrix_Base<double*>(other.ptr(c), other.rows(), other.cols()-c)  {}
+};
+
+
+// typedef Matrix_Base<double*> MatrixView;
 
 template<typename T=std::array<double,9>>
 class Matrix3d_T: public Matrix_Base<T> {
@@ -835,7 +389,7 @@ public:
   inline Matrix3d_T<T> &operator+=(const D &m)
   {
     for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]+=m.data()[i];
+      Matrix_Base<T>::m_[i]+=m[i];
     }
     return *this;
   }
@@ -843,7 +397,7 @@ public:
   inline Matrix3d_T<T> &operator-=(const D &m)
   {
     for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]-=m.data()[i];
+      Matrix_Base<T>::m_[i]-=m[i];
     }
     return *this;
   }
@@ -865,8 +419,25 @@ public:
   }
 };
 
+class Mat6R3C {
+public:
+  static const int rows = 6;
+  static const int cols = 3;
+  double m[rows * cols] = {}; // Zero-initialize
+
+  inline double &operator()(const size_t i, const size_t j) {
+    return m[i * cols + j];
+  }
+
+  inline const double &operator()(const size_t i, const size_t j) const {
+    return m[i * cols + j];
+  }
+
+  inline Vec3d row(const size_t r) const {
+    return Vec3d(m[r * cols], m[r * cols + 1], m[r * cols + 2]);
+  }
+};
+
 typedef Matrix3d_T<> Matrix3d;
-
-
 
 #endif

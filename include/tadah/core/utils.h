@@ -160,12 +160,28 @@ std::vector<size_t> divide_into_parts(size_t number, size_t n);
 std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages);
 
 /**
+ * @brief Checks if a double represents an integer.
+ * 
+ * @param d The double to check.
+ * @return true if the double represents an integer.
+ */
+bool is_integer(double d);
+
+/**
+ * @brief Checks if a string represents an integer.
+ * 
+ * @param s The string to check.
+ * @return true if the string is an integer.
+ */
+bool is_integer(const std::string& s);
+
+/**
  * @brief Checks if a string represents a number.
  * 
  * @param s The string to check.
  * @return true if the string is numeric, false otherwise.
  */
-bool isNumber(const std::string& s);
+bool is_number(const std::string& s);
 
 /**
  * @brief Trims leading and trailing spaces from a string.
@@ -176,6 +192,14 @@ bool isNumber(const std::string& s);
 std::string trim(const std::string& str);
 
 /**
+ * @brief Combines a vector of strings into a single string, with each element separated by a space.
+ * 
+ * @param vec The vector of strings to join.
+ * @return A single string containing all elements of the vector, separated by spaces.
+ */
+std::string join(const std::vector<std::string>& vec);
+
+/**
  * @brief Parses a string of indices, handling ranges and steps.
  * 
  * @param input The string containing indices to parse.
@@ -183,4 +207,80 @@ std::string trim(const std::string& str);
  */
 std::vector<size_t> parse_indices(const std::string& input);
 
+
+/**
+ * @brief Parses a vector of strings containing raw indices from user configuration, handling ranges and steps.
+ * 
+ * @param input The vector of strings containing indices to parse.
+ * @return A vector of unique indices extracted from the input.
+ */
+std::vector<size_t> parse_indices(const std::vector<std::string>& input);
+
+
+/**
+ * @brief Move specified columns in place to the right end of the matrix.
+ *
+ * This function rearranges the columns of the matrix such that the columns
+ * specified by indices are moved to the right, and returns a mapping
+ * of the original index to the new index.
+ *
+ * @param matrix The matrix whose columns are to be rearranged.
+ * @param indices A vector of column indices to move to the right.
+ * @return A vector mapping original column indices to their new positions.
+ */
+template <typename T>
+std::vector<size_t> move_columns_in_place(Matrix_Base<T>& matrix, const std::vector<size_t>& indices) {
+  size_t N = matrix.cols();
+  size_t num_indices = indices.size();
+  size_t boundary = N - num_indices;
+
+  std::vector<size_t> column_map(N);
+  for (size_t i = 0; i < N; ++i) {
+    column_map[i] = i;
+  }
+
+  size_t insertPos = 0;
+
+  for (size_t i = 0; i < N; ++i) {
+    if (insertPos < boundary && 
+      std::find(indices.begin(), indices.end(), i) == indices.end()) {
+      matrix.swap_columns(insertPos, i);
+
+      std::swap(column_map[insertPos], column_map[i]);
+
+      insertPos++;
+    }
+  }
+
+  return column_map;
+}
+
+/**
+ * @brief Reverses the column arrangement of the matrix using a given column map.
+ *
+ * The function restores the original column order of the matrix based on a mapping
+ * that was used to rearrange the columns initially.
+ * 
+ * @param matrix The matrix that needs its columns restored to the original order.
+ * @param column_map A vector mapping current column indices to their original positions.
+ */
+template <typename T>
+void reverse_columns(Matrix_Base<T> &matrix, const std::vector<size_t>& column_map) {
+    std::vector<size_t> temp_map = column_map;
+    for (size_t i = 0; i < temp_map.size(); ++i) {
+        while (temp_map[i] != i) {
+            size_t original_pos = temp_map[i];
+            matrix.swap_columns(i, original_pos);
+            std::swap(temp_map[i], temp_map[original_pos]);
+        }
+    }
+}
+
+/**
+ * @brief Reverses a vector arrangement using a given map.
+ *
+ * @param vec The vector to restore.
+ * @param original_map A mapping of the rearranged indices to original positions.
+ */
+void reverse_vector(t_type& vec, const std::vector<size_t>& original_map);
 #endif

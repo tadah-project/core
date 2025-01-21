@@ -107,9 +107,24 @@ std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t
 
     return parts;
 }
-
-bool isNumber(const std::string& s) {
+bool is_integer(double d) {
+    return std::floor(d) == d;
+}
+bool is_integer(const std::string& s) {
     return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
+}
+bool is_number(const std::string& str) {
+    if (str.empty()) return false;
+
+    try {
+        size_t pos;
+        std::stod(str, &pos);
+        return pos == str.size();
+    } catch (std::invalid_argument& e) {
+        return false;
+    } catch (std::out_of_range& e) {
+        return false;
+    }
 }
 
 std::string trim(const std::string& str) {
@@ -118,6 +133,17 @@ std::string trim(const std::string& str) {
         return "";
     size_t last = str.find_last_not_of(' ');
     return str.substr(first, (last - first + 1));
+}
+
+std::string join(const std::vector<std::string>& vec) {
+    std::ostringstream oss;
+    if (!vec.empty()) {
+        oss << vec[0];
+        for (size_t i = 1; i < vec.size(); ++i) {
+            oss << ' ' << vec[i];
+        }
+    }
+    return oss.str();
 }
 
 std::vector<size_t> parse_indices(const std::string& input) {
@@ -134,7 +160,7 @@ std::vector<size_t> parse_indices(const std::string& input) {
 
         if (dashPos == std::string::npos) {
             // Single number
-            if (isNumber(segment)) {
+            if (is_integer(segment)) {
                 size_t number = static_cast<size_t>(std::stoul(segment));
                 if (!uniqueNumbers.insert(number).second) {
                     hasDuplicates = true;
@@ -147,7 +173,7 @@ std::vector<size_t> parse_indices(const std::string& input) {
         } else {
             // Extract range start
             std::string startStr = trim(segment.substr(0, dashPos));
-            if (!isNumber(startStr)) {
+            if (!is_integer(startStr)) {
                 std::cerr << "Error: Non-numeric start value or incorrect syntax found: " << startStr << std::endl;
                 continue;
             }
@@ -158,7 +184,7 @@ std::vector<size_t> parse_indices(const std::string& input) {
             if (colonPos != std::string::npos) {
                 std::string endStr = trim(segment.substr(dashPos + 1, colonPos - dashPos - 1));
                 std::string stepStr = trim(segment.substr(colonPos + 1));
-                if (!isNumber(endStr) || !isNumber(stepStr)) {
+                if (!is_integer(endStr) || !is_integer(stepStr)) {
                     std::cerr << "Error: Non-numeric end or step value or incorrect syntax found." << std::endl;
                     continue;
                 }
@@ -166,7 +192,7 @@ std::vector<size_t> parse_indices(const std::string& input) {
                 step = static_cast<size_t>(std::stoul(stepStr));
             } else if (dashPos + 1 < segment.size()) {
                 std::string endStr = trim(segment.substr(dashPos + 1));
-                if (!isNumber(endStr)) {
+                if (!is_integer(endStr)) {
                     std::cerr << "Error: Non-numeric end value or incorrect syntax found: " << endStr << std::endl;
                     continue;
                 }
@@ -196,5 +222,16 @@ std::vector<size_t> parse_indices(const std::string& input) {
     }
 
     return result;
+}
+std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
+  std::string input_str = join(input);
+  return parse_indices(input_str);
+}
+
+void reverse_vector(t_type& vec, const std::vector<size_t>& original_map) {
+    t_type temp_vec = vec;
+    for (size_t i = 0; i < original_map.size(); ++i) {
+        vec[original_map[i]] = temp_vec[i];
+    }
 }
 

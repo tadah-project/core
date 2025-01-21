@@ -88,9 +88,13 @@ public:
     if (c.count(to_upper(key))==0)
       throw std::runtime_error(knf+key);
     int i=0;
-    for (auto v : c.at(to_upper(key))) {
-      std::istringstream iss(v);
-      iss >> value[i++];
+    try {
+      for (auto v : c.at(to_upper(key))) {
+        std::istringstream iss(v);
+        iss >> value[i++];
+      }
+    } catch (...) {
+      throw std::runtime_error("Config: Failed getting reading/writing to an array "+key);
     }
   }
 
@@ -184,6 +188,7 @@ public:
     while (iss >> std::boolalpha >> value) {
       c[k].push_back(to_string(value,n));
     }
+    postprocess();
   }
 
   /** Remove the key from the config.
@@ -296,6 +301,9 @@ private:
     m["SIZE3B"]=1;
     m["SIZEMB"]=1;
     m["RCUTMAX"]=1;
+    m["RCUT2BMAX"]=1;
+    m["RCUT3BMAX"]=1;
+    m["RCUTMBMAX"]=1;
     m["ESTDEV"]=1;
     m["FSTDEV"]=1;
     m["SSTDEV"]=-6;
@@ -304,21 +312,6 @@ private:
   }
 
   void read_tadah_configuration();
-
-  /** Config file allowed keys and their multiplicity
-         *
-         * abs(N)=1 max one key provided in a config file
-         * abs(N)>1 more than one key can be provided in a config file:
-         *
-         * Negative key value indicates how key - value(s) are printed.
-         *
-         * Positive:
-         * DBFILE 1
-         * DBFILE 2
-         *
-         * Negative:
-         * WEIGHTS 1 2 3 4
-         */
   static const std::map<std::string,int> internal_keys;
   const static std::string knf;//="Key not found: ";
 };

@@ -119,7 +119,6 @@ TEST_CASE( "Testing Config clear_internal_keys()", "[config_clear_internal_keys]
     c2.add("SIZE2B",4);
     c2.add("SIZE3B",3);
     c2.add("SIZEMB",3);
-    c2.add("RCUTMAX",3.5);
     c2.add("ESTDEV",0.1444);
     c2.add("FSTDEV",0.1444);
     c2.add("SSTDEV",std::vector<double>{1,2,3,4,5,6});
@@ -243,7 +242,6 @@ TEST_CASE( "Testing Config check_for_training()", "[config]" ) {
   c.add("TYPE2B","D2_Dummy");
   c.add("RCTYPE2B","Cut_Dummy");
   c.add("RCUT2B",10);
-  c.add("RCUTMAX",10);
 
   REQUIRE_NOTHROW(c.check_for_training());
 
@@ -266,10 +264,6 @@ TEST_CASE( "Testing Config check_for_training()", "[config]" ) {
   c.remove("RCUT2B");
   REQUIRE_THROWS(c.check_for_training());
   c.add("RCUT2B",10);
-
-  c.remove("RCUTMAX");
-  REQUIRE_THROWS(c.check_for_training());
-  c.add("RCUTMAX",10);
 }
 TEST_CASE( "Testing Config read()", "[config_read]" ) {
   std::string path = "tests_data/valid_configs";

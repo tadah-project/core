@@ -20,7 +20,7 @@ class Normaliser_Core {
         Normaliser_Core (Config &c);
 
         /** Normalise AED */
-        void normalise(aed_type2 &aed);
+        void normalise(aed_type &aed);
 
         /** Normalise FD */
         void normalise(fd_type &fd);

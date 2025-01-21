@@ -4,9 +4,9 @@
 #include <iomanip>
 
 
-TEST_CASE("aed_type2 Constructors") {
+TEST_CASE("aed_type Constructors") {
     SECTION("Default constructor") {
-        aed_type2 vec;
+        aed_type vec;
         REQUIRE(vec.size() == 0);
         REQUIRE(vec.data() == nullptr);
     }
@@ -14,17 +14,17 @@ TEST_CASE("aed_type2 Constructors") {
     SECTION("Constructor with size and stride") {
         size_t size = 5;
         size_t stride = 2;
-        aed_type2 vec(size, stride);
+        aed_type vec(size, stride);
         REQUIRE(vec.size() == size);
         REQUIRE(vec.data() != nullptr);
     }
 }
 
-TEST_CASE("aed_type2 Constructors with External Arrays") {
+TEST_CASE("aed_type Constructors with External Arrays") {
     SECTION("Non-allocating constructor with double*") {
         size_t size = 5;
         double data[] = {1, 2, 3, 4, 5};
-        aed_type2 vec(data, size);
+        aed_type vec(data, size);
 
         REQUIRE(vec.size() == size);
         for (size_t i = 0; i < size; ++i) {
@@ -35,7 +35,7 @@ TEST_CASE("aed_type2 Constructors with External Arrays") {
     SECTION("Allocating constructor with const double*") {
         size_t size = 5;
         const double data[] = {1, 2, 3, 4, 5};
-        aed_type2 vec(data, size);
+        aed_type vec(data, size);
 
         REQUIRE(vec.size() == size);
         for (size_t i = 0; i < size; ++i) {
@@ -43,11 +43,11 @@ TEST_CASE("aed_type2 Constructors with External Arrays") {
         }
     }
 }
-TEST_CASE("aed_type2 Constructors with 'new' Allocated Arrays") {
+TEST_CASE("aed_type Constructors with 'new' Allocated Arrays") {
     SECTION("Non-allocating constructor with double*") {
         size_t size = 5;
         double* data = new double[size]{1, 2, 3, 4, 5};
-        aed_type2 vec(data, size);
+        aed_type vec(data, size);
 
         REQUIRE(vec.size() == size);
         for (size_t i = 0; i < size; ++i) {
@@ -60,7 +60,7 @@ TEST_CASE("aed_type2 Constructors with 'new' Allocated Arrays") {
     SECTION("Allocating constructor with const double*") {
         size_t size = 5;
         const double* data = new double[size]{1, 2, 3, 4, 5};
-        aed_type2 vec(data, size);
+        aed_type vec(data, size);
 
         REQUIRE(vec.size() == size);
         for (size_t i = 0; i < size; ++i) {
@@ -71,49 +71,49 @@ TEST_CASE("aed_type2 Constructors with 'new' Allocated Arrays") {
     }
 }
 
-TEST_CASE( "Testing copy constructors of aed_type2") {
-  REQUIRE_NOTHROW(aed_type2());
-  REQUIRE_NOTHROW(aed_type2(5));
-  REQUIRE_NOTHROW(aed_type2(5,2));
-  REQUIRE_NOTHROW(aed_type2(6,2));
+TEST_CASE( "Testing copy constructors of aed_type") {
+  REQUIRE_NOTHROW(aed_type());
+  REQUIRE_NOTHROW(aed_type(5));
+  REQUIRE_NOTHROW(aed_type(5,2));
+  REQUIRE_NOTHROW(aed_type(6,2));
 
   // Create an initial object
-  aed_type2 original(3);
-  aed_type2 original2(3);
+  aed_type original(3);
+  aed_type original2(3);
   original[0]=0.1; original[1]=10; original[2]=0.0001;
   original[0]=0.100000000000001; original[1]=10; original[2]=0.0001;
 
   // Set up original with specific values
   SECTION("Const copy constructor") {
-    const aed_type2 const_original = original;
+    const aed_type const_original = original;
 
-    aed_type2 const_copy = const_original;
+    aed_type const_copy = const_original;
 
     REQUIRE(const_copy != original2);
   }
 
   SECTION("Non-const copy constructor") {
-    aed_type2 non_const_copy = original;
+    aed_type non_const_copy = original;
 
     REQUIRE(non_const_copy == original);
     REQUIRE(non_const_copy != original2);
   }
 }
-TEST_CASE("aed_type2 Assignment Operator") {
+TEST_CASE("aed_type Assignment Operator") {
     size_t size = 5;
-    aed_type2 original(size);
+    aed_type original(size);
     for (size_t i = 0; i < size; ++i) {
         original[i] = static_cast<double>(i);
     }
 
-    aed_type2 copy;
+    aed_type copy;
     copy = original;
     REQUIRE(copy == original); // Uses operator==
 }
 
-TEST_CASE("aed_type2 Element Access") {
+TEST_CASE("aed_type Element Access") {
     size_t size = 3;
-    aed_type2 vec(size);
+    aed_type vec(size);
     vec[0] = 1.0;
     vec[1] = 2.0;
     vec[2] = 3.0;
@@ -123,9 +123,9 @@ TEST_CASE("aed_type2 Element Access") {
     REQUIRE(vec[2] == 3.0);
 }
 
-TEST_CASE("aed_type2 Operations") {
+TEST_CASE("aed_type Operations") {
     size_t size = 3;
-    aed_type2 vec(size);
+    aed_type vec(size);
     vec[0] = 1.0;
     vec[1] = 2.0;
     vec[2] = 3.0;
@@ -146,24 +146,24 @@ TEST_CASE("aed_type2 Operations") {
     REQUIRE(vec[2] == 6.0);
 }
 
-TEST_CASE("aed_type2 Copy Method with Range") {
+TEST_CASE("aed_type Copy Method with Range") {
     size_t size = 5;
-    aed_type2 vec(size);
+    aed_type vec(size);
     for (size_t i = 0; i < size; ++i) {
         vec[i] = static_cast<double>(i + 1);
     }
 
-    aed_type2 subVec = vec.copy(3, 1);
+    aed_type subVec = vec.copy(3, 1);
     REQUIRE(subVec.size() == 3);
     REQUIRE(subVec[0] == 2.0);
     REQUIRE(subVec[1] == 3.0);
     REQUIRE(subVec[2] == 4.0);
 }
 
-TEST_CASE("aed_type2 Random Initialization") {
+TEST_CASE("aed_type Random Initialization") {
   size_t size = 6;
   SECTION("Default bounds") {
-    aed_type2 vec(size);
+    aed_type vec(size);
     vec.random();
 
     // Check values are within a specified range
@@ -177,7 +177,7 @@ TEST_CASE("aed_type2 Random Initialization") {
     int seed = 501;
     double low = 1e-5;
     double high = 1e-4;
-    aed_type2 vec2(size);
+    aed_type vec2(size);
     vec2.random(seed,low,high);
 
     // Check values are within a specified range
