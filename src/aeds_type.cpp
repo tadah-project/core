@@ -109,7 +109,7 @@ void aeds_type2::set_zero() {
 std::ostream& operator<<(std::ostream& os, const aeds_type2& v) {
     for (size_t i = 0; i < v.dim_; ++i) {
         for (size_t j = 0; j < v.natoms_; ++j) {
-            os << v.data_[i * v.natoms_ + j] << " ";
+            os << v.data_[j * v.dim_ + i] << " ";
         }
         os << std::endl;
     }

@@ -8,9 +8,13 @@
 #include <iostream>
 
 class aeds_type2 {
+  /* Column major order
+   *
+   * Each column represents single aed_type of dimension dim_
+   */
     double* data_ = nullptr;
-    size_t dim_ = 0;
-    size_t natoms_ = 0;
+    size_t dim_ = 0;  // nrows
+    size_t natoms_ = 0; // ncols
     aed_type** aptr = nullptr;
 
 public:
@@ -24,27 +28,27 @@ public:
     aeds_type2& operator=(aeds_type2&& other) noexcept;
 
     inline double& operator()(size_t r, size_t c) {
-        return data_[r * natoms_ + c];
+        return data_[c * dim_ + r];
     }
 
     inline const double& operator()(size_t r, size_t c) const {
-        return data_[r * natoms_ + c];
+        return data_[c * dim_ + r];
     }
 
-    inline aed_type& operator[](size_t i) {
-        return *aptr[i];
+    inline aed_type& operator[](size_t c) {
+        return *aptr[c];
     }
 
-    inline const aed_type& operator[](size_t i) const {
-        return *aptr[i];
+    inline const aed_type& operator[](size_t c) const {
+        return *aptr[c];
     }
 
-    inline aed_type& col(size_t i) {
-        return *aptr[i];
+    inline aed_type& col(size_t c) {
+        return *aptr[c];
     }
 
-    inline const aed_type& col(size_t i) const {
-        return *aptr[i];
+    inline const aed_type& col(size_t c) const {
+        return *aptr[c];
     }
 
     inline size_t cols() const {
