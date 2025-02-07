@@ -9,6 +9,8 @@
 #include <sstream>
 #include <iomanip>
 #include <random>
+#include <tuple>
+#include <cstddef>
 
 
 /** Vector printing to streams */
@@ -283,4 +285,33 @@ void reverse_columns(Matrix_Base<T> &matrix, const std::vector<size_t>& column_m
  * @param original_map A mapping of the rearranged indices to original positions.
  */
 void reverse_vector(t_type& vec, const std::vector<size_t>& original_map);
+
+/**
+ * @typedef histogram_bin
+ * @brief Type alias for a histogram bin containing the bin center coordinates and the count.
+ *
+ * Each histogram bin is represented as a tuple containing:
+ * - `double x_center`: The center coordinate of the bin along the x-axis.
+ * - `double y_center`: The center coordinate of the bin along the y-axis.
+ * - `size_t count`: The number of data points that fall into the bin.
+ */
+typedef std::tuple<double, double, size_t> histogram_bin;
+
+/**
+ * @brief Generates a 2D histogram from input data.
+ *
+ * This function takes a 2D array of doubles representing (x, y) data points and generates
+ * a 2D histogram. The histogram is returned as a vector of tuples, where each tuple contains
+ * the x and y coordinates of the bin center and the count of data points within that bin.
+ * The minimum and maximum values along each axis are calculated from the input data.
+ *
+ * @param data_2d A vector containing the (x, y) data points.
+ * @param x_bins The number of bins along the x-axis.
+ * @param y_bins The number of bins along the y-axis.
+ * @return A vector of histogram bins, each containing the bin center coordinates and the count.
+ */
+std::vector<histogram_bin> generate_2d_histogram(
+    const std::vector<std::pair<double,double>>& data_2d,
+    int x_bins,
+    int y_bins);
 #endif
