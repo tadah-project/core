@@ -5,6 +5,8 @@
 #include <iostream>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <limits>
 
 v_type logspace(double start, double stop, int num, double base) {
     if (start==0) {
@@ -235,3 +237,72 @@ void reverse_vector(t_type& vec, const std::vector<size_t>& original_map) {
     }
 }
 
+std::vector<histogram_bin> generate_2d_histogram(
+    const std::vector<std::pair<double,double>>& data_2d,
+    int x_bins,
+    int y_bins)
+{
+    if (data_2d.empty()) {
+        return {};
+    }
+
+    // Initialize minimum and maximum values
+    double x_min = std::numeric_limits<double>::max();
+    double x_max = std::numeric_limits<double>::lowest();
+    double y_min = std::numeric_limits<double>::max();
+    double y_max = std::numeric_limits<double>::lowest();
+
+    // Find min and max values along x and y axes from the data
+    for (const auto& point : data_2d) {
+        double x_value = point.first;
+        double y_value = point.second;
+
+        if (x_value < x_min) x_min = x_value;
+        if (x_value > x_max) x_max = x_value;
+        if (y_value < y_min) y_min = y_value;
+        if (y_value > y_max) y_max = y_value;
+    }
+
+    // Check if min and max values are valid
+    if (x_min >= x_max || y_min >= y_max) {
+        // Invalid data range
+        return {};
+    }
+
+    // Initialize the histogram bins with zero counts
+    std::vector<std::vector<size_t>> histogram(x_bins, std::vector<size_t>(y_bins, 0));
+
+    // Calculate the width of each bin along x and y axes
+    double x_bin_width = (x_max - x_min) / x_bins;
+    double y_bin_width = (y_max - y_min) / y_bins;
+
+    // Iterate over the data points and increment the corresponding histogram bins
+    for (const auto& point : data_2d) {
+        double x_value = point.first;
+        double y_value = point.second;
+
+        // Calculate the bin indices for the current data point
+        int x_bin = static_cast<int>((x_value - x_min) / x_bin_width);
+        int y_bin = static_cast<int>((y_value - y_min) / y_bin_width);
+
+        // Handle the edge case where the data point is exactly at the maximum value
+        if (x_bin == x_bins) x_bin = x_bins - 1;
+        if (y_bin == y_bins) y_bin = y_bins - 1;
+
+        // Increment the count in the appropriate bin
+        ++histogram[x_bin][y_bin];
+    }
+
+    // Prepare the output vector containing histogram bins with centers and counts
+    std::vector<histogram_bin> histogram_bins;
+    for (int ix = 0; ix < x_bins; ++ix) {
+        double x_center = x_min + (ix + 0.5) * x_bin_width;
+        for (int iy = 0; iy < y_bins; ++iy) {
+            double y_center = y_min + (iy + 0.5) * y_bin_width;
+            size_t count = histogram[ix][iy];
+            histogram_bins.push_back(std::make_tuple(x_center, y_center, count));
+        }
+    }
+
+    return histogram_bins;
+}
