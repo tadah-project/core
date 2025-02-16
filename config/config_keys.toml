@@ -216,6 +216,72 @@ description = """Set to true to calculate stress descriptors and/or use virial s
 examples = []
 is_internal = [false]
 
+[OALGO]
+default = [1]
+value_type = ['int | int double']
+value_format = ['N | N M']
+value_N = [-2]
+description = '''
+This key controls the optimization algorithm used to train the model. The **default algorithm** is **Option 1 (GELSD)** with a conditioning parameter (:math:`rcond`) of :math:`1 \times 10^{-8}`. The regularization parameter is handled separately by the :ref:`LAMBDA` key.
+
+Available options:
+
+**1** - **GELSD**: Utilizes the LAPACK routine :code:`DGELSD` to solve linear least squares problems using the Singular Value Decomposition (SVD). This method is robust and can handle rank-deficient systems. It computes the minimum-norm solution and is suitable for ill-conditioned problems. The parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`). It defaults to :math:`1 \times 10^{-8}` if not specified. Setting :code:`M = -1` uses machine precision, which may be unstable for ill-conditioned problems.
+
+**2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorization. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
+
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance matrix :math:`\Sigma`, providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
+
+**Performance Comparison**:
+
+- **Option 2** is the fastest but assumes a full-rank matrix and is less robust for ill-conditioned problems.
+- **Option 1** offers a balance between speed and robustness, handling rank-deficient and ill-conditioned problems better than option 2.
+- **Option 3** is the slowest due to the additional computations but provides valuable extra information like the covariance matrix.
+
+**Usage**:
+
+- To select an algorithm, set the :code:`OALGO` key followed by the option number.
+- For options **1** and **3**, you can specify the conditioning parameter :code:`M` after the option number.
+
+**Regularization Parameter**:
+
+- The regularization parameter is controlled by the :ref:`LAMBDA` key, which should be set separately to apply regularization to the model.
+
+**Examples**:
+
+- :code:`OALGO 1`          # Uses GELSD with default conditioning parameter (:code:`M = 1e-8`)
+- :code:`OALGO 1 -1`       # Uses GELSD with machine precision (:code:`M = -1`)
+- :code:`OALGO 2`          # Uses GELS
+- :code:`OALGO 3 1e-10`    # Uses custom implementation with :code:`M = 1e-10`
+
+**Notes**:
+
+- **Conditioning Parameter :code:`M`**: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
+- **Machine Precision (:code:`M = -1`)**: Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
+- **Covariance Matrix :math:`\Sigma`**: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
+
+**Additional Information**:
+
+- **Regularization with :ref:`LAMBDA`**:
+
+  - The :ref:`LAMBDA` key controls the regularization parameter used in the training process. It should be specified separately to apply regularization to the model.
+  - Regularization helps prevent overfitting by adding a penalty for larger parameter values.
+
+- **LAPACK Routines**:
+
+  - **:code:`DGELSD`**: Computes the minimum-norm solution to a real linear least squares problem using the SVD of the coefficient matrix.
+  - **:code:`DGELS`**: Solves overdetermined or underdetermined real linear systems involving an :math:`M \times N` matrix, using a QR or LQ factorization of the matrix.
+
+- **When to Use Each Option**:
+
+  - Use **Option 1 (GELSD)** when you need robustness against rank deficiency and moderate performance.
+  - Use **Option 2 (GELS)** for the fastest performance on well-conditioned, full-rank matrices where robustness is less of a concern.
+  - Use **Option 3 (Custom SVD Implementation)** when you require additional outputs like the covariance matrix and are willing to trade off performance for more comprehensive results.
+
+'''
+examples = ['OALGO 1', 'OALGO 1 -1', 'OALGO 2', 'OALGO 3 1e-10']
+is_internal = [false]
+
 [SBASIS]
 default = []
 value_type = ['int']
@@ -236,11 +302,61 @@ is_internal = [false]
 
 [LAMBDA]
 default = [0]
-value_type = ['int | double | int double']
-value_format = ['N | N M']
-value_N = [-2]
-description = """This KEY controls the regularisation parameter :math:`\\lambda` for both :cpp:class:`M_BLR` and :cpp:class:`M_KRR`. If :code:`N=0`, no regularisation is applied. If :code:`N>0`, :math:`\\lambda` is set to this value. If :code:`N<0`, an evidence-approximation algorithm estimates the value of :math:`\\lambda`. For LAMBDA 0, second number, M (double), can be specified, i.e. LAMBDA 0 1e-12, which helps to determine the effective rank of matrix ::math:`\\Phi` (default 1e-8)."""
-examples = ['LAMBDA -1', 'LAMBDA 1e-4', 'LAMBDA 0', 'LAMBDA 0 1e-12']
+value_type = ['int | double']
+value_format = ['N']
+value_N = [-1]
+description = '''
+This key controls the regularization parameter :math:`\lambda` for both :cpp:class:`M_BLR` and :cpp:class:`M_KRR`. Regularization helps prevent overfitting by adding a penalty for larger parameter values during model training. The **default value** is :code:`0`, meaning no regularization is applied.
+
+Available options:
+
+- **:code:`LAMBDA 0`**: No regularization is applied. The model is trained without penalizing parameter magnitudes.
+
+- **:code:`LAMBDA N`** (where :code:`N > 0`): Sets the regularization parameter :math:`\lambda` to the specified positive value :code:`N`. This applies a fixed amount of regularization during training.
+
+- **:code:`LAMBDA -1`**: Uses an evidence-approximation algorithm to estimate the optimal value of :math:`\lambda`. This method adjusts the regularization parameter based on the data to balance model fit and complexity.
+
+**Usage**:
+
+- Set the :code:`LAMBDA` key followed by the desired value of :math:`\lambda`.
+
+**Examples**:
+
+- :code:`LAMBDA -1`       # Estimates :math:`\lambda` using the evidence-approximation algorithm.
+- :code:`LAMBDA 1e-4`     # Sets :math:`\lambda` to :math:`1 \times 10^{-4}`.
+- :code:`LAMBDA 0`        # Disables regularization.
+
+**Notes**:
+
+- **Regularization Parameter :math:`\lambda`**:
+
+  - A higher value of :math:`\lambda` increases the amount of regularization, which can reduce overfitting but may lead to underfitting if set too high.
+  - A lower positive value (close to zero) applies minimal regularization, allowing the model to fit the training data more closely.
+  - Setting :code:`LAMBDA 0` disables regularization entirely, which may result in overfitting, especially with complex models or small datasets.
+
+- **Evidence-Approximation Algorithm (:code:`LAMBDA -1`)**:
+
+  - Automatically estimates the optimal value of :math:`\lambda` from the data.
+  - Useful when it's difficult to choose an appropriate value for :math:`\lambda` manually.
+  - May increase computation time due to the additional estimation process.
+
+**Applications in Models**:
+
+- **:cpp:class:`M_BLR` (Bayesian Linear Regression)** and **:cpp:class:`M_KRR` (Kernel Ridge Regression)**:
+
+  - The :code:`LAMBDA` key influences the regularization applied in these models.
+  - In Bayesian Linear Regression, regularization corresponds to the prior belief about the magnitude of the coefficients.
+  - In Kernel Ridge Regression, regularization controls the trade-off between fitting the training data and maintaining smoothness in the function estimate.
+
+**Additional Information**:
+
+- **Combining with :ref:`OALGO`**:
+
+  - The regularization parameter :math:`\lambda` works in conjunction with the optimization algorithm selected by the :code:`OALGO` key.
+  - Ensure that both keys are set appropriately to achieve the desired balance between performance, robustness, and regularization.
+
+'''
+examples = ['LAMBDA -1', 'LAMBDA 1e-4', 'LAMBDA 0']
 is_internal = [false]
 
 [ALPHA]

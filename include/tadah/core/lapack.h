@@ -4,64 +4,171 @@
 #include <tadah/core/maths.h>
 
 extern "C" {
-    /**
-     * @brief LAPACK function for solving least squares problems using QR or LQ factorization.
-     *
-     * dgels solves overdetermined or underdetermined real linear systems involving an M-by-N
-     * matrix A, or its transpose, using a QR or LQ factorization of A. It is assumed that A
-     * has full rank.
-     *
-     * @param trans Specifies the transposition operation:
-     *              - 'N': No transpose, solve A * X = B
-     *              - 'T': Transpose, solve A^T * X = B
-     * @param m The number of rows of the matrix A. m >= 0.
-     * @param n The number of columns of the matrix A. n >= 0.
-     * @param nrhs The number of right-hand sides, i.e., the number of columns of the matrix B. nrhs >= 0.
-     * @param a On entry, the M-by-N matrix A. On exit, if m >= n, A is overwritten by details of its QR factorization.
-     * @param lda The leading dimension of the array A. lda >= max(1, m).
-     * @param b On entry, the matrix B of right-hand side vectors, stored columnwise; dimensions (ldb, nrhs). On exit, if no errors, B contains the solution vectors X.
-     * @param ldb The leading dimension of the array B. ldb >= max(1, max(m, n)).
-     * @param work Workspace array of dimension at least lwork.
-     * @param lwork The dimension of the array work. lwork >= max(1, min(m, n) + max(min(m, n), nrhs)).
-     * @param info
-     *              - = 0: successful exit.
-     *              - < 0: if info = -i, the i-th argument had an illegal value.
-     */
-    void dgels_(const char* trans, const int* m, const int* n, const int* nrhs,
-                double* a, const int* lda, double* b, const int* ldb,
-                double* work, const int* lwork, int* info);
 
     /**
-     * @brief LAPACK function for solving least squares problems using the singular value decomposition (SVD).
+     * @brief Computes the minimum-norm solution to a real linear least squares problem using the Singular Value Decomposition (SVD) of A.
      *
-     * dgelsd computes the minimum-norm solution to a real linear least squares problem:
-     *     minimize || B - A * X ||_2
-     * using the singular value decomposition (SVD) of A. A is an M-by-N matrix which may be rank-deficient.
+     * Solves the equation A * X = B, where A is an M-by-N matrix, and X and B are vectors or matrices.
+     * This routine handles rank-deficient matrices and computes the singular values of A.
      *
-     * @param m The number of rows of the matrix A. m >= 0.
-     * @param n The number of columns of the matrix A. n >= 0.
-     * @param nrhs The number of right-hand sides, i.e., the number of columns of B. nrhs >= 0.
-     * @param a On entry, the M-by-N matrix A. On exit, the contents are destroyed.
-     * @param lda The leading dimension of A. lda >= max(1, m).
-     * @param b On entry, the M-by-NRHS right-hand side matrix B. On exit, the N-by-NRHS solution matrix X.
-     * @param ldb The leading dimension of B. ldb >= max(1, max(m, n)).
-     * @param s The singular values of A in decreasing order. Dimension at least min(m, n).
-     * @param rcond The reciprocal of the condition number threshold. Singular values smaller than rcond * max(s) are treated as zero.
-     * @param rank The effective rank of A, i.e., the number of singular values which are greater than rcond * max(s).
-     * @param work Workspace array of dimension lwork.
-     * @param lwork The dimension of the array work. lwork >= min(m, n)*10 + 2*min(m, n)*NRHS.
-     * @param iwork Integer workspace array of dimension at least 3 * min(m, n) * nlvl + 11 * min(m, n), where nlvl = max(0, int(log_2(min(m, n)/(smlsiz+1))) + 1) and smlsiz is a constant defined in LAPACK.
-     * @param info
-     *              - = 0: successful exit.
-     *              - < 0: if info = -i, the i-th argument had an illegal value.
-     *              - > 0: the algorithm failed to converge; info > 0 specifies how many superdiagonals of an intermediate bidiagonal form did not converge to zero.
+     * @param M     The number of rows of the matrix A. M >= 0.
+     * @param N     The number of columns of the matrix A. N >= 0.
+     * @param NRHS  The number of right-hand sides, i.e., the number of columns of the matrices B and X. NRHS >= 0.
+     * @param A     On entry, the M-by-N matrix A. On exit, the contents are destroyed.
+     * @param LDA   The leading dimension of the array A. LDA >= max(1, M).
+     * @param B     On entry, the M-by-NRHS right-hand side matrix B. On exit, the solution matrix X.
+     * @param LDB   The leading dimension of the array B. LDB >= max(1, max(M,N)).
+     * @param S     The singular values of A in decreasing order. Dimension at least min(M,N).
+     * @param RCOND The reciprocal of the condition number threshold. Used to determine the effective rank.
+     * @param RANK  The effective rank of A, i.e., the number of singular values which are greater than RCOND*S(1).
+     * @param WORK  Workspace array of dimension LWORK.
+     * @param LWORK The dimension of the array WORK. LWORK >= max(1, min(M,N)*3 + max(M,N)*2).
+     * @param IWORK Integer workspace array.
+     * @param INFO  Output status. INFO = 0 for successful exit. INFO < 0 indicates an illegal argument value.
      */
-    void dgelsd_(const int* m, const int* n, const int* nrhs, double* a, const int* lda,
-                 double* b, const int* ldb, double* s, const double* rcond, int* rank,
-                 double* work, const int* lwork, int* iwork, int* info);
-    /** the Cholesky factorization of a real symmetric
-     *  positive definite matrix a.*/
-    void dpotrf_(char *uplo, int *n, double *a, int *lda, int *info);
+    void dgelsd_(int* M, int* N, int* NRHS, double* A, int* LDA,
+                 double* B, int* LDB, double* S, double* RCOND,
+                 int* RANK, double* WORK, int* LWORK, int* IWORK, int* INFO);
+
+    /**
+     * @brief Solves overdetermined or underdetermined real linear systems involving an M-by-N matrix A, using a QR or LQ factorization of A.
+     *
+     * Solves the equation A * X = B or A^T * X = B, where A is an M-by-N matrix and X and B are vectors or matrices.
+     * Assumes that A has full rank.
+     *
+     * @param TRANS Specifies the equations to be solved:
+     *              - 'N': A * X = B (No transpose)
+     *              - 'T': A^T * X = B (Transpose)
+     * @param M     The number of rows of the matrix A. M >= 0.
+     * @param N     The number of columns of the matrix A. N >= 0.
+     * @param NRHS  The number of right-hand sides, i.e., the number of columns of the matrices B and X. NRHS >= 0.
+     * @param A     On entry, the M-by-N matrix A. On exit, details of its QR or LQ factorization.
+     * @param LDA   The leading dimension of the array A. LDA >= max(1, M).
+     * @param B     On entry, the right-hand side matrix B. On exit, the solution matrix X.
+     * @param LDB   The leading dimension of the array B. LDB >= max(1, M, N).
+     * @param WORK  Workspace array of dimension LWORK.
+     * @param LWORK The dimension of the array WORK. LWORK >= max(1, N + max(N, NRHS)).
+     * @param INFO  Output status. INFO = 0 for successful exit. INFO < 0 indicates an illegal argument value.
+     */
+    void dgels_(char* TRANS, int* M, int* N, int* NRHS, double* A, int* LDA,
+                double* B, int* LDB, double* WORK, int* LWORK, int* INFO);
+
+    /**
+     * @brief Computes the singular value decomposition (SVD) of a real M-by-N matrix A.
+     *
+     * Computes the SVD of A as A = U * SIGMA * V^T. Depending on the JOBU and JOBVT parameters,
+     * computes all or part of the matrices U and V^T.
+     *
+     * @param JOBU  Specifies options for computing all or part of the matrix U:
+     *              - 'A': All M columns of U are returned in the array U.
+     *              - 'S': The first min(M,N) columns of U (the left singular vectors) are returned in the array U.
+     *              - 'O': The first min(M,N) columns of U are overwritten on the array A.
+     *              - 'N': No columns of U are computed.
+     * @param JOBVT Specifies options for computing all or part of the matrix V^T:
+     *              - 'A': All N rows of V^T are returned in the array VT.
+     *              - 'S': The first min(M,N) rows of V^T (the right singular vectors) are returned in the array VT.
+     *              - 'O': The first min(M,N) rows of V^T are overwritten on the array A.
+     *              - 'N': No rows of V^T are computed.
+     * @param M     The number of rows of the input matrix A. M >= 0.
+     * @param N     The number of columns of the input matrix A. N >= 0.
+     * @param A     On entry, the M-by-N matrix A. On exit, contents depend on JOBU and JOBVT.
+     * @param LDA   The leading dimension of the array A. LDA >= max(1, M).
+     * @param S     The singular values of A, sorted in decreasing order. Dimension at least min(M,N).
+     * @param U     If JOBU = 'A', U contains the M-by-M orthogonal matrix U.
+     *              If JOBU = 'S', U contains the M-by-min(M,N) matrix of left singular vectors.
+     *              If JOBU = 'O' or 'N', U is not referenced.
+     * @param LDU   The leading dimension of the array U. LDU >= max(1, M) if JOBU = 'A' or 'S'; otherwise LDU >= 1.
+     * @param VT    If JOBVT = 'A', VT contains the N-by-N orthogonal matrix V^T.
+     *              If JOBVT = 'S', VT contains the min(M,N)-by-N matrix of right singular vectors.
+     *              If JOBVT = 'O' or 'N', VT is not referenced.
+     * @param LDVT  The leading dimension of the array VT. LDVT >= max(1, N) if JOBVT = 'A' or 'S'; otherwise LDVT >= 1.
+     * @param WORK  Workspace array of dimension LWORK.
+     * @param LWORK The dimension of the array WORK. LWORK >= max(3*min(M,N)+max(M,N), 5*min(M,N)).
+     * @param INFO  Output status. INFO = 0 for successful exit. INFO < 0 indicates an illegal argument value.
+     */
+    void dgesvd_(char* JOBU, char* JOBVT, int* M, int* N, double* A, int* LDA,
+                 double* S, double* U, int* LDU, double* VT, int* LDVT,
+                 double* WORK, int* LWORK, int* INFO);
+
+    /**
+     * @brief Computes the Cholesky factorization of a real symmetric positive definite matrix A.
+     *
+     * Computes the upper or lower triangular factorization A = U^T * U or A = L * L^T.
+     *
+     * @param UPLO  Specifies whether the upper or lower triangular part of A is stored:
+     *              - 'U': Upper triangular part of A is stored.
+     *              - 'L': Lower triangular part of A is stored.
+     * @param N     The order of the matrix A. N >= 0.
+     * @param A     On entry, the symmetric positive definite matrix A.
+     *              On exit, the factor U or L from the Cholesky factorization.
+     * @param LDA   The leading dimension of the array A. LDA >= max(1, N).
+     * @param INFO  Output status. INFO = 0 for successful exit.
+     *              INFO < 0 indicates an illegal argument value.
+     *              INFO > 0 indicates that the leading minor of order INFO is not positive definite.
+     */
+    void dpotrf_(char* UPLO, int* N, double* A, int* LDA, int* INFO);
+
+    /**
+     * @brief Solves a system of linear equations A * X = B with a symmetric positive definite matrix A using the Cholesky factorization computed by DPOTRF.
+     *
+     * @param UPLO  Specifies whether the upper or lower triangular factor is stored:
+     *              - 'U': Upper triangular factor is stored.
+     *              - 'L': Lower triangular factor is stored.
+     * @param N     The order of the matrix A. N >= 0.
+     * @param NRHS  The number of right-hand sides, i.e., the number of columns of the matrix B. NRHS >= 0.
+     * @param A     The triangular factor U or L from the Cholesky factorization A = U^T * U or A = L * L^T, as computed by DPOTRF.
+     * @param LDA   The leading dimension of the array A. LDA >= max(1, N).
+     * @param B     On entry, the right-hand side matrix B. On exit, the solution matrix X.
+     * @param LDB   The leading dimension of the array B. LDB >= max(1, N).
+     * @param INFO  Output status. INFO = 0 for successful exit.
+     *              INFO < 0 indicates an illegal argument value.
+     */
+    void dpotrs_(char* UPLO, int* N, int* NRHS, double* A, int* LDA,
+                 double* B, int* LDB, int* INFO);
+
+    /**
+     * @brief Performs a symmetric rank-k update of a symmetric matrix C.
+     *
+     * Computes C = alpha * A * A^T + beta * C, or C = alpha * A^T * A + beta * C.
+     *
+     * @param UPLO  Specifies whether the upper or lower triangular part of the symmetric matrix C is to be referenced and updated:
+     *              - 'U': Upper triangular part of C is referenced and updated.
+     *              - 'L': Lower triangular part of C is referenced and updated.
+     * @param TRANS Specifies the operation:
+     *              - 'N': C = alpha * A * A^T + beta * C.
+     *              - 'T': C = alpha * A^T * A + beta * C.
+     * @param N     The order of the matrix C. N >= 0.
+     * @param K     If TRANS = 'N', the number of columns of A; if TRANS = 'T', the number of rows of A. K >= 0.
+     * @param ALPHA The scalar alpha.
+     * @param A     The matrix A. Dimensions depend on TRANS.
+     * @param LDA   The leading dimension of A.
+     * @param BETA  The scalar beta.
+     * @param C     The symmetric matrix C. On exit, updated according to the operation.
+     * @param LDC   The leading dimension of C. LDC >= max(1, N).
+     */
+    void dsyrk_(char* UPLO, char* TRANS, int* N, int* K, double* ALPHA,
+                double* A, int* LDA, double* BETA, double* C, int* LDC);
+
+    /**
+     * @brief Performs one of the matrix-vector operations y = alpha * A * x + beta * y, or y = alpha * A^T * x + beta * y.
+     *
+     * @param TRANS Specifies the operation:
+     *              - 'N': y = alpha * A * x + beta * y.
+     *              - 'T': y = alpha * A^T * x + beta * y.
+     * @param M     Number of rows of the matrix A.
+     * @param N     Number of columns of the matrix A.
+     * @param ALPHA The scalar alpha.
+     * @param A     The M-by-N matrix A.
+     * @param LDA   The leading dimension of the array A. LDA >= max(1, M).
+     * @param X     The vector x.
+     * @param INCX  The increment for the elements of X. INCX != 0.
+     * @param BETA  The scalar beta.
+     * @param Y     The vector y.
+     * @param INCY  The increment for the elements of Y. INCY != 0.
+     */
+    void dgemv_(char* TRANS, int* M, int* N, double* ALPHA,
+                double* A, int* LDA, const double* X, int* INCX,
+                double* BETA, double* Y, int* INCY);
 
     /** Compute inverse using the Cholesky factorisation from dpotrf */
     void dpotri_(char *uplo, int *n, double *a, int *lda, int *info);
@@ -79,10 +186,6 @@ extern "C" {
     void dgesdd_(char *jobz, int *m, int *n, double *a, int *lda,
             double *s, double *u, int *ldu, double *vt, int *ldvt,
             double *work, int *lwork, int *iwork, int *info);
-
-    void dgemv_(const char *trans, const int *m, const int *n,
-            const double *alpha, const double *a, const int *lda, const double *x,
-            const int *incx, const double *beta, double *y, const int *incy);
 
     void dgemm_(char *transa, char *transb, int *m, int *n,
             int *k, double *alpha, double *a, int *lda, double *b, int *ldb,
