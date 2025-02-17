@@ -256,21 +256,21 @@ Available options:
 
 **Notes**:
 
-- **Conditioning Parameter :code:`M`**: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
-- **Machine Precision (:code:`M = -1`)**: Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
-- **Covariance Matrix :math:`\Sigma`**: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
+- **Conditioning Parameter** :code:`M`: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
+- **Machine Precision** (:code:`M = -1`): Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
+- **Covariance Matrix** :math:`\Sigma`: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
 
 **Additional Information**:
 
-- **Regularization with :ref:`LAMBDA`**:
+- **Regularization with** :ref:`LAMBDA`:
 
   - The :ref:`LAMBDA` key controls the regularization parameter used in the training process. It should be specified separately to apply regularization to the model.
   - Regularization helps prevent overfitting by adding a penalty for larger parameter values.
 
 - **LAPACK Routines**:
 
-  - **:code:`DGELSD`**: Computes the minimum-norm solution to a real linear least squares problem using the SVD of the coefficient matrix.
-  - **:code:`DGELS`**: Solves overdetermined or underdetermined real linear systems involving an :math:`M \times N` matrix, using a QR or LQ factorization of the matrix.
+  - :code:`DGELSD`: Computes the minimum-norm solution to a real linear least squares problem using the SVD of the coefficient matrix.
+  - :code:`DGELS`: Solves overdetermined or underdetermined real linear systems involving an :math:`M \times N` matrix, using a QR or LQ factorization of the matrix.
 
 - **When to Use Each Option**:
 
@@ -310,11 +310,11 @@ This key controls the regularization parameter :math:`\lambda` for both :cpp:cla
 
 Available options:
 
-- **``LAMBDA 0``**: No regularization is applied. The model is trained without penalizing parameter magnitudes.
+- ``LAMBDA 0``: No regularization is applied. The model is trained without penalizing parameter magnitudes.
 
-- **``LAMBDA N``** (where :code:`N > 0`): Sets the regularization parameter :math:`\lambda` to the specified positive value :code:`N`. This applies a fixed amount of regularization during training.
+- ``LAMBDA N`` (where :code:`N > 0`): Sets the regularization parameter :math:`\lambda` to the specified positive value :code:`N`. This applies a fixed amount of regularization during training.
 
-- **``LAMBDA -1``**: Uses an evidence-approximation algorithm to estimate the optimal value of :math:`\lambda`. This method adjusts the regularization parameter based on the data to balance model fit and complexity.
+- ``LAMBDA -1``: Uses an evidence-approximation algorithm to estimate the optimal value of :math:`\lambda`. This method adjusts the regularization parameter based on the data to balance model fit and complexity.
 
 **Usage**:
 
@@ -342,7 +342,7 @@ Available options:
 
 **Applications in Models**:
 
-- :cpp:class:`M_BLR` **(Bayesian Linear Regression) and :cpp:class:`M_KRR` **(Kernel Ridge Regression)**:
+- :cpp:class:`M_BLR` **(Bayesian Linear Regression) and** :cpp:class:`M_KRR` **(Kernel Ridge Regression)**:
 
   - The :code:`LAMBDA` key influences the regularization applied in these models.
   - In Bayesian Linear Regression, regularization corresponds to the prior belief about the magnitude of the coefficients.
