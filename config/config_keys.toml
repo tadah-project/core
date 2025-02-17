@@ -310,11 +310,11 @@ This key controls the regularization parameter :math:`\lambda` for both :cpp:cla
 
 Available options:
 
-- **:code:`LAMBDA 0`**: No regularization is applied. The model is trained without penalizing parameter magnitudes.
+- **``LAMBDA 0``**: No regularization is applied. The model is trained without penalizing parameter magnitudes.
 
-- **:code:`LAMBDA N`** (where :code:`N > 0`): Sets the regularization parameter :math:`\lambda` to the specified positive value :code:`N`. This applies a fixed amount of regularization during training.
+- **``LAMBDA N``** (where :code:`N > 0`): Sets the regularization parameter :math:`\lambda` to the specified positive value :code:`N`. This applies a fixed amount of regularization during training.
 
-- **:code:`LAMBDA -1`**: Uses an evidence-approximation algorithm to estimate the optimal value of :math:`\lambda`. This method adjusts the regularization parameter based on the data to balance model fit and complexity.
+- **``LAMBDA -1``**: Uses an evidence-approximation algorithm to estimate the optimal value of :math:`\lambda`. This method adjusts the regularization parameter based on the data to balance model fit and complexity.
 
 **Usage**:
 
@@ -328,13 +328,13 @@ Available options:
 
 **Notes**:
 
-- **Regularization Parameter :math:`\lambda`**:
+- **Regularization Parameter** :math:`\lambda`:
 
   - A higher value of :math:`\lambda` increases the amount of regularization, which can reduce overfitting but may lead to underfitting if set too high.
   - A lower positive value (close to zero) applies minimal regularization, allowing the model to fit the training data more closely.
   - Setting :code:`LAMBDA 0` disables regularization entirely, which may result in overfitting, especially with complex models or small datasets.
 
-- **Evidence-Approximation Algorithm (:code:`LAMBDA -1`)**:
+- **Evidence-Approximation Algorithm** (:code:`LAMBDA -1`):
 
   - Automatically estimates the optimal value of :math:`\lambda` from the data.
   - Useful when it's difficult to choose an appropriate value for :math:`\lambda` manually.
@@ -342,7 +342,7 @@ Available options:
 
 **Applications in Models**:
 
-- **:cpp:class:`M_BLR` (Bayesian Linear Regression)** and **:cpp:class:`M_KRR` (Kernel Ridge Regression)**:
+- :cpp:class:`M_BLR` **(Bayesian Linear Regression) and :cpp:class:`M_KRR` **(Kernel Ridge Regression)**:
 
   - The :code:`LAMBDA` key influences the regularization applied in these models.
   - In Bayesian Linear Regression, regularization corresponds to the prior belief about the magnitude of the coefficients.
@@ -350,7 +350,7 @@ Available options:
 
 **Additional Information**:
 
-- **Combining with :ref:`OALGO`**:
+- **Combining with** :ref:`OALGO`:
 
   - The regularization parameter :math:`\lambda` works in conjunction with the optimization algorithm selected by the :code:`OALGO` key.
   - Ensure that both keys are set appropriately to achieve the desired balance between performance, robustness, and regularization.
