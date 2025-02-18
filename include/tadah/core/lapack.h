@@ -167,7 +167,7 @@ extern "C" {
      * @param INCY  The increment for the elements of Y. INCY != 0.
      */
     void dgemv_(char* TRANS, int* M, int* N, double* ALPHA,
-                double* A, int* LDA, const double* X, int* INCX,
+                const double* A, int* LDA, const double* X, int* INCX,
                 double* BETA, double* Y, int* INCY);
 
     /** Compute inverse using the Cholesky factorisation from dpotrf */
