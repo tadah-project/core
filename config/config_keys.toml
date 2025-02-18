@@ -232,16 +232,20 @@ Available options:
 
 **3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance matrix :math:`\Sigma`, providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
 
+**4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It does not require additional parameters.
+
 **Performance Comparison**:
 
 - **Option 2** is the fastest but assumes a full-rank matrix and is less robust for ill-conditioned problems.
-- **Option 1** offers a balance between speed and robustness, handling rank-deficient and ill-conditioned problems better than option 2.
+- **Option 4** is also efficient but may suffer from numerical instability in ill-conditioned or rank-deficient problems due to squaring of the condition number.
+- **Option 1** offers a balance between speed and robustness, handling rank-deficient and ill-conditioned problems better than options 2 and 4.
 - **Option 3** is the slowest due to the additional computations but provides valuable extra information like the covariance matrix.
 
 **Usage**:
 
 - To select an algorithm, set the :code:`OALGO` key followed by the option number.
 - For options **1** and **3**, you can specify the conditioning parameter :code:`M` after the option number.
+- Option **4** does not require any additional parameters.
 
 **Regularization Parameter**:
 
@@ -253,12 +257,14 @@ Available options:
 - :code:`OALGO 1 -1`       # Uses GELSD with machine precision (:code:`M = -1`)
 - :code:`OALGO 2`          # Uses GELS
 - :code:`OALGO 3 1e-10`    # Uses custom implementation with :code:`M = 1e-10`
+- :code:`OALGO 4`          # Uses Cholesky Decomposition
 
 **Notes**:
 
 - **Conditioning Parameter** :code:`M`: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
 - **Machine Precision** (:code:`M = -1`): Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
 - **Covariance Matrix** :math:`\Sigma`: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
+- **Cholesky Decomposition**: Option **4** solves the normal equations using Cholesky decomposition. It is efficient but may be numerically unstable for ill-conditioned or rank-deficient problems due to squaring the condition number. It is best used when the matrix is well-conditioned and of full rank.
 
 **Additional Information**:
 
@@ -271,15 +277,17 @@ Available options:
 
   - :code:`DGELSD`: Computes the minimum-norm solution to a real linear least squares problem using the SVD of the coefficient matrix.
   - :code:`DGELS`: Solves overdetermined or underdetermined real linear systems involving an :math:`M \times N` matrix, using a QR or LQ factorization of the matrix.
+  - :code:`DPOTRF` and :code:`DPOTRS`: Used in the Cholesky decomposition to factorize a symmetric positive-definite matrix and solve the resulting linear system.
 
 - **When to Use Each Option**:
 
   - Use **Option 1 (GELSD)** when you need robustness against rank deficiency and moderate performance.
   - Use **Option 2 (GELS)** for the fastest performance on well-conditioned, full-rank matrices where robustness is less of a concern.
   - Use **Option 3 (Custom SVD Implementation)** when you require additional outputs like the covariance matrix and are willing to trade off performance for more comprehensive results.
+  - Use **Option 4 (Cholesky Decomposition)** when you have a well-conditioned, full-rank matrix and need an efficient solution, but be cautious of potential numerical instability in ill-conditioned or rank-deficient problems.
 
 '''
-examples = ['OALGO 1', 'OALGO 1 -1', 'OALGO 2', 'OALGO 3 1e-10']
+examples = ['OALGO 1', 'OALGO 1 -1', 'OALGO 2', 'OALGO 3 1e-10', 'OALGO 4']
 is_internal = [false]
 
 [SBASIS]
