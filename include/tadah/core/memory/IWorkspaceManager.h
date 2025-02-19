@@ -17,7 +17,7 @@ public:
   /**
    * @brief Virtual destructor for interface.
    */
-  virtual ~IWorkspaceManager() = default;
+  virtual ~IWorkspaceManager();
 };
 
 } // namespace memory
