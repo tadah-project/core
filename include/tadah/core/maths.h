@@ -417,6 +417,14 @@ public:
     }
     return *this;
   }
+  // Compute the Frobenius norm: sqrt( sum_{i=1..9} (m_[i])^2 ).
+  inline double norm() const {
+    double sum = 0.0;
+    for (size_t i = 0; i < 9; ++i) {
+      sum += Matrix_Base<T>::m_[i] * Matrix_Base<T>::m_[i];
+    }
+    return std::sqrt(sum);
+  }
 };
 
 class Mat6R3C {
