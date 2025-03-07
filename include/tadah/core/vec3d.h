@@ -65,6 +65,13 @@ public:
     v[2]*=s;
     return *this;
   }
+  inline Vec3d &operator/=(const double s)
+  {
+    v[0]/=s;
+    v[1]/=s;
+    v[2]/=s;
+    return *this;
+  }
   inline Vec3d operator-(const Vec3d &v2) const
   {
     return Vec3d((*this)[0]-v2[0], (*this)[1]-v2[1], (*this)[2]-v2[2]);
@@ -77,15 +84,28 @@ public:
   {
     return (*this)[0]*v2[0] + (*this)[1]*v2[1] + (*this)[2]*v2[2];
   }
+  inline double dot(const Vec3d &other) const {
+    return v[0]*other[0] + v[1]*other[1] + v[2]*other[2];
+  }
   template <typename T>
   inline Vec3d operator*(const T s) const
   {
     return Vec3d((*this)[0]*s, (*this)[1]*s, (*this)[2]*s);
   }
   template <typename T>
+  inline Vec3d operator/(const T s) const
+  {
+    return Vec3d((*this)[0]/s, (*this)[1]/s, (*this)[2]/s);
+  }
+  template <typename T>
   inline friend Vec3d operator*(const double s, const T &v)
   {
     return Vec3d(v[0]*s, v[1]*s, v[2]*s);
+  }
+  template <typename T>
+  inline friend Vec3d operator/(const double s, const T &v)
+  {
+    return Vec3d(s/v[0], s/v[1], s/v[2]);
   }
   inline void set_zero() { v[0]=0; v[1]=0; v[2]=0; }
 

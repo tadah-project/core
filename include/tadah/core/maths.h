@@ -26,7 +26,7 @@ public:
   size_t cols_;
   D m_;
 
-  inline Matrix_Base<D>() {};
+  inline Matrix_Base<D>(): rows_(0), cols_(0) {};
   inline Matrix_Base<D>(D data, size_t rows, size_t cols)
   : rows_(rows), cols_(cols), m_(data) {}
 
@@ -254,6 +254,16 @@ public:
     Matrix_Base<T>::cols_= c;
   }
 };
+template <typename D>
+Matrix_T<D> transpose(const Matrix_T<D>& mat) {
+  Matrix_T<D> result(mat.cols(), mat.rows());
+  for (size_t i = 0; i < mat.rows(); ++i) {
+    for (size_t j = 0; j < mat.cols(); ++j) {
+      result(j, i) = mat(i, j);
+    }
+  }
+  return result;
+}
 typedef Matrix_T<> Matrix;
 
 class MatrixView: public Matrix_Base<double*> {
@@ -299,7 +309,7 @@ public:
     Vec3d temp((*this)[s], (*this)[s+1], (*this)[s+2]);
     return temp;
   }
-  inline Matrix3d_T<T> transpose() {
+  inline Matrix3d_T<T> transpose() const {
     Matrix3d_T<T> temp;
     for (size_t i=0; i<3; i++){
       for (size_t j=0; j<3; j++) {
@@ -308,8 +318,7 @@ public:
     }
     return temp;
   }
-  template <typename D>
-  inline Vec3d operator*(const D &v) const
+  inline Vec3d operator*(const Vec3d &v) const
   {
     // naive matrix vector product
     //m is M x N matrix and v is N x 1 column vector
@@ -425,6 +434,48 @@ public:
     }
     return std::sqrt(sum);
   }
+  static Matrix3d_T<T> Identity() {
+    Matrix3d_T I;
+    I.set_zero();
+    I(0,0) = 1.0;
+    I(1,1) = 1.0;
+    I(2,2) = 1.0;
+    return I;
+  }
+  inline friend Matrix3d_T<T> operator+(const Matrix3d_T<T> &m1, const Matrix3d_T<T> &m2)
+  {
+    Matrix3d_T<T> temp;
+    for (size_t i=0;i<9;++i) {
+      temp[i] = m1[i] + m2[i];
+    }
+    return temp;
+  }
+  inline friend Matrix3d_T<T> operator-(const Matrix3d_T<T> &m1, const Matrix3d_T<T> &m2)
+  {
+    Matrix3d_T<T> temp;
+    for (size_t i=0;i<9;++i) {
+      temp[i] = m1[i] - m2[i];
+    }
+    return temp;
+  }
+  template <typename D>
+  inline friend Matrix3d_T<T> operator*(const D &fac, const Matrix3d_T<T> &m1)
+  {
+    Matrix3d_T<T> temp;
+    for (size_t i=0;i<9;++i) {
+      temp[i] = m1[i] * fac;
+    }
+    return temp;
+  }
+  template <typename D>
+  inline friend Matrix3d_T<T> operator/(const Matrix3d_T<T> &m1, const D &fac)
+  {
+    Matrix3d_T<T> temp;
+    for (size_t i=0;i<9;++i) {
+      temp[i] = m1[i] / fac;
+    }
+    return temp;
+  }
 };
 
 class Mat6R3C {
@@ -447,5 +498,4 @@ public:
 };
 
 typedef Matrix3d_T<> Matrix3d;
-
 #endif
