@@ -32,24 +32,17 @@ const Element &PeriodicTable::find_by_name(const std::string &s) {
 const Element &PeriodicTable::find_by_symbol(const std::string &s) {
   try {
     return symbol.at(s);
-  } catch (const std::exception &e) {
-    std::cerr << "Error in find_by_symbol: " << e.what() << " (symbol: '" << s << "')\n";
-    throw;
-  } catch (...) {
-    std::cerr << "Unknown error in find_by_symbol (symbol: '" << s << "')\n";
-    throw;
+  } catch (const std::out_of_range &e) {
+    // Re-throw a std::runtime_error to match the test’s expectation
+    throw std::runtime_error(std::string("Unknown symbol: ") + s);
   }
 }
-
 const Element &PeriodicTable::find_by_Z(int z) {
   try {
     return Z.at(z);
-  } catch (const std::exception &e) {
-    std::cerr << "Error in find_by_Z: " << e.what() << " (atomic number: " << z << ")\n";
-    throw;
-  } catch (...) {
-    std::cerr << "Unknown error in find_by_Z (atomic number: " << z << ")\n";
-    throw;
+  } catch (const std::out_of_range &e) {
+    // Re-throw a std::runtime_error to match the test’s expectation
+    throw std::runtime_error("Unknown atomic number: " + std::to_string(z));
   }
 }
 

@@ -27,9 +27,19 @@ struct Element {
     bool operator<(const Element& other) const;
     bool operator>(const Element& other) const;
 };
+
+// Now that Element is fully declared, define the std::hash specialization:
 namespace std {
     template <>
-    struct hash<Element>;
+    struct hash<Element>
+    {
+        // Implement the hash however you want:
+        // Typically, hash just calls a standard hash on a unique data member.
+        // Here, hashing by atomic number only:
+        size_t operator()(const Element &e) const noexcept
+        {
+            return std::hash<int>()(e.Z);
+        }
+    };
 }
-
 #endif

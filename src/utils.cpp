@@ -9,17 +9,21 @@
 #include <limits>
 
 v_type logspace(double start, double stop, int num, double base) {
-    if (start==0) {
-        throw std::runtime_error("log series cannot start at 0\n");
+    // Disallow any non-positive start to avoid std::log of negative or zero
+    if (start <= 0.0) {
+        throw std::runtime_error("logspace() start must be > 0");
     }
-    double realStart = pow(base, log(start));
-    double realBase = pow(base, (log(stop)-log(start))/(num-1));
+
+    // existing code
+    double realStart = std::pow(base, std::log(start));
+    double realBase  = std::pow(base, (std::log(stop)-std::log(start)) / (num - 1));
 
     v_type retval;
     retval.reserve(num);
-    std::generate_n(std::back_inserter(retval), num, Logspace<double>(realStart,realBase));
+    std::generate_n(std::back_inserter(retval), num, Logspace<double>(realStart, realBase));
     return retval;
 }
+
 
 size_t number_of_digits (size_t i)
 {
@@ -130,11 +134,13 @@ bool is_number(const std::string& str) {
 }
 
 std::string trim(const std::string& str) {
-    size_t first = str.find_first_not_of(' ');
-    if (first == std::string::npos)
+    const std::string whitespace = " \t\n\r\f\v";
+    size_t first = str.find_first_not_of(whitespace);
+    if (first == std::string::npos) {
         return "";
-    size_t last = str.find_last_not_of(' ');
-    return str.substr(first, (last - first + 1));
+    }
+    size_t last = str.find_last_not_of(whitespace);
+    return str.substr(first, last - first + 1);
 }
 
 std::string join(const std::vector<std::string>& vec) {
@@ -306,3 +312,4 @@ std::vector<histogram_bin> generate_2d_histogram(
 
     return histogram_bins;
 }
+

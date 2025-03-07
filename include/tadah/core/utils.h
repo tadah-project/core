@@ -69,21 +69,59 @@ v_type linspace(T start_in, T end_in, int num_in)
 }
 
 
-
-
+/**
+ * @brief Convert a value to string (no precision specified).
+ *
+ * @tparam T Any type supporting operator<< to std::ostream.
+ * @param value The value to convert.
+ * @return std::string Representation of the value.
+ */
 template <typename T>
-std::string to_string(const T& value,int n) {
+inline std::string to_string(const T& value)
+{
     std::stringstream ss;
-    ss <<  std::setprecision(n) << value;
+    ss << value; 
     return ss.str();
 }
 
+/**
+ * @brief Convert a value to string with given precision (for numeric types).
+ *
+ * @tparam T Any type supporting operator<< to std::ostream.
+ * @param value The value to convert.
+ * @param n   Decimal precision (for floating types).
+ * @return std::string Representation of the value with precision n.
+ */
 template <typename T>
-std::string to_string(const T& value) {
+inline std::string to_string(const T& value, int n)
+{
     std::stringstream ss;
-    ss << value;
+    ss << std::fixed << std::setprecision(n) << value;
     return ss.str();
 }
+
+/**
+ * @brief Specialization for bool (no precision).
+ *
+ * Writes "true" or "false" instead of "1" or "0".
+ */
+template <>
+inline std::string to_string<bool>(const bool& value)
+{
+    return value ? "true" : "false";
+}
+
+/**
+ * @brief Specialization for bool (with precision).
+ *
+ * Ignores the precision parameter and writes "true" or "false".
+ */
+template <>
+inline std::string to_string<bool>(const bool& value, int /*n*/)
+{
+    return value ? "true" : "false";
+}
+
 
 std::string to_upper(const std::string s);
 

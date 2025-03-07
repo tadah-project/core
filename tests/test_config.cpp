@@ -359,3 +359,119 @@ TEST_CASE( "Testing Config add", "[config]" ) {
     std::cerr << "Failed to open directory." << std::endl;
   }
 }
+
+
+TEST_CASE("Testing Config check_for_predict()", "[config][new]") {
+    // check_for_predict() is currently a stub returning true
+    // We ensure it does not throw and simply returns true.
+    Config c;
+    // Possibly set some keys
+    c.add("DBFILE", "predict_file");
+    // The default function does nothing special, so we only confirm no exceptions:
+    REQUIRE_NOTHROW(c.check_for_predict());
+    REQUIRE(c.check_for_predict() == true);
+}
+
+TEST_CASE("Testing Config check_pot_file()", "[config][new]") {
+    // check_pot_file() is also a stub returning true
+    // We'll confirm it doesn't throw:
+    Config c;
+    // Add minimal keys
+    c.add("DBFILE", "my_potential_file");
+    REQUIRE_NOTHROW(c.check_pot_file());
+    REQUIRE(c.check_pot_file() == true);
+}
+
+TEST_CASE("Testing Config serialization round-trip", "[config][new]") {
+    // Create a config, then remove the default "INIT2B" if it exists, so we can add a new one.
+    Config c1;
+    c1.remove("INIT2B"); // remove default "INIT2B: false"
+    c1.add("INIT2B", true);
+
+    // Now we can safely add DBFILE, etc.
+    c1.add("DBFILE", "db_1");
+    c1.add("DBFILE", "db_2");
+    c1.add("RCUT2B", 5.5);
+
+    // Round-trip serialization
+    std::vector<char> buffer = c1.serialize();
+    Config c2;
+    c2.deserialize(buffer);
+
+    // Check equality
+    REQUIRE(c1 == c2);
+    REQUIRE(c2.get<bool>("INIT2B") == true);
+    REQUIRE(c2.get<double>("RCUT2B") == 5.5);
+}
+
+TEST_CASE("Testing Config operator== - partial differences", "[config][new]") {
+    Config cA, cB;
+    // Both start with default INIT2B, ALPHA, etc.
+
+    // If we want ALPHA to be set manually, remove it from defaults first
+    cA.remove("ALPHA");
+    cB.remove("ALPHA");
+
+    // Now proceed with your test scenario
+    cA.add("DBFILE", "data_a1");
+    cB.add("DBFILE", "data_a1");
+    REQUIRE(cA == cB); // They match now
+
+    // cB adds extra DBFILE => mismatch
+    cB.add("DBFILE", "data_a2");
+    REQUIRE_FALSE(cA == cB);
+
+    // remove the extra DBFILE to match cA
+    cB.remove("DBFILE");
+    cB.add("DBFILE", "data_a1");
+    REQUIRE(cA == cB);
+
+    // Now we want to add ALPHA
+    cA.add("ALPHA", 1);
+    REQUIRE_FALSE(cA == cB);
+    cB.add("ALPHA", 1);
+    REQUIRE(cA == cB);
+}
+
+TEST_CASE("Testing Config with multi-token lines (simulation)", "[config][new]") {
+    // We’ll simulate reading lines like "TOKEN val1 val2 val3" by calling add() multiple times.
+    // The existing read() method already handles line input, but we can mimic it directly here.
+
+    Config c;
+    // "FOO" key is allowed as per config_keys.toml (assuming for demonstration).
+    // If it’s not actually in your toml, adjust to a key that *is* allowed for multiple values
+    // such as "DBFILE" or "CGRID2B" with negative or multiple allowance.
+
+    c.add("DBFILE", std::vector<std::string>{"val1", "val2", "val3"});
+    // Now we check the content
+    REQUIRE(c.size("DBFILE") == 3);
+    REQUIRE(c("DBFILE")[0] == "val1");
+    REQUIRE(c("DBFILE")[1] == "val2");
+    REQUIRE(c("DBFILE")[2] == "val3");
+
+    // If you want to confirm that read() also handles multiple tokens on one line,
+    // place an actual test config file under valid_configs or invalid_configs containing:
+    //   DBFILE val1 val2 val3
+    // and run your existing "Testing Config read()".
+}
+
+// ------------------ SUGGESTED IMPROVEMENTS TO PREVIOUS CASES ------------------
+/*
+1) Key with multiple tokens in a single line:
+   - You already test multi-value additions with multiple calls to add().
+   - If you want to confirm your read() method can parse "MYKEY val1 val2 val3" on one line,
+     place a real config file with that line in "tests_data/valid_configs" and confirm it loads.
+
+2) check_for_predict() and check_pot_file():
+   - Currently stubs returning true. If in future they do real checks, you can add
+     negative tests (REQUIRE_THROWS) for invalid settings.
+
+3) Overriding default values:
+   - A test that modifies a default key after it's set defaults, verifying the override 
+     is accepted or not. Then confirm the final config has that updated value.
+
+4) Many lines with trailing comments:
+   - For example: "DBFILE data # comment here", ensure the code stops parsing after '#'.
+   - This is partly tested, but you might add a specialized test config file if needed.
+*/
+
