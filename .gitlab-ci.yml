@@ -36,7 +36,7 @@ run_unit_tests:
         --exclude ".*CMakeFiles.*" \
         --exclude "tests" \
         --exclude "build" \
-        #--gcov-ignore-errors=no_working_dir_found
+        --gcov-ignore-errors=no_working_dir_found
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
