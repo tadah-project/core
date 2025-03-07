@@ -27,7 +27,7 @@ run_unit_tests:
   script:
     - cd ${DEBUG_DIR}
     - make test
-    - cd ..; gcovr -e '.*tests.*|.*lib.*|build' -r .
+    - gcovr --root ${CI_PROJECT_DIR} --object-directory ${DEBUG_DIR} --filter '^(\./)?(src|include)/' --exclude 'tests' --exclude 'build'
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
