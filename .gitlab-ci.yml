@@ -27,16 +27,16 @@ run_unit_tests:
   script:
     - cd "${DEBUG_DIR}"
     - make test
-    # Return to the project root:
     - cd "${CI_PROJECT_DIR}"
-    # Use absolute paths for --filter so it actually includes src/ and include/:
     - |
       gcovr \
         --root "${CI_PROJECT_DIR}" \
         --object-directory "${DEBUG_DIR}" \
         --filter "^${CI_PROJECT_DIR}/(src|include)" \
+        --exclude ".*CMakeFiles.*" \
         --exclude "tests" \
-        --exclude "build"
+        --exclude "build" \
+        #--gcov-ignore-errors=no_working_dir_found
   coverage: /^TOTAL.*\s+(\d+\%)$/
 
 build_release_shared:
