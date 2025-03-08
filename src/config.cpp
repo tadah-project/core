@@ -219,29 +219,11 @@ const std::vector<std::string>& Config::operator()(const std::string key) const 
 }
 
 size_t Config::size(const std::string key) const {
-    try {
-        if (c.count(to_upper(key)) == 0)
-            throw std::runtime_error(knf + to_upper(key));
         return c.at(to_upper(key)).size();
-    } catch (const std::exception &e) {
-        std::cerr << "Error getting size for key '" << key << "': " << e.what() << "\n";
-        throw;
-    } catch (...) {
-        std::cerr << "Unknown error getting size for key '" << key << "'.\n";
-        throw;
-    }
 }
 
 bool Config::exist(const std::string key) const {
-    try {
         return c.count(to_upper(key));
-    } catch (const std::exception &e) {
-        std::cerr << "Error checking existence of key '" << key << "': " << e.what() << "\n";
-        return false;
-    } catch (...) {
-        std::cerr << "Unknown error checking existence of key '" << key << "'.\n";
-        return false;
-    }
 }
 const std::map<std::string,int> Config:: internal_keys =  Config::create_internal_keys();
 const std::string Config::knf = "Key not found: ";
