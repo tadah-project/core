@@ -36,6 +36,7 @@ run_unit_tests:
         --root . \
         --object-directory build/debug \
         --exclude '.*CompilerIdCXX.*' \
+        --exclude '.*build\/debug\/CMakeFiles\/3.*' \
         --exclude '.*CMakeFiles.*' \
         --exclude 'tests' \
         --exclude 'build' \
