@@ -527,3 +527,78 @@ TEST_CASE("Config postprocess() no RCUTMAX if all cutoffs are zero [line 312]", 
     c.postprocess();
     REQUIRE_FALSE(c.exist("RCUTMAX")); // still no max
 }
+TEST_CASE("Config read() with empty lines and comments") {
+    // We'll create a temporary file containing some blank lines and commented lines
+    const char* filename = "test_empty_comment.cfg";
+    {
+        std::ofstream ofs(filename);
+        ofs << "\n";               // empty line
+        ofs << "# This is a comment line\n";
+        ofs << "INIT2B true   # key plus inline comment\n";
+        ofs << "\n";               // another blank line
+    }
+
+    // Now read it
+    Config c;
+  c.remove("INIT2B");
+    REQUIRE_NOTHROW(c.add(filename));  
+    // We expect "INIT2B true" was read
+    REQUIRE(c.get<bool>("INIT2B") == true);
+
+    // Cleanup
+    std::remove(filename);
+}
+
+TEST_CASE("Config postprocess() partial usage") {
+    // This scenario sets INIT2B and RCUT2B but no values => see if the code can handle empty RCUT2B
+    Config c;
+    c.remove("INIT2B");
+    c.remove("RCUT2B");
+    
+    // Add minimal lines that can pass check_for_training but are incomplete
+    // e.g. DBFILE is mandatory for check_for_training
+    c.add("DBFILE", "some_file");
+    c.add("INIT2B", true); 
+    // but we do NOT add "RCUT2B" => so c2b remains 0
+    
+    // This triggers postprocess: c2b=0 => no RCUT2BMAX. 
+    // We'll verify coverage for the if-check that sets "RCUT2BMAX" only if c2b != 0.
+    c.postprocess();
+    REQUIRE_FALSE(c.exist("RCUT2BMAX"));
+    REQUIRE_FALSE(c.exist("RCUTMAX"));
+
+    // This won't pass check_for_training fully if we haven't set RCTYPE2B, TYPE2B, etc., 
+    // but we won't call check_for_training. The main thing is to ensure partial postprocess coverage.
+}
+
+TEST_CASE("Config deserialize() unusual buffer") {
+    // We create a config, add some data, serialize it,
+    // then tamper or create an unusual buffer to see if parse continues gracefully.
+
+    Config c1;
+    c1.add("DBFILE","file1");
+    // c1.add("INIT2B", true);
+
+    std::vector<char> buf = c1.serialize();
+    // Now let's cut the buffer in half to cause partial data
+    buf.resize(buf.size() / 2);
+
+    // Make a new config, call deserialize
+    Config c2;
+    REQUIRE_NOTHROW(c2.deserialize(buf));
+    // We won't necessarily expect c2 to match c1, but it's a coverage scenario for the loop in deserialize
+}
+
+TEST_CASE("Config set_defaults() after clear()") {
+    // We'll ensure the lines in set_defaults() that skip or continue are used.
+    // 1) clear everything
+    Config c;
+    c.clear();
+
+    // 2) call set_defaults() manually => it tries to fill from tdc
+    REQUIRE_NOTHROW(c.set_defaults());
+
+    // Typically, keys like "INIT2B","INIT3B" might reappear with default= "false"
+    // We'll just check one
+    REQUIRE(c.exist("INIT2B")); 
+}
