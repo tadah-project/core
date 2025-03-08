@@ -205,17 +205,7 @@ void Config::clear_internal_keys() {
   }
 }
 const std::vector<std::string>& Config::operator()(const std::string key) const {
-    try {
-        if (c.count(to_upper(key)) == 0)
-            throw std::runtime_error(knf + to_upper(key));
         return c.at(to_upper(key));
-    } catch (const std::exception &e) {
-        std::cerr << "Error accessing key '" << key << "': " << e.what() << "\n";
-        throw;
-    } catch (...) {
-        std::cerr << "Unknown error accessing key '" << key << "'.\n";
-        throw;
-    }
 }
 
 size_t Config::size(const std::string key) const {
