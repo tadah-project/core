@@ -36,12 +36,12 @@ run_unit_tests:
         --root . \
         --object-directory build/debug \
         --exclude '.*CompilerIdCXX.*' \
+        --exclude '.*build\/debug\/CMakeFiles\/3.*' \
         --exclude '.*CMakeFiles.*' \
         --exclude 'tests' \
         --exclude 'build' \
         --exclude 'external' \
         --gcov-ignore-errors=no_working_dir_found \
-        --verbose
   coverage: "/^TOTAL.*\\s+(\\d+\\%)$/"
 
 build_release_shared:
