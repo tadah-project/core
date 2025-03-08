@@ -188,7 +188,7 @@ bool is_blank_line(const std::string& line);
  * @param n The number of parts to divide into.
  * @return A vector containing the parts.
  */
-std::vector<size_t> divide_into_parts(size_t number, size_t n);
+std::vector<size_t> divide_into_parts(size_t number, int n);
 
 /**
  * @brief Divides a number according to specified percentages.

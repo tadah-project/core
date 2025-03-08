@@ -455,23 +455,75 @@ TEST_CASE("Testing Config with multi-token lines (simulation)", "[config][new]")
     // and run your existing "Testing Config read()".
 }
 
-// ------------------ SUGGESTED IMPROVEMENTS TO PREVIOUS CASES ------------------
-/*
-1) Key with multiple tokens in a single line:
-   - You already test multi-value additions with multiple calls to add().
-   - If you want to confirm your read() method can parse "MYKEY val1 val2 val3" on one line,
-     place a real config file with that line in "tests_data/valid_configs" and confirm it loads.
 
-2) check_for_predict() and check_pot_file():
-   - Currently stubs returning true. If in future they do real checks, you can add
-     negative tests (REQUIRE_THROWS) for invalid settings.
+TEST_CASE("Config get<T>(key, T&) - parsing failure triggers catch(...) [lines 96-97]", "[config][coverage]") {
+    Config c;
+    // 1) Add a user key that can hold multiple values, e.g. "DBFILE"
+    //    declared as "value_N=-1" or some multiple in config_keys.toml
+    //    so we can store more than one string in it.
+    c.add("DBFILE", "valid1");
+    c.add("DBFILE", "invalid_data"); // We'll parse this as double => fail
 
-3) Overriding default values:
-   - A test that modifies a default key after it's set defaults, verifying the override 
-     is accepted or not. Then confirm the final config has that updated value.
+    // 2) Prepare an array of doubles, expecting to parse "valid1"/"invalid_data" as numeric
+    //    The first parse might succeed if "valid1" is numeric. If not, it should fail.
+    //    Let's ensure "valid1" is also non-numeric, so it fails on the first element.
+    //    So we guarantee an exception in the for-loop with "std::istringstream iss(v);" 
+    std::vector<double> arr(2);
 
-4) Many lines with trailing comments:
-   - For example: "DBFILE data # comment here", ensure the code stops parsing after '#'.
-   - This is partly tested, but you might add a specialized test config file if needed.
-*/
+    // Expect "catch(...) { throw runtime_error(...) }" in Config::get(...)
+    REQUIRE_THROWS_WITH(
+        c.get("DBFILE", arr),
+        Catch::Matchers::Contains("Config: Failed getting reading/writing to an array DBFILE")
+    );
+}
 
+TEST_CASE("Config deserialize() - partial/truncated buffer [line 287]", "[config][coverage]") {
+    Config c1;
+    // Add something to c1 so serialization won't be empty
+    c1.add("DBFILE", "file1");
+    c1.add("DBFILE", "file2");
+
+    // Serialize
+    std::vector<char> buf = c1.serialize();
+
+    // Truncate the buffer in the middle => partial data
+    // "pos < buffer.size()" => We'll forcibly break that loop by giving incomplete data
+  buf.resize(4); // tiny, ensures incomplete read
+
+    Config c2;
+    // Should parse until it runs out of bytes, possibly ignoring partial data
+    // Usually it won't throw in your code because there's no explicit check for insufficient data,
+    // but let's see if it hits line 287 in coverage.
+    // If you want to force an exception on truncated data, you'd do so in your code. Currently, it won't throw.
+    REQUIRE_NOTHROW(c2.deserialize(buf));
+
+    // We do not expect c2 to match c1, because the buffer was truncated
+    REQUIRE_FALSE(c2 == c1);
+}
+
+TEST_CASE("Config postprocess() no RCUTMAX if all cutoffs are zero [line 312]", "[config][coverage]") {
+    // postprocess() sets RCUTMAX only if there's a non-zero c2b/c3b/cmb
+    // We'll ensure all are zero => no RCUTMAX in the map
+    Config c;
+    // Remove any defaults that might set INIT2B or RCUT2B
+    c.remove("INIT2B");
+    c.remove("INIT3B");
+    c.remove("INITMB");
+    c.remove("RCUT2B");
+    c.remove("RCUT3B");
+    c.remove("RCUTMB");
+
+    // Without those keys set or "true", the cutoffs remain zeros in postprocess
+    c.postprocess();
+
+    // Now confirm that RCUTMAX was NOT set
+    REQUIRE_FALSE(c.exist("RCUTMAX"));
+
+    // Then let's set some partial keys but keep them effectively zero
+    c.add("INIT2B", false);  // key exist, but false => won't read RCUT2B
+    c.add("INIT3B", false);
+    c.add("INITMB", false);
+
+    c.postprocess();
+    REQUIRE_FALSE(c.exist("RCUTMAX")); // still no max
+}

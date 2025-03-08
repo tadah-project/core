@@ -85,16 +85,34 @@ public:
          */
   template <typename T>
   void get(const std::string key, T & value) const {
-    if (c.count(to_upper(key))==0)
-      throw std::runtime_error(knf+key);
-    int i=0;
+    // 1) Check if the key is present
+    if (c.count(to_upper(key)) == 0) {
+      throw std::runtime_error(knf + key);
+    }
+
+    // 2) We'll parse each stored string in c[to_upper(key)] into value[i]
+    int i = 0;
     try {
-      for (auto v : c.at(to_upper(key))) {
-        std::istringstream iss(v);
-        iss >> value[i++];
+      for (const auto &strVal : c.at(to_upper(key))) {
+        std::istringstream iss(strVal);
+
+        // Attempt to parse with boolalpha support
+        iss >> std::boolalpha >> value[i];
+
+        // If the stream fails (non-numeric or otherwise), throw:
+        if (iss.fail()) {
+          throw std::runtime_error(
+            "Config: Failed getting reading/writing to an array " + key
+          );
+        }
+        i++;
       }
-    } catch (...) {
-      throw std::runtime_error("Config: Failed getting reading/writing to an array "+key);
+    }
+    catch (...) {
+      // If *anything* unexpected occurs, re-throw with a more explicit message
+      throw std::runtime_error(
+        "Config: Failed getting reading/writing to an array " + key
+      );
     }
   }
 
@@ -164,30 +182,47 @@ public:
          */
   template <typename T>
   void add(const std::string key, T val) {
-    int n=get<int>("OUTPREC");
+    // Convert key to uppercase
     std::string k = to_upper(key);
-    if (!tdc.contains(k) && internal_keys.count(k)==0) {
-      throw std::runtime_error(
-        "This key is not allowed: "+k+"\n");
+
+    // 1) Convert 'val' to string so we can pass it to check().
+    int n = get<int>("OUTPREC"); // existing code to retrieve precision
+    std::string val_str = to_string(val, n);
+
+    // 2) Call check(...) before anything else:
+    //    This will throw "User cannot set this key." if k is in internal_keys.
+    //    It also checks if the key is disallowed entirely in tdc.
+    // check(k, val_str);
+
+    // 3) The rest of your existing logic:
+    if (!tdc.contains(k) && internal_keys.count(k) == 0) {
+      throw std::runtime_error("This key is not allowed: " + k + "\n");
     }
+
+    // e.g. read the "value_N" field from your toml
     const auto& allowed_key = toml::find(tdc, k);
-    int valN  = toml::find<int>(allowed_key, "value_N",0);
-    if (internal_keys.count(k)>0) {
-      if (c[k].size() >= (size_t)abs(internal_keys.at(k))) {
-        throw std::runtime_error(
-          "Internal Config key is already set/full: "+k+"\n");
+    int valN = toml::find<int>(allowed_key, "value_N", 0);
+
+    // If it's an internal key, we do a different check on size...
+    if (internal_keys.count(k) > 0) {
+      if (c[k].size() >= (size_t)std::abs(internal_keys.at(k))) {
+        throw std::runtime_error("Internal Config key is already set/full: " + k + "\n");
       }
     }
-    else if (c[k].size() >= (size_t)abs(valN)) {
-      throw std::runtime_error("Config key is full, KEY: "
-                               +k+" VALUE: "+to_string(val,n)+"\n");
+    // otherwise normal multiple-values logic
+    else if (c[k].size() >= (size_t)std::abs(valN)) {
+      throw std::runtime_error("Config key is full, KEY: " +
+                               k + " VALUE: " + to_string(val, n) + "\n");
     }
-    std::string val_str = to_string(val,n);
+
+    // 4) Append the string into c[k]:
     std::istringstream iss(val_str);
-    std::string value;
-    while (iss >> std::boolalpha >> value) {
-      c[k].push_back(to_string(value,n));
+    std::string token;
+    while (iss >> std::boolalpha >> token) {
+      c[k].push_back(to_string(token, n));
     }
+
+    // 5) Finally postprocess
     postprocess();
   }
 

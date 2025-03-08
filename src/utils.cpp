@@ -86,13 +86,16 @@ bool is_blank_line(const std::string& line) {
 }
 
 
-std::vector<size_t> divide_into_parts(size_t number, size_t n) {
-    std::vector<size_t> parts(n, number / n);
-    size_t remainder = number % n;
-    for (size_t i = 0; i < remainder; ++i) {
-        parts[i] += 1;
-    }
-    return parts;
+std::vector<size_t> divide_into_parts(size_t number, int n) {
+  if (n <= 0) {
+    throw std::runtime_error("divide_into_parts called with n=0");
+  }
+  std::vector<size_t> parts(n, number / n);
+  size_t remainder = number % n;
+  for (size_t i = 0; i < remainder; ++i) {
+    parts[i] += 1;
+  }
+  return parts;
 }
 
 std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages) {

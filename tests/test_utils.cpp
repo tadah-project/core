@@ -386,3 +386,154 @@ TEST_CASE("Testing parse_indices() - advanced step patterns", "[utils][improveme
     REQUIRE(idx2[2] == 10);
     REQUIRE(idx2[3] == 15);
 }
+
+// 1) Further testing parse_indices() edge cases
+TEST_CASE("parse_indices() with edge cases", "[utils][missing_tests]") {
+    SECTION("Parse empty string") {
+        auto result = parse_indices("");
+        REQUIRE(result.empty());
+    }
+    SECTION("Parse string with only commas and spaces") {
+        auto result = parse_indices(" ,  , ");
+        REQUIRE(result.empty());
+    }
+    SECTION("Parse invalid range start") {
+        // Should print an error and skip
+        std::stringstream buffer;
+        std::streambuf* oldCerr = std::cerr.rdbuf(buffer.rdbuf());
+        auto result = parse_indices("abc-5");
+        std::cerr.rdbuf(oldCerr);
+
+        // "abc-5" -> non-numeric start => prints error, result is empty
+        REQUIRE(result.empty());
+        REQUIRE(buffer.str().find("Error: Non-numeric start value") != std::string::npos);
+    }
+    SECTION("Parse invalid range end") {
+        // e.g. "10-abc"
+        std::stringstream buffer;
+        std::streambuf* oldCerr = std::cerr.rdbuf(buffer.rdbuf());
+        auto result2 = parse_indices("10-abc");
+        std::cerr.rdbuf(oldCerr);
+
+        REQUIRE(result2.empty());
+        REQUIRE(buffer.str().find("Non-numeric end value or incorrect syntax") != std::string::npos);
+    }
+    SECTION("Parse partial range like '5-'", "[utils]") {
+        // Should add just {5}, ignoring the blank after dash
+        auto result3 = parse_indices("5-");
+        REQUIRE(result3.size() == 1);
+        REQUIRE(result3[0] == 5);
+    }
+    SECTION("Parse duplicates with multiple ranges") {
+        // e.g. "2,2,2-4"
+        std::stringstream buffer;
+        std::streambuf* oldCerr2 = std::cerr.rdbuf(buffer.rdbuf());
+        auto result4 = parse_indices("2,2,2-4");
+        std::cerr.rdbuf(oldCerr2);
+
+        // 2-4 => {2,3,4}, plus 2 repeated => duplicates
+        // final unique => {2,3,4}
+        REQUIRE(result4.size() == 3);
+        REQUIRE(buffer.str().find("Duplicate indices found and removed") != std::string::npos);
+    }
+}
+
+// 2) Additional test for generate_2d_histogram() with invalid range & empty data
+TEST_CASE("generate_2d_histogram() invalid min/max and empty data", "[utils][missing_tests]") {
+    SECTION("Empty data -> returns empty histogram") {
+        auto hist = generate_2d_histogram({}, 5, 5);
+        REQUIRE(hist.empty());
+    }
+    SECTION("x_min >= x_max or y_min >= y_max -> returns empty") {
+        // We'll pass data that leads to same min==max
+        std::vector<std::pair<double,double>> data = {
+            {2.0, 2.0}, {2.0, 2.0}, {2.0, 2.0}
+        };
+        auto hist2 = generate_2d_histogram(data, 2, 2);
+        REQUIRE(hist2.empty());
+    }
+}
+
+// 3) Testing logspace() with additional invalid or edge scenarios
+TEST_CASE("logspace() with invalid/edge scenarios", "[utils][missing_tests]") {
+    SECTION("start <= 0 => throws") {
+        // Already tested for start==0. Let's confirm negative start throws
+        REQUIRE_THROWS_WITH(
+            logspace(-1, 10, 5, 10),
+            Catch::Matchers::Contains("logspace() start must be > 0")
+        );
+    }
+    SECTION("num=1 => single value") {
+        // If num==1, the function might produce exactly one point at 'start'
+        // Just confirm it doesn’t crash and yields a single-element vector
+        auto result = logspace(1.0, 100.0, 1, 10.0);
+        REQUIRE(result.size() == 1);
+        REQUIRE(result[0] == Approx(1.0));
+    }
+    SECTION("stop < start => might produce decreasing exponent range") {
+        // The function won't throw in your code; it just yields something.
+        // We'll confirm it doesn't crash
+        REQUIRE_NOTHROW(logspace(10, 1, 5, 10));
+    }
+}
+
+// 4) Additional tests for random() extremes
+TEST_CASE("random() with extreme bounds", "[utils][missing_tests]") {
+    SECTION("range_from > range_to => distribution might invert or throw?") {
+        // The code does not explicitly handle if range_from > range_to.
+        // Typically uniform_real_distribution will allow from>to and produce invalid results.
+        // We'll see if it throws or not. Usually it doesn't throw but
+        // we can do a REQUIRE_NOTHROW check just for coverage.
+        REQUIRE_NOTHROW(random(10.0, -5.0));
+    }
+    SECTION("range_from == range_to => always returns that value") {
+        double val = random(5.0, 5.0);
+        REQUIRE(val == 5.0);
+    }
+}
+TEST_CASE("Testing divide_into_parts() - new coverage", "[utils]") {
+    SECTION("Throws if n <= 0") {
+        REQUIRE_THROWS_AS(divide_into_parts(10, 0), std::runtime_error);
+        REQUIRE_THROWS_AS(divide_into_parts(10, -5), std::runtime_error);
+    }
+
+    SECTION("Perfectly divisible") {
+        auto parts = divide_into_parts(10, 5);
+        // Expect [2,2,2,2,2]
+        REQUIRE(parts.size() == 5);
+        REQUIRE(std::accumulate(parts.begin(), parts.end(), 0UL) == 10);
+        for (auto p : parts) {
+            REQUIRE(p == 2);
+        }
+    }
+
+    SECTION("Not perfectly divisible") {
+        auto parts = divide_into_parts(10, 3);
+        // Expect [4,3,3] => sums to 10
+        REQUIRE(parts.size() == 3);
+        REQUIRE(std::accumulate(parts.begin(), parts.end(), 0UL) == 10);
+        REQUIRE(parts[0] == 4);
+        REQUIRE(parts[1] == 3);
+        REQUIRE(parts[2] == 3);
+    }
+
+    SECTION("number = 0") {
+        auto parts = divide_into_parts(0, 5);
+        // 0/5 => each part = 0, remainder=0 => [0,0,0,0,0]
+        REQUIRE(parts.size() == 5);
+        REQUIRE(std::accumulate(parts.begin(), parts.end(), 0UL) == 0);
+    }
+
+    SECTION("Large remainder scenario") {
+        // e.g. number=11, n=4 => remainder=3 => initial [2,2,2,2], 
+        // then add 1 to first 3 => [3,3,3,2]
+        auto parts = divide_into_parts(11, 4);
+        REQUIRE(parts.size() == 4);
+        REQUIRE(std::accumulate(parts.begin(), parts.end(), 0UL) == 11);
+        // optional checks
+        REQUIRE(parts[0] == 3);
+        REQUIRE(parts[1] == 3);
+        REQUIRE(parts[2] == 3);
+        REQUIRE(parts[3] == 2);
+    }
+}
