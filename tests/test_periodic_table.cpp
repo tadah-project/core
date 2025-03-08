@@ -1,6 +1,8 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/periodic_table.h>
 
+using namespace tadah::core;
+
 TEST_CASE("PeriodicTable Initialization", "[initialize]") {
     // Ensure that the periodic table is properly initialized
     REQUIRE(PeriodicTable::symbol.empty());

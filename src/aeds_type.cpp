@@ -1,6 +1,9 @@
 #include <tadah/core/aeds_type.h>
 #include <tadah/core/aed_type.h>
 
+namespace tadah {
+namespace core {
+
 aeds_type2::aeds_type2() {}
 
 aeds_type2::aeds_type2(size_t dim, size_t natoms)
@@ -115,4 +118,8 @@ std::ostream& operator<<(std::ostream& os, const aeds_type2& v) {
     }
     return os;
 }
+
+
+} // namespace core
+} // namespace tadah
 

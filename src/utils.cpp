@@ -8,6 +8,9 @@
 #include <cmath>
 #include <limits>
 
+namespace tadah {
+namespace core {
+
 v_type logspace(double start, double stop, int num, double base) {
     // Disallow any non-positive start to avoid std::log of negative or zero
     if (start <= 0.0) {
@@ -315,4 +318,8 @@ std::vector<histogram_bin> generate_2d_histogram(
 
     return histogram_bins;
 }
+
+
+} // namespace core
+} // namespace tadah
 

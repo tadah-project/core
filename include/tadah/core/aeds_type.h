@@ -1,11 +1,13 @@
 #ifndef AEDS_TYPE_H
 #define AEDS_TYPE_H
-
 #include <tadah/core/aed_type.h>
 
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+
+namespace tadah {
+namespace core {
 
 class aeds_type2 {
   /* Column major order
@@ -66,7 +68,10 @@ public:
     void resize(size_t dim, size_t natoms);
     void set_zero();
 
+
     friend std::ostream& operator<<(std::ostream& os, const aeds_type2& v);
 };
 
+} // namespace core
+} // namespace tadah
 #endif // AEDS_TYPE2_H

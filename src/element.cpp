@@ -1,6 +1,9 @@
 #include <tadah/core/element.h>
 #include <tadah/core/periodic_table.h>
 
+namespace tadah {
+namespace core {
+
 void Element::check(const std::string &symbol, const int Z) {
   if (symbol.size() > 2)
     throw std::runtime_error("Wrong symbol: "+symbol);
@@ -34,3 +37,7 @@ bool Element::operator<(const Element& other) const {
 bool Element::operator>(const Element& other) const {
   return this->Z > other.Z;
 }
+
+} // namespace core
+} // namespace tadah
+

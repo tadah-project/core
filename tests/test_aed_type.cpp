@@ -3,6 +3,8 @@
 #include <tadah/core/aed_type.h>
 #include <sstream>
 
+using namespace tadah::core;
+
 TEST_CASE("aed_type default constructor") {
     aed_type vec;
     REQUIRE(vec.size() == 0);

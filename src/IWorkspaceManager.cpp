@@ -1,5 +1,4 @@
 #include <tadah/core/memory/IWorkspaceManager.h>
-
 namespace tadah {
 namespace core {
 namespace memory {

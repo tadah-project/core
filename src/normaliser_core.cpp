@@ -1,5 +1,8 @@
 #include <tadah/core/normaliser_core.h>
 
+namespace tadah {
+namespace core {
+
 Normaliser_Core::Normaliser_Core () {}
 Normaliser_Core::Normaliser_Core (Config &c):
     bias(c.get<bool>("BIAS")),
@@ -65,3 +68,7 @@ void Normaliser_Core::normalise(fd_type &fd, size_t k) {
         }
     }
 }
+
+} // namespace core
+} // namespace tadah
+

@@ -1,5 +1,6 @@
 #ifndef UTILS_H
 #define UTILS_H
+
 #include <tadah/core/core_types.h>
 
 #include <iterator>
@@ -12,6 +13,8 @@
 #include <tuple>
 #include <cstddef>
 
+namespace tadah {
+namespace core {
 
 /** Vector printing to streams */
 template <typename T>
@@ -352,4 +355,6 @@ std::vector<histogram_bin> generate_2d_histogram(
     const std::vector<std::pair<double,double>>& data_2d,
     int x_bins,
     int y_bins);
+} // namespace core
+} // namespace tadah
 #endif

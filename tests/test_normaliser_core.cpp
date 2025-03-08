@@ -2,6 +2,8 @@
 #include <tadah/core/normaliser_core.h>
 #include <tadah/core/core_types.h>
 
+using namespace tadah::core;
+
 TEST_CASE( "Testing Normaliser_Core()", "[create]" ) {
     REQUIRE_NOTHROW(Normaliser_Core());
 }

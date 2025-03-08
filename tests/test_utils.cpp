@@ -3,6 +3,8 @@
 #include <tadah/core/core_types.h>
 #include <iomanip>
 
+using namespace tadah::core;
+
 TEST_CASE( "Testing logspace() 1", "[utils]" ) {
     REQUIRE_THROWS(logspace(0,2,10,10));
 }

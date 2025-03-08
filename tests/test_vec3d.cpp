@@ -3,6 +3,8 @@
 #include <tadah/core/vec3d.h>
 #include <iomanip>
 
+using namespace tadah::core;
+
 TEST_CASE( "Testing Vec3d()", "[maths]" ) {
     REQUIRE_NOTHROW(Vec3d());
     v_type v = {1,2,3};

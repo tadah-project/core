@@ -3,6 +3,8 @@
 #include <tadah/core/aeds_type.h>
 #include <sstream>
 
+using namespace tadah::core;
+
 TEST_CASE("aeds_type2 default constructor") {
     aeds_type2 array;
     REQUIRE(array.size() == 0);

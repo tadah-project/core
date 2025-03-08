@@ -8,10 +8,12 @@
 #include <sstream>
 #include <iostream>
 
+namespace tadah {
+namespace core {
+
 template<typename T, typename... Args>
 using Factory = std::function<T*(Args&...)>;
 
-namespace CONFIG {
 template<typename Base, typename... Args>
 struct Registry {
 
@@ -40,7 +42,6 @@ Base* factory(const std::string& type, Args&... args) {
 
   throw std::runtime_error(oss.str());
 }
-
-}
-
+} // namespace core
+} // namespace tadah
 #endif

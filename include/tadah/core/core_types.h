@@ -1,12 +1,14 @@
 #ifndef CORE_TYPES_H
 #define CORE_TYPES_H
-
 #include <tadah/core/maths.h>
 #include <tadah/core/fd_type.h>
 #include <tadah/core/aed_type.h>
 #include <tadah/core/aeds_type.h>
 
 #include <vector>
+
+namespace tadah {
+namespace core {
 
 typedef Vec3d force_type;
 typedef aed_type t_type;
@@ -35,4 +37,6 @@ class mat {
 #endif
 /////////////////////////////////////////
 
+} // namespace core
+} // namespace tadah
 #endif

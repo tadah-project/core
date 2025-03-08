@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <sstream>
 
+using namespace tadah::core;
+
 
 TEST_CASE( "Testing Empty Config", "[config_empty]" ) {
   Config c1;

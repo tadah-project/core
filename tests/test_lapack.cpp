@@ -3,6 +3,8 @@
 #include <tadah/core/core_types.h>
 #include <iomanip>
 
+using namespace tadah::core;
+
 TEST_CASE( "Testing condition_number()", "[lapack]" ) {
     Matrix m(2,2);
     m(0,0)=1.0;

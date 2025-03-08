@@ -5,6 +5,9 @@
 #include <map>
 #include <tadah/core/element.h>
 
+namespace tadah {
+namespace core {
+
 struct PeriodicTable {
   static std::map<std::string, Element> symbol;
   static std::map<std::string, Element> name;
@@ -26,7 +29,10 @@ struct PeriodicTable {
 
   private:
   static void fill();
+
   static void init_masses();
 };
 
+} // namespace core
+} // namespace tadah
 #endif

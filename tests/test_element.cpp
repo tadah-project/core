@@ -4,6 +4,8 @@
 #include <sstream>
 #include <unordered_set>
 
+using namespace tadah::core;
+
 struct PeriodicTableFixture {
   PeriodicTableFixture() {
     PeriodicTable::initialize(); // Called once per test case that uses this fixture

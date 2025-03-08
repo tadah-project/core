@@ -1,6 +1,5 @@
 #ifndef MATHS_H
 #define MATHS_H
-
 #include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 
@@ -16,6 +15,9 @@
 #include <cstring> // for std::memcpy
 
 #include <array>
+
+namespace tadah {
+namespace core {
 
 template <typename D>
 class Matrix_Base {
@@ -294,6 +296,7 @@ public:
   {
     Matrix_Base<T>::set_rows(3);
     Matrix_Base<T>::set_cols(3);
+    Matrix_Base<T>::set_zero();
   }
   Matrix3d_T(T &d, size_t r, size_t c):
     Matrix_Base<T>(d,r,c)
@@ -495,7 +498,10 @@ public:
   inline Vec3d row(const size_t r) const {
     return Vec3d(m[r * cols], m[r * cols + 1], m[r * cols + 2]);
   }
+
 };
 
 typedef Matrix3d_T<> Matrix3d;
+} // namespace core
+} // namespace tadah
 #endif

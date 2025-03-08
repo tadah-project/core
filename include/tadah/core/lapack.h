@@ -1,7 +1,9 @@
 #ifndef LAPACK_H
 #define LAPACK_H
-
 #include <tadah/core/maths.h>
+
+namespace tadah {
+namespace core {
 
 extern "C" {
 
@@ -210,7 +212,10 @@ extern "C" {
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans='N');
 aed_type T_MDMT_diag(const Matrix &M, const Matrix &D);
 double norm_X(Matrix &A, char norm='1');
+
 aed_type solve_posv(Matrix &A, aed_type /*&*/T, char uplo='U');
 double condition_number(Matrix &A, char uplo='U');
 
+} // namespace core
+} // namespace tadah
 #endif

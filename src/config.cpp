@@ -1,6 +1,9 @@
 #include <tadah/core/config.h>
 #include <sstream>
 
+namespace tadah {
+namespace core {
+
 Config::Config()
 {
   read_tadah_configuration();
@@ -326,4 +329,8 @@ void Config::deserialize(const std::vector<char>& buffer) {
     }
 
 }
+
+
+} // namespace core
+} // namespace tadah
 

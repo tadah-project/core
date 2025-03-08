@@ -2,6 +2,8 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/fd_type.h>
 
+using namespace tadah::core;
+
 TEST_CASE("fd_type default constructor") {
     fd_type fd;
     REQUIRE(fd.rows() == 0);

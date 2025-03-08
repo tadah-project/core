@@ -7,6 +7,9 @@
 #include <string>
 #include <limits>
 
+namespace tadah {
+namespace core {
+
 class Vec3d {
 public:
   double v[3] = { };
@@ -153,7 +156,10 @@ public:
   }
 
   inline double norm() const {
+
     return std::sqrt((*this)*(*this));
   }
 };
+} // namespace core
+} // namespace tadah
 #endif

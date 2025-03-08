@@ -1,5 +1,8 @@
 #include <tadah/core/periodic_table.h>
 
+namespace tadah {
+namespace core {
+
 // Definition of static members
 std::map<std::string, Element> PeriodicTable::symbol;
 std::map<std::string, Element> PeriodicTable::name;
@@ -349,3 +352,7 @@ void PeriodicTable::init_masses() {
   masses[117] = 294.000;  // Tennessine
   masses[118] = 294.000;  // Oganesson
 }
+
+} // namespace core
+} // namespace tadah
+

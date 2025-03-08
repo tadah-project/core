@@ -1,6 +1,5 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-
 #include <toml.hpp>
 #include <cmrc/cmrc.hpp>
 #include <tadah/core/utils.h>
@@ -16,6 +15,9 @@
 #include <limits>
 
 CMRC_DECLARE(CORE);
+
+namespace tadah {
+namespace core {
 
 /** \brief A dictionary for key - value pairs.
  *
@@ -350,7 +352,6 @@ private:
   static const std::map<std::string,int> internal_keys;
   const static std::string knf;//="Key not found: ";
 };
-
-
-
+} // namespace core
+} // namespace tadah
 #endif

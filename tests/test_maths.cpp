@@ -3,6 +3,8 @@
 #include <tadah/core/maths.h>
 #include <iomanip>
 
+using namespace tadah::core;
+
 TEST_CASE("aed_type Constructors") {
     SECTION("Default constructor") {
         aed_type vec;

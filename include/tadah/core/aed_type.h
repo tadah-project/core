@@ -1,6 +1,5 @@
 #ifndef AED_TYPE2_H
 #define AED_TYPE2_H
-
 #include <cstring>
 #include <cmath>
 #include <limits>
@@ -8,6 +7,9 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
+
+namespace tadah {
+namespace core {
 
 class aed_type {
   double *data_ = nullptr;
@@ -273,8 +275,11 @@ inline std::ostream& operator<<(std::ostream& os, const aed_type& v) {
 //     friend std::ostream& operator<<(std::ostream& os, const aeds_type2& v) {
 //         for (const aed_type& a : v.data_) os << a << std::endl;
 //         return os;
+
 //     }
 // };
 
+} // namespace core
+} // namespace tadah
 #endif // AED_TYPE2_H
 
