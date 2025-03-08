@@ -288,6 +288,7 @@ TEST_CASE( "Testing Config read()", "[config_read]" ) {
     while ((entry = readdir(dir)) != nullptr) {
       std::string filename(entry->d_name);
       if (filename != "." && filename != "..") {
+        std::cerr << "Testing: " << filename << std::endl;
         REQUIRE_THROWS(Config(path+"/"+filename));
       }
     }

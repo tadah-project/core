@@ -81,18 +81,30 @@ void Config::postprocess() {
   if (c.count("INIT2B") && (*this).get<bool>("INIT2B") && c.count("RCUT2B")) {
     for (size_t i = 0; i < size("RCUT2B"); ++i) {
       double temp = get<double>("RCUT2B", i);
+
+      if (temp <= 0)
+         throw std::runtime_error("RCUT2B must be positive. Check your settings.\n");
+
       if (temp > c2b) c2b = temp;
     }
   }
   if (c.count("INIT3B") && (*this).get<bool>("INIT3B") && c.count("RCUT3B")) {
     for (size_t i=0; i<size("RCUT3B"); ++i) {
       temp=get<double>("RCUT3B",i);
+
+      if (temp <= 0)
+         throw std::runtime_error("RCUT3B must be positive. Check your settings.\n");
+
       if(temp>c3b) c3b = temp;
     }
   }
   if (c.count("INITMB") && (*this).get<bool>("INITMB") && c.count("RCUTMB")) {
     for (size_t i=0; i<size("RCUTMB"); ++i) {
       temp=get<double>("RCUTMB",i);
+
+      if (temp <= 0)
+         throw std::runtime_error("RCUTMB must be positive. Check your settings.\n");
+
       if(temp>cmb) cmb = temp;
     }
   }
