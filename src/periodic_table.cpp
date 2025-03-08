@@ -45,17 +45,22 @@ const Element &PeriodicTable::find_by_Z(int z) {
     throw std::runtime_error("Unknown atomic number: " + std::to_string(z));
   }
 }
+double PeriodicTable::get_mass(int Zvalue) {
+    // 1) If atomic number is beyond 118, throw a runtime_error instead of out_of_range.
+    if (Zvalue > 118) {
+        throw std::runtime_error("Atomic number Z > 118");
+    }
 
-double PeriodicTable::get_mass(int Z) {
-  try {
-    return masses.at(Z);
-  } catch (const std::out_of_range &) {
-    std::cerr << "Error: Mass for atomic number " << Z << " not found.\n";
-    throw;
-  } catch (...) {
-    std::cerr << "Unknown error in get_mass for atomic number " << Z << ".\n";
-    throw;
-  }
+    // 2) The rest remains the same, so if Zvalue <= 118 but not in the map we catch out_of_range.
+    try {
+        return masses.at(Zvalue);
+    } catch (const std::out_of_range &) {
+        std::cerr << "Error: Mass for atomic number " << Zvalue << " not found.\n";
+        throw;
+    } catch (...) {
+        std::cerr << "Unknown error in get_mass for atomic number " << Zvalue << ".\n";
+        throw;
+    }
 }
 
 double PeriodicTable::get_mass(const Element &e) {
