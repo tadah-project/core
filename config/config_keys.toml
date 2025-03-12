@@ -1,3 +1,30 @@
+[UNCERTAINTY]
+default = [false]
+value_type = ['bool']
+value_format = ['true | false']
+value_N = [1]
+description = """Set to true to calculate uncertainty estimates for the model."""
+examples = ['UNCERTAINTY true']
+is_internal = [false]
+
+[ANALYTICS]
+default = [false]
+value_type = ['bool']
+value_format = ['true | false']
+value_N = [1]
+description = """Set to true to calculate analytics for the model."""
+examples = ['ANALYTICS true']
+is_internal = [false]
+
+[NUMERIC]
+default = [10]
+value_type = ['int']
+value_format = 'N'
+value_N = [1]
+description = """Specifies the number of significant digits to display when outputting floating-point numbers."""
+examples = ['OUTPREC 12']
+is_internal = [false]
+
 [DBFILE]
 default = []
 value_type = ['string']
@@ -113,15 +140,6 @@ value_format = ''
 value_N = [-2147483647]
 description = """See SGRID2B_ for a description."""
 examples = []
-is_internal = [false]
-
-[OUTPREC]
-default = [10]
-value_type = ['int']
-value_format = 'N'
-value_N = [1]
-description = """Number of decimal places used when dumping a potential file."""
-examples = ['OUTPREC 12']
 is_internal = [false]
 
 # Remaining sections
