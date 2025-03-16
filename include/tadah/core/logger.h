@@ -8,10 +8,17 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <unordered_map>
+#include <stdexcept>
+#include <algorithm>
+#include <cctype>
 
 #ifdef MPI_ENABLED
   #include <mpi.h>
 #endif
+
+namespace tadah {
+namespace core {
 
 /**
  * @brief Enumerates severity levels for logging.
@@ -20,187 +27,159 @@
  * Increasing values enable more verbose output.
  */
 enum class LogLevel {
-  ERROR = 0,  ///< Critical error messages only.
-  WARN  = 1,  ///< Warning messages.
-  INFO  = 2,  ///< Basic informational messages.
-  DEBUG = 3,  ///< Debug messages for development.
-  TRACE = 4   ///< Detailed trace messages for maximum verbosity.
+  ERROR = 0,    ///< Critical error messages only.
+  WARNING = 1,  ///< Warning messages.
+  INFO = 2,     ///< Basic informational messages.
+  DEBUG = 3,    ///< Debug messages for development.
+  TRACE = 4     ///< Detailed trace messages for maximum verbosity.
 };
 
 /**
  * @brief Logger class for centralized, thread-safe logging.
  *
- * Implements a singleton pattern to provide a unified logging facility.
- * Supports writing log messages to both console and file.
- * Optionally includes MPI rank information when MPI builds are used.
+ * Implements a singleton pattern and now supports per-task log level
+ * and file overrides. Global settings are used if no per-task override is provided.
  *
- * Usage Example:
- * @code
- * // Include the logger header in your source file.
- * #include "Logger.hpp"
- *
- * int main(int argc, char* argv[]) {
- *   // Set logging level to INFO.
- *   Logger::instance().setLogLevel(LogLevel::INFO);
- *
- *   // Optionally, configure file logging.
- *   if (!Logger::instance().setLogFile("app.log")) {
- *     std::cerr << "Could not open log file." << std::endl;
- *   }
- *
- *   // Log an informational message.
- *   Logger::instance().log(LogLevel::INFO, "Application started.");
- *
- *   // Log a debug message: may be compiled out in release builds.
- *   Logger::instance().log(LogLevel::DEBUG, "Debug details: x = ", 42);
- *
- *   // Application code...
- *
- *   return 0;
- * }
- * @endcode
+ * Log levels can be specified either with an integer or with a string (e.g. "INFO", "ERROR").
+ * Log files are opened in append mode.
  */
 class Logger {
 public:
-  /**
-   * @brief Retrieves the singleton logger instance.
-   *
-   * Ensures that only one logging object is used throughout the project.
-   * @return Reference to the Logger instance.
-   */
   static Logger& instance();
 
-  /**
-   * @brief Sets the active logging level.
-   *
-   * Configures which log messages pass the verbosity filter.
-   * @param level The logging level to use.
-   */
+  // Global log level setters (overloaded for int or string).
   void setLogLevel(LogLevel level);
+  void setLogLevel(int level);
+  void setLogLevel(const std::string &levelStr);
 
-  /**
-   * @brief Retrieves the current logging level.
-   *
-   * @return The active log level.
-   */
   LogLevel getLogLevel() const;
 
-  /**
-   * @brief Configures file logging.
-   *
-   * Opens the given file name to output log messages. Once set,
-   * log messages are output both to console and the file.
-   *
-   * @param filename The file name to write log messages.
-   * @return true if file logging is enabled successfully, false otherwise.
-   */
+  // Global log file setter.
   bool setLogFile(const std::string &filename);
 
-  /**
-   * @brief Logs a message with a selected severity level.
-   *
-   * Uses variadic templates and recursive helper functions to enable flexible and efficient
-   * message construction. If the message level is higher than the active level, the message is
-   * not constructed.
-   *
-   * In non-debug builds (when DEBUG_BUILD is not defined), DEBUG and TRACE logs are compiled out.
-   *
-   * @tparam Args Variadic template parameters.
-   * @param messageLevel The severity level for the message.
-   * @param args Parts of the message to be concatenated.
-   */
+  // Per-task log level setters.
+  void setTaskLogLevel(const std::string &task, LogLevel level);
+  void setTaskLogLevel(const std::string &task, int level);
+  void setTaskLogLevel(const std::string &task, const std::string &levelStr);
+
+  // Per-task log file setter.
+  bool setTaskLogFile(const std::string &task, const std::string &filename);
+
+  // Converts a string (or integer in string form) to a LogLevel.
+  static LogLevel stringToLogLevel(const std::string &s) {
+    // Try integer conversion first.
+    try {
+      int num = std::stoi(s);
+      if (num < 0 || num > 4)
+        throw std::out_of_range("Log level out of range");
+      return static_cast<LogLevel>(num);
+    } catch (const std::exception&) {
+      // Fallback to string comparison.
+      std::string tmp = s;
+      std::transform(tmp.begin(), tmp.end(), tmp.begin(), ::toupper);
+      if (tmp == "TRACE")
+        return LogLevel::TRACE;
+      else if (tmp == "DEBUG")
+        return LogLevel::DEBUG;
+      else if (tmp == "INFO")
+        return LogLevel::INFO;
+      else if (tmp == "WARNING" || tmp == "WARN")
+        return LogLevel::WARNING;
+      else if (tmp == "ERROR")
+        return LogLevel::ERROR;
+      else
+        throw std::runtime_error("Unrecognized log level: " + s);
+    }
+  }
+
+  // Global logging function.
   template <typename... Args>
   void log(LogLevel messageLevel, Args&&... args) {
-    // In release build, skip DEBUG and TRACE messages.
+    logInternal("", messageLevel, std::forward<Args>(args)...);
+  }
+
+  // Log function for task-specific messages.
+  template <typename... Args>
+  void logTask(const std::string &task, LogLevel messageLevel, Args&&... args) {
+    logInternal(task, messageLevel, std::forward<Args>(args)...);
+  }
+
+private:
+  Logger();
+  std::string logLevelToString(LogLevel level) const;
+  std::string getCurrentTime() const;
+
+  template <typename... Args>
+  void logInternal(const std::string &task, LogLevel messageLevel, Args&&... args) {
     #if !defined(DEBUG_BUILD)
       if (messageLevel == LogLevel::DEBUG || messageLevel == LogLevel::TRACE)
         return;
     #endif
 
-    if (messageLevel > currentLevel)
-      return;  // Skip message construction if level is not enabled.
+    LogLevel effectiveLevel = currentLevel;
+    std::ofstream* effectiveStream = &fileStream;
+    std::string taskNorm = "";
+    if (!task.empty()) {
+      taskNorm = toUpper(task);
+      auto itLvl = taskLevelMap.find(taskNorm);
+      if (itLvl != taskLevelMap.end())
+        effectiveLevel = itLvl->second;
+      auto itFile = taskFileMap.find(taskNorm);
+      if (itFile != taskFileMap.end())
+        effectiveStream = &(itFile->second);
+    }
+    if (messageLevel > effectiveLevel)
+      return;
 
     std::lock_guard<std::mutex> lock(mutex_);
     std::ostringstream oss;
-    // Append a timestamp for traceability.
     oss << "[" << getCurrentTime() << "] ";
 #ifdef MPI_ENABLED
-    // Append MPI rank if running under MPI.
     int worldRank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
     oss << "Rank " << worldRank << " ";
 #endif
-    // Append human-readable log level.
+    if (!task.empty())
+      oss << "[" << taskNorm << "] ";
     oss << logLevelToString(messageLevel) << ": ";
-    // Append all message parts using recursive helper.
     appendToStream(oss, std::forward<Args>(args)...);
-
     const std::string finalMessage = oss.str();
-    std::cout << finalMessage << "\n";  // Output to console.
-
-    // If file logging is enabled, write the message to file.
-    if (fileLoggingEnabled && fileStream.is_open()) {
-      fileStream << finalMessage << "\n";
-      fileStream.flush();
+    std::cout << finalMessage << "\n";
+    if (effectiveStream && effectiveStream->is_open()) {
+      *effectiveStream << finalMessage << "\n";
+      effectiveStream->flush();
     }
   }
 
-private:
-  /**
-   * @brief Private constructor to enforce the singleton pattern.
-   *
-   * Initializes the log level to ERROR by default to avoid extraneous output.
-   */
-  Logger();
-
-  /**
-   * @brief Converts a LogLevel enum value to its string representation.
-   *
-   * Improves clarity by outputting a human-readable log level.
-   * @param level The log level to convert.
-   * @return A string representation of the log level.
-   */
-  std::string logLevelToString(LogLevel level) const;
-
-  /**
-   * @brief Retrieves the current system time as a formatted string.
-   *
-   * Provides a timestamp for each log message to aid debug and audit trails.
-   * @return The current time formatted as a string.
-   */
-  std::string getCurrentTime() const;
-
-  /**
-   * @brief Base case for the recursive variadic template helper.
-   *
-   * Terminates the recursion when no arguments remain.
-   *
-   * @param oss Output string stream.
-   */
   void appendToStream(std::ostringstream &oss) {}
 
-  /**
-   * @brief Recursive helper function to stream multiple values.
-   *
-   * Processes the first argument and recurses to process the remaining arguments.
-   *
-   * @tparam T First argument type.
-   * @tparam Rest Remaining argument types.
-   * @param oss Output string stream.
-   * @param first The first argument to stream.
-   * @param rest Remaining arguments.
-   */
   template <typename T, typename... Rest>
   void appendToStream(std::ostringstream &oss, T&& first, Rest&&... rest) {
     oss << std::forward<T>(first);
     appendToStream(oss, std::forward<Rest>(rest)...);
   }
 
-  LogLevel currentLevel;       ///< The active logging level.
-  mutable std::mutex mutex_;   ///< Protects log writes for thread-safety.
+  LogLevel currentLevel;
+  mutable std::mutex mutex_;
+  bool fileLoggingEnabled;
+  std::ofstream fileStream;
 
-  bool fileLoggingEnabled;     ///< Flag indicating if file logging is enabled.
-  std::ofstream fileStream;    ///< Output file stream for log messages.
+  // Per-task overrides.
+  std::unordered_map<std::string, LogLevel> taskLevelMap;
+  std::unordered_map<std::string, std::ofstream> taskFileMap;
+
+  // Utility: normalize a task name.
+  static std::string toUpper(const std::string &s) {
+    return Logger::instance()._toUpper(s);
+  }
+  
+  // Internal conversion that can be used in Logger
+  std::string _toUpper(const std::string &s) const {
+    std::string result(s);
+    std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+    return result;
+  }
 };
-
+} // namespace core
+} // namespace tadah
 #endif // LOGGER_H
