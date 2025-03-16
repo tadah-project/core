@@ -1,0 +1,648 @@
+###############################################################################
+# Blueprint for Allowed Keys (ALLOWED_KEYS)
+###############################################################################
+# ALLOWED_KEYS is a blueprint for the keys that can be used in the configuration file.
+# The description of of ALLOWED_KEYS should be generic and not tied to any specific task.
+# The tasks can inherit from ALLOWED_KEYS and add/override with own specific details.
+# Each key has a set of properties that define its expected type, format, and constraints.
+# The blueprint is used to validate the configuration file and to generate help messages.
+# The blueprint is also used to generate the CLI help messages and documenation.
+
+# Fields:
+# - value_type: Ordered list of expected types (one-to-one corresponding to value_format).
+# - value_format: List showing expected tokens; a trailing "..." means the last token repeats.
+# - value_N: Maximum allowed tokens.
+# - description: Short explanation.
+# - examples: Array of valid example usage strings.
+# - default: Default value (if applicable).
+
+# Some ALLOWED_KEYS keys can be set via CLI flags or options. These keys have additional fields:
+# CLI-specific fields:
+# - long_flag: Long flag name.
+# - short_flag: Short flag name.
+# - long_option: Long option name.
+# - short_option: Short option name.
+# - long_description: Long description for the task.
+# - excludes: List of keys (flags/options) that are mutually exclusive.
+# - required: Whether the key is required for the task.
+#
+###############################################################################
+
+[ALLOWED_KEYS.config]
+value_type   = ["string"]
+value_format = ["<path>"]
+value_N      = [1]
+description  = "Path to configuration file."
+examples     = ["config.tadah"]
+long_option  = "--config"
+short_option = "-c"
+
+[ALLOWED_KEYS.verbose]
+value_type   = ["int"]
+value_format = ["N"]
+value_N      = [1]
+description  = "Verbosity level. 0-4: ERROR, WARNING, INFO, DEBUG, TRACE."
+examples     = ["1", "2", "0"]
+long_option  = "--verbose"
+short_option = "-V"
+default      = "1"
+
+[ALLOWED_KEYS.force]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Include forces."
+examples     = ["true"]
+long_flag    = "--force"
+short_flag   = "-F"
+default      = "false"
+
+[ALLOWED_KEYS.stress]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Include stresses."
+examples     = ["true"]
+long_flag    = "--stress"
+short_flag   = "-S"
+default      = "false"
+
+[ALLOWED_KEYS.uncertainty]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Output uncertainty estimates."
+examples     = ["true"]
+long_flag    = "--uncertainty"
+short_flag   = ""
+default      = "false"
+
+[ALLOWED_KEYS.dbfile]
+value_type   = ["string"]
+value_format = ["<file>"]
+value_N      = [2147483647]
+description  = "Dataset file."
+examples     = ["dataset.tadah"]
+long_option  = "--dbfile"
+short_option = "-d"
+
+[ALLOWED_KEYS.dbfiles]
+value_type   = ["string"]
+value_format = ["<file>", "..."]
+value_N      = [2147483647]
+description  = "Dataset file(s) or text file listing datasets (using DBFILE keyword)."
+examples     = ["dataset.tadah", "dbfile1.tadah dbfile2.tadah"]
+long_option  = "--dbfiles"
+short_option = "-d"
+
+[ALLOWED_KEYS.structure]
+value_type   = ["string"]
+value_format = ["<structure>"]
+value_N      = [1]
+description  = "Unified structural input (file or online)."
+examples     = ["crystal.cif"]
+long_option  = "--structure"
+short_option = "-s"
+
+[ALLOWED_KEYS.structures]
+value_type   = ["string"]
+value_format = ["<structure>", "..."]
+value_N      = [2147483647]
+description  = "Multiple Unified structural input (files or online)."
+examples     = ["crystal.cif crystal2.cif", "mp-42 crystal2.cif crystal3.cif"]
+long_option  = "--structures"
+short_option = "-s"
+
+[ALLOWED_KEYS.potential]
+value_type   = ["string"]
+value_format = ["<model>"]
+value_N      = [1]
+description  = "Trained model file."
+examples     = ["pot.tadah"]
+long_option  = "--potential"
+short_option = "-p"
+
+[ALLOWED_KEYS.hpotarget]
+value_type   = ["string"]
+value_format = ["<file>"]
+value_N      = [1]
+description  = "HPO target file."
+examples     = ["hpotargets.txt"]
+long_option  = "--hpotarget"
+short_option = "-h"
+
+[ALLOWED_KEYS.validation]
+value_type   = ["string"]
+value_format = ["<file>", "..."]
+value_N      = [2147483647]
+description  = "Validation dataset file(s)."
+examples     = ["valid.tadah"]
+long_option  = "--validation"
+short_option = "-v"
+
+[ALLOWED_KEYS.dft-files]
+value_type   = ["string"]
+value_format = ["<file>", "..."]
+value_N      = [2147483647]
+description  = "Input DFT file(s)."
+examples     = ["run1.outcar", "run1.outcar run2.outcar"]
+long_option  = "--dft-files"
+short_option = ""
+
+[ALLOWED_KEYS.outfile]
+value_type   = ["string"]
+value_format = ["<file>"]
+value_N      = [1]
+description  = "Output file."
+examples     = ["output.tadah"]
+long_option  = "--outfile"
+short_option = "-o"
+
+[ALLOWED_KEYS.outfiles]
+value_type   = ["string"]
+value_format = ["<file>", "..."]
+value_N      = [2147483647]
+description  = "Output file names."
+examples     = ["part1.tadah part2.tadah"]
+long_option  = "--outfiles"
+short_option = ""
+
+[ALLOWED_KEYS.indices]
+value_type   = ["string"]
+value_format = ["<indices>"]
+value_N      = [1]
+description  = "Structure indices (comma-separated)."
+examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
+long_option  = "--indices"
+short_option = "-i"
+
+[ALLOWED_KEYS.format]
+value_type   = ["string"]
+value_format = ["<fmt>"]
+value_N      = [1]
+description  = "Output format (e.g., cif, cell, poscar)."
+examples     = ["cell", "cif", "poscar"]
+long_option  = "--format"
+short_option = "-f"
+
+[ALLOWED_KEYS.numeric]
+value_type   = ["int"]
+value_format = ["N"]
+value_N      = [1]
+description  = "Numeric output precision. Either number of decimal places or scientific notation. Depending on context."
+examples     = ["12"]
+long_option  = "--numeric"
+short_option = ""
+default      = "12"
+
+[ALLOWED_KEYS.analytics]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Perform analytics."
+examples     = ["true"]
+long_flag    = "--analytics"
+short_flag   = "-A"
+default      = "false"
+
+[ALLOWED_KEYS.shuffle]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Randomize entries before splitting."
+examples     = ["true"]
+long_flag    = "--shuffle"
+short_flag   = ""
+default      = "false"
+
+[ALLOWED_KEYS.even]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Equal-size partition (excludes --chunk, --percent)."
+examples     = ["true"]
+long_flag    = "--even"
+short_flag   = ""
+default      = "false"
+
+[ALLOWED_KEYS.chunk]
+value_type   = ["unsigned int"]
+value_format = ["UINT"]
+value_N      = [1]
+description  = "Specify chunk sizes."
+examples     = ["64"]
+long_option  = "--chunk"
+short_option = ""
+
+[ALLOWED_KEYS.percent]
+value_type   = ["unsigned int"]
+value_format = ["UINT"]
+value_N      = [1]
+description  = "Specify percentage partition."
+examples     = ["20"]
+long_option  = "--percent"
+short_option = ""
+
+[ALLOWED_KEYS.threshold]
+value_type   = ["double"]
+value_format = ["N"]
+value_N      = [1]
+description  = "Floating point comparision threshold."
+examples     = ["1e-4"]
+long_option  = "--threshold"
+short_option = ""
+default      = "1e-6"
+
+[ALLOWED_KEYS.merge]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Merge deduplication results into one file."
+examples     = ["true"]
+long_flag    = "--merge"
+short_flag   = ""
+default      = "false"
+
+[ALLOWED_KEYS.uniform]
+value_type   = ["unsigned int"]
+value_format = ["UINT"]
+value_N      = [1]
+description  = "Sample uniformly every N-th entry."
+examples     = ["10"]
+long_option  = "--uniform"
+short_option = ""
+
+[ALLOWED_KEYS.random]
+value_type   = ["unsigned int"]
+value_format = ["UINT"]
+value_N      = [1]
+description  = "Randomly sample N entries."
+examples     = ["5"]
+long_option  = "--random"
+short_option = ""
+
+[ALLOWED_KEYS.eshift]
+value_type   = ["double"]
+value_format = ["N"]
+value_N      = [1]
+description  = "Energy shift per atom."
+examples     = ["0.5"]
+long_option  = "--eshift"
+short_option = ""
+
+[ALLOWED_KEYS.rescale]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Enable rescaling of training weights."
+examples     = ["true"]
+long_flag    = "--rescale"
+short_flag   = ""
+
+[ALLOWED_KEYS.range]
+value_type   = ["string"]
+value_format = ["<start>", "<stop>", "<npoints>"]
+value_N      = [3]
+description  = "Plotting range: [start stop number_of_points]."
+examples     = ["0 10 100"]
+long_option  = "--range"
+short_option = "-r"
+
+[ALLOWED_KEYS.atoms]
+value_type   = ["string"]
+value_format = ["<element> <element>"]
+value_N      = [2]
+description  = "Chemical element pair."
+examples     = ['"Kr Kr"']
+long_option  = "--atoms"
+short_option = "-a"
+
+[ALLOWED_KEYS.error]
+value_type   = ["bool"]
+value_format = ["true | false"]
+value_N      = [1]
+description  = "Predict model error."
+examples     = ["true"]
+long_flag    = "--error"
+short_flag   = ""
+default      = "false"
+
+[ALLOWED_KEYS.quantity]
+value_type   = ["string"]
+value_format = ["<quantity>"]
+value_N      = [1]
+description  = "Quantity to vary (volume, density, pressure)."
+examples     = ["volume"]
+long_option  = "--quantity"
+short_option = ""
+
+[ALLOWED_KEYS.type]
+value_type   = ["string"]
+value_format = ["<type>"]
+value_N      = [1]
+description  = "Grid type or cutoff function type."
+examples     = ["CutCos", "2b Y"]
+long_option  = "--type"
+short_option = "-t"
+
+###############################################################################
+# Blueprint for Internal Keys (INTERNAL_KEYS)
+###############################################################################
+[INTERNAL_KEYS]
+# (none for the CLI keys)
+
+###############################################################################
+# Blueprint for GLOBALS
+###############################################################################
+INHERIT          = ["ALLOWED_KEYS.verbose"]
+
+###############################################################################
+# Task Blueprint (TASKS)
+###############################################################################
+[TASKS]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty"]
+TASKS.config.required = true
+TASKS.verbose.required = false
+TASKS.force.required = false
+TASKS.stress.required = false
+TASKS.uncertainty.required = false
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric"]
+TASKS.dbfile.required = false
+TASKS.structure.required = false
+TASKS.potential.required = false
+TASKS.error.required = false
+TASKS.analytics.required = false
+TASKS.numeric.required = false
+INHERIT          = ["ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation"]
+TASKS.hpotarget.required = false
+TASKS.validation.required = false
+INHERIT          = ["ALLOWED_KEYS.dft-files", "ALLOWED_KEYS.outfile"]
+TASKS.dft-files.required = false
+TASKS.outfile.required = false
+INHERIT          = ["ALLOWED_KEYS.indices", ALLOWED_KEYS.format]
+TASKS.indices.required = false
+TASKS.format.required = false
+INHERIT          = ["ALLOWED_KEYS.outfiles", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent"]
+TASKS.outfiles.required = false
+TASKS.shuffle.required = false
+TASKS.even.required = false
+TASKS.chunk.required = false
+TASKS.percent.required = false
+INHERIT          = ["ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge"]
+TASKS.threshold.required = false
+TASKS.merge.required = false
+INHERIT          = ["ALLOWED_KEYS.uniform", "ALLOWED_KEYS.random"]
+TASKS.uniform.required = false
+TASKS.random.required = false
+INHERIT          = ["ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale"]
+TASKS.eshift.required = false
+TASKS.rescale.required = false
+INHERIT          = ["ALLOWED_KEYS.range", "ALLOWED_KEYS.atoms", "ALLOWED_KEYS.error"]
+TASKS.range.required = false
+TASKS.atoms.required = false
+TASKS.error.required = false
+INHERIT          = ["ALLOWED_KEYS.quantity", "ALLOWED_KEYS.type"]
+TASKS.quantity.required = false
+TASKS.type.required = false
+
+
+[TASKS.train]
+description      = "Train a model using a configuration file."
+long_description = "Train a model using a configuration file."
+examples         = ["tadah train -c config.tadah"]
+
+INHERIT          = ["TASKS.config", "TASKS.verbose", "TASKS.force", "TASKS.stress", "TASKS.uncertainty"]
+  [TASKS.train.config]
+  required = true
+
+[TASKS.predict]
+description      = "Perform prediction using a trained model."
+long_description = "Perform prediction using a trained model."
+examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
+INHERIT          = ["TASKS.dbfile", "TASKS.structure", "TASKS.potential", "TASKS.force", "TASKS.stress", "TASKS.error", "TASKS.analytics", "TASKS.numeric", "TASKS.verbose"]
+  [TASKS.predict.dbfile]
+  required = true
+  excludes   = ["structure"]
+  [TASKS.predict.structure]
+  required = true
+  excludes   = ["dbfile"]
+  [TASKS.predict.potential]
+  required = true
+
+[TASKS.hpo]
+description      = "Optimize hyperparameters for model training."
+long_description = "Optimize hyperparameters for model training."
+examples         = ["tadah hpo -c config.tadah -h hpotargets.txt -v valid.tadah"]
+INHERIT          = ["TASKS.config", "TASKS.hpotarget", "TASKS.validation", "TASKS.force", "TASKS.stress", "TASKS.verbose"]
+  [TASKS.hpo.config]
+  required = true
+  [TASKS.hpo.hpotarget]
+  required = true
+  [TASKS.hpo.validation]
+  required = true
+
+[TASKS.data]
+description      = "Dataset management commands."
+long_description = "Dataset management commands (convert, read, write, merge, split, dedup, sample, balance)."
+examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"]
+  
+  [TASKS.data.convert]
+  description      = "Convert DFT output files to Tadah! dataset format."
+  long_description = "Convert DFT output files to Tadah! dataset format.\nExample: tadah data convert --dft-files run1.outcar -o output.tadah"
+  examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"]
+  INHERIT          = ["TASKS.dft-files", "TASKS.outfile", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.data.convert."dft-files"]
+    required = true
+    [TASKS.data.convert.outfile]
+    required = true
+
+  [TASKS.data.read]
+  description      = "Read and print structures from dataset or structure files."
+  long_description = "Read and print structures from dataset or structure files.\nExample: tadah data read -d dataset.tadah"
+  examples         = ["tadah data read -d dataset.tadah", "tadah data read -s crystal.cif"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.structure", "TASKS.indices", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.data.read.dbfile]
+    required = false
+    excludes   = ["structure"]
+    [TASKS.data.read.structure]
+    required = true
+    excludes   = ["dbfile"]
+
+  [TASKS.data.write]
+  description      = "Write structures from a dataset into a chosen format."
+  long_description = "Write structures from a dataset into a chosen format.\nExample: tadah data write -d dataset.tadah -o output.cell -f cell -i 7"
+  examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.outfile", "TASKS.indices", "TASKS.format", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.data.write.dbfile]
+    required = true
+    excludes   = ["structure"]
+    [TASKS.data.write.outfile]
+    required = true
+    [TASKS.data.write.indices]
+    required = true
+    [TASKS.data.write.format]
+    required = true
+
+  [TASKS.data.merge]
+  description      = "Merge multiple dataset files."
+  long_description = "Merge multiple dataset files.\nExample: tadah data merge -d ds1.tadah ds2.tadah -o merged.tadah"
+  examples         = ["tadah data merge -d ds1.tadah ds2.tadah -o merged.tadah"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.outfile", "TASKS.verbose"]
+    [TASKS.data.merge.dbfile]
+    required = true
+    [TASKS.data.merge.outfile]
+    required = true
+    [TASKS.data.merge.verbose]
+    required = false
+
+  [TASKS.data.split]
+  description      = "Split a dataset into parts."
+  long_description = "Split a dataset into parts.\nExample: tadah data split -d big.tadah -o part1.tadah part2.tadah"
+  examples         = ["tadah data split -d big.tadah -o part1.tadah part2.tadah"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.outfiles", "TASKS.shuffle", "TASKS.even", "TASKS.chunk", "TASKS.percent", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.data.split.dbfile]
+    required = true
+    [TASKS.data.split.outfiles]
+    required = true
+
+  [TASKS.data.dedup]
+  description      = "Deduplicate structures from a dataset."
+  long_description = "Deduplicate structures from a dataset.\nExample: tadah data dedup -d db.tadah"
+  examples         = ["tadah data dedup -d db.tadah"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.outfiles", "TASKS.numeric", "TASKS.verbose", "TASKS.threshold", "TASKS.merge"]
+    [TASKS.data.dedup.dbfile]
+    required = true
+
+  [TASKS.data.sample]
+  description      = "Sample configurations from a dataset."
+  long_description = "Sample configurations from a dataset.\nExample: tadah data sample -d full.tadah -o sample.tadah"
+  examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.outfile", "TASKS.verbose"]
+    [TASKS.data.sample.dbfile]
+    required = true
+    [TASKS.data.sample.outfile]
+    required = true
+
+  [TASKS.data.balance]
+  description      = "Apply energy shift and/or rescaling to a dataset."
+  long_description = "Apply energy shift and/or rescaling to a dataset.\nExample: tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"
+  examples         = ["tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.numeric", "TASKS.verbose", "TASKS.eshift", "TASKS.rescale"]
+    [TASKS.data.balance.dbfile]
+    required = true
+
+[TASKS.transform]
+description      = "Structure transformation commands."
+long_description = "Structure transformation commands (rotate, shear, change-coords)."
+examples         = ["tadah transform rotate ..."]
+
+[TASKS.properties]
+description      = "Evaluate physical properties for MLIP target evaluation."
+long_description = "Evaluate physical properties for MLIP target evaluation (e.g., twobody, ecurve, eos, defect, surface, mechanics)."
+examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+  [TASKS.properties.twobody]
+  description      = "Compute two-body potential (E vs. r)."
+  long_description = "Compute two-body potential (E vs. r) for a pair of elements."
+  examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+  INHERIT          = ["TASKS.potential", "TASKS.outfile", "TASKS.range", "TASKS.atoms", "TASKS.force", "TASKS.numeric", "TASKS.error", "TASKS.verbose"]
+    [TASKS.properties.twobody.potential]
+    required = true
+    [TASKS.properties.twobody.outfile]
+    required = true
+    [TASKS.properties.twobody.range]
+    required = true
+    [TASKS.properties.twobody.atoms]
+    required = true
+
+  [TASKS.properties.ecurve]
+  description      = "Compute energy versus volume/density/pressure curve."
+  long_description = "Compute energy versus volume/density/pressure curve."
+  examples         = ["tadah properties ecurve -s crystal.cif -r 10 100 200 --quantity volume -o evcurve.txt"]
+  INHERIT          = ["TASKS.structure", "TASKS.range", "TASKS.quantity", "TASKS.outfile", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.properties.ecurve.structure]
+    required = true
+    [TASKS.properties.ecurve.range]
+    required = true
+    [TASKS.properties.ecurve.quantity]
+    required = true
+    [TASKS.properties.ecurve.outfile]
+    required = true
+
+  [TASKS.properties.eos]
+  description      = "Compute Equation of State (stub)."
+  long_description = "Compute Equation of State for a given structure (stub)."
+  examples         = ["tadah properties eos ..."]
+  INHERIT          = ["TASKS.verbose"]
+
+  [TASKS.properties.defect]
+  description      = "Compute defect formation energies (stub)."
+  long_description = "Compute defect formation energies (stub)."
+  examples         = ["tadah properties defect ..."]
+  INHERIT          = ["TASKS.verbose"]
+
+  [TASKS.properties.surface]
+  description      = "Compute surface energies (stub)."
+  long_description = "Compute surface energies (stub)."
+  examples         = ["tadah properties surface ..."]
+  INHERIT          = ["TASKS.verbose"]
+
+  [TASKS.properties.mechanics]
+  description      = "Compute bulk modulus and elastic constants (stub)."
+  long_description = "Compute bulk modulus and elastic constants (stub)."
+  examples         = ["tadah properties mechanics ..."]
+  INHERIT          = ["TASKS.verbose"]
+
+[TASKS.analysis]
+description      = "Visual analysis commands."
+long_description = "Visual analysis commands (e.g., descriptor, bfunc, cutoff)."
+examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt"]
+INHERIT          = ["TASKS.verbose"]
+  [TASKS.analysis.descriptor]
+  description      = "Calculate structure descriptors."
+  long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --indices 1,3,5"
+  examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --indices 1,3,5"]
+  INHERIT          = ["TASKS.dbfile", "TASKS.potential", "TASKS.outfile", "TASKS.indices", "TASKS.force", "TASKS.verbose"]
+    [TASKS.analysis.descriptor.dbfile]
+    required = true
+    excludes   = ["structure"]
+    [TASKS.analysis.descriptor.structure]
+    required = true
+    excludes   = ["dbfile"]
+    [TASKS.analysis.descriptor.potential]
+    required = true
+
+  [TASKS.analysis.bfunc]
+  description      = "Evaluate and plot basis functions."
+  long_description = "Evaluate and plot basis functions.\nExample: tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""
+  examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""]
+  INHERIT          = ["TASKS.config", "TASKS.outfile", "TASKS.range", "TASKS.type", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.analysis.bfunc.config]
+    required = true
+    [TASKS.analysis.bfunc.outfile]
+    required = true
+    [TASKS.analysis.bfunc.range]
+    required = true
+    [TASKS.analysis.bfunc.type]
+    required = true
+
+  [TASKS.analysis.cutoff]
+  description      = "Evaluate and plot cutoff functions."
+  long_description = "Evaluate and plot cutoff functions.\nExample: tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"
+  examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
+  INHERIT          = ["TASKS.outfile", "TASKS.range", "TASKS.type", "TASKS.numeric", "TASKS.verbose"]
+    [TASKS.analysis.cutoff.outfile]
+    required = true
+    [TASKS.analysis.cutoff.range]
+    required = true
+    [TASKS.analysis.cutoff.type]
+    required = true
+
+###############################################################################
+# Error Messages (ERROR_MESSAGES)
+###############################################################################
+[ERROR_MESSAGES]
+MISSING_KEY         = "Required key is missing."
+TYPE_MISMATCH       = "Key type does not match the expected type."
+OUT_OF_BOUNDS       = "Key value does not meet size constraints."
+UNKNOWN_KEY         = "Unknown key found in configuration."
+CONFLICTING_OPTIONS = "Options are mutually exclusive."
