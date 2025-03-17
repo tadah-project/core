@@ -7,6 +7,9 @@
 #include <stdexcept>
 #include <toml.hpp>  // toml11 v4.4.0
 #include <boost/algorithm/string.hpp>
+#include <cmrc/cmrc.hpp>
+
+CMRC_DECLARE(CORE);
 
 namespace tadah {
 namespace core {
@@ -49,7 +52,21 @@ public:
   explicit BlueprintParser(const std::string &blueprintFile);
 
   /**
+   * @brief Constructs a BlueprintParser.
+   *
+   * Uses the default blueprint file "config/config_blueprint.toml".
+   */
+  BlueprintParser();
+
+  /**
    * @brief Parses and expands the blueprint.
+   *
+   * This method reads the blueprint file, expands any INHERIT blocks,
+   * and constructs a mapping of key names to BlueprintItem structures.
+   * All keys are uppercased.
+   *
+   * Currently, the parser uses ALLOWED_KEYS only.
+   *
    * @return An unordered_map mapping fully qualified key names to BlueprintItem.
    * @throws std::runtime_error on parsing errors or inheritance conflicts.
    */

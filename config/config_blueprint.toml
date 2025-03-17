@@ -39,7 +39,7 @@ short_option = "-c"
 
 [ALLOWED_KEYS.verbose]
 value_type   = ["int"]
-value_format = ["N"]
+value_format = ["<N>"]
 value_N      = [1]
 description  = "Verbosity level. 0-4: ERROR, WARNING, INFO, DEBUG, TRACE."
 examples     = ["1", "2", "0"]
@@ -79,12 +79,13 @@ default      = "false"
 
 [ALLOWED_KEYS.dbfile]
 value_type   = ["string"]
-value_format = ["<file>"]
+value_format = ["<path>"]
 value_N      = [2147483647]
-description  = "Dataset file."
-examples     = ["dataset.tadah"]
+description  = "Absolute or relative path to the database file. The relative path is interpreted relative to the script's working directory. Multiple dataset paths can be provided either as space-separated tokens or by repeating this key."
+examples     = ["dbfile /path/to/dbfile", "dbfile /path/to/dbfile1 /path/to/dbfile2"]
 long_option  = "--dbfile"
 short_option = "-d"
+default      = []
 
 [ALLOWED_KEYS.dbfiles]
 value_type   = ["string"]
@@ -94,6 +95,234 @@ description  = "Dataset file(s) or text file listing datasets (using DBFILE keyw
 examples     = ["dataset.tadah", "dbfile1.tadah dbfile2.tadah"]
 long_option  = "--dbfiles"
 short_option = "-d"
+
+[ALLOWED_KEYS.RCTYPE2B]
+value_type   = ["string"]
+value_format = ["<cutoff_name>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies the cutoff function type(s) for the two-body descriptor(s). Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or multiple types corresponding to each descriptor when using the D2_mJoin meta descriptor."
+examples     = ["RCTYPE2B Cut_Cos", "RCTYPE2B Cut_Cos Cut_Tanh"]
+
+[ALLOWED_KEYS.RCTYPEMB]
+value_type   = ["string"]
+value_format = ["<cutoff_name>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies the cutoff function type(s) for the many-body descriptor(s). Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or a series of types—each for a corresponding descriptor when using the DM_mJoin meta descriptor."
+examples     = ["RCTYPEMB Cut_Cos", "RCTYPEMB Cut_Cos Cut_Tanh"]
+
+[ALLOWED_KEYS.RCUT2B]
+value_type   = ["double"]
+value_format = ["<N>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies the cutoff distance(s) for the two-body descriptor(s). Provide a single value for one descriptor or multiple values—one for each descriptor when using the D2_mJoin meta descriptor."
+examples     = ["RCUT2B 3.0", "RCUT2B 3.0 7.5"]
+
+[ALLOWED_KEYS.RCUTMB]
+value_type   = ["double"]
+value_format = ["<N>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies the cutoff distance(s) for the many-body descriptor(s). Provide a single value for a standalone descriptor or multiple values corresponding to each descriptor when using the DM_mJoin meta descriptor."
+examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
+
+[ALLOWED_KEYS.TYPE2B]
+value_type   = ["string"]
+value_format = ["<descriptor_name>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies the two-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g. D2_LJ). To concatenate multiple descriptors, use the meta descriptor D2_mJoin followed by the individual descriptor parameters."
+examples     = [
+  "TYPE2B D2_LJ",
+  """TYPE2B    D2_mJoin
+  TYPE2B    D2_MIE 11 6 Ti Ti
+  TYPE2B    D2_Blip 6 6 Ti Nb Nb Nb
+  """
+]
+
+[ALLOWED_KEYS.TYPEMB]
+value_type   = ["string"]
+value_format = ["<descriptor_name>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies the many-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple descriptors, use the meta descriptor DM_mJoin followed by the individual descriptor parameters."
+examples     = [
+  "TYPEMB DM_Blip 6 6 Ti Ti",
+  """TYPEMB    DM_mJoin
+  TYPEMB    DM_Blip 6 6 Ti TI
+  TYPEMB    DM_Blip 6 6 Ti Nb Nb Nb
+  """
+]
+
+[ALLOWED_KEYS.CGRID2B]
+value_type   = ["double", "string", "int", "double"]
+value_format = ["<center>", "..." | "<algorithm> <N> <START> <STOP>"]
+value_N      = [-2147483647]
+description  = "Controls the center positions for the radial basis functions in two-body descriptors (e.g., Gaussian centers). The parameter list may be provided manually or generated automatically. When using the meta descriptor D2_mJoin, specify one or more lists of centers corresponding to each concatenated descriptor. The number of centers should typically match the number of width parameters provided via SGRID2B and remain below the cutoff distance. Alternatively, use the algorithm keyword followed by the parameters to generate the centers automatically. Available algorithms include numbers spaced evenly on a log scale (e.g. 'L') or uniformly (e.g. 'U')."
+examples     = [
+    "CGRID2B L 10 0 6",
+    "CGRID2B 1.0 2.0",
+    """CGRID2B   1.0 2.0
+CGRID2B   1.5 2.5"""
+]
+
+[ALLOWED_KEYS.SGRID2B]
+value_type   = ["double", "string", "int", "double"]
+value_format = ["<width>", "..." | "<algorithm> <N> <START> <STOP>"]
+value_N      = [-2147483647]
+description  = "Specifies the width parameters for the radial basis functions in two-body descriptors (e.g., Gaussian widths). The widths can be supplied manually or auto-generated. When using the meta descriptor D2_mJoin, provide one or more lists of width values corresponding to each concatenated descriptor, ensuring that the number of widths matches the number of centers (CGRID2B). Alternatively, include the algorithm keyword with its parameters to generate the widths automatically using the same available schemes (logarithmic or uniform spacing)."
+examples     = [
+    "SGRID2B U 3 0 1.0",
+    "SGRID2B -2 6 0.1 10",
+    """SGRID2B   0.01 0.02 0.03
+SGRID2B   -2 6 0.1 10"""
+]
+
+[ALLOWED_KEYS.CGRIDMB]
+value_type   = ["double", "string", "int", "double"]
+value_format = ["<center>", "..." | "<algorithm> <N> <START> <STOP>"]
+value_N      = [-2147483647]
+description  = "Specifies the center positions for the radial basis functions in many-body descriptors. The list of centers may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, supply one or more lists of centers corresponding to each concatenated descriptor. The generated centers should be consistent with the requirements of the descriptor and remain within appropriate bounds. Alternatively, use an algorithm (e.g., 'L' for logarithmic or 'U' for uniform spacing) followed by the parameters to generate the centers automatically."
+examples     = [
+    "CGRIDMB L 4 0 6.2",
+    "CGRIDMB 0.5 0.7",
+    """CGRIDMB   0.5 0.7
+CGRIDMB   0.6 0.8"""
+]
+
+[ALLOWED_KEYS.SGRIDMB]
+value_type   = ["double", "string", "int", "double"]
+value_format = ["<width>", "..." | "<algorithm> <N> <START> <STOP>"]
+value_N      = [-2147483647]
+description  = "Specifies the width (or spread) parameters for the radial basis functions in many-body descriptors. Values may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, provide one or more lists of widths corresponding to each concatenated descriptor, ensuring consistency with the centers defined in CGRIDMB. Alternatively, include an algorithm keyword along with its parameters to generate the widths automatically (available algorithms include those that produce logarithmically or uniformly spaced values)."
+examples     = [
+    "SGRIDMB U 3 0 1.0",
+    "SGRIDMB 0.01 0.02 0.03",
+    """SGRIDMB   0.01 0.02 0.03
+SGRIDMB   0.02 0.03 0.04"""
+]
+
+[ALLOWED_KEYS.MPARAMS]
+value_type   = ["double"]
+value_format = ["<N1>", "<N2>", "<N3>", "..."]
+value_N      = [-2147483647]
+description  = "Specifies a list of numerical parameters for models that require additional configuration details. Consult the specific model documentation for the required parameters; many models may not need any extra parameters."
+examples     = [
+    "MPARAMS 0.1"
+]
+
+[ALLOWED_KEYS.MODEL]
+value_type   = ["string", "string"]
+value_format = ["MODEL", "FUNCTION", "..."]
+value_N      = [-3]
+description  = "Defines the training model and its associated function. MODEL can be any class that inherits from M_Base (e.g., M_KRR, M_BLR), while FUNCTION must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, BF_Polynomial2). Different models are supported, such as KRR with various kernels and BLR with linear or nonlinear basis functions."
+examples     = [
+    "MODEL M_BLR BF_Linear",
+    "MODEL M_BLR BF_Polynomial2",
+    "MODEL M_KRR Kern_Linear"
+]
+
+
+[INIT2B]
+default = "false"
+value_type = ["bool"]
+value_format = ["true | false'"
+value_N = [1]
+description = """If set to true, the two-body descriptor will be calculated."""
+examples = ["INIT2B true"]
+
+
+[INITMB]
+default = "false"
+value_type = ["bool"]
+value_format = ["true | false"]
+value_N = [1]
+description = """If set to true, the many-body descriptor will be calculated."""
+examples = ["INITMB true"]
+
+[SEMBFUNC]
+value_type = ['double']
+value_format = ["<value>", "..." | "<algorithm> <N> <START> <STOP>"]
+value_N = [-2147483647]
+description  = "Specifies the shape parameters of the embedding function used by some many-body descriptors (e.g., F_RLR). When using the DM_mJoin meta descriptor, supply one or more lists of parameters corresponding to each concatenated descriptor, ensuring consistency with the position parameters defined in CEMBFUNC."
+examples = ['SEMBFUNC 0.14 0.45 1.00 1.1']
+
+[CEMBFUNC]
+value_type = ['double']
+value_format = ["<value>", "..." | "<algorithm> <N> <START> <STOP>"]
+value_N = [-2147483647]
+description  = "Specifies the position parameters of the embedding function used by some many-body descriptors (e.g., F_RLR). The parameter list may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, supply one or more lists of parameters corresponding to each concatenated descriptor, ensuring consistency with the shape parameters defined in SEMBFUNC."
+examples = ['CEMBFUNC 0.14 0.45 1.00 1.1']
+
+[OALGO]
+default = [1]
+value_type   = ["<int>"] | ["<int>", "<double>"]
+value_format = ["<option>"] | ["<option>", "<M>"]
+value_N = [-2]
+description = '''
+This key controls the optimization algorithm used to train the model. The **default algorithm** is **Option 1 (GELSD)** with a conditioning parameter (:math:`rcond`) of :math:`1 \times 10^{-8}`. The regularization parameter is handled separately by the :ref:`LAMBDA` key.
+
+Available options:
+
+**1** - **GELSD**: Utilizes the LAPACK routine :code:`DGELSD` to solve linear least squares problems using the Singular Value Decomposition (SVD). This method is robust and can handle rank-deficient systems. It computes the minimum-norm solution and is suitable for ill-conditioned problems. The parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`). It defaults to :math:`1 \times 10^{-8}` if not specified. Setting :code:`M = -1` uses machine precision, which may be unstable for ill-conditioned problems.
+
+**2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorization. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
+
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance matrix :math:`\Sigma`, providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
+
+**4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It does not require additional parameters.
+
+**Performance Comparison**:
+
+- **Option 2** is the fastest but assumes a full-rank matrix and is less robust for ill-conditioned problems.
+- **Option 4** is also efficient but may suffer from numerical instability in ill-conditioned or rank-deficient problems due to squaring of the condition number.
+- **Option 1** offers a balance between speed and robustness, handling rank-deficient and ill-conditioned problems better than options 2 and 4.
+- **Option 3** is the slowest due to the additional computations but provides valuable extra information like the covariance matrix.
+
+**Usage**:
+
+- To select an algorithm, set the :code:`OALGO` key followed by the option number.
+- For options **1** and **3**, you can specify the conditioning parameter :code:`M` after the option number.
+- Option **4** does not require any additional parameters.
+
+**Regularization Parameter**:
+
+- The regularization parameter is controlled by the :ref:`LAMBDA` key, which should be set separately to apply regularization to the model.
+
+**Examples**:
+
+- :code:`OALGO 1`          # Uses GELSD with default conditioning parameter (:code:`M = 1e-8`)
+- :code:`OALGO 1 -1`       # Uses GELSD with machine precision (:code:`M = -1`)
+- :code:`OALGO 2`          # Uses GELS
+- :code:`OALGO 3 1e-10`    # Uses custom implementation with :code:`M = 1e-10`
+- :code:`OALGO 4`          # Uses Cholesky Decomposition
+
+**Notes**:
+
+- **Conditioning Parameter** :code:`M`: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
+- **Machine Precision** (:code:`M = -1`): Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
+- **Covariance Matrix** :math:`\Sigma`: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
+- **Cholesky Decomposition**: Option **4** solves the normal equations using Cholesky decomposition. It is efficient but may be numerically unstable for ill-conditioned or rank-deficient problems due to squaring the condition number. It is best used when the matrix is well-conditioned and of full rank.
+
+**Additional Information**:
+
+- **Regularization with** :ref:`LAMBDA`:
+
+  - The :ref:`LAMBDA` key controls the regularization parameter used in the training process. It should be specified separately to apply regularization to the model.
+  - Regularization helps prevent overfitting by adding a penalty for larger parameter values.
+
+- **LAPACK Routines**:
+
+  - :code:`DGELSD`: Computes the minimum-norm solution to a real linear least squares problem using the SVD of the coefficient matrix.
+  - :code:`DGELS`: Solves overdetermined or underdetermined real linear systems involving an :math:`M \times N` matrix, using a QR or LQ factorization of the matrix.
+  - :code:`DPOTRF` and :code:`DPOTRS`: Used in the Cholesky decomposition to factorize a symmetric positive-definite matrix and solve the resulting linear system.
+
+- **When to Use Each Option**:
+
+  - Use **Option 1 (GELSD)** when you need robustness against rank deficiency and moderate performance.
+  - Use **Option 2 (GELS)** for the fastest performance on well-conditioned, full-rank matrices where robustness is less of a concern.
+  - Use **Option 3 (Custom SVD Implementation)** when you require additional outputs like the covariance matrix and are willing to trade off performance for more comprehensive results.
+  - Use **Option 4 (Cholesky Decomposition)** when you have a well-conditioned, full-rank matrix and need an efficient solution, but be cautious of potential numerical instability in ill-conditioned or rank-deficient problems.
+
+'''
+examples = ['OALGO 1', 'OALGO 1 -1', 'OALGO 2', 'OALGO 3 1e-10', 'OALGO 4']
+is_internal = [false]
 
 [ALLOWED_KEYS.structure]
 value_type   = ["string"]
@@ -187,7 +416,7 @@ short_option = "-f"
 
 [ALLOWED_KEYS.numeric]
 value_type   = ["int"]
-value_format = ["N"]
+value_format = ["<N>"]
 value_N      = [1]
 description  = "Numeric output precision. Either number of decimal places or scientific notation. Depending on context."
 examples     = ["12"]
@@ -227,7 +456,7 @@ default      = "false"
 
 [ALLOWED_KEYS.chunk]
 value_type   = ["unsigned int"]
-value_format = ["UINT"]
+value_format = ["<UINT>"]
 value_N      = [1]
 description  = "Specify chunk sizes."
 examples     = ["64"]
@@ -236,7 +465,7 @@ short_option = ""
 
 [ALLOWED_KEYS.percent]
 value_type   = ["unsigned int"]
-value_format = ["UINT"]
+value_format = ["<UINT>"]
 value_N      = [1]
 description  = "Specify percentage partition."
 examples     = ["20"]
@@ -245,7 +474,7 @@ short_option = ""
 
 [ALLOWED_KEYS.threshold]
 value_type   = ["double"]
-value_format = ["N"]
+value_format = ["<N>"]
 value_N      = [1]
 description  = "Floating point comparision threshold."
 examples     = ["1e-4"]
@@ -265,7 +494,7 @@ default      = "false"
 
 [ALLOWED_KEYS.uniform]
 value_type   = ["unsigned int"]
-value_format = ["UINT"]
+value_format = ["<UINT>"]
 value_N      = [1]
 description  = "Sample uniformly every N-th entry."
 examples     = ["10"]
@@ -274,7 +503,7 @@ short_option = ""
 
 [ALLOWED_KEYS.random]
 value_type   = ["unsigned int"]
-value_format = ["UINT"]
+value_format = ["<UINT>"]
 value_N      = [1]
 description  = "Randomly sample N entries."
 examples     = ["5"]
@@ -301,7 +530,7 @@ short_flag   = ""
 
 [ALLOWED_KEYS.range]
 value_type   = ["string"]
-value_format = ["<start>", "<stop>", "<npoints>"]
+value_format = ["<START>", "<STOP>", "<NPOINTS>"]
 value_N      = [3]
 description  = "Plotting range: [start stop number_of_points]."
 examples     = ["0 10 100"]
@@ -310,7 +539,7 @@ short_option = "-r"
 
 [ALLOWED_KEYS.atoms]
 value_type   = ["string"]
-value_format = ["<element> <element>"]
+value_format = ["<element>", "<element>"]
 value_N      = [2]
 description  = "Chemical element pair."
 examples     = ['"Kr Kr"']

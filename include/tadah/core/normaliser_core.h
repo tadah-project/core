@@ -1,8 +1,9 @@
 #ifndef TADAH_CORE_NORMALISER_CORE_H
 #define TADAH_CORE_NORMALISER_CORE_H
 
-#include <tadah/core/config.h>
+#include <tadah/core/context.h>
 #include <tadah/core/core_types.h>
+#include <tadah/core/logger.h>
 
 namespace tadah {
 namespace core {
@@ -14,13 +15,12 @@ namespace core {
 class Normaliser_Core {
     public:
         bool bias;
-        int verbose;
 
         v_type std_dev;
         v_type mean;
 
         Normaliser_Core ();
-        Normaliser_Core (Config &c);
+        Normaliser_Core (Context &c);
 
         /** Normalise AED */
         void normalise(aed_type &aed);
