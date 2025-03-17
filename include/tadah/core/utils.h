@@ -1,5 +1,5 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef TADAH_CORE_UTILS_H
+#define TADAH_CORE_UTILS_H
 
 #include <tadah/core/core_types.h>
 

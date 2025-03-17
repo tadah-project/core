@@ -1,5 +1,5 @@
-#ifndef FD_TYPE_H
-#define FD_TYPE_H
+#ifndef TADAH_CORE_FD_TYPE_H
+#define TADAH_CORE_FD_TYPE_H
 #include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 

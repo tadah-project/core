@@ -1,5 +1,5 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef TADAH_CORE_LOGGER_H
+#define TADAH_CORE_LOGGER_H
 
 #include <iostream>
 #include <sstream>

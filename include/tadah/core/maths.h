@@ -1,5 +1,5 @@
-#ifndef MATHS_H
-#define MATHS_H
+#ifndef TADAH_CORE_MATHS_H
+#define TADAH_CORE_MATHS_H
 #include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 

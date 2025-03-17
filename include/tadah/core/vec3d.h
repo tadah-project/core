@@ -1,5 +1,5 @@
-#ifndef VEC3D_H
-#define VEC3D_H
+#ifndef TADAH_CORE_VEC3D_H
+#define TADAH_CORE_VEC3D_H
 
 #include <cmath>
 #include <iostream>

@@ -1,5 +1,5 @@
-#ifndef CORE_TYPES_H
-#define CORE_TYPES_H
+#ifndef TADAH_CORE_CORE_TYPES_H
+#define TADAH_CORE_CORE_TYPES_H
 #include <tadah/core/maths.h>
 #include <tadah/core/fd_type.h>
 #include <tadah/core/aed_type.h>
@@ -39,4 +39,4 @@ class mat {
 
 } // namespace core
 } // namespace tadah
-#endif
+#endif  // TADAH_CORE_CORE_TYPES_H

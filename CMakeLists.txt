@@ -51,7 +51,7 @@ cmrc_add_resource_library(
     config-resources
     ALIAS config::rc
     NAMESPACE CORE
-    ${PROJECT_SOURCE_DIR}/config/config_keys.toml
+    ${PROJECT_SOURCE_DIR}/config/config_blueprint.toml
 )
 
 file(GLOB CORE_SRC CONFIGURE_DEPENDS "src/*.cpp")
@@ -62,6 +62,7 @@ add_library(tadah.core
 
 target_include_directories(tadah.core PUBLIC include)
 target_include_directories(tadah.core PUBLIC ${CMAKE_BINARY_DIR}/_cmrc/include)
+target_include_directories(tadah.core PUBLIC external/boost/include)
 
 if(TADAH_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)

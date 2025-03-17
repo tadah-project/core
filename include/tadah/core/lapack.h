@@ -1,5 +1,5 @@
-#ifndef LAPACK_H
-#define LAPACK_H
+#ifndef TADAH_CORE_LAPACK_H
+#define TADAH_CORE_LAPACK_H
 #include <tadah/core/maths.h>
 
 namespace tadah {

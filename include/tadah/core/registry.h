@@ -1,5 +1,5 @@
-#ifndef REGISTRY_H
-#define REGISTRY_H
+#ifndef TADAH_CORE_REGISTRY_H
+#define TADAH_CORE_REGISTRY_H
 
 #include <map>
 #include <functional>

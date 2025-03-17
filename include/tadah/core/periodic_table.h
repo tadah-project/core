@@ -1,5 +1,5 @@
-#ifndef PERIODIC_TABLE_H
-#define PERIODIC_TABLE_H
+#ifndef TADAH_CORE_PERIODIC_TABLE_H
+#define TADAH_CORE_PERIODIC_TABLE_H
 
 #include <string>
 #include <map>

@@ -1,5 +1,5 @@
-#ifndef ELEMENT_H
-#define ELEMENT_H
+#ifndef TADAH_CORE_ELEMENT_H
+#define TADAH_CORE_ELEMENT_H
 #include <iostream>
 #include <functional>
 #include <string>

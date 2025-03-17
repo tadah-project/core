@@ -1,5 +1,5 @@
-#ifndef AEDS_TYPE_H
-#define AEDS_TYPE_H
+#ifndef TADAH_CORE_AEDS_TYPE_H
+#define TADAH_CORE_AEDS_TYPE_H
 #include <tadah/core/aed_type.h>
 
 #include <cstdlib>

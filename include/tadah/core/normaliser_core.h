@@ -1,5 +1,5 @@
-#ifndef NORMALISER_CORE_H
-#define NORMALISER_CORE_H
+#ifndef TADAH_CORE_NORMALISER_CORE_H
+#define TADAH_CORE_NORMALISER_CORE_H
 
 #include <tadah/core/config.h>
 #include <tadah/core/core_types.h>

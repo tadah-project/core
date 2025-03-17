@@ -1,5 +1,5 @@
-#ifndef AED_TYPE2_H
-#define AED_TYPE2_H
+#ifndef TADAH_CORE_AED_TYPE2_H
+#define TADAH_CORE_AED_TYPE2_H
 #include <cstring>
 #include <cmath>
 #include <limits>
