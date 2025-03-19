@@ -1,0 +1,105 @@
+#ifndef TADAH_CORE_BLUEPRINT_VALIDATOR_H
+#define TADAH_CORE_BLUEPRINT_VALIDATOR_H
+
+/**
+ * @file blueprint_validator.h
+ * @brief Public API for compiling and matching strings against
+ *        blueprint patterns (with optional tokens, repeated groups, etc.).
+ *
+ * @details
+ * This header places only the essential interface in the tadah::core namespace.
+ * Implementation details reside in "blueprint_validator.cpp".
+ *
+ * Usage example:
+ * @code
+ *   #include <tadah/core/blueprint_validator.h>
+ *   using namespace tadah::core;
+ *
+ *   BlueprintValidator validator("INT [DOUBLE] {STRING}");
+ *   bool matched = validator.validate("10 3.14 hello");
+ *   auto captures = validator.getCaptures("10 3.14 hello");
+ *   // captures[0] -> "10", captures[1] -> "3.14", captures[2] -> "hello"
+ *
+ *   // For single checks:
+ *   bool singleOk = BlueprintValidator::validateOnce("INT [DOUBLE]", "10 3.14");
+ * @endcode
+ */
+
+#pragma once
+
+#include <string>
+#include <vector>
+
+namespace tadah {
+namespace core {
+
+/**
+ * @brief Reorders numeric tokens so that "UINT" is tried first,
+ *        then "INT", then "DOUBLE". Everything else preserves its relative order.
+ *
+ * Intention: ensures purely integral or unsigned values get matched
+ * before a more general "double" version.
+ */
+std::vector<std::string> reorderAlternatives(const std::vector<std::string> &alts);
+
+/**
+ * @class BlueprintValidator
+ * @brief Verifies if a given input matches a compiled blueprint-based regex,
+ *        and retrieves token captures.
+ */
+class BlueprintValidator {
+public:
+  /**
+   * @brief Construct a validator for the given blueprint.
+   * @param blueprint A blueprint such as "BOOL INT {INT} [DOUBLE] DOUBLE DOUBLE".
+   *
+   * Example usage:
+   * @code
+   *  BlueprintValidator v("INT [DOUBLE] {STRING}");
+   *  bool ok = v.validate("10 3.14 Hello");
+   * @endcode
+   */
+  explicit BlueprintValidator(const std::string &blueprint);
+
+  /**
+   * @brief Checks if the given text fully matches the blueprint regex.
+   * @param text The input string to test.
+   * @return True if matched, false otherwise.
+   */
+  bool validate(const std::string &text) const;
+
+  /**
+   * @brief Retrieves captured groups from a matching string, in order.
+   * @param text The string to match.
+   * @return A vector of captured substrings; empty if not matched.
+   */
+  std::vector<std::string> getCaptures(const std::string &text) const;
+
+  /**
+   * @brief Convenience method to validate text once, without storing a validator object.
+   * @param blueprint The blueprint string.
+   * @param text The input string to test.
+   * @return True if matched, false otherwise.
+   */
+  static bool validateOnce(const std::string &blueprint, const std::string &text);
+
+  /**
+   * @brief Returns the final anchored regex pattern used to match the blueprint.
+   * @return The pattern string (e.g., "^([-+]?\\d+)(?:\\s+([-+]?\\d+))?...$").
+   */
+  std::string getPattern() const;
+
+private:
+  std::string m_pattern;  ///< Holds the final anchored pattern.
+  // Implementation detail: store the compiled regex as well.
+  // We omit <regex> from this header, so we'll hide it behind a pointer-like approach.
+  // The actual object is defined in the .cpp.
+  class Impl;             ///< Forward declaration for pImpl idiom
+  Impl* m_impl;           ///< Private pointer to the compiled regex and helper data.
+};
+
+} // namespace core
+} // namespace tadah
+
+
+#endif // TADAH_CORE_BLUEPRINT_VALIDATOR_H

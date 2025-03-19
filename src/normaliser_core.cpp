@@ -5,12 +5,13 @@ namespace core {
 
 Normaliser_Core::Normaliser_Core() {}
 Normaliser_Core::Normaliser_Core(Context &c)
-    : bias(c.getV<bool>("BIAS")) {
-  if (c.contains("NORM") && c.getV<bool>("NORM")) {
+    : bias(c.get<bool>("BIAS")) {
+  if (c.contains("NORM") && c.get<bool>("NORM")) {
     if (c.contains("NSTDEV")) {
-      bias = c.getV<double>("BIAS");
-      std_dev = c.getV<v_type>("NSTDEV");
-      mean = c.getV<v_type>("NMEAN");
+      std_dev.resize(c.size("NSTDEV"));
+      mean.resize(c.size("NMEAN"));
+      c.get<v_type>("NSTDEV", std_dev);
+      c.get<v_type>("NMEAN", mean);
     }
   }
 }
