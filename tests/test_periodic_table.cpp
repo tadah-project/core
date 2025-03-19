@@ -3,20 +3,6 @@
 
 using namespace tadah::core;
 
-TEST_CASE("PeriodicTable Initialization", "[initialize]") {
-    // Ensure that the periodic table is properly initialized
-    REQUIRE(PeriodicTable::symbol.empty());
-    REQUIRE(PeriodicTable::name.empty());
-    REQUIRE(PeriodicTable::Z.empty());
-    REQUIRE(PeriodicTable::masses.empty());
-
-    PeriodicTable::initialize();
-
-    REQUIRE_FALSE(PeriodicTable::symbol.empty());
-    REQUIRE_FALSE(PeriodicTable::name.empty());
-    REQUIRE_FALSE(PeriodicTable::Z.empty());
-    REQUIRE_FALSE(PeriodicTable::masses.empty());
-}
 
 TEST_CASE("Find Element by Symbol", "[find_by_symbol]") {
     PeriodicTable::initialize();

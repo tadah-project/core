@@ -23,6 +23,7 @@
 #include <cmath>
 #include <algorithm>
 
+#include <tadah/core/utils.h>
 #include <tadah/core/logger.h>
 #include <tadah/core/blueprint_parser.h>
 
@@ -187,31 +188,48 @@ public:
    * @param val Value to append.
    */
   template <typename T>
-  void add(const std::string &key, const T &val) {
-    std::string upKey = uppercase(key);
-    // Validate blueprint
-    auto itBP = allowedKeys_.find(upKey);
-    if (itBP == allowedKeys_.end()) {
-      Logger::instance().log(LogLevel::ERROR, "Context::add -> Key not allowed: ", upKey);
-      throw std::runtime_error("Key not allowed: " + upKey);
+void add(const std::string &key, const T &val) {
+  std::string upKey = uppercase(key);
+  // Validate blueprint
+  const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
+  if (bi == nullptr) {
+    const auto bi_ = findBlueprintItem(upKey, "INTERNAL_KEYS");
+    if (bi_ != nullptr) {
+      Logger::instance().log(LogLevel::ERROR,
+                             "Context::add -> Attempt to add internal key with add(), HINT use addInternal(): ", upKey);
+      throw std::runtime_error("Setting of internal keys is not allowed by this method: " + upKey);
     }
-    const BlueprintItem &bi = itBP->second;
-    if (bi.value_N.empty()) {
-      Logger::instance().log(LogLevel::ERROR, "Context::add -> blueprint missing value_N for: ", upKey);
-      throw std::runtime_error("Blueprint incomplete for key: " + upKey);
-    }
-    size_t maxVals = static_cast<size_t>( std::abs(bi.value_N[0]) );
-
-    std::lock_guard<std::mutex> lock(mtx_);
-    std::vector<std::string> &bucket = storage_[upKey];
-    if (bucket.size() >= maxVals) {
-      Logger::instance().log(LogLevel::ERROR, "Context::add -> capacity exceeded for: ", upKey);
-      throw std::runtime_error("Exceeded capacity for key: " + upKey);
-    }
-    std::ostringstream oss;
-    oss << std::boolalpha << val;
-    bucket.push_back(oss.str());
+    Logger::instance().log(LogLevel::ERROR,
+                           "Context::add -> Key not allowed: ", upKey);
+    throw std::runtime_error("Key not allowed: " + upKey);
   }
+  if (bi->value_N.empty()) {
+    Logger::instance().log(
+        LogLevel::ERROR,
+        "Context::add -> blueprint missing value_N for: ", upKey);
+    throw std::runtime_error("Blueprint incomplete for key: " + upKey);
+  }
+  size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
+
+  int n = get<int>("NUMERIC");  // get before lock
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<std::string> &bucket = storage_[upKey];
+  if (maxVals > 1 && bucket.size() >= maxVals) {
+    Logger::instance().log(LogLevel::ERROR,
+                           "Context::add -> capacity exceeded for: ", upKey);
+    throw std::runtime_error("Exceeded capacity for key: " + upKey);
+  }
+  else if (maxVals == 1 && bucket.size() == maxVals) {
+    Logger::instance().log(LogLevel::WARNING,
+                           "Context::add -> Overwriting: ", upKey);
+  }
+  std::string val_str = to_string(val, n);
+  std::istringstream iss(val_str);
+  std::string value;
+  while (iss >> std::boolalpha >> value) {
+    bucket.push_back(to_string(value, n));
+  }
+}
 
   /**
    * @brief Removes all values for a given key.
@@ -270,6 +288,124 @@ public:
    */
   void deserialize(const std::vector<char> &buffer);
 
+  /** 
+   * @brief Returns true if both configs are the same. 
+   */
+  bool operator==(const Context &) const;
+
+  /**
+   * Return a const reference to the storage map.
+   */
+  const std::map<std::string, std::vector<std::string>>& getMapRef() const;
+
+  /**
+   * @brief Streams the Context to an output stream using rules similar to the old Config class.
+   *
+   * Each key is looked up in the blueprint to determine how many values to place
+   * per line. If value_N[0] > 0, each value is printed on its own line with the key.
+   * If value_N[0] < 0, all values for that key appear on a single line after the key.
+   * If value_N[0] == 0 or value_N is empty, it is skipped.
+   */
+  friend std::ostream& operator<<(std::ostream& os, const Context& ctx)
+  {
+    // Lock the mutex for thread-safe iteration over storage_.
+    std::lock_guard<std::mutex> lock(ctx.mtx_);
+    
+    // Use some spacing consistent with the old Config style.
+    const std::string space = "     ";
+
+    // Iterate over all stored key-value pairs.
+    for (auto const &pair : ctx.storage_) {
+      const std::string &key = pair.first;
+      const std::vector<std::string> &vals = pair.second;
+
+      // Check the blueprint so we can interpret value_N.
+      const auto bi = ctx.findBlueprintItem(key, "ALLOWED_KEYS");
+      if (bi == nullptr) {
+        // Key not in blueprint => skip.
+        continue;
+      }
+      if (bi->value_N.empty()) {
+        // If blueprint does not define value_N at all, skip as well.
+        continue;
+      }
+
+      // Take the first element of value_N for printing logic.
+      int valN = bi->value_N[0];
+
+      if (valN > 0) {
+        // Print each value on its own line preceded by key.
+        // Example:
+        // KEY     val1
+        // KEY     val2
+        // ...
+        for (auto const &v : vals) {
+          os << key << space << v << "\n";
+        }
+      }
+      else if (valN < 0) {
+        // Print all values on a single line, preceded by key.
+        // Example:
+        // KEY     val1     val2     val3
+        os << key;
+        for (auto const &v : vals) {
+          os << space << v;
+        }
+        os << "\n";
+      }
+      else {
+        // valN == 0 => skip printing entirely, or handle differently if desired.
+        continue;
+      }
+    }
+    return os;
+  }
+
+  /**
+   * @brief Method for inserting an internal key (not in allowedKeys_).
+   *
+   * Internal keys come from [INTERNAL_KEYS] section of the blueprint.
+   *
+   * @warning This method is not intended for general use.
+   */
+  template <typename T>
+  void addInternal(const std::string &key, const T &val) {
+    std::string upKey = uppercase(key);
+
+    // We do NOT allow normal blueprint keys here, only internal
+    const auto bi = findBlueprintItem(upKey, "INTERNAL_KEYS");
+    if (bi == nullptr) {
+      Logger::instance().log(
+          LogLevel::ERROR,
+          "Context::addInternal -> Key is not recognized as internal: ", upKey);
+      throw std::runtime_error("Key not recognized as internal: " + upKey);
+    }
+    // capacity check
+    size_t maxVals = 1;
+    if (!bi->value_N.empty()) {
+      maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
+    }
+
+    int n = get<int>("NUMERIC");  // get before lock
+    std::lock_guard<std::mutex> lock(mtx_);
+    std::vector<std::string> &bucket = storage_[upKey];
+    if (maxVals > 1 && bucket.size() >= maxVals) {
+      Logger::instance().log(LogLevel::ERROR,
+                             "Context::add -> capacity exceeded for: ", upKey);
+      throw std::runtime_error("Exceeded capacity for key: " + upKey);
+    }
+    else if (maxVals == 1 && bucket.size() == maxVals) {
+      Logger::instance().log(LogLevel::WARNING,
+                             "Context::add -> Overwriting: ", upKey);
+    }
+    // convert val to string
+    std::string val_str = to_string(val, n);
+    std::istringstream iss(val_str);
+    std::string value;
+    while (iss >> std::boolalpha >> value) {
+      bucket.push_back(to_string(value, n));
+    }
+  }
 private:
   /**
    * @brief Attempts to insert the blueprint's defaultValue for upKey if it exists and is not empty.
@@ -323,14 +459,30 @@ private:
   mutable std::map<std::string, std::vector<std::string>> storage_;
 
   /**
-   * @brief Reference to the blueprint map, cannot be reseated in a copy.
+   * @brief A reference for [ALLOWED_KEYS] loaded from blueprint.
    */
   const std::unordered_map<std::string, BlueprintItem>& allowedKeys_;
+
+  /**
+   * @brief A reference for [INTERNAL_KEYS] loaded from blueprint.
+   */
+  const std::unordered_map<std::string, BlueprintItem>& internalKeys_;
 
   /**
    * @brief Mutex for thread safety on storage_.
    */
   mutable std::mutex mtx_;
+
+  /**
+   * @brief Finds the BlueprintItem for a given key.
+   *
+   * This method is used internally to find the correct BlueprintItem for a key.
+   * It first looks in allowedKeys_, then in internalKeys_.
+   *
+   * @param upKey The uppercase key to search for.
+   * @return A pointer to the BlueprintItem if found, nullptr otherwise.
+   */
+  const BlueprintItem* findBlueprintItem(const std::string &upKey, const std::string& xKeys="ALLOWED_KEYS") const;
 };
 
 } // namespace core

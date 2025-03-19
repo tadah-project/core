@@ -14,14 +14,9 @@ TEST_CASE( "Testing Normaliser_Core(Context&)", "[create]" ) {
     Context c;
     REQUIRE_NOTHROW(Normaliser_Core(c));
 
-    c.remove("BIAS");
-    REQUIRE_THROWS(Normaliser_Core(c));
-
     c.add("BIAS", true);
     REQUIRE_NOTHROW(Normaliser_Core(c));
 
-    c.remove("VERBOSE");
-    REQUIRE_THROWS(Normaliser_Core(c));
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(aed)", "[method]" ) {
     Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config5");

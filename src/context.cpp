@@ -17,22 +17,22 @@ namespace core {
 // Constructors / Move
 ///////////////////////////////////////////////////////////////////////////////
 Context::Context()
-  : allowedKeys_(BlueprintParser::getMapRef())
-{
+    : allowedKeys_(BlueprintParser::getKeysMapRef()),
+      internalKeys_(BlueprintParser::getInternalKeysMapRef()) {
   // nothing else needed
 }
 
-Context::Context(Context&& other) noexcept
-  : storage_(std::move(other.storage_))
-  , allowedKeys_(other.allowedKeys_)
-{
+Context::Context(Context &&other) noexcept
+    : storage_(std::move(other.storage_)), allowedKeys_(other.allowedKeys_),
+      internalKeys_(other.internalKeys_) {
   // The mutex is default-constructed in 'this'.
   // 'other' is left valid but with an empty storage_.
 }
 
-Context& Context::operator=(Context&& other) noexcept {
+Context &Context::operator=(Context &&other) noexcept {
   if (this != &other) {
-    // Lock our own mutex (not locking other's for simplicity, assuming single-thread usage).
+    // Lock our own mutex (not locking other's for simplicity, assuming
+    // single-thread usage).
     std::lock_guard<std::mutex> lock(mtx_);
     storage_ = std::move(other.storage_);
     // The blueprint reference remains the same as in the constructor.
@@ -41,9 +41,10 @@ Context& Context::operator=(Context&& other) noexcept {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// operator()(...) 
+// operator()(...)
 ///////////////////////////////////////////////////////////////////////////////
-const std::vector<std::string>& Context::operator()(const std::string &key) const {
+const std::vector<std::string> &
+Context::operator()(const std::string &key) const {
   std::lock_guard<std::mutex> lock(mtx_);
   std::string upKey = uppercase(key);
   auto it = storage_.find(upKey);
@@ -52,8 +53,9 @@ const std::vector<std::string>& Context::operator()(const std::string &key) cons
     attemptDefaultInsertion_NoLock(upKey);
     it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
-      Logger::instance().log(LogLevel::ERROR,
-        "Context::operator() -> Key not found with no default: ", upKey);
+      Logger::instance().log(
+          LogLevel::ERROR,
+          "Context::operator() -> Key not found with no default: ", upKey);
       throw std::runtime_error("Key not found (no default): " + upKey);
     }
   }
@@ -61,7 +63,7 @@ const std::vector<std::string>& Context::operator()(const std::string &key) cons
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// remove(...) 
+// remove(...)
 ///////////////////////////////////////////////////////////////////////////////
 size_t Context::remove(const std::string &key) {
   std::lock_guard<std::mutex> lock(mtx_);
@@ -75,7 +77,7 @@ size_t Context::remove(const std::string &key) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// clear() 
+// clear()
 ///////////////////////////////////////////////////////////////////////////////
 void Context::clear() {
   std::lock_guard<std::mutex> lock(mtx_);
@@ -94,7 +96,7 @@ size_t Context::size(const std::string &key) const {
     it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
       Logger::instance().log(LogLevel::ERROR,
-        "Context::size -> Key not found: ", upKey);
+                             "Context::size -> Key not found: ", upKey);
       throw std::runtime_error("Key not found (no default): " + upKey);
     }
   }
@@ -175,26 +177,27 @@ void Context::deserialize(const std::vector<char> &buffer) {
     std::string upKey = uppercase(tokens[0]);
 
     // Check blueprint
-    auto itBP = allowedKeys_.find(upKey);
-    if (itBP == allowedKeys_.end()) {
-      Logger::instance().log(LogLevel::ERROR,
-        "Context::deserialize -> Key not allowed: ", upKey);
+    const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
+    if (bi == nullptr) {
+      Logger::instance().log(
+          LogLevel::ERROR, "Context::deserialize -> Key not allowed: ", upKey);
       throw std::runtime_error("Key not allowed: " + upKey);
     }
-    const BlueprintItem &bi = itBP->second;
-    if (bi.value_N.empty()) {
-      Logger::instance().log(LogLevel::ERROR,
-        "Context::deserialize -> Blueprint missing value_N for key: ", upKey);
+    if (bi->value_N.empty()) {
+      Logger::instance().log(
+          LogLevel::ERROR,
+          "Context::deserialize -> Blueprint missing value_N for key: ", upKey);
       throw std::runtime_error("Blueprint incomplete for key: " + upKey);
     }
-    size_t maxVals = static_cast<size_t>( std::abs(bi.value_N[0]) );
+    size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
     // Insert tokens as values
     std::vector<std::string> &bucket = storage_[upKey];
     for (size_t i = 1; i < tokens.size(); ++i) {
       if (bucket.size() >= maxVals) {
-        Logger::instance().log(LogLevel::ERROR,
-          "Context::deserialize -> Exceeded capacity for key: ", upKey);
+        Logger::instance().log(
+            LogLevel::ERROR,
+            "Context::deserialize -> Exceeded capacity for key: ", upKey);
         throw std::runtime_error("Exceeded capacity for key: " + upKey);
       }
       bucket.push_back(tokens[i]);
@@ -206,21 +209,19 @@ void Context::deserialize(const std::vector<char> &buffer) {
 // attemptDefaultInsertion_NoLock(upKey)
 ///////////////////////////////////////////////////////////////////////////////
 void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
-  // Locate the blueprint item
-  auto itBP = allowedKeys_.find(upKey);
-  if (itBP == allowedKeys_.end()) {
+  const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
+  if (bi == nullptr) {
     // Not in blueprint -> no default
     return;
   }
-  const BlueprintItem &bi = itBP->second;
-  if (bi.defaultValue.empty()) {
+  if (bi->defaultValue.empty()) {
     // No default provided
     return;
   }
   // Check capacity
   size_t maxVals = 0;
-  if (!bi.value_N.empty()) {
-    maxVals = static_cast<size_t>( std::abs(bi.value_N[0]) );
+  if (!bi->value_N.empty()) {
+    maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
   }
 
   // Insert default only if we are not at capacity
@@ -239,10 +240,38 @@ void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
     // so do nothing in that case.
     return;
   }
-  if (values.size() < maxVals) {
-    // Insert the single defaultValue token
-    values.push_back(bi.defaultValue);
+  values = bi->defaultValue;  // both are vectors
+}
+bool Context::operator==(const Context &other) const {
+  return storage_ == other.getMapRef();
+}
+const std::map<std::string, std::vector<std::string>> &
+Context::getMapRef() const {
+  return storage_;
+}
+
+//-------------------------------------------------------------
+// findBlueprintItem(upKey):
+// returns pointer to either allowed item or internal item
+//-------------------------------------------------------------
+const BlueprintItem *
+Context::findBlueprintItem(const std::string &upKey,
+                           const std::string &xKeys) const {
+  if (xKeys == "ALLOWED_KEYS") {
+    auto itA = allowedKeys_.find(upKey);
+    if (itA != allowedKeys_.end()) {
+      return &(itA->second);
+    } else { return nullptr; }
   }
+
+  if (xKeys == "INTERNAL_KEYS") {
+    auto itI = internalKeys_.find(upKey);
+    if (itI != internalKeys_.end()) {
+      return &(itI->second);
+    } else { return nullptr; }
+  }
+  // Uknown keyMap
+  return nullptr;
 }
 
 } // namespace core
