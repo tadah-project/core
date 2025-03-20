@@ -12,6 +12,7 @@
 #include <random>
 #include <tuple>
 #include <cstddef>
+#include <utility>
 
 namespace tadah {
 namespace core {
@@ -355,6 +356,49 @@ std::vector<histogram_bin> generate_2d_histogram(
     const std::vector<std::pair<double,double>>& data_2d,
     int x_bins,
     int y_bins);
+
+
+/**
+ * @brief Base case for appendToStream: handles the scenario when no arguments remain.
+ *
+ * This function is the termination point for the recursive template overloads. 
+ * When the parameter pack is empty, it simply returns.
+ *
+ * @param oss Reference to the output string stream to which data is appended.
+ */
+inline void appendToStream(std::ostringstream &oss) {}
+
+/**
+ * @brief Appends a variable number of arguments into an std::ostringstream.
+ *
+ * This function processes one argument at a time and then recurses, 
+ * eventually calling the base case when no arguments remain. It uses 
+ * perfect forwarding to preserve value categories (lvalue or rvalue).
+ *
+ * @tparam T    The type of the first argument.
+ * @tparam Rest Parameter pack representing the remaining argument types.
+ *
+ * @param oss   Reference to the output string stream to which data is appended.
+ * @param first The first argument that is appended to the stream.
+ * @param rest  The remaining arguments to be appended.
+ *
+ * @note
+ * By using std::forward, we avoid unnecessary copies or moves, which 
+ * can be particularly important for performance-critical code.
+ *
+ * ### Example
+ * \code{.cpp}
+ * std::ostringstream oss;
+ * appendToStream(oss, "The number is: ", 42, '\n');
+ * std::cout << oss.str(); // Outputs: "The number is: 42\n"
+ * \endcode
+ */
+template <typename T, typename... Rest>
+inline void appendToStream(std::ostringstream &oss, T&& first, Rest&&... rest) {
+    oss << std::forward<T>(first);
+    appendToStream(oss, std::forward<Rest>(rest)...);
+}
+
 } // namespace core
 } // namespace tadah
 #endif

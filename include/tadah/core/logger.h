@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <cctype>
 
+#include <tadah/core/utils.h>
+
 #ifdef MPI_ENABLED
   #include <mpi.h>
 #endif
@@ -149,14 +151,6 @@ private:
       *effectiveStream << finalMessage << "\n";
       effectiveStream->flush();
     }
-  }
-
-  void appendToStream(std::ostringstream &oss) {}
-
-  template <typename T, typename... Rest>
-  void appendToStream(std::ostringstream &oss, T&& first, Rest&&... rest) {
-    oss << std::forward<T>(first);
-    appendToStream(oss, std::forward<Rest>(rest)...);
   }
 
   LogLevel currentLevel;

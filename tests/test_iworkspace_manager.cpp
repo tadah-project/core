@@ -1,5 +1,5 @@
 #include "catch2/catch.hpp"
-#include <tadah/core/memory/IWorkspaceManager.h>
+#include <tadah/core/memory/iworkspace_manager.h>
 
 namespace tadah {
 namespace core {
