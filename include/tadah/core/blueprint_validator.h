@@ -25,22 +25,11 @@
  * @endcode
  */
 
-#pragma once
-
 #include <string>
 #include <vector>
 
 namespace tadah {
 namespace core {
-
-/**
- * @brief Reorders numeric tokens so that "UINT" is tried first,
- *        then "INT", then "DOUBLE". Everything else preserves its relative order.
- *
- * Intention: ensures purely integral or unsigned values get matched
- * before a more general "double" version.
- */
-std::vector<std::string> reorderAlternatives(const std::vector<std::string> &alts);
 
 /**
  * @class BlueprintValidator
@@ -62,9 +51,18 @@ public:
   explicit BlueprintValidator(const std::string &blueprint);
 
   /**
-   * @brief Checks if the given text fully matches the blueprint regex.
+   * @brief Construct a validator for the given set of blueprint.
+   * @param blueprints A vector of blueprints to validate against.
+   */
+  explicit BlueprintValidator(const std::vector<std::string> &blueprints);
+
+  /**
+   * @brief Checks if the given text fully matches the blueprint.
+   *
+   * If this object was constructed with multiple blueprints, all are tested.
+   *
    * @param text The input string to test.
-   * @return True if matched, false otherwise.
+   * @return True if any bluprint matched, false otherwise.
    */
   bool validate(const std::string &text) const;
 
@@ -84,13 +82,21 @@ public:
   static bool validateOnce(const std::string &blueprint, const std::string &text);
 
   /**
+   * @brief Convenience method to validate text once, without storing a validator object.
+   * @param blueprints The vector containing blueprints.
+   * @param text The input string to test.
+   * @return True if any matched, false otherwise.
+   */
+  static bool validateOnce(const std::vector<std::string> &blueprints, const std::string &text);
+
+  /**
    * @brief Returns the final anchored regex pattern used to match the blueprint.
    * @return The pattern string (e.g., "^([-+]?\\d+)(?:\\s+([-+]?\\d+))?...$").
    */
   std::string getPattern() const;
 
 private:
-  std::string m_pattern;  ///< Holds the final anchored pattern.
+  std::string m_patterns;  ///< Holds the final anchored pattern.
   // Implementation detail: store the compiled regex as well.
   // We omit <regex> from this header, so we'll hide it behind a pointer-like approach.
   // The actual object is defined in the .cpp.

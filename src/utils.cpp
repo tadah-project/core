@@ -74,10 +74,9 @@ std::string vec_to_string(std::vector<double> vec,
 //    }
 //    return rho;
 //}
-std::string to_upper(const std::string s) {
-    std::string str = s;
-    std::transform(str.begin(), str.end(),str.begin(), ::toupper);
-    return str;
+std::string to_upper(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+  return s;
 }
 bool is_blank_line(const std::string& line) {
     for (char c : line) {
@@ -319,6 +318,21 @@ std::vector<histogram_bin> generate_2d_histogram(
     return histogram_bins;
 }
 
+std::string removeFirstWord(const std::string &input, const std::string &knownWord) {
+  // Check whether 'input' starts with 'knownWord'
+  if (input.compare(0, knownWord.size(), knownWord) == 0) {
+    // Compute new starting position after removing the known word
+    // plus any subsequent whitespace
+    std::size_t startPos = knownWord.size();
+    while (startPos < input.size() && std::isspace(static_cast<unsigned char>(input[startPos]))) {
+      ++startPos;
+    }
+    // Return the substring excluding the known word and trailing spaces
+    return input.substr(startPos);
+  }
+  // Return original string if the word does not appear at the start
+  return input;
+}
 
 } // namespace core
 } // namespace tadah

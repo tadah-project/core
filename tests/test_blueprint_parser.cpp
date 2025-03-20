@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <unordered_map>
 #include "tadah/core/blueprint_parser.h"
 
 using namespace tadah::core;
@@ -125,3 +126,67 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from config_blueprint.toml", "[Blu
     REQUIRE(blueprintMap.find("GLOBALS") == blueprintMap.end());
   }
 }
+
+/**
+ * @brief Tests that an empty map returns an empty string when searching for a closest key.
+ */
+TEST_CASE("BlueprintParser::findClosestKey with empty map", "[findClosestKey]")
+{
+  std::unordered_map<std::string, BlueprintItem> emptyMap;
+  std::string result = BlueprintParser::findClosestKey("ANYKEY", emptyMap);
+
+  REQUIRE(result.empty());
+}
+
+/**
+ * @brief Tests that an exact match returns the exact key if the key exists in the map.
+ */
+TEST_CASE("BlueprintParser::findClosestKey with exact match", "[findClosestKey]")
+{
+  BlueprintItem dummyItem;
+  std::unordered_map<std::string, BlueprintItem> map{
+    {"ALLOWED_KEYS.CONFIG", dummyItem},
+    {"INTERNAL_KEYS.DEBUG", dummyItem}
+  };
+
+  std::string result = BlueprintParser::findClosestKey("ALLOWED_KEYS.CONFIG", map);
+  REQUIRE(result == "ALLOWED_KEYS.CONFIG");
+}
+
+/**
+ * @brief Tests that the method chooses the key with the smallest edit distance when multiple keys exist.
+ *
+ * Uses a situation where "ALOWED_KEYS.CONFIG" is closer to "ALLOWED_KEYS.CONFIG" than to "ALLOWED_KEYS.CONFING".
+ */
+TEST_CASE("BlueprintParser::findClosestKey chooses the minimum edit distance", "[findClosestKey]")
+{
+  BlueprintItem dummyItem;
+  std::unordered_map<std::string, BlueprintItem> map{
+    {"ALLOWED_KEYS.CONFIG", dummyItem},
+    {"ALLOWED_KEYS.CONFING", dummyItem},
+    {"SOME_OTHER_KEY", dummyItem}
+  };
+
+  std::string result = BlueprintParser::findClosestKey("ALOWED_KEYS.CONFIG", map);
+  REQUIRE(result == "ALLOWED_KEYS.CONFIG");
+}
+
+/**
+ * @brief Tests behavior when the user input is very different from the available keys.
+ *
+ * Ensures that some non-empty string is still returned as the best match when the map is not empty.
+ */
+TEST_CASE("BlueprintParser::findClosestKey with large distance key", "[findClosestKey]")
+{
+  BlueprintItem dummyItem;
+  std::unordered_map<std::string, BlueprintItem> map{
+    {"ALLOWED_KEYS.CONFIG", dummyItem},
+    {"INTERNAL_KEYS.DEBUG", dummyItem}
+  };
+
+  std::string result = BlueprintParser::findClosestKey("COMPLETELY_UNRELATED_KEY", map);
+
+  // A non-empty result is expected since at least one key is in the map.
+  REQUIRE_FALSE(result.empty());
+}
+

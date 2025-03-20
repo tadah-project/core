@@ -42,6 +42,7 @@ default      = ["false"]
 
 [TYPES.BOOLS]
 INHERIT = ["TYPES.BOOL"]
+value_type = ["{BOOL}"]
 value_format = ["<boolean> [<boolean> ...]"]
 value_N = [-2147483647]
 examples = ["true true false", "false"]
@@ -55,6 +56,7 @@ examples     = ["20", "-10"]
 
 [TYPES.INTS]
 INHERIT = ["TYPES.INT"]
+value_type   = ["{INT}"]
 value_format = ["<integer> [<integer> ...]"]
 value_N      = [-2147483647]
 examples     = ["20 5 -3", "-10"]
@@ -68,6 +70,7 @@ examples     = ["20"]
 
 [TYPES.UINTS]
 INHERIT = ["TYPES.UINT"]
+value_type   = ["{UINT}"]
 value_format = ["<unsigned integer> [<unsigned integer> ...]"]
 value_N      = [-2147483647]
 examples     = ["20 5 3", "10"]
@@ -81,6 +84,7 @@ examples     = ["2.0", "-1.0"]
 
 [TYPES.DOUBLES]
 INHERIT = ["TYPES.DOUBLE"]
+value_type   = ["{DOUBLE}"]
 value_format = ["<double> [<double> ...]"]
 value_N      = [-2147483647]
 examples     = ["2.0 -4.65 0.4", "-1.0"]
@@ -94,6 +98,7 @@ examples     = ["validString", "/path/to/file"]
 
 [TYPES.STRINGS]
 INHERIT = ["TYPES.STRING"]
+value_type   = ["{STRING}"]
 value_format = ["<string> [<string> ...]"]
 value_N      = [-2147483647]
 examples     = ["string1 string2", "string1 /path/to/file"]
@@ -175,6 +180,7 @@ examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
 
 [ALLOWED_KEYS.TYPE2B]
 value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}"]
+#value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {[INT]} {STRING STRING}", "STRING INT INT {STRING STRING}"]
 value_format = ["D2_<name> {[param]} {ELEMENT ELEMENT}"]
 value_N      = [-2147483647]
 description  = "Specifies the two-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g. D2_LJ). To concatenate multiple descriptors, use the meta descriptor D2_mJoin followed by the individual descriptor parameters. Elements should be provided in pairs."
@@ -187,7 +193,7 @@ examples     = [
 ]
 
 [ALLOWED_KEYS.TYPEMB]
-value_type   = ["string int int string string ..."]
+value_type   = ["{STRING INT INT STRING STRING}"]
 value_format = ["<descriptor_name> <n> <m> <element1 element2> ..."]
 value_N      = [-2147483647]
 description  = "Specifies the many-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple descriptors, use the meta descriptor DM_mJoin followed by the individual descriptor parameters. Elements should be provided in pairs."
@@ -200,31 +206,31 @@ examples     = [
 ]
 
 [ALLOWED_KEYS.CGRID2B]
-value_type   = ["double", "string int double double"]
-value_format = ["<double> [<double> ...]",  "<algorithm> <n> <start> <stop>"]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
-description  = "Controls the center positions for the radial basis functions in two-body descriptors (e.g., Gaussian centers). The parameter list may be provided manually or generated automatically. When using the meta descriptor D2_mJoin, specify one or more lists of centers corresponding to each concatenated descriptor. The number of centers should typically match the number of width parameters provided via SGRID2B and remain below the cutoff distance. Alternatively, use the algorithm keyword followed by the parameters to generate the centers automatically. Available algorithms include numbers spaced evenly on a log scale (e.g. 'L') or uniformly (e.g. 'U')."
+description  = "Controls the center positions for the radial basis functions in two-body descriptors (e.g., Gaussian centers). The parameter list may be provided manually or generated automatically. When using the meta descriptor D2_mJoin, specify one or more lists of centers corresponding to each concatenated descriptor. The number of centers should typically match the number of width parameters provided via SGRID2B and remain below the cutoff distance. Alternatively, use the algorithm keyword followed by the parameters to generate the centers automatically. Available algorithms include numbers spaced evenly on a log scale (e.g. 'LOG') or linear scale (e.g. 'LIN')."
 examples     = [
-    "CGRID2B L 10 0 6",
+    "CGRID2B LIN 10 0 6",
     "CGRID2B 1.0 2.0",
     """CGRID2B   1.0 2.0
 CGRID2B   1.5 2.5"""
 ]
 
 [ALLOWED_KEYS.SGRID2B]
-value_type   = ["double", "string int double double"]
-value_format = ["<width> ...",  "<algorithm> <n> <start> <stop>"]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
-description  = "Specifies the width parameters for the radial basis functions in two-body descriptors (e.g., Gaussian widths). The widths can be supplied manually or auto-generated. When using the meta descriptor D2_mJoin, provide one or more lists of width values corresponding to each concatenated descriptor, ensuring that the number of widths matches the number of centers (CGRID2B). Alternatively, include the algorithm keyword with its parameters to generate the widths automatically using the same available schemes (logarithmic or uniform spacing)."
+description  = "Specifies the width parameters for the radial basis functions in two-body descriptors (e.g., Gaussian widths). The widths can be supplied manually or auto-generated. When using the meta descriptor D2_mJoin, provide one or more lists of width values corresponding to each concatenated descriptor, ensuring that the number of widths matches the number of centers (CGRID2B). Alternatively, include the algorithm keyword with its parameters to generate the widths automatically using the same available schemes (logarithmic LOG or uniform spacing LIN)."
 examples     = [
-    "SGRID2B U 3 0 1.0",
-    "SGRID2B -2 6 0.1 10",
+    "SGRID2B LIN 3 0 1.0",
+    "SGRID2B LOG 6 0.1 10",
     """SGRID2B   0.01 0.02 0.03
-SGRID2B   -2 6 0.1 10"""
+SGRID2B   LOG 6 0.1 10"""
 ]
 
 [ALLOWED_KEYS.CGRIDMB]
-value_type   = ["double", "string int double double"]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
 description  = "Specifies the center positions for the radial basis functions in many-body descriptors. The list of centers may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, supply one or more lists of centers corresponding to each concatenated descriptor. The generated centers should be consistent with the requirements of the descriptor and remain within appropriate bounds. Alternatively, use an algorithm (e.g., 'L' for logarithmic or 'U' for uniform spacing) followed by the parameters to generate the centers automatically."
@@ -236,7 +242,7 @@ CGRIDMB   0.6 0.8"""
 ]
 
 [ALLOWED_KEYS.SGRIDMB]
-value_type   = ["double", "string int double double"]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
 description  = "Specifies the width (or spread) parameters for the radial basis functions in many-body descriptors. Values may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, provide one or more lists of widths corresponding to each concatenated descriptor, ensuring consistency with the centers defined in CGRIDMB. Alternatively, include an algorithm keyword along with its parameters to generate the widths automatically (available algorithms include those that produce logarithmically or uniformly spaced values)."
@@ -614,9 +620,9 @@ cli_short_flag = "-t"
 cli_required     = false
 
 [ALLOWED_KEYS.DIMER]
-default = ["false", "0", "false"]
 value_type = ['BOOL DOUBLE BOOL']
 value_format = ['<boolean> <double> <boolean>']
+default = ["false", "0", "false"]
 value_N = [-3]
 description = """Control for DIMER models. Users should not modify this key."""
 examples = ['DIMER true 1.104 true']
@@ -645,8 +651,9 @@ description = """The machine-learned coefficients for the model, obtained during
 examples = ['WEIGHTS 0.12 1.2 0.3']
 
 [ALLOWED_KEYS.SIGMA]
-value_type = ['INT DOUBLE']
+value_type = ['INT {DOUBLE}']
 value_format = ['<integer> <double> ...']
+value_N = [-2147483647]
 description = """The :math:`\\Sigma` matrix used in Bayesian Linear Regression :cpp:class:`M_BLR`. The matrix is :math:`N\\times N` and stored in column-major order."""
 examples = ['`2 1.2 2.2 2.3 3.3`']
 
@@ -665,28 +672,28 @@ description = """Mean values for the columns of the :cpp:class:`DesignMatrix`. T
 INHERIT = ["TYPES.DOUBLES"]
 description = """Basis vectors used by the non-linear Kernel Ridge Regression model. In this context, they represent the features or functions used to map input data into a higher-dimensional feature space to capture non-linear relationships."""
 
-[MPIWPCKG]
+[ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
-default = [50]
+default = ["50"]
 description = """The number of structures in a single MPI work package."""
 
-[MBLOCK]
+[ALLOWED_KEYS.MBLOCK]
 INHERIT = ["TYPES.UINT"]
-default = [64]
+default = ["64"]
 description = """ScalaPACK row block size MB."""
 is_internal = [false]
 
-[NBLOCK]
+[ALLOWED_KEYS.NBLOCK]
 INHERIT = ["TYPES.UINT"]
-default = [64]
+default = ["64"]
 description = """ScalaPACK column block size NB."""
 
-[FIXWEIGHT]
+[ALLOWED_KEYS.FIXWEIGHT]
 INHERIT = ["TYPES.DOUBLES"]
 description = """Values for weights to be fixed during the optimisation process. Requires FIXINDEX."""
 examples = ["1.0 1.0 0.5"]
 
-[FIXINDEX]
+[ALLOWED_KEYS.FIXINDEX]
 INHERIT = ["TYPES.UINTS"]
 description = """Indices of weights to be fixed during the optimisation process. Requires FIXWEIGHT."""
 examples = ["1 4 5"]

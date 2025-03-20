@@ -19,7 +19,7 @@ namespace core {
  */
 struct BlueprintItem {
   std::string keyName;                     ///< Fully qualified key name (e.g., "ALLOWED_KEYS.CONFIG")
-  std::vector<std::string> value_type;     ///< List of accepted types (e.g., "string", "int", "double", etc.)
+  std::vector<std::string> value_type;     ///< List of accepted types (e.g., "STRING", "INT", "DOUBLE", etc.)
   std::vector<std::string> value_format;   ///< Expected token format (e.g., "<file>", "<path>", "N", etc.)
   std::vector<int> value_N;                ///< Allowed token counts (for scalar or array values)
   std::string description;                 ///< Short description for documentation and help
@@ -84,6 +84,27 @@ public:
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
   static std::unordered_map<std::string, BlueprintItem> getInternalKeysMap();
+
+  /**
+ * @brief Computes the closest matching key name by measuring the edit distance to each valid blueprint key.
+ *
+ * The method calculates the Levenshtein distance between the provided key and each key in the map, returning
+ * the one with the smallest distance. This behavior helps guide users toward valid keys when typos or
+ * similar mistakes are made in configuration files or command-line input.
+ *
+ * @param key The user-provided (potentially erroneous) key.
+ * @param map The map of valid key names associated with BlueprintItem objects.
+ * @return The key name with the smallest edit distance or an empty string if the map is empty.
+ *
+ * Example usage:
+ * @code
+ *   std::unordered_map<std::string, BlueprintItem> blueprintMap = {{"ALLOWED_KEYS", {}}};
+ *   std::string closest = BlueprintParser::findClosestKey("ALOWED_KEYS", blueprintMap);
+ *   // 'closest' would likely be "ALLOWED_KEYS"
+ * @endcode
+ */
+  static std::string findClosestKey(const std::string &key,
+      const std::unordered_map<std::string, BlueprintItem> &map);
 };
 
 } // namespace core

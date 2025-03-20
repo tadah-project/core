@@ -6,9 +6,9 @@
 #include <tadah/core/context.h>
 #include <tadah/core/logger.h>
 
+#include <cmath>
 #include <sstream>
 #include <stdexcept>
-#include <cmath>
 
 namespace tadah {
 namespace core {
@@ -53,10 +53,7 @@ Context::operator()(const std::string &key) const {
     attemptDefaultInsertion_NoLock(upKey);
     it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
-      Logger::instance().log(
-          LogLevel::ERROR,
-          "Context::operator() -> Key not found with no default: ", upKey);
-      throw std::runtime_error("Key not found (no default): " + upKey);
+      keyNotFoundLogSuggestThrow(key, "operator");
     }
   }
   return it->second;
@@ -95,9 +92,7 @@ size_t Context::size(const std::string &key) const {
     attemptDefaultInsertion_NoLock(upKey);
     it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
-      Logger::instance().log(LogLevel::ERROR,
-                             "Context::size -> Key not found: ", upKey);
-      throw std::runtime_error("Key not found (no default): " + upKey);
+      keyNotFoundLogSuggestThrow(key, "size");
     }
   }
   return it->second.size();
@@ -177,29 +172,29 @@ void Context::deserialize(const std::vector<char> &buffer) {
     std::string upKey = uppercase(tokens[0]);
 
     // Check blueprint
-    const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
-    if (bi == nullptr) {
-      Logger::instance().log(
-          LogLevel::ERROR, "Context::deserialize -> Key not allowed: ", upKey);
-      throw std::runtime_error("Key not allowed: " + upKey);
-    }
-    if (bi->value_N.empty()) {
-      Logger::instance().log(
-          LogLevel::ERROR,
-          "Context::deserialize -> Blueprint missing value_N for key: ", upKey);
-      throw std::runtime_error("Blueprint incomplete for key: " + upKey);
-    }
-    size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
+    /*const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");*/
+    /*if (bi == nullptr) {*/
+    /*  Logger::instance().log(*/
+    /*      LogLevel::ERROR, "Context::deserialize -> Key not allowed: ", upKey);*/
+    /*  throw std::runtime_error("Key not allowed: " + upKey);*/
+    /*}*/
+    /*if (bi->value_N.empty()) {*/
+    /*  Logger::instance().log(*/
+    /*      LogLevel::ERROR,*/
+    /*      "Context::deserialize -> Blueprint missing value_N for key: ", upKey);*/
+    /*  throw std::runtime_error("Blueprint incomplete for key: " + upKey);*/
+    /*}*/
+    /*size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));*/
 
     // Insert tokens as values
     std::vector<std::string> &bucket = storage_[upKey];
     for (size_t i = 1; i < tokens.size(); ++i) {
-      if (bucket.size() >= maxVals) {
-        Logger::instance().log(
-            LogLevel::ERROR,
-            "Context::deserialize -> Exceeded capacity for key: ", upKey);
-        throw std::runtime_error("Exceeded capacity for key: " + upKey);
-      }
+      /*if (bucket.size() >= maxVals) {*/
+      /*  Logger::instance().log(*/
+      /*      LogLevel::ERROR,*/
+      /*      "Context::deserialize -> Exceeded capacity for key: ", upKey);*/
+      /*  throw std::runtime_error("Exceeded capacity for key: " + upKey);*/
+      /*}*/
       bucket.push_back(tokens[i]);
     }
   }
@@ -240,7 +235,7 @@ void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
     // so do nothing in that case.
     return;
   }
-  values = bi->defaultValue;  // both are vectors
+  values = bi->defaultValue; // both are vectors
 }
 bool Context::operator==(const Context &other) const {
   return storage_ == other.getMapRef();
@@ -261,19 +256,34 @@ Context::findBlueprintItem(const std::string &upKey,
     auto itA = allowedKeys_.find(upKey);
     if (itA != allowedKeys_.end()) {
       return &(itA->second);
-    } else { return nullptr; }
+    } else {
+      return nullptr;
+    }
   }
 
   if (xKeys == "INTERNAL_KEYS") {
     auto itI = internalKeys_.find(upKey);
     if (itI != internalKeys_.end()) {
       return &(itI->second);
-    } else { return nullptr; }
+    } else {
+      return nullptr;
+    }
   }
   // Uknown keyMap
   return nullptr;
 }
 
+void Context::keyNotFoundLogSuggestThrow(const std::string &key,
+                                         const std::string &method) const {
+  Logger::instance().log(LogLevel::ERROR,
+                         "Context::" + method + "() -> Key not allowed: ", key);
+  std::string suggested = BlueprintParser::findClosestKey(key, allowedKeys_);
+  if (!suggested.empty()) {
+    Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
+  }
+
+  throw std::runtime_error("Key not allowed: " + key);
+}
+
 } // namespace core
 } // namespace tadah
-

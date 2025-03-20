@@ -127,7 +127,7 @@ inline std::string to_string<bool>(const bool& value, int /*n*/)
 }
 
 
-std::string to_upper(const std::string s);
+std::string to_upper(std::string s);
 
 template <typename F>
 double central_difference(F f, double val, double h) {
@@ -399,6 +399,30 @@ inline void appendToStream(std::ostringstream &oss, T&& first, Rest&&... rest) {
     appendToStream(oss, std::forward<Rest>(rest)...);
 }
 
+/**
+ * @brief Removes the first known word from the beginning of a string if present.
+ *
+ * This function compares the beginning of the input string to the known word
+ * and, if it matches, removes that word and any immediately trailing spacing.
+ * If the known word is absent or does not appear at the start, no removal is performed.
+ *
+ * @param input The string from which the known word is removed.
+ * @param knownWord The known word that is expected at the start of the string.
+ * @return A new string with the known word (and subsequent space) removed at the start.
+ *
+ * Example:
+ * @code
+ * #include <iostream>
+ * int main() {
+ *   std::string line = "Hello World!";
+ *   std::string result = removeFirstWord(line, "Hello");
+ *   // result now contains "World!"
+ *   std::cout << result << std::endl;
+ *   return 0;
+ * }
+ * @endcode
+ */
+std::string removeFirstWord(const std::string &input, const std::string &knownWord);
 } // namespace core
 } // namespace tadah
 #endif

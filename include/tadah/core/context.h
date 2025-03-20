@@ -3,29 +3,32 @@
  * @brief Thread-safe configuration context respecting blueprint defaults.
  *
  * The Context class stores uppercase keys, each mapped to a vector of strings.
- * Keys are validated against a blueprint, which also may provide defaultValue tokens.
- * If a requested key doesn't exist, the blueprint's defaultValue is inserted (if available).
+ * Keys are validated against a blueprint, which also may provide defaultValue
+ * tokens. If a requested key doesn't exist, the blueprint's defaultValue is
+ * inserted (if available).
  *
  * This class is move-only:
- *  - Copy constructor/assignment are deleted because of std::mutex and a reference member.
- *  - A custom move constructor/assignment ensures objects can be returned by value.
+ *  - Copy constructor/assignment are deleted because of std::mutex and a
+ * reference member.
+ *  - A custom move constructor/assignment ensures objects can be returned by
+ * value.
  */
 
 #ifndef TADAH_CORE_CONTEXT_H
 #define TADAH_CORE_CONTEXT_H
 
+#include <algorithm>
+#include <cmath>
 #include <map>
-#include <string>
-#include <vector>
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
-#include <cmath>
-#include <algorithm>
+#include <string>
+#include <vector>
 
-#include <tadah/core/utils.h>
-#include <tadah/core/logger.h>
 #include <tadah/core/blueprint_parser.h>
+#include <tadah/core/logger.h>
+#include <tadah/core/utils.h>
 
 /**
  * @namespace tadah
@@ -41,12 +44,15 @@ namespace core {
 
 /**
  * @class Context
- * @brief Thread-safe key-value container that consults the blueprint for allowed keys and defaults.
+ * @brief Thread-safe key-value container that consults the blueprint for
+ * allowed keys and defaults.
  *
  * - **Case-insensitive** keys are stored as uppercase.
- * - If a key is absent on get(), a default from the blueprint is inserted if available.
+ * - If a key is absent on get(), a default from the blueprint is inserted if
+ * available.
  * - The blueprint also enforces a maximum capacity (|value_N[0]|).
- * - Due to storing a std::mutex and a reference to the blueprint, it is **move-only**.
+ * - Due to storing a std::mutex and a reference to the blueprint, it is
+ * **move-only**.
  */
 class Context {
 public:
@@ -57,21 +63,24 @@ public:
 
   /**
    * @brief Move constructor.
-   * Transfers ownership of storage_ while retaining the same blueprint reference.
+   * Transfers ownership of storage_ while retaining the same blueprint
+   * reference.
    */
-  Context(Context&& other) noexcept;
+  Context(Context &&other) noexcept;
 
   /**
    * @brief Move assignment.
-   * Transfers ownership of storage_ while retaining the same blueprint reference.
+   * Transfers ownership of storage_ while retaining the same blueprint
+   * reference.
    */
-  Context& operator=(Context&& other) noexcept;
+  Context &operator=(Context &&other) noexcept;
 
   // Copy is disallowed due to mutex and reference members.
-  Context(const Context&) = delete;
-  Context& operator=(const Context&) = delete;
+  Context(const Context &) = delete;
+  Context &operator=(const Context &) = delete;
 
   ~Context() = default;
+
 
   /**
    * @brief Returns all values for a key.
@@ -82,20 +91,19 @@ public:
    * @param key Key to retrieve (case-insensitive).
    * @return const reference to the stored vector of string values.
    */
-  const std::vector<std::string>& operator()(const std::string &key) const;
+  const std::vector<std::string> &operator()(const std::string &key) const;
 
   /**
    * @brief Returns the first value for the key, converted to type T.
    *
-   * If absent, attempts to insert a default from the blueprint.  
+   * If absent, attempts to insert a default from the blueprint.
    * Throws std::runtime_error on failure or if conversion fails.
    *
    * @tparam T Destination type (e.g., int, double, bool, etc.).
    * @param key Key name.
    * @return The converted value.
    */
-  template <typename T>
-  T get(const std::string &key) const {
+  template <typename T> T get(const std::string &key) const {
     std::lock_guard<std::mutex> lock(mtx_);
     std::string upKey = uppercase(key);
 
@@ -104,8 +112,7 @@ public:
       attemptDefaultInsertion_NoLock(upKey);
       it = storage_.find(upKey);
       if (it == storage_.end() || it->second.empty()) {
-        Logger::instance().log(LogLevel::ERROR, "Context::get -> Key not found: ", upKey);
-        throw std::runtime_error("Key not found (no default): " + upKey);
+        keyNotFoundLogSuggestThrow(key,"get");
       }
     }
     return convertStringTo<T>(it->second[0], upKey);
@@ -115,15 +122,15 @@ public:
    * @brief Returns the n-th value for the key, converted to type T.
    *
    * If absent, attempts to insert a blueprint default, then checks range.
-   * Throws std::runtime_error if still missing, or if n is out-of-range, or conversion fails.
+   * Throws std::runtime_error if still missing, or if n is out-of-range, or
+   * conversion fails.
    *
    * @tparam T Destination type.
    * @param key Key name.
    * @param n Index in the values vector.
    * @return The converted value.
    */
-  template <typename T>
-  T get(const std::string &key, size_t n) const {
+  template <typename T> T get(const std::string &key, size_t n) const {
     std::lock_guard<std::mutex> lock(mtx_);
     std::string upKey = uppercase(key);
 
@@ -132,12 +139,12 @@ public:
       attemptDefaultInsertion_NoLock(upKey);
       it = storage_.find(upKey);
       if (it == storage_.end() || it->second.empty()) {
-        Logger::instance().log(LogLevel::ERROR, "Context::get(n) -> Key not found: ", upKey);
-        throw std::runtime_error("Key not found (no default): " + upKey);
+        keyNotFoundLogSuggestThrow(key,"get");
       }
     }
     if (n >= it->second.size()) {
-      Logger::instance().log(LogLevel::ERROR, "Context::get(n) -> Index out of range: ", n);
+      Logger::instance().log(LogLevel::ERROR,
+                             "Context::get(n) -> Index out of range: ", n);
       throw std::runtime_error("Index out of range for key: " + upKey);
     }
     return convertStringTo<T>(it->second[n], upKey);
@@ -164,14 +171,14 @@ public:
       attemptDefaultInsertion_NoLock(upKey);
       it = storage_.find(upKey);
       if (it == storage_.end() || it->second.empty()) {
-        Logger::instance().log(LogLevel::ERROR, "Context::get(container) -> Key not found: ", upKey);
-        throw std::runtime_error("Key not found (no default): " + upKey);
+        keyNotFoundLogSuggestThrow(key,"get");
       }
     }
-    const std::vector<std::string>& vals = it->second;
+    const std::vector<std::string> &vals = it->second;
     if (vals.size() > out.size()) {
-      Logger::instance().log(LogLevel::WARNING,
-        "Context::get(container) -> More values (", vals.size(), ") than container capacity (", out.size(), ")");
+      Logger::instance().log(
+          LogLevel::WARNING, "Context::get(container) -> More values (",
+          vals.size(), ") than container capacity (", out.size(), ")");
     }
     for (size_t i = 0; i < vals.size() && i < out.size(); ++i) {
       out[i] = convertStringTo<typename Container::value_type>(vals[i], upKey);
@@ -181,55 +188,56 @@ public:
   /**
    * @brief Appends a value to an existing key, respecting blueprint capacity.
    *
-   * If the key is not allowed by blueprint, or if capacity is reached, throws std::runtime_error.
+   * If the key is not allowed by blueprint, or if capacity is reached, throws
+   * std::runtime_error.
    *
    * @tparam T Type convertible to string with operator<<.
    * @param key Key name.
    * @param val Value to append.
    */
-  template <typename T>
-void add(const std::string &key, const T &val) {
-  std::string upKey = uppercase(key);
-  // Validate blueprint
-  const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
-  if (bi == nullptr) {
-    const auto bi_ = findBlueprintItem(upKey, "INTERNAL_KEYS");
-    if (bi_ != nullptr) {
-      Logger::instance().log(LogLevel::ERROR,
-                             "Context::add -> Attempt to add internal key with add(), HINT use addInternal(): ", upKey);
-      throw std::runtime_error("Setting of internal keys is not allowed by this method: " + upKey);
+  template <typename T> void add(const std::string &key, const T &val) {
+    std::string upKey = uppercase(key);
+    // Validate blueprint
+    const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
+    if (bi == nullptr) {
+      const auto bi_ = findBlueprintItem(upKey, "INTERNAL_KEYS");
+      if (bi_ != nullptr) {
+        Logger::instance().log(
+            LogLevel::ERROR,
+            "Context::add -> Attempt to add internal key with "
+            "add(), HINT use addInternal(): ",
+            upKey);
+        throw std::runtime_error(
+            "Setting of internal keys is not allowed by this method: " + upKey);
+      }
+      keyNotFoundLogSuggestThrow(key,"add");
     }
-    Logger::instance().log(LogLevel::ERROR,
-                           "Context::add -> Key not allowed: ", upKey);
-    throw std::runtime_error("Key not allowed: " + upKey);
-  }
-  if (bi->value_N.empty()) {
-    Logger::instance().log(
-        LogLevel::ERROR,
-        "Context::add -> blueprint missing value_N for: ", upKey);
-    throw std::runtime_error("Blueprint incomplete for key: " + upKey);
-  }
-  size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
+    if (bi->value_N.empty()) {
+      Logger::instance().log(
+          LogLevel::ERROR,
+          "Context::add -> blueprint missing value_N for: ", upKey);
+      throw std::runtime_error("Blueprint incomplete for key: " + upKey);
+    }
+    size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
-  int n = get<int>("NUMERIC");  // get before lock
-  std::lock_guard<std::mutex> lock(mtx_);
-  std::vector<std::string> &bucket = storage_[upKey];
-  if (maxVals > 1 && bucket.size() >= maxVals) {
-    Logger::instance().log(LogLevel::ERROR,
-                           "Context::add -> capacity exceeded for: ", upKey);
-    throw std::runtime_error("Exceeded capacity for key: " + upKey);
+    int n = get<int>("NUMERIC"); // get before lock
+    std::lock_guard<std::mutex> lock(mtx_);
+    std::vector<std::string> &bucket = storage_[upKey];
+    if (maxVals > 1 && bucket.size() >= maxVals) {
+      Logger::instance().log(LogLevel::ERROR,
+                             "Context::add -> capacity exceeded for: ", upKey);
+      throw std::runtime_error("Exceeded capacity for key: " + upKey);
+    } else if (maxVals == 1 && bucket.size() == maxVals) {
+      Logger::instance().log(LogLevel::WARNING,
+                             "Context::add -> Overwriting: ", upKey);
+    }
+    std::string val_str = to_string(val, n);
+    std::istringstream iss(val_str);
+    std::string value;
+    while (iss >> std::boolalpha >> value) {
+      bucket.push_back(to_string(value, n));
+    }
   }
-  else if (maxVals == 1 && bucket.size() == maxVals) {
-    Logger::instance().log(LogLevel::WARNING,
-                           "Context::add -> Overwriting: ", upKey);
-  }
-  std::string val_str = to_string(val, n);
-  std::istringstream iss(val_str);
-  std::string value;
-  while (iss >> std::boolalpha >> value) {
-    bucket.push_back(to_string(value, n));
-  }
-}
 
   /**
    * @brief Removes all values for a given key.
@@ -278,9 +286,10 @@ void add(const std::string &key, const T &val) {
   std::vector<char> serialize() const;
 
   /**
-   * @brief Deserializes from a vector of chars (plaintext). Clears existing data first.
+   * @brief Deserializes from a vector of chars (plaintext). Clears existing
+   * data first.
    *
-   * Each line is "KEY value1 value2 ...". Keys must be allowed by blueprint. 
+   * Each line is "KEY value1 value2 ...". Keys must be allowed by blueprint.
    * Over-capacity triggers an error.
    *
    * @param buffer The serialized data.
@@ -288,29 +297,29 @@ void add(const std::string &key, const T &val) {
    */
   void deserialize(const std::vector<char> &buffer);
 
-  /** 
-   * @brief Returns true if both configs are the same. 
+  /**
+   * @brief Returns true if both configs are the same.
    */
   bool operator==(const Context &) const;
 
   /**
    * Return a const reference to the storage map.
    */
-  const std::map<std::string, std::vector<std::string>>& getMapRef() const;
+  const std::map<std::string, std::vector<std::string>> &getMapRef() const;
 
   /**
-   * @brief Streams the Context to an output stream using rules similar to the old Config class.
+   * @brief Streams the Context to an output stream using rules similar to the
+   * old Config class.
    *
-   * Each key is looked up in the blueprint to determine how many values to place
-   * per line. If value_N[0] > 0, each value is printed on its own line with the key.
-   * If value_N[0] < 0, all values for that key appear on a single line after the key.
-   * If value_N[0] == 0 or value_N is empty, it is skipped.
+   * Each key is looked up in the blueprint to determine how many values to
+   * place per line. If value_N[0] > 0, each value is printed on its own line
+   * with the key. If value_N[0] < 0, all values for that key appear on a single
+   * line after the key. If value_N[0] == 0 or value_N is empty, it is skipped.
    */
-  friend std::ostream& operator<<(std::ostream& os, const Context& ctx)
-  {
+  friend std::ostream &operator<<(std::ostream &os, const Context &ctx) {
     // Lock the mutex for thread-safe iteration over storage_.
     std::lock_guard<std::mutex> lock(ctx.mtx_);
-    
+
     // Use some spacing consistent with the old Config style.
     const std::string space = "     ";
 
@@ -342,8 +351,7 @@ void add(const std::string &key, const T &val) {
         for (auto const &v : vals) {
           os << key << space << v << "\n";
         }
-      }
-      else if (valN < 0) {
+      } else if (valN < 0) {
         // Print all values on a single line, preceded by key.
         // Example:
         // KEY     val1     val2     val3
@@ -352,9 +360,9 @@ void add(const std::string &key, const T &val) {
           os << space << v;
         }
         os << "\n";
-      }
-      else {
-        // valN == 0 => skip printing entirely, or handle differently if desired.
+      } else {
+        // valN == 0 => skip printing entirely, or handle differently if
+        // desired.
         continue;
       }
     }
@@ -368,8 +376,7 @@ void add(const std::string &key, const T &val) {
    *
    * @warning This method is not intended for general use.
    */
-  template <typename T>
-  void addInternal(const std::string &key, const T &val) {
+  template <typename T> void addInternal(const std::string &key, const T &val) {
     std::string upKey = uppercase(key);
 
     // We do NOT allow normal blueprint keys here, only internal
@@ -386,15 +393,14 @@ void add(const std::string &key, const T &val) {
       maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
     }
 
-    int n = get<int>("NUMERIC");  // get before lock
+    int n = get<int>("NUMERIC"); // get before lock
     std::lock_guard<std::mutex> lock(mtx_);
     std::vector<std::string> &bucket = storage_[upKey];
     if (maxVals > 1 && bucket.size() >= maxVals) {
       Logger::instance().log(LogLevel::ERROR,
                              "Context::add -> capacity exceeded for: ", upKey);
       throw std::runtime_error("Exceeded capacity for key: " + upKey);
-    }
-    else if (maxVals == 1 && bucket.size() == maxVals) {
+    } else if (maxVals == 1 && bucket.size() == maxVals) {
       Logger::instance().log(LogLevel::WARNING,
                              "Context::add -> Overwriting: ", upKey);
     }
@@ -406,19 +412,22 @@ void add(const std::string &key, const T &val) {
       bucket.push_back(to_string(value, n));
     }
   }
+
 private:
   /**
-   * @brief Attempts to insert the blueprint's defaultValue for upKey if it exists and is not empty.
+   * @brief Attempts to insert the blueprint's defaultValue for upKey if it
+   * exists and is not empty.
    *
-   * This method modifies storage_, so it must only be called when mtx_ is locked.
-   * Marking storage_ as mutable allows this logic in const methods.
+   * This method modifies storage_, so it must only be called when mtx_ is
+   * locked. Marking storage_ as mutable allows this logic in const methods.
    *
    * @param upKey The uppercase key to attempt default insertion for.
    */
   void attemptDefaultInsertion_NoLock(const std::string &upKey) const;
 
   /**
-   * @brief Converts a string to type T using std::istringstream with std::boolalpha.
+   * @brief Converts a string to type T using std::istringstream with
+   * std::boolalpha.
    *
    * @tparam T The target type to parse.
    * @param s The source string.
@@ -432,9 +441,11 @@ private:
     iss >> std::boolalpha;
     T value;
     if (!(iss >> value)) {
-      Logger::instance().log(LogLevel::ERROR,
-        "Context::convertStringTo -> Failed converting \"" + s + "\" for key=" + key);
-      throw std::runtime_error("Conversion failed for key=" + key + ", value=\"" + s + "\"");
+      Logger::instance().log(
+          LogLevel::ERROR, "Context::convertStringTo -> Failed converting \"" +
+                               s + "\" for key=" + key);
+      throw std::runtime_error("Conversion failed for key=" + key +
+                               ", value=\"" + s + "\"");
     }
     return value;
   }
@@ -445,7 +456,8 @@ private:
   static std::string uppercase(const std::string &input) {
     std::string result = input;
     for (size_t i = 0; i < result.size(); ++i) {
-      result[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(result[i])));
+      result[i] = static_cast<char>(
+          std::toupper(static_cast<unsigned char>(result[i])));
     }
     return result;
   }
@@ -461,12 +473,12 @@ private:
   /**
    * @brief A reference for [ALLOWED_KEYS] loaded from blueprint.
    */
-  const std::unordered_map<std::string, BlueprintItem>& allowedKeys_;
+  const std::unordered_map<std::string, BlueprintItem> &allowedKeys_;
 
   /**
    * @brief A reference for [INTERNAL_KEYS] loaded from blueprint.
    */
-  const std::unordered_map<std::string, BlueprintItem>& internalKeys_;
+  const std::unordered_map<std::string, BlueprintItem> &internalKeys_;
 
   /**
    * @brief Mutex for thread safety on storage_.
@@ -482,11 +494,22 @@ private:
    * @param upKey The uppercase key to search for.
    * @return A pointer to the BlueprintItem if found, nullptr otherwise.
    */
-  const BlueprintItem* findBlueprintItem(const std::string &upKey, const std::string& xKeys="ALLOWED_KEYS") const;
+  const BlueprintItem *
+  findBlueprintItem(const std::string &upKey,
+                    const std::string &xKeys = "ALLOWED_KEYS") const;
+
+  /**
+   * @brief Logs an error message, suggests a similar key then throw.
+   *
+   * @param key The key that was not found.
+   * @param method The method that was called.
+   */
+  void keyNotFoundLogSuggestThrow(const std::string &key,
+      const std::string &method) const;
+
 };
 
 } // namespace core
 } // namespace tadah
 
 #endif // TADAH_CORE_CONTEXT_H
-
