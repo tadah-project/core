@@ -40,12 +40,24 @@ description = "Boolean value."
 examples = ["true", "false"]
 default      = ["false"]
 
+[TYPES.BOOLS]
+INHERIT = ["TYPES.BOOL"]
+value_format = ["<boolean> [<boolean> ...]"]
+value_N = [-2147483647]
+examples = ["true true false", "false"]
+
 [TYPES.INT]
 value_type   = ["INT"]
 value_format = ["<integer>"]
 value_N      = [1]
 description  = "Signed integer value."
 examples     = ["20", "-10"]
+
+[TYPES.INTS]
+INHERIT = ["TYPES.INT"]
+value_format = ["<integer> [<integer> ...]"]
+value_N      = [-2147483647]
+examples     = ["20 5 -3", "-10"]
 
 [TYPES.UINT]
 value_type   = ["UINT"]
@@ -54,6 +66,12 @@ value_N      = [1]
 description  = "Unsigned integer value."
 examples     = ["20"]
 
+[TYPES.UINTS]
+INHERIT = ["TYPES.UINT"]
+value_format = ["<unsigned integer> [<unsigned integer> ...]"]
+value_N      = [-2147483647]
+examples     = ["20 5 3", "10"]
+
 [TYPES.DOUBLE]
 value_type   = ["DOUBLE"]
 value_format = ["<double>"]
@@ -61,12 +79,24 @@ value_N      = [1]
 description  = "Floating point value."
 examples     = ["2.0", "-1.0"]
 
+[TYPES.DOUBLES]
+INHERIT = ["TYPES.DOUBLE"]
+value_format = ["<double> [<double> ...]"]
+value_N      = [-2147483647]
+examples     = ["2.0 -4.65 0.4", "-1.0"]
+
 [TYPES.STRING]
 value_type   = ["STRING"]
 value_format = ["<string>"]
 value_N      = [1]
 description  = "String value."
 examples     = ["validString", "/path/to/file"]
+
+[TYPES.STRINGS]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<string> [<string> ...]"]
+value_N      = [-2147483647]
+examples     = ["string1 string2", "string1 /path/to/file"]
 
 [ALLOWED_KEYS.config]
 value_type     = ["STRING"]
@@ -113,40 +143,33 @@ cli_short_flag   = ""
 cli_required     = false
 
 [ALLOWED_KEYS.dbfile]
-value_type   = ["string"]
-value_format = ["<file>"]
+INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
-description  = "Absolute or relative path to the database file. The relative path is interpreted relative to the script's working directory. Multiple dataset paths can be provided either as space-separated tokens or by repeating this key."
+description  = "Absolute or relative path to the database file(s). The relative path is interpreted relative to the script's working directory. Multiple dataset paths can be provided either as space-separated tokens or by repeating this key."
 examples     = ["dbfile /path/to/dbfile", "dbfile /path/to/dbfile1 /path/to/dbfile2"]
 cli_long_flag  = "--dbfile"
 cli_short_flag = "-d"
 cli_required     = false
 
 [ALLOWED_KEYS.RCTYPE2B]
-value_type   = ["string"]
+INHERIT = ["TYPES.STRINGS"]
 value_format = ["Cut_<name>"]
-value_N      = [-2147483647]
 description  = "Specifies the cutoff function type(s) for the two-body descriptor(s). Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or multiple types corresponding to each descriptor when using the D2_mJoin meta descriptor."
 examples     = ["RCTYPE2B Cut_Cos", "RCTYPE2B Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCTYPEMB]
-value_type   = ["string"]
+INHERIT = ["TYPES.STRINGS"]
 value_format = ["Cut_<name>"]
-value_N      = [-2147483647]
 description  = "Specifies the cutoff function type(s) for the many-body descriptor(s). Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or a series of types—each for a corresponding descriptor when using the DM_mJoin meta descriptor."
 examples     = ["RCTYPEMB Cut_Cos", "RCTYPEMB Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCUT2B]
-value_type   = ["double"]
-value_format = ["<value>"]
-value_N      = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies the cutoff distance(s) for the two-body descriptor(s). Provide a single value for one descriptor or multiple values—one for each descriptor when using the D2_mJoin meta descriptor."
 examples     = ["RCUT2B 3.0", "RCUT2B 3.0 7.5"]
 
 [ALLOWED_KEYS.RCUTMB]
-value_type   = ["double"]
-value_format = ["<value>"]
-value_N      = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies the cutoff distance(s) for the many-body descriptor(s). Provide a single value for a standalone descriptor or multiple values corresponding to each descriptor when using the DM_mJoin meta descriptor."
 examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
 
@@ -165,7 +188,7 @@ examples     = [
 
 [ALLOWED_KEYS.TYPEMB]
 value_type   = ["string int int string string ..."]
-value_format = ["<descriptor_name> <N> <M> <element1 element2> ..."]
+value_format = ["<descriptor_name> <n> <m> <element1 element2> ..."]
 value_N      = [-2147483647]
 description  = "Specifies the many-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple descriptors, use the meta descriptor DM_mJoin followed by the individual descriptor parameters. Elements should be provided in pairs."
 examples     = [
@@ -178,7 +201,7 @@ examples     = [
 
 [ALLOWED_KEYS.CGRID2B]
 value_type   = ["double", "string int double double"]
-value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
+value_format = ["<double> [<double> ...]",  "<algorithm> <n> <start> <stop>"]
 value_N      = [-2147483647]
 description  = "Controls the center positions for the radial basis functions in two-body descriptors (e.g., Gaussian centers). The parameter list may be provided manually or generated automatically. When using the meta descriptor D2_mJoin, specify one or more lists of centers corresponding to each concatenated descriptor. The number of centers should typically match the number of width parameters provided via SGRID2B and remain below the cutoff distance. Alternatively, use the algorithm keyword followed by the parameters to generate the centers automatically. Available algorithms include numbers spaced evenly on a log scale (e.g. 'L') or uniformly (e.g. 'U')."
 examples     = [
@@ -190,7 +213,7 @@ CGRID2B   1.5 2.5"""
 
 [ALLOWED_KEYS.SGRID2B]
 value_type   = ["double", "string int double double"]
-value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
+value_format = ["<width> ...",  "<algorithm> <n> <start> <stop>"]
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for the radial basis functions in two-body descriptors (e.g., Gaussian widths). The widths can be supplied manually or auto-generated. When using the meta descriptor D2_mJoin, provide one or more lists of width values corresponding to each concatenated descriptor, ensuring that the number of widths matches the number of centers (CGRID2B). Alternatively, include the algorithm keyword with its parameters to generate the widths automatically using the same available schemes (logarithmic or uniform spacing)."
 examples     = [
@@ -225,17 +248,13 @@ SGRIDMB   0.02 0.03 0.04"""
 ]
 
 [ALLOWED_KEYS.MPARAMS]
-value_type   = ["double"]
-value_format = ["<value> ..."]
-value_N      = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies a list of numerical parameters for models that require additional configuration details. Consult the specific model documentation for the required parameters; many models may not need any extra parameters."
-examples     = [
-    "MPARAMS 0.1"
-]
+examples     = ["MPARAMS 0.1", "MPARAMS 0.1 0.2 0.3"]
 
 [ALLOWED_KEYS.MODEL]
-value_type   = ["string string"]
-value_format = ["MODEL FUNCTION"]
+value_type   = ["STRING STRING", "STRING STRING STRING"] 
+value_format = ["MODEL FUNCTION", "MODEL FUNCTION OPTION"]
 value_N      = [-3]
 description  = "Defines the training model and its associated function. MODEL can be any class that inherits from M_Base (e.g., M_KRR, M_BLR), while FUNCTION must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, BF_Polynomial2). Different models are supported, such as KRR with various kernels and BLR with linear or nonlinear basis functions."
 examples     = [
@@ -256,23 +275,19 @@ description = """If set to true, the many-body descriptor will be calculated."""
 examples = ["INITMB true"]
 
 [ALLOWED_KEYS.SEMBFUNC]
-value_type = ['double']
-value_format = ["<value> ..."]
-value_N = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies the shape parameters of the embedding function used by some many-body descriptors (e.g., F_RLR). When using the DM_mJoin meta descriptor, supply one or more lists of parameters corresponding to each concatenated descriptor, ensuring consistency with the position parameters defined in CEMBFUNC."
 examples = ['SEMBFUNC 0.14 0.45 1.00 1.1']
 
 [ALLOWED_KEYS.CEMBFUNC]
-value_type = ['double']
-value_format = ["<value> ..."]
-value_N = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies the position parameters of the embedding function used by some many-body descriptors (e.g., F_RLR). When using the DM_mJoin meta descriptor, supply one or more lists of parameters corresponding to each concatenated descriptor, ensuring consistency with the shape parameters defined in SEMBFUNC."
 examples = ['CEMBFUNC 0.14 0.45 1.00 1.1']
 
 [ALLOWED_KEYS.OALGO]
-default = ["1"]
 value_type   = ["INT", "INT DOUBLE"]
 value_format = ["<option>", "<option> <value>"]
+default = ["1"]
 value_N = [-2]
 description = '''
 This key controls the optimization algorithm used to train the model. The **default algorithm** is **Option 1 (GELSD)** with a conditioning parameter (:math:`rcond`) of :math:`1 \times 10^{-8}`. The regularization parameter is handled separately by the :ref:`LAMBDA` key.
@@ -361,38 +376,36 @@ description = """This KEY controls the regularisation parameter :math:`\\lambda`
 examples = ['LAMBDA -1', 'LAMBDA 1e-4', 'LAMBDA 0', 'LAMBDA 0 1e-12']
 
 [ALLOWED_KEYS.ALPHA]
+INHERIT = ["TYPES.DOUBLE"]
 default = ["1.0"]
-value_type = ['DOUBLE']
-value_format = ['<double>']
-value_N = [1]
 description = """Weight precision hyper-parameter. Starting guess used in the evidence approximation algorithm."""
 examples = ['ALPHA 0.23']
 
 [ALLOWED_KEYS.BETA]
+INHERIT = ["TYPES.DOUBLE"]
 default = ["1.0"]
-value_type = ['DOUBLE']
-value_format = ['<double>']
-value_N = [1]
 description = """Noise precision hyper-parameter. Starting guess used in the evidence approximation algorithm."""
 examples = ['BETA 0.0001']
 
 
+[ALLOWED_KEYS.SETFL]
+INHERIT = ["TYPES.STRING"]
+description = """Path to the setfl file with the EAM potential."""
+examples = ['Ta1_Ravelo_2013.eam.alloy']
 
 
 [ALLOWED_KEYS.structure]
-value_type   = ["string"]
-value_format = ["<structure>"]
+INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
-description  = "Unified structural input (file or online)."
-examples     = ["crystal.cif"]
+description  = "Unified structural input(s) (file or online)."
+examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42, crystal.cif"]
 cli_long_flag  = "--structure"
 cli_short_flag = "-s"
 cli_required     = false
 
 [ALLOWED_KEYS.potential]
-value_type   = ["string"]
+INHERIT = ["TYPES.STRING"]
 value_format = ["<file>"]
-value_N      = [1]
 description  = "Trained model file."
 examples     = ["pot.tadah"]
 cli_long_flag  = "--potential"
@@ -400,9 +413,8 @@ cli_short_flag = "-p"
 cli_required     = false
 
 [ALLOWED_KEYS.hpotarget]
-value_type   = ["string"]
+INHERIT = ["TYPES.STRING"]
 value_format = ["<file>"]
-value_N      = [1]
 description  = "HPO target file."
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
@@ -410,59 +422,42 @@ cli_short_flag = "-h"
 cli_required     = false
 
 [ALLOWED_KEYS.validation]
-value_type   = ["string"]
-value_format = ["<file> ..."]
-value_N      = [-2147483647]
+INHERIT = ["TYPES.STRINGS"]
 description  = "Validation dataset file(s)."
 examples     = ["valid.tadah"]
 cli_long_flag  = "--validation"
 cli_short_flag = "-v"
 cli_required     = false
 
-[ALLOWED_KEYS.dft-files]
-value_type   = ["string"]
-value_format = ["<file> ..."]
-value_N      = [-2147483647]
+[ALLOWED_KEYS.dft-file]
+INHERIT = ["TYPES.STRINGS"]
 description  = "Input DFT file(s)."
 examples     = ["run1.outcar", "run1.outcar run2.outcar"]
-cli_long_flag  = "--dft-files"
+cli_long_flag  = "--dft-file"
 cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.outfile]
-value_type   = ["string"]
-value_format = ["<file>"]
-value_N      = [1]
+INHERIT = ["TYPES.STRINGS"]
 description  = "Output file."
 examples     = ["output.tadah"]
 cli_long_flag  = "--outfile"
 cli_short_flag = "-o"
 cli_required     = false
 
-[ALLOWED_KEYS.outfiles]
-value_type   = ["string"]
-value_format = ["<file> ..."]
-value_N      = [-2147483647]
-description  = "Output file names."
-examples     = ["part1.tadah part2.tadah"]
-cli_long_flag  = "--outfiles"
-cli_short_flag = ""
-cli_required     = false
-
-[ALLOWED_KEYS.indices]
-value_type   = ["string"]
-value_format = ["<indices>"]
+[ALLOWED_KEYS.index]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>"]
 value_N      = [1]
-description  = "Structure indices (comma-separated)."
+description = "One or more indices. The indices can be a single index, a range (<start>-<stop>), or a list of indices separated by commas (<i1>, <i2>, <i3>). The indices are 1-based. To select every N-th index, use the format '<start>-<stop>:<step>'. A combination of these formats is also allowed if separated by commas. Spaces are not allowed unless the string is enclosed in quotation marks (e.g., \"1,2 ,4\"). Repeated indices are removed automatically."
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
-cli_long_flag  = "--indices"
+cli_long_flag  = "--index"
 cli_short_flag = "-i"
 cli_required     = false
 
 [ALLOWED_KEYS.format]
-value_type   = ["string"]
+INHERIT = ["TYPES.STRING"]
 value_format = ["<fmt>"]
-value_N      = [1]
 description  = "Output format (e.g., cif, cell, poscar)."
 examples     = ["cell", "cif", "poscar"]
 cli_long_flag  = "--format"
@@ -523,11 +518,8 @@ default      = ["1e-6"]
 cli_required     = false
 
 [ALLOWED_KEYS.merge]
-value_type   = ["bool"]
-value_format = ["true | false"]
-value_N      = [1]
+INHERIT = ["TYPES.BOOL"]
 description  = "Merge deduplication results into one file."
-examples     = ["true"]
 long_flag    = "--merge"
 short_flag   = ""
 default      = ["false"]
@@ -558,70 +550,73 @@ cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.rescale]
-value_type   = ["bool"]
-value_format = ["true | false"]
-value_N      = [1]
+INHERIT = ["TYPES.BOOL"]
 description  = "Enable rescaling of training weights."
-examples     = ["true"]
 long_flag    = "--rescale"
 short_flag   = ""
 cli_required     = false
 
 [ALLOWED_KEYS.range]
-value_type   = ["string"]
+value_type   = ["DOUBLE DOUBLE INT"]
 value_format = ["<START> <STOP> <NPOINTS>"]
 value_N      = [-3]
 description  = "Plotting range: [start stop number_of_points]."
-examples     = ["0 10 100"]
+examples     = ["0.1 9.5 100"]
 cli_long_flag  = "--range"
 cli_short_flag = "-r"
 cli_required     = false
 
-[ALLOWED_KEYS.atoms]
-value_type   = ["string"]
-value_format = ["<element1 element2>"]
-value_N      = [-2]
-description  = "Chemical element pair."
-examples     = ['"Kr Kr"']
-cli_long_flag  = "--atoms"
+[ALLOWED_KEYS.atom]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["<element> ...>"]
+value_N      = [-118]
+description  = "Chemical elements."
+examples     = ['"Kr"']
+cli_long_flag  = "--atom"
 cli_short_flag = "-a"
 cli_required     = false
 
+[ALLOWED_KEYS.ATOMPAIR]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["<element1> <element2>"]
+value_N      = [-2]
+description  = "Pair of chemical elements."
+examples     = ['"Kr Kr"']
+cli_long_flag  = "--atompair"
+cli_short_flag = "-a"
+cli_required     = false
+
+[ALLOWED_KEYS.WATOM]
+INHERIT = ["TYPES.DOUBLE"]
+value_N = [-118]
+description = """Weights sorted by the atomic number of the corresponding atom, with the lowest Z value first. WATOMS.size() == ATOMS.size()"""
+
 [ALLOWED_KEYS.error]
-value_type   = ["bool"]
-value_format = ["true | false"]
-value_N      = [1]
-description  = "Predict model error."
-examples     = ["true"]
+INHERIT = ["TYPES.BOOL"]
+description  = "Generate error estimates."
 long_flag    = "--error"
 short_flag   = ""
 default      = ["false"]
 cli_required     = false
 
 [ALLOWED_KEYS.quantity]
-value_type   = ["string"]
-value_format = ["<quantity>"]
-value_N      = [1]
-description  = "Quantity to vary (volume, density, pressure)."
-examples     = ["volume"]
+INHERIT = ["TYPES.STRING"]
+description  = "Generic quantity."
 cli_long_flag  = "--quantity"
 cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.type]
-value_type   = ["string"]
-value_format = ["<type>"]
-value_N      = [1]
-description  = "Grid type or cutoff function type."
-examples     = ["CutCos", "2b Y"]
+INHERIT = ["TYPES.STRING"]
+description  = "Generic type."
 cli_long_flag  = "--type"
 cli_short_flag = "-t"
 cli_required     = false
 
 [ALLOWED_KEYS.DIMER]
 default = ["false", "0", "false"]
-value_type = ['BOOL', 'DOUBLE', 'BOOL']
-value_format = ['<boolean>', '<double>', '<boolean>']
+value_type = ['BOOL DOUBLE BOOL']
+value_format = ['<boolean> <double> <boolean>']
 value_N = [-3]
 description = """Control for DIMER models. Users should not modify this key."""
 examples = ['DIMER true 1.104 true']
@@ -645,48 +640,57 @@ description = """Global stress scaling factor for all configurations used in the
 examples = ['SWEIGHT 1e-1']
 
 [ALLOWED_KEYS.WEIGHTS]
-INHERIT = ["TYPES.DOUBLE"]
-value_format = ['<double> ...']
-value_N = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description = """The machine-learned coefficients for the model, obtained during the optimisation process. These are species-dependent weights and can be set by the user. The default weight is an atomic number."""
 examples = ['WEIGHTS 0.12 1.2 0.3']
 
 [ALLOWED_KEYS.SIGMA]
 value_type = ['INT DOUBLE']
 value_format = ['<integer> <double> ...']
-value_N = [-2147483647]
 description = """The :math:`\\Sigma` matrix used in Bayesian Linear Regression :cpp:class:`M_BLR`. The matrix is :math:`N\\times N` and stored in column-major order."""
 examples = ['`2 1.2 2.2 2.3 3.3`']
 
 #TODO
 [ALLOWED_KEYS.NSTDEV]
-INHERIT = ["TYPES.DOUBLE"]
-value_format = ['<double> ...']
-value_N = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description = """Standard deviations obtained during standardisation (see NORM_) of the columns of the :cpp:class:`DesignMatrix`. The size of the vector is equal to the number of columns."""
 
 #TODO
 [ALLOWED_KEYS.NMEAN]
-INHERIT = ["TYPES.DOUBLE"]
-value_format = ['<double> ...']
-value_N = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description = """Mean values for the columns of the :cpp:class:`DesignMatrix`. This vector is obtained during standardisation (see NORM_)."""
 
+#TODO verify whether we need int int double ...
 [ALLOWED_KEYS.BASIS]
-INHERIT = ["TYPES.DOUBLE"]
-value_format = ['<double> ...']
-value_N = [-2147483647]
+INHERIT = ["TYPES.DOUBLES"]
 description = """Basis vectors used by the non-linear Kernel Ridge Regression model. In this context, they represent the features or functions used to map input data into a higher-dimensional feature space to capture non-linear relationships."""
 
-[WATOMS]
-INHERIT = ["TYPES.DOUBLE"]
-value_N = [-2147483647]
-description = """Weights sorted by the atomic number of the corresponding atom, with the lowest Z value first. WATOMS.size() == ATOMS.size()"""
+[MPIWPCKG]
+INHERIT = ["TYPES.UINT"]
+default = [50]
+description = """The number of structures in a single MPI work package."""
 
-[ATOMS]
-INHERIT = ["TYPES.STRING"]
-value_N = [-2147483647]
-description = """List of unique atoms sorted by Z. This key is set by the library. Users should not set it."""
+[MBLOCK]
+INHERIT = ["TYPES.UINT"]
+default = [64]
+description = """ScalaPACK row block size MB."""
+is_internal = [false]
+
+[NBLOCK]
+INHERIT = ["TYPES.UINT"]
+default = [64]
+description = """ScalaPACK column block size NB."""
+
+[FIXWEIGHT]
+INHERIT = ["TYPES.DOUBLES"]
+description = """Values for weights to be fixed during the optimisation process. Requires FIXINDEX."""
+examples = ["1.0 1.0 0.5"]
+
+[FIXINDEX]
+INHERIT = ["TYPES.UINTS"]
+description = """Indices of weights to be fixed during the optimisation process. Requires FIXWEIGHT."""
+examples = ["1 4 5"]
+
 
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
@@ -783,14 +787,14 @@ INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.hpotarget", "ALLOWED_KE
 [TASKS.data]
 description      = "Dataset management commands."
 long_description = "Dataset management commands (convert, read, write, merge, split, dedup, sample, balance)."
-examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"]
+examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
   
   [TASKS.data.convert]
-  description      = "Convert DFT output files to Tadah! dataset format."
-  long_description = "Convert DFT output files to Tadah! dataset format.\nExample: tadah data convert --dft-files run1.outcar -o output.tadah"
-  examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"]
-  INHERIT          = ["ALLOWED_KEYS.dft-files", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-    [TASKS.data.convert."dft-files"]
+  description      = "Convert DFT output file(s) to Tadah! dataset format."
+  long_description = "Convert DFT output file(s) to Tadah! dataset format.\nExample: tadah data convert --dft-file run1.outcar -o output.tadah"
+  examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
+  INHERIT          = ["ALLOWED_KEYS.dft-file", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+    [TASKS.data.convert."dft-file"]
     cli_required = true
     [TASKS.data.convert.outfile]
     cli_required = true
@@ -799,7 +803,7 @@ examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"
   description      = "Read and print structures from dataset or structure files."
   long_description = "Read and print structures from dataset or structure files.\nExample: tadah data read -d dataset.tadah"
   examples         = ["tadah data read -d dataset.tadah", "tadah data read -s crystal.cif"]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.indices", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.index", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
     [TASKS.data.read.dbfile]
     cli_required = false
     cli_excludes   = ["structure"]
@@ -811,13 +815,13 @@ examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"
   description      = "Write structures from a dataset into a chosen format."
   long_description = "Write structures from a dataset into a chosen format.\nExample: tadah data write -d dataset.tadah -o output.cell -f cell -i 7"
   examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.indices", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
     [TASKS.data.write.dbfile]
     cli_required = true
     cli_excludes   = ["structure"]
     [TASKS.data.write.outfile]
     cli_required = true
-    [TASKS.data.write.indices]
+    [TASKS.data.write.index]
     cli_required = true
     [TASKS.data.write.format]
     cli_required = true
@@ -838,17 +842,17 @@ examples         = ["tadah data convert --dft-files run1.outcar -o output.tadah"
   description      = "Split a dataset into parts."
   long_description = "Split a dataset into parts.\nExample: tadah data split -d big.tadah -o part1.tadah part2.tadah"
   examples         = ["tadah data split -d big.tadah -o part1.tadah part2.tadah"]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfiles", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
     [TASKS.data.split.dbfile]
     cli_required = true
-    [TASKS.data.split.outfiles]
+    [TASKS.data.split.outfile]
     cli_required = true
 
   [TASKS.data.dedup]
   description      = "Deduplicate structures from a dataset."
   long_description = "Deduplicate structures from a dataset.\nExample: tadah data dedup -d db.tadah"
   examples         = ["tadah data dedup -d db.tadah"]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfiles", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge"]
+  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge"]
     [TASKS.data.dedup.dbfile]
     cli_required = true
 
@@ -883,14 +887,14 @@ examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 10
   description      = "Compute two-body potential (E vs. r)."
   long_description = "Compute two-body potential (E vs. r) for a pair of elements."
   examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
-  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.atoms", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.ATOMPAIR", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose"]
     [TASKS.properties.twobody.potential]
     cli_required = true
     [TASKS.properties.twobody.outfile]
     cli_required = true
     [TASKS.properties.twobody.range]
     cli_required = true
-    [TASKS.properties.twobody.atoms]
+    [TASKS.properties.twobody.atompair]
     cli_required = true
 
   [TASKS.properties.ecurve]
@@ -938,9 +942,9 @@ examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o 
 INHERIT          = ["ALLOWED_KEYS.verbose"]
   [TASKS.analysis.descriptor]
   description      = "Calculate structure descriptors."
-  long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --indices 1,3,5"
-  examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --indices 1,3,5"]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.indices", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose"]
+  long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"
+  examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"]
+  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose"]
     [TASKS.analysis.descriptor.dbfile]
     cli_required = true
     cli_excludes   = ["structure"]
