@@ -75,9 +75,22 @@ public:
    */
   Context &operator=(Context &&other) noexcept;
 
-  // Copy is disallowed due to mutex and reference members.
-  Context(const Context &) = delete;
-  Context &operator=(const Context &) = delete;
+  Context(const Context &other)
+  : allowedKeys_(other.allowedKeys_), internalKeys_(other.internalKeys_) {
+    std::lock_guard<std::mutex> lock(other.mtx_);
+    storage_ = other.storage_;
+  }
+
+  Context &operator=(const Context &other) {
+    if (this != &other) {
+      std::lock(mtx_, other.mtx_);
+      std::lock_guard<std::mutex> lock1(mtx_, std::adopt_lock);
+      std::lock_guard<std::mutex> lock2(other.mtx_, std::adopt_lock);
+      storage_ = other.storage_;
+      // allowedKeys_ and internalKeys_ remain unchanged.
+    }
+    return *this;
+  }
 
   ~Context() = default;
 
@@ -212,12 +225,6 @@ public:
       }
       keyNotFoundLogSuggestThrow(key,"add");
     }
-    if (bi->value_N.empty()) {
-      Logger::instance().log(
-          LogLevel::ERROR,
-          "Context::add -> blueprint missing value_N for: ", upKey);
-      throw std::runtime_error("Blueprint incomplete for key: " + upKey);
-    }
     size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
     int n = get<int>("NUMERIC"); // get before lock
@@ -308,8 +315,7 @@ public:
   const std::map<std::string, std::vector<std::string>> &getMapRef() const;
 
   /**
-   * @brief Streams the Context to an output stream using rules similar to the
-   * old Config class.
+   * @brief Streams the Context to an output stream.
    *
    * Each key is looked up in the blueprint to determine how many values to
    * place per line. If value_N[0] > 0, each value is printed on its own line
@@ -320,7 +326,6 @@ public:
     // Lock the mutex for thread-safe iteration over storage_.
     std::lock_guard<std::mutex> lock(ctx.mtx_);
 
-    // Use some spacing consistent with the old Config style.
     const std::string space = "     ";
 
     // Iterate over all stored key-value pairs.
@@ -334,11 +339,6 @@ public:
         // Key not in blueprint => skip.
         continue;
       }
-      if (bi->value_N.empty()) {
-        // If blueprint does not define value_N at all, skip as well.
-        continue;
-      }
-
       // Take the first element of value_N for printing logic.
       int valN = bi->value_N[0];
 
@@ -387,11 +387,7 @@ public:
           "Context::addInternal -> Key is not recognized as internal: ", upKey);
       throw std::runtime_error("Key not recognized as internal: " + upKey);
     }
-    // capacity check
-    size_t maxVals = 1;
-    if (!bi->value_N.empty()) {
-      maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
-    }
+    size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
     int n = get<int>("NUMERIC"); // get before lock
     std::lock_guard<std::mutex> lock(mtx_);
