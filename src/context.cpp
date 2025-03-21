@@ -46,7 +46,7 @@ Context &Context::operator=(Context &&other) noexcept {
 const std::vector<std::string> &
 Context::operator()(const std::string &key) const {
   std::lock_guard<std::mutex> lock(mtx_);
-  std::string upKey = uppercase(key);
+  std::string upKey = to_upper(key);
   auto it = storage_.find(upKey);
 
   if (it == storage_.end() || it->second.empty()) {
@@ -64,7 +64,7 @@ Context::operator()(const std::string &key) const {
 ///////////////////////////////////////////////////////////////////////////////
 size_t Context::remove(const std::string &key) {
   std::lock_guard<std::mutex> lock(mtx_);
-  std::string upKey = uppercase(key);
+  std::string upKey = to_upper(key);
   auto it = storage_.find(upKey);
   if (it != storage_.end()) {
     storage_.erase(it);
@@ -86,7 +86,7 @@ void Context::clear() {
 ///////////////////////////////////////////////////////////////////////////////
 size_t Context::size(const std::string &key) const {
   std::lock_guard<std::mutex> lock(mtx_);
-  std::string upKey = uppercase(key);
+  std::string upKey = to_upper(key);
   auto it = storage_.find(upKey);
   if (it == storage_.end() || it->second.empty()) {
     attemptDefaultInsertion_NoLock(upKey);
@@ -111,7 +111,7 @@ size_t Context::size() const {
 ///////////////////////////////////////////////////////////////////////////////
 bool Context::contains(const std::string &key) const {
   std::lock_guard<std::mutex> lock(mtx_);
-  std::string upKey = uppercase(key);
+  std::string upKey = to_upper(key);
   auto it = storage_.find(upKey);
   if (it == storage_.end() || it->second.empty()) {
     attemptDefaultInsertion_NoLock(upKey);
@@ -169,7 +169,7 @@ void Context::deserialize(const std::vector<char> &buffer) {
     }
 
     // First token is the key
-    std::string upKey = uppercase(tokens[0]);
+    std::string upKey = to_upper(tokens[0]);
 
     // Check blueprint
     /*const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");*/

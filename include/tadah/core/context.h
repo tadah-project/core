@@ -118,7 +118,7 @@ public:
    */
   template <typename T> T get(const std::string &key) const {
     std::lock_guard<std::mutex> lock(mtx_);
-    std::string upKey = uppercase(key);
+    std::string upKey = to_upper(key);
 
     auto it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
@@ -145,7 +145,7 @@ public:
    */
   template <typename T> T get(const std::string &key, size_t n) const {
     std::lock_guard<std::mutex> lock(mtx_);
-    std::string upKey = uppercase(key);
+    std::string upKey = to_upper(key);
 
     auto it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
@@ -177,7 +177,7 @@ public:
   template <typename Container>
   void get(const std::string &key, Container &out) const {
     std::lock_guard<std::mutex> lock(mtx_);
-    std::string upKey = uppercase(key);
+    std::string upKey = to_upper(key);
 
     auto it = storage_.find(upKey);
     if (it == storage_.end() || it->second.empty()) {
@@ -209,7 +209,7 @@ public:
    * @param val Value to append.
    */
   template <typename T> void add(const std::string &key, const T &val) {
-    std::string upKey = uppercase(key);
+    std::string upKey = to_upper(key);
     // Validate blueprint
     const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
     if (bi == nullptr) {
@@ -377,7 +377,7 @@ public:
    * @warning This method is not intended for general use.
    */
   template <typename T> void addInternal(const std::string &key, const T &val) {
-    std::string upKey = uppercase(key);
+    std::string upKey = to_upper(key);
 
     // We do NOT allow normal blueprint keys here, only internal
     const auto bi = findBlueprintItem(upKey, "INTERNAL_KEYS");
@@ -444,18 +444,6 @@ private:
                                ", value=\"" + s + "\"");
     }
     return value;
-  }
-
-  /**
-   * @brief Converts a string to uppercase (basic ASCII).
-   */
-  static std::string uppercase(const std::string &input) {
-    std::string result = input;
-    for (size_t i = 0; i < result.size(); ++i) {
-      result[i] = static_cast<char>(
-          std::toupper(static_cast<unsigned char>(result[i])));
-    }
-    return result;
   }
 
 private:
