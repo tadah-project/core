@@ -1,6 +1,6 @@
 /**
  * @file context.h
- * @brief Thread-safe configuration context respecting blueprint defaults.
+ * @brief Thread-safe configuration context respects blueprint defaults.
  *
  * The Context class stores uppercase keys, each mapped to a vector of strings.
  * Keys are validated against a blueprint, which also may provide defaultValue
@@ -30,16 +30,7 @@
 #include <tadah/core/logger.h>
 #include <tadah/core/utils.h>
 
-/**
- * @namespace tadah
- * Main project namespace.
- */
 namespace tadah {
-
-/**
- * @namespace core
- * Core implementation details of the tadah project.
- */
 namespace core {
 
 /**
@@ -216,20 +207,23 @@ public:
       const auto bi_ = findBlueprintItem(upKey, "INTERNAL_KEYS");
       if (bi_ != nullptr) {
         Logger::instance().log(
-            LogLevel::ERROR,
-            "Context::add -> Attempt to add internal key with "
-            "add(), HINT use addInternal(): ",
-            upKey);
+          LogLevel::ERROR,
+          "Context::add -> Attempt to add internal key with "
+          "add(), HINT use addInternal(): ",
+          upKey);
         throw std::runtime_error(
-            "Setting of internal keys is not allowed by this method: " + upKey);
+          "Setting of internal keys is not allowed by this method: " + upKey);
       }
       keyNotFoundLogSuggestThrow(key,"add");
     }
     size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
-    int n = get<int>("NUMERIC"); // get before lock
     std::lock_guard<std::mutex> lock(mtx_);
     std::vector<std::string> &bucket = storage_[upKey];
+    std::string valStr = to_string(val, fmt18);
+    std::istringstream iss(valStr);
+    std::string value;
+
     if (maxVals > 1 && bucket.size() >= maxVals) {
       Logger::instance().log(LogLevel::ERROR,
                              "Context::add -> capacity exceeded for: ", upKey);
@@ -237,13 +231,19 @@ public:
     } else if (maxVals == 1 && bucket.size() == maxVals) {
       Logger::instance().log(LogLevel::WARNING,
                              "Context::add -> Overwriting: ", upKey);
+      iss >> std::boolalpha >> value;
+      bucket[0] = value;
+    } else {
+      while (iss >> std::boolalpha >> value) {
+        if (bucket.size() == maxVals) {
+          Logger::instance().log(LogLevel::ERROR,
+                                 "Context::add -> capacity exceeded for: ", upKey);
+          throw std::runtime_error("Exceeded capacity for key: " + upKey);
+        }
+        bucket.push_back(to_string(value, fmt18));
+      }
     }
-    std::string val_str = to_string(val, n);
-    std::istringstream iss(val_str);
-    std::string value;
-    while (iss >> std::boolalpha >> value) {
-      bucket.push_back(to_string(value, n));
-    }
+    updateInternalKeys();
   }
 
   /**
@@ -374,7 +374,12 @@ public:
    *
    * Internal keys come from [INTERNAL_KEYS] section of the blueprint.
    *
-   * @warning This method is not intended for general use.
+   * The overwriting logic is as follows:
+   * - If key is full at the time of call, the entire key is cleared and the default is set. Then values are appended.
+   * - Otherwise, values are appended until capacity is reached.
+   * - If capacity is exceeded, an error is thrown.
+   *
+   * @warning This method is not intended for general usage.
    */
   template <typename T> void addInternal(const std::string &key, const T &val) {
     std::string upKey = to_upper(key);
@@ -389,24 +394,27 @@ public:
     }
     size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
-    int n = get<int>("NUMERIC"); // get before lock
     std::lock_guard<std::mutex> lock(mtx_);
     std::vector<std::string> &bucket = storage_[upKey];
-    if (maxVals > 1 && bucket.size() >= maxVals) {
-      Logger::instance().log(LogLevel::ERROR,
-                             "Context::add -> capacity exceeded for: ", upKey);
-      throw std::runtime_error("Exceeded capacity for key: " + upKey);
-    } else if (maxVals == 1 && bucket.size() == maxVals) {
+    // convert val to string
+    std::string valStr = to_string(val, fmt18);
+    std::istringstream iss(valStr);
+    std::string value;
+    if (bucket.size() == maxVals) {
       Logger::instance().log(LogLevel::WARNING,
                              "Context::add -> Overwriting: ", upKey);
-    }
-    // convert val to string
-    std::string val_str = to_string(val, n);
-    std::istringstream iss(val_str);
-    std::string value;
+      bucket.clear();
+      attemptDefaultInsertion_NoLock(upKey);
+    } 
     while (iss >> std::boolalpha >> value) {
-      bucket.push_back(to_string(value, n));
+      if (bucket.size() == maxVals) {
+        Logger::instance().log(LogLevel::ERROR,
+                               "Context::add -> capacity exceeded for: ", upKey);
+        throw std::runtime_error("Exceeded capacity for key: " + upKey);
+      }
+      bucket.push_back(to_string(value, fmt18));
     }
+    updateInternalKeys();
   }
 
 private:
@@ -447,6 +455,10 @@ private:
   }
 
 private:
+
+  // Formatting for floating point numbers string conversion.
+  size_t fmt18 = 18;
+
   /**
    * @brief Internal map of uppercase key -> list of string values.
    *
@@ -490,6 +502,29 @@ private:
    */
   void keyNotFoundLogSuggestThrow(const std::string &key,
       const std::string &method) const;
+
+
+  // helper method to find max value for a given allowed key
+  double findMaxValue(const std::string &allowedKey) const {
+    auto it = storage_.find(allowedKey);
+    double maxVal = 0;
+    if (it == storage_.end()) {
+      return maxVal;
+    }
+    for (const std::string &valStr : it->second) {
+      double val = convertStringTo<double>(valStr, allowedKey);
+      maxVal = val > maxVal ? val : maxVal;
+    }
+    return maxVal;
+  }
+
+  void updateInternalKeys() {
+    double maxVal2B = findMaxValue("RCUT2B");
+    double maxValMB = findMaxValue("RCUTMB");
+    storage_["RCUT2BMAX"] = {to_string(maxVal2B, fmt18)};
+    storage_["RCUTMBMAX"] = {to_string(maxValMB, fmt18)};
+    storage_["RCUTMAX"] = {to_string(std::max(maxVal2B,maxValMB), fmt18)};
+  }
 
 };
 

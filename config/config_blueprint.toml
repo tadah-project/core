@@ -706,46 +706,55 @@ examples = ["1 4 5"]
 INHERIT = ["TYPES.UINT"]
 default = ["0"]
 description = """Size of two-body descriptor."""
+value_N = [1]
 
 [INTERNAL_KEYS.SIZEMB]
 INHERIT = ["TYPES.UINT"]
 default = ["0"]
 description = """Size of many-body descriptor."""
+value_N = [1]
 
 [INTERNAL_KEYS.DSIZE]
 INHERIT = ["TYPES.UINT"]
 default = ["0"]
 description = """The total size of the descriptor. Two-body + many-body + bias."""
+value_N = [1]
 
 [INTERNAL_KEYS.RCUTMAX]
 INHERIT = ["TYPES.DOUBLE"]
 default = ["0.0"]
 description = """Maximum cutoff for all descriptors. Calculated from the cutoff of the individual descriptors."""
+value_N = [1]
 
 [INTERNAL_KEYS.RCUT2BMAX]
 INHERIT = ["TYPES.DOUBLE"]
 default = ["0.0"]
 description = """Maximum cutoff for two-body descriptors. Calculated from the cutoff of the individual descriptors."""
+value_N = [1]
 
 [INTERNAL_KEYS.RCUTMBMAX]
 INHERIT = ["TYPES.DOUBLE"]
 default = ["0.0"]
 description = """Maximum cutoff for many-body descriptors. Calculated from the cutoff of the individual descriptors."""
+value_N = [1]
 
 [INTERNAL_KEYS.ESTDEV]
 INHERIT = ["TYPES.DOUBLE"]
 default = ["0.0"]
 description = """Energy standard deviation."""
+value_N = [1]
 
 [INTERNAL_KEYS.FSTDEV]
 INHERIT = ["TYPES.DOUBLE"]
 default = ["0.0"]
 description = """Force standard deviation."""
+value_N = [1]
 
 [INTERNAL_KEYS.SSTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0"]
+default = ["0.0", "0.0", "0.0", "0.0", "0.0", "0.0"]
 description = """Stress standard deviation."""
+value_N = [-6]
 
 ###############################################################################
 # Blueprint for GLOBALS

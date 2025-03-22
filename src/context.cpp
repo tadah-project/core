@@ -68,6 +68,7 @@ size_t Context::remove(const std::string &key) {
   auto it = storage_.find(upKey);
   if (it != storage_.end()) {
     storage_.erase(it);
+    updateInternalKeys();
     return 1;
   }
   return 0;
@@ -171,21 +172,6 @@ void Context::deserialize(const std::vector<char> &buffer) {
     // First token is the key
     std::string upKey = to_upper(tokens[0]);
 
-    // Check blueprint
-    /*const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");*/
-    /*if (bi == nullptr) {*/
-    /*  Logger::instance().log(*/
-    /*      LogLevel::ERROR, "Context::deserialize -> Key not allowed: ", upKey);*/
-    /*  throw std::runtime_error("Key not allowed: " + upKey);*/
-    /*}*/
-    /*if (bi->value_N.empty()) {*/
-    /*  Logger::instance().log(*/
-    /*      LogLevel::ERROR,*/
-    /*      "Context::deserialize -> Blueprint missing value_N for key: ", upKey);*/
-    /*  throw std::runtime_error("Blueprint incomplete for key: " + upKey);*/
-    /*}*/
-    /*size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));*/
-
     // Insert tokens as values
     std::vector<std::string> &bucket = storage_[upKey];
     for (size_t i = 1; i < tokens.size(); ++i) {
@@ -204,38 +190,17 @@ void Context::deserialize(const std::vector<char> &buffer) {
 // attemptDefaultInsertion_NoLock(upKey)
 ///////////////////////////////////////////////////////////////////////////////
 void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
-  const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
-  if (bi == nullptr) {
-    // Not in blueprint -> no default
+  const auto bAllowed = findBlueprintItem(upKey, "ALLOWED_KEYS");
+  if (bAllowed != nullptr && !bAllowed->defaultValue.empty()) {
+    storage_.insert(std::make_pair(upKey, bAllowed->defaultValue));
     return;
   }
-  if (bi->defaultValue.empty()) {
-    // No default provided
+  const auto bInternal = findBlueprintItem(upKey, "INTERNAL_KEYS");
+  if (bInternal != nullptr && !bInternal->defaultValue.empty()) {
+    storage_.insert(std::make_pair(upKey, bInternal->defaultValue));
     return;
   }
-  // Check capacity
-  size_t maxVals = 0;
-  if (!bi->value_N.empty()) {
-    maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
-  }
-
-  // Insert default only if we are not at capacity
-  // "storage_" is mutable, so we can write inside a const method.
-  // Using const_cast would be messy, so "mutable" is the better design choice.
-  auto mapIter = storage_.find(upKey);
-  if (mapIter == storage_.end()) {
-    // Create an empty vector
-    storage_.insert(std::make_pair(upKey, std::vector<std::string>()));
-    mapIter = storage_.find(upKey);
-  }
-  std::vector<std::string> &values = mapIter->second;
-
-  if (maxVals == 0) {
-    // The blueprint might say 0 means no values are allowed,
-    // so do nothing in that case.
-    return;
-  }
-  values = bi->defaultValue; // both are vectors
+  return;
 }
 bool Context::operator==(const Context &other) const {
   return storage_ == other.getMapRef();
@@ -276,7 +241,7 @@ Context::findBlueprintItem(const std::string &upKey,
 void Context::keyNotFoundLogSuggestThrow(const std::string &key,
                                          const std::string &method) const {
   Logger::instance().log(LogLevel::ERROR,
-                         "Context::" + method + "() -> Key not allowed: ", key);
+                         "Context::" + method + "() -> Key not found: ", key);
   std::string suggested = BlueprintParser::findClosestKey(key, allowedKeys_);
   if (!suggested.empty()) {
     Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);

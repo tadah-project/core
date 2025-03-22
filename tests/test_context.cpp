@@ -97,11 +97,11 @@ TEST_CASE( "Testing Context size()", "[config_size]" ) {
   Context c;
   REQUIRE(c.size("INIT2B")==1);
   REQUIRE(c.size("INITMB")==1);
-  REQUIRE_THROWS(c.size("SIZE2B"));
+  REQUIRE(c.size("SIZE2B")==1);
   c.addInternal("SIZE2B",12);
   REQUIRE(c.size("SIZE2B")==1);
   c.remove("SIZE2B");
-  REQUIRE_THROWS(c.size("SIZE2B"));
+  REQUIRE(c.size("SIZE2B")==1);
 }
 TEST_CASE( "Testing Context contains()", "[config_contains]" ) {
   Context c;
@@ -129,7 +129,7 @@ TEST_CASE( "Testing Context operator()", "[config_operator()]" ) {
 }
 TEST_CASE( "Testing is Context case sensitive", "[config_case]" ) {
   Context c;
-  REQUIRE_THROWS(c.size("sIze2B"));
+  REQUIRE(c.size("sIze2B")==1);
   c.addInternal("SiZE2b",10);
   REQUIRE(c.contains("SIZE2B"));
   REQUIRE(c.contains("SIze2B"));
@@ -310,7 +310,7 @@ TEST_CASE("Context deserialize() - partial/truncated buffer ", "[config][coverag
     REQUIRE_FALSE(c2 == c1);
 }
 
-TEST_CASE("Context no RCUTMAX if all cutoffs are zero [line 312]", "[config][coverage]") {
+TEST_CASE("Context RCUTMAX=0 if all cutoffs are zero [line 312]", "[config][coverage]") {
     // postprocess() sets RCUTMAX only if there's a non-zero c2b/cmb
     // We'll ensure all are zero => no RCUTMAX in the map
     Context c;
@@ -324,14 +324,13 @@ TEST_CASE("Context no RCUTMAX if all cutoffs are zero [line 312]", "[config][cov
     /*c.postprocess();*/
 
     // Now confirm that RCUTMAX was NOT set
-    REQUIRE_FALSE(c.contains("RCUTMAX"));
+    REQUIRE(c.get<double>("RCUTMAX")==Approx(0));
 
     // Then let's set some partial keys but keep them effectively zero
     c.add("INIT2B", false);  // key exist, but false => won't read RCUT2B
     c.add("INITMB", false);
 
-    /*c.postprocess();*/
-    REQUIRE_FALSE(c.contains("RCUTMAX")); // still no max
+    REQUIRE(c.get<double>("RCUTMAX")==Approx(0));
 }
 
 TEST_CASE("Context deserialize() unusual buffer") {
@@ -350,4 +349,139 @@ TEST_CASE("Context deserialize() unusual buffer") {
     Context c2;
     REQUIRE_NOTHROW(c2.deserialize(buf));
     // We won't necessarily expect c2 to match c1, but it's a coverage scenario for the loop in deserialize
+}
+TEST_CASE("Context: Internal key updates via add()", "[context_internal_update]") {
+  // Create a context instance.
+  Context ctx;
+
+  SECTION("RCUT2B updates RCUT2BMAX and RCUTMAX") {
+    // Add a value to RCUT2B.
+    ctx.add("RCUT2B", 5.0);
+    // Add a smaller value; maximum should remain.
+    ctx.add("RCUT2B", 3.0);
+    // Add a larger value; maximum should update.
+    ctx.add("RCUT2B", 6.5);
+
+    // Retrieve the internal keys.
+    double rcut2bmax = ctx.get<double>("RCUT2BMAX");
+    double rcutmax   = ctx.get<double>("RCUTMAX");
+
+    REQUIRE(rcutmax == Approx(6.5));
+    REQUIRE(rcut2bmax == Approx(6.5));
+  }
+
+  SECTION("RCUTMB updates RCUTMBMAX and RCUTMAX independently") {
+    // Create a fresh context.
+    tadah::core::Context ctx2;
+
+    ctx2.add("RCUTMB", 2.5);
+    ctx2.add("RCUTMB", 4.0);
+    ctx2.add("RCUTMB", 3.0);
+
+    // Retrieve the expected internal values.
+    double rcutmbmax = ctx2.get<double>("RCUTMBMAX");
+    double rcutmax   = ctx2.get<double>("RCUTMAX");
+
+
+    REQUIRE(rcutmax == Approx(4.0));
+    REQUIRE(rcutmbmax == Approx(4.0));
+  }
+
+  SECTION("No update on unmapped keys") {
+    // Clear any previous state by creating a new context.
+    tadah::core::Context ctx3;
+    ctx3.add("SIGMA", 7.0);
+    // Since "OTHER" is not mapped to internal keys, the related entries shouldn't be updated.
+    REQUIRE(ctx3.get<double>("RCUT2BMAX")==Approx(0));
+    REQUIRE(ctx3.get<double>("RCUTMAX")==Approx(0));
+  }
+
+  SECTION("Update after removal") {
+    // Create a fresh context.
+    tadah::core::Context ctx4;
+
+    ctx4.add("RCUT2B", 5.0);
+    ctx4.add("RCUT2B", 3.0);
+    ctx4.add("RCUT2B", 6.0);
+    REQUIRE(ctx4.get<double>("RCUT2BMAX")==Approx(6.0));
+    REQUIRE(ctx4.get<double>("RCUTMAX")==Approx(6.0));
+    REQUIRE(ctx4.get<double>("RCUTMBMAX")==Approx(0.0));
+
+    ctx4.add("RCUTMB", 6.5);
+    ctx4.add("RCUTMB", 3.5);
+    ctx4.add("RCUTMB", 4.5);
+    REQUIRE(ctx4.get<double>("RCUT2BMAX")==Approx(6.0));
+    REQUIRE(ctx4.get<double>("RCUTMAX")==Approx(6.5));
+    REQUIRE(ctx4.get<double>("RCUTMBMAX")==Approx(6.5));
+
+    // Remove the key.
+    ctx4.remove("RCUT2B");
+    REQUIRE(ctx4.get<double>("RCUT2BMAX")==Approx(0.0));
+    REQUIRE(ctx4.get<double>("RCUTMBMAX")==Approx(6.5));
+    REQUIRE(ctx4.get<double>("RCUTMAX")==Approx(6.5));
+
+    // Remove the key.
+    ctx4.remove("RCUTMB");
+    REQUIRE(ctx4.get<double>("RCUT2BMAX")==Approx(0.0));
+    REQUIRE(ctx4.get<double>("RCUTMAX")==Approx(0.0));
+    REQUIRE(ctx4.get<double>("RCUTMBMAX")==Approx(0.0));
+
+    // Add a new value; the internal keys should be updated.
+    ctx4.add("RCUT2B", 4.3);
+    ctx4.add("RCUT2B", 3.3);
+    REQUIRE(ctx4.get<double>("RCUT2BMAX")==Approx(4.3));
+    REQUIRE(ctx4.get<double>("RCUTMAX")==Approx(4.3));
+    REQUIRE(ctx4.get<double>("RCUTMBMAX")==Approx(0.0));
+
+    ctx4.add("RCUTMB", 4.3);
+    ctx4.add("RCUTMB", 5.3);
+    REQUIRE(ctx4.get<double>("RCUT2BMAX")==Approx(4.3));
+    REQUIRE(ctx4.get<double>("RCUTMAX")==Approx(5.3));
+    REQUIRE(ctx4.get<double>("RCUTMBMAX")==Approx(5.3));
+  }
+}
+TEST_CASE("Context: testing defaults retrieve", "[context_defaults]") {
+  // Create a context instance.
+  Context ctx;
+
+  SECTION("Default values for INIT2B and INITMB") {
+    // Retrieve the default values for INIT2B and INITMB.
+    bool init2b = ctx.get<bool>("INIT2B");
+    bool initmb = ctx.get<bool>("INITMB");
+
+    REQUIRE(init2b == false);
+    REQUIRE(initmb == false);
+  }
+
+  SECTION("Default values for SIZE2B and SIZEMB") {
+    size_t size2b = ctx.get<size_t>("SIZE2B");
+    size_t sizemb = ctx.get<size_t>("SIZEMB");
+
+    REQUIRE(size2b == 0);
+    REQUIRE(sizemb == 0);
+  }
+}
+TEST_CASE("Context: tesing multiple values for a key", "[context_multiple_values]") {
+  Context c;
+  c.add("DBFILE", "f1 f2 f3");
+  REQUIRE(c.size("DBFILE")==3);
+
+
+  // not allowed to overwrite multiple values at once
+  REQUIRE_THROWS(c.addInternal("SIZE2B", "1 2"));
+
+  c.addInternal("SIZE2B", "1");
+  c.addInternal("SIZE2B", "3"); // allowed overwrite
+  REQUIRE(c.get<size_t>("SIZE2B")==3);
+
+  REQUIRE(c.size("SSTDEV")==6); // default size
+  REQUIRE_NOTHROW(c.addInternal("SSTDEV", "1 2 3 4 5 6")); // max 6 values
+  REQUIRE(c.size("SSTDEV")==6);
+  c.remove("SSTDEV");
+  REQUIRE_NOTHROW(c.addInternal("SSTDEV", "1 2 3 4 5 6")); // max 6 values
+  REQUIRE(c.size("SSTDEV")==6);
+  c.remove("SSTDEV");
+  REQUIRE_THROWS(c.addInternal("SSTDEV", "1 2 3 4 5 6 7")); // max 6 values
+
+  REQUIRE(c.size("DIMER")==3);
 }
