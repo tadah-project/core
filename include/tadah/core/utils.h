@@ -366,7 +366,7 @@ std::vector<histogram_bin> generate_2d_histogram(
  *
  * @param oss Reference to the output string stream to which data is appended.
  */
-inline void appendToStream(std::ostringstream &oss) {}
+inline void appendToStream([[maybe_unused]] std::ostringstream &oss) {}
 
 /**
  * @brief Appends a variable number of arguments into an std::ostringstream.
