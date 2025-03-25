@@ -60,6 +60,16 @@ public:
   static const std::unordered_map<std::string, BlueprintItem>& getKeysMapRef();
 
   /**
+   * @brief Retrieves a const reference to the statically cached TASKS blueprint map.
+   *
+   * Access does not cause a copy and the map is built on first invocation.
+   *
+   * @return Const reference to the unordered_map mapping task names to BlueprintItem objects.
+   * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
+   */
+  static const std::unordered_map<std::string, BlueprintItem>& getTasksMapRef();
+
+  /**
    * @brief Retrieves a const reference to the statically cached INTERNAL_KEYS blueprint map.
    *
    * Access does not cause a copy and the map is built on first invocation.
@@ -76,6 +86,14 @@ public:
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
   static std::unordered_map<std::string, BlueprintItem> getKeysMap();
+
+  /**
+   * @brief Retrieves a copy of the statically cached TASKS blueprint map.
+   *
+   * @return A copy of the unordered_map mapping blueprint keys to BlueprintItem objects.
+   * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
+   */
+  static std::unordered_map<std::string, BlueprintItem> getTasksMap();
 
   /**
    * @brief Retrieves a copy of the statically cached INTERNAL_KEYS blueprint map.

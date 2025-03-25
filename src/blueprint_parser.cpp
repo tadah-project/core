@@ -244,6 +244,10 @@ BlueprintParser::getInternalKeysMap() {
   return getInternalKeysMapRef();
 }
 
+std::unordered_map<std::string, BlueprintItem> BlueprintParser::getTasksMap() {
+  // Return a copy of the static blueprint map.
+  return getTasksMapRef();
+}
 ///////////////////////////////////////////////////////////////////////////////
 /// Retrieves a const reference to the statically cached blueprint map.
 /// Uses a static local variable to guarantee one-time initialization.
@@ -263,6 +267,12 @@ BlueprintParser::getInternalKeysMapRef() {
   static std::unordered_map<std::string, BlueprintItem> blueprintInternalMap =
       buildBlueprintMap("INTERNAL_KEYS");
   return blueprintInternalMap;
+}
+const std::unordered_map<std::string, BlueprintItem> &
+BlueprintParser::getTasksMapRef() {
+  static std::unordered_map<std::string, BlueprintItem> blueprintTasksMap =
+      buildBlueprintMap("TASKS");
+  return blueprintTasksMap;
 }
 
 std::string BlueprintParser::findClosestKey(
