@@ -12,7 +12,7 @@ namespace tadah {
 namespace core {
 
 template<typename T, typename... Args>
-using Factory = std::function<T*(const Args&...)>;
+using Factory = std::function<T*(Args&...)>;
 
 template<typename Base, typename... Args>
 struct Registry {
@@ -23,13 +23,13 @@ struct Registry {
   template<typename T>
   struct Register {
     Register(const std::string& name) {
-      registry[name] = [](const Args&... args) -> T* { return new T(args...); };
+      registry[name] = [](Args&... args) -> T* { return new T(args...); };
     }
   };
 };
 
 template<typename Base, typename... Args>
-Base* factory(const std::string& type, const Args&... args) {
+Base* factory(const std::string& type, Args&... args) {
   auto it = Registry<Base, Args...>::registry.find(type);
 
   if (it != Registry<Base, Args...>::registry.end()) {

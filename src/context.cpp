@@ -246,8 +246,13 @@ void Context::keyNotFoundLogSuggestThrow(const std::string &key,
   if (!suggested.empty()) {
     Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
   }
+  bool isAllowed = allowedKeys_.find(to_upper(key)) != allowedKeys_.end();
 
+  if (isAllowed) {
+    throw std::runtime_error("Key not found in the Context object: " + key);
+  } else {
   throw std::runtime_error("Key not allowed: " + key);
+  }
 }
 
 } // namespace core
