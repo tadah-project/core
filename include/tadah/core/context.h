@@ -207,9 +207,9 @@ public:
   template <typename T> void add(const std::string &key, const T &val) {
     std::string upKey = to_upper(key);
     // Validate blueprint
-    const auto bi = findBlueprintItem(upKey, "ALLOWED_KEYS");
+    const auto bi = findBlueprintKey(upKey, "ALLOWED_KEYS");
     if (bi == nullptr) {
-      const auto bi_ = findBlueprintItem(upKey, "INTERNAL_KEYS");
+      const auto bi_ = findBlueprintKey(upKey, "INTERNAL_KEYS");
       if (bi_ != nullptr) {
         Logger::instance().log(
             LogLevel::ERROR,
@@ -340,7 +340,7 @@ public:
       const std::vector<std::string> &vals = pair.second;
 
       // Check the blueprint so we can interpret value_N.
-      const auto bi = ctx.findBlueprintItem(key, "ALLOWED_KEYS");
+      const auto bi = ctx.findBlueprintKey(key, "ALLOWED_KEYS");
       if (bi == nullptr) {
         // Key not in blueprint => skip.
         continue;
@@ -392,7 +392,7 @@ public:
     std::string upKey = to_upper(key);
 
     // We do NOT allow normal blueprint keys here, only internal
-    const auto bi = findBlueprintItem(upKey, "INTERNAL_KEYS");
+    const auto bi = findBlueprintKey(upKey, "INTERNAL_KEYS");
     if (bi == nullptr) {
       Logger::instance().log(
           LogLevel::ERROR,
@@ -475,12 +475,12 @@ private:
   /**
    * @brief A reference for [ALLOWED_KEYS] loaded from blueprint.
    */
-  const std::unordered_map<std::string, BlueprintItem> &allowedKeys_;
+  const std::unordered_map<std::string, BlueprintKey> &allowedKeys_;
 
   /**
    * @brief A reference for [INTERNAL_KEYS] loaded from blueprint.
    */
-  const std::unordered_map<std::string, BlueprintItem> &internalKeys_;
+  const std::unordered_map<std::string, BlueprintKey> &internalKeys_;
 
   /**
    * @brief Mutex for thread safety on storage_.
@@ -488,16 +488,16 @@ private:
   mutable std::mutex mtx_;
 
   /**
-   * @brief Finds the BlueprintItem for a given key.
+   * @brief Finds the BlueprintKey for a given key.
    *
-   * This method is used internally to find the correct BlueprintItem for a key.
+   * This method is used internally to find the correct BlueprintKey for a key.
    * It first looks in allowedKeys_, then in internalKeys_.
    *
    * @param upKey The uppercase key to search for.
-   * @return A pointer to the BlueprintItem if found, nullptr otherwise.
+   * @return A pointer to the BlueprintKey if found, nullptr otherwise.
    */
-  const BlueprintItem *
-  findBlueprintItem(const std::string &upKey,
+  const BlueprintKey *
+  findBlueprintKey(const std::string &upKey,
                     const std::string &xKeys = "ALLOWED_KEYS") const;
 
   /**

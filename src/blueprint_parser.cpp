@@ -100,10 +100,12 @@ void expandInheritance(toml::value &table, const toml::value &root,
     table.as_table().erase("INHERIT");
   }
 }
+
+
 /**
- * @brief Constructs a BlueprintItem from a TOML table.
+ * @brief Constructs a BlueprintKey from a TOML table.
  *
- * Validates and converts the given TOML subtable into a BlueprintItem
+ * Validates and converts the given TOML subtable into a BlueprintKey
  * structure.
  *
  * value_type, value_format, and value_N are mandatory fields. A runtime_error
@@ -113,19 +115,19 @@ void expandInheritance(toml::value &table, const toml::value &root,
  * Example usage:
  * @code
  * toml::value table = toml::parse("some_file.toml");
- * BlueprintItem item = buildBlueprintItem("ALLOW_SOMETHING",
+ * BlueprintKey item = buildBlueprintKey("ALLOW_SOMETHING",
  * table["ALLOW_SOMETHING"]);
  * @endcode
  *
  * @param fullKey The fully qualified key name.
  * @param table Reference to the TOML subtable for the blueprint item.
- * @return A BlueprintItem constructed from the given TOML table.
+ * @return A BlueprintKey constructed from the given TOML table.
  * @throws std::runtime_error If any mandatory field (value_type, value_format,
  * or value_N) is missing.
  */
-BlueprintItem buildBlueprintItem(const std::string &fullKey,
+BlueprintKey buildBlueprintKey(const std::string &fullKey,
                                  const toml::value &table) {
-  BlueprintItem item;
+  BlueprintKey item;
   item.keyName = fullKey;
 
   // Throws an exception if 'value_type' is not found
@@ -188,15 +190,15 @@ BlueprintItem buildBlueprintItem(const std::string &fullKey,
  *
  * Parses and processes the TOML configuration file, applying inheritance
  * expansion, and then extracts the table to build the mapping of blueprint keys
- * to BlueprintItem objects.
+ * to BlueprintKey objects.
  *
- * @return An unordered_map mapping blueprint key names to BlueprintItem
+ * @return An unordered_map mapping blueprint key names to BlueprintKey
  * objects.
  * @throws std::runtime_error If any error occurs during parsing or processing.
  */
-std::unordered_map<std::string, BlueprintItem>
+std::unordered_map<std::string, BlueprintKey>
 buildBlueprintMap(const std::string &table) {
-  std::unordered_map<std::string, BlueprintItem> map;
+  std::unordered_map<std::string, BlueprintKey> map;
   try {
     // Parse the blueprint file.
     auto fs = cmrc::CORE::get_filesystem();
@@ -215,7 +217,7 @@ buildBlueprintMap(const std::string &table) {
       std::string key = itemPair.first;
       // Convert key to uppercase.
       std::transform(key.begin(), key.end(), key.begin(), ::toupper);
-      map[key] = buildBlueprintItem(key, itemPair.second);
+      map[key] = buildBlueprintKey(key, itemPair.second);
     }
   } catch (const std::exception &ex) {
     throw std::runtime_error("Error in blueprint map initialization: " +
@@ -224,27 +226,258 @@ buildBlueprintMap(const std::string &table) {
   return map;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// TASKS blueprint
+///////////////////////////////////////////////////////////////////////////////
+/**
+ * @brief Handles a single-level "keys" subtable by splitting multi-path INHERIT 
+ *        into per-key subtables, ensuring user-defined entries won't be overwritten.
+ *
+ * If [someTask.keys] has INHERIT = ["ALLOWED_KEYS.a", "ALLOWED_KEYS.b"] plus a 
+ * subtable [someTask.keys.a] with existing fields, those fields are kept, and 
+ * we add "ALLOWED_KEYS.a" to [someTask.keys.a].INHERIT so that a subsequent 
+ * expandInheritance call merges only the missing fields from ALLOWED_KEYS.a. 
+ * 
+ * Behavior:
+ *  - If a subtable "keys.<lastPart>" already exists, append the inheritance path
+ *    to its existing array named INHERIT (creating that array if none exists).
+ *  - If "keys.<lastPart>" does not yet exist, create it with INHERIT=[inheritPath].
+ *  - Remove the original [someTask.keys].INHERIT so it's not processed again.
+ *
+ * @param table TOML subtree (often [TASKS.someTask]) in which to look 
+ *              for a "keys" subtable at this level.
+ */
+static void prepareKeysInheritanceOneLevelWithMerge(toml::value &table) {
+  if (!table.is_table()) {
+    return;
+  }
+
+  // Traverse all child entries
+  for (auto &kv : table.as_table()) {
+    if (kv.first == "keys" && kv.second.is_table()) {
+      toml::value &keysTbl = kv.second; // [someTask.keys]
+      if (keysTbl.contains("INHERIT")) {
+        // e.g. INHERIT = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", ...]
+        std::vector<std::string> inheritList =
+          toml::find<std::vector<std::string>>(keysTbl, "INHERIT");
+
+        for (const auto &inheritPath : inheritList) {
+          // Use the last token as the subtable name. For "ALLOWED_KEYS.structure", 
+          // we call it "structure".
+          std::vector<std::string> parts;
+          boost::split(parts, inheritPath, boost::is_any_of("."));
+          if (parts.empty()) {
+            throw std::runtime_error("Empty inheritance path encountered.");
+          }
+          const std::string lastName = parts.back();
+
+          // Check if [keys.<lastName>] already exists
+          auto &keysTableAsTable = keysTbl.as_table();
+          auto found = keysTableAsTable.find(lastName);
+          if (found != keysTableAsTable.end()) {
+            // Subtable already exists. Append inheritPath to its INHERIT array.
+            if (!found->second.is_table()) {
+              throw std::runtime_error(
+                "'keys." + lastName + "' is not a table but found under 'keys'."
+              );
+            }
+            toml::table &existingSubtable = found->second.as_table();
+
+            // If subtable doesn’t have an INHERIT array, create one.
+            if (!existingSubtable.count("INHERIT")) {
+              existingSubtable["INHERIT"] = toml::value(std::vector<std::string>());
+            }
+            // Append
+            toml::value &existingInheritVal = existingSubtable["INHERIT"];
+            if (!existingInheritVal.is_array()) {
+              throw std::runtime_error(
+                "'keys." + lastName + ".INHERIT' exists but is not an array."
+              );
+            }
+            existingInheritVal.as_array().push_back(toml::value(inheritPath));
+          } else {
+            // Subtable [keys.<lastName>] does not exist yet, create it
+            toml::table t;
+            t["INHERIT"] = toml::value(std::vector<std::string>{ inheritPath });
+            keysTbl[lastName] = toml::value(t);
+          }
+        }
+        // Erase the original top-level INHERIT from [keys]
+        keysTbl.as_table().erase("INHERIT");
+      }
+    }
+    else if (kv.second.is_table()) {
+      // Recurse deeper into any other table but skip if it's "keys"
+      // to ensure we only process first-level "keys" table
+      prepareKeysInheritanceOneLevelWithMerge(kv.second);
+    }
+  }
+}
+
+/**
+ * @brief Helper function that parses a TOML value and (if valid) constructs a BlueprintTask.
+ *
+ * If the table includes the mandatory fields 'description', 'long_description', and 'examples',
+ * the function creates a BlueprintTask. It also checks for a "keys" subtable to parse
+ * multiple BlueprintKey objects. Any optional nested subtables (e.g., "twobody") are 
+ * recursively processed as sub-tasks of the current task. Each nested sub-task has its 
+ * dotted name (e.g. "PROPERTIES.TWOBODY").
+ *
+ * @param fullTaskName Dot-separated task name (e.g. "PROPERTIES.TWOBODY").
+ * @param tomlNode TOML subtable representing the current task or sub-task.
+ * @param outTasks A map that stores the final tasks by their dot-separated names.
+ *
+ * Example usage:
+ * @code
+ * std::unordered_map<std::string, BlueprintTask> tasks;
+ * parseTaskRec("PROPERTIES", tomlSubtable, tasks);
+ * @endcode
+ */
+static void parseTaskRec(const std::string &fullTaskName,
+                         const toml::value &tomlNode,
+                         std::unordered_map<std::string, BlueprintTask> &outTasks) {
+  // Attempt to parse mandatory fields to decide if it's a valid 'task' block
+  // Note: if the subtable does not contain these, it is either not a valid task 
+  // (throw) or a purely parent container with no direct commands (can skip or handle differently).
+  bool hasDescription      = tomlNode.contains("description");
+  bool hasLongDescription  = tomlNode.contains("long_description");
+  bool hasExamples         = tomlNode.contains("examples");
+
+  // If all mandatory fields are present, parse them
+  // Otherwise, either treat it as a non-task container or throw an exception
+  if (hasDescription && hasLongDescription && hasExamples) {
+    BlueprintTask newTask;
+    newTask.taskName       = fullTaskName;
+    newTask.description    = toml::find<std::string>(tomlNode, "description");
+    newTask.longDescription = toml::find<std::string>(tomlNode, "long_description");
+    newTask.examples       = toml::find<std::vector<std::string>>(tomlNode, "examples");
+
+    // If there's a 'keys' subtable, parse blueprint keys.
+    // Typically: [TASKS.properties.twobody.keys]
+    if (tomlNode.contains("keys")) {
+      const toml::value keysNode = toml::find(tomlNode, "keys");
+      if (!keysNode.is_table()) {
+        throw std::runtime_error("'keys' must be a table for task: " + fullTaskName);
+      }
+      // Iterate over each key entry (e.g., potential, outfile, range, ...)
+      for (const auto &kv : keysNode.as_table()) {
+        const std::string localKeyName = kv.first;
+        // Build a fully qualified key name for debugging/trace
+        std::string dottedKeyName = fullTaskName + "." + localKeyName;
+        newTask.keyValuePairs.push_back(buildBlueprintKey(dottedKeyName, kv.second));
+      }
+    }
+
+    // Store the parsed task in the map
+    // Key = dot-separated name, value = the BlueprintTask object
+    outTasks[fullTaskName] = std::move(newTask);
+  }
+  else {
+    // If partial fields are present, throw with more information
+    // (Alternatively, treat it as a container only if the user wants partial tasks to be ignored)
+    if (hasDescription || hasLongDescription || hasExamples) {
+      throw std::runtime_error("Task '" + fullTaskName +
+        "' is missing one of the mandatory fields: description, long_description, or examples.");
+    }
+  }
+
+  // Now check for deeper subcommands in the current node
+  // We skip known fields (description, long_description, examples, keys) and see if the child is a table.
+  if (tomlNode.is_table()) {
+    for (const auto &child : tomlNode.as_table()) {
+      const std::string &k = child.first;
+      // List fields that we already handled or do not treat as subcommands
+      if (k == "description" || k == "long_description" || k == "examples" || k == "keys") {
+        continue;
+      }
+      // If this child is a table, it might represent a sub-task (like "twobody").
+      // Recursively parse it as fullTaskName + "." + k
+      if (child.second.is_table()) {
+        std::string subCommandName = fullTaskName.empty() ? k : (fullTaskName + "." + k);
+        parseTaskRec(subCommandName, child.second, outTasks);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Builds the blueprint map for tasks from the TOML blueprint file,
+ *        handling nested (dot-separated) sub-commands.
+ *
+ * - Reads the file from CMRC.
+ * - Expands inheritance for each table.
+ * - Locates the "TASKS" subtable to parse top-level and nested tasks.
+ * - Calls parseTaskRec(...) to handle each subtable recursively.
+ *
+ * @param rootTable The top-level key ("TASKS" in your example).
+ * @return An unordered_map mapping dot-separated subcommand names to BlueprintTask objects.
+ * @throws std::runtime_error If parsing fails or mandatory fields are missing.
+ */
+static std::unordered_map<std::string, BlueprintTask>
+buildBlueprintTasksMap(const std::string &rootTable) {
+  std::unordered_map<std::string, BlueprintTask> tasksMap;
+
+  try {
+    // Parse blueprint file from embedded resource (CMRC).
+    auto fs = cmrc::CORE::get_filesystem();
+    auto toml_file = fs.open("config/config_blueprint.toml");
+    std::stringstream ss;
+    ss << toml_file.begin();
+    toml::value blueprint = toml::parse(ss);
+
+    // Make a copy for safe expansion
+    toml::value bpCopy = blueprint;
+    prepareKeysInheritanceOneLevelWithMerge(bpCopy);
+    expandInheritance(bpCopy, blueprint, "");
+
+    // Locate the top-level tasks subtable (e.g. "TASKS")
+    // e.g. [TASKS.transform], [TASKS.properties], ...
+    const auto &tasksRootTable = toml::find<toml::table>(bpCopy, rootTable);
+
+    // For each entry in the "TASKS" table, parse recursively
+    for (const auto &kv : tasksRootTable) {
+      std::string topName = kv.first;
+      // Example: "transform" or "properties"
+      // Convert to uppercase for consistency
+      std::transform(topName.begin(), topName.end(), topName.begin(), ::toupper);
+
+      // Recurse to parse subcommands. The parseTaskRec function will:
+      //  - parse the current table if it has mandatory fields
+      //  - parse deeper subcommands if present
+      if (kv.second.is_table()) {
+        parseTaskRec(topName, kv.second, tasksMap);
+      }
+    }
+  }
+  catch (const std::exception &ex) {
+    throw std::runtime_error("Error building blueprint tasks map: " + std::string(ex.what()));
+  }
+
+  return tasksMap;
+}
+
 } // end anonymous namespace
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Retrieves a copy of the statically cached blueprint map.
-/// @return A copy of the unordered_map mapping blueprint keys to BlueprintItem
+/// @return A copy of the unordered_map mapping blueprint keys to BlueprintKey
 /// objects.
 /// @throws std::runtime_error If blueprint parsing or inheritance expansion
 /// fails.
 ///////////////////////////////////////////////////////////////////////////////
-std::unordered_map<std::string, BlueprintItem> BlueprintParser::getKeysMap() {
+std::unordered_map<std::string, BlueprintKey> BlueprintParser::getKeysMap() {
   // Return a copy of the static blueprint map.
   return getKeysMapRef();
 }
 
-std::unordered_map<std::string, BlueprintItem>
+std::unordered_map<std::string, BlueprintKey>
 BlueprintParser::getInternalKeysMap() {
   // Return a copy of the static blueprint map.
   return getInternalKeysMapRef();
 }
 
-std::unordered_map<std::string, BlueprintItem> BlueprintParser::getTasksMap() {
+std::unordered_map<std::string, BlueprintTask> BlueprintParser::getTasksMap() {
   // Return a copy of the static blueprint map.
   return getTasksMapRef();
 }
@@ -252,32 +485,32 @@ std::unordered_map<std::string, BlueprintItem> BlueprintParser::getTasksMap() {
 /// Retrieves a const reference to the statically cached blueprint map.
 /// Uses a static local variable to guarantee one-time initialization.
 /// @return Const reference to the unordered_map mapping blueprint keys to
-/// BlueprintItem objects.
+/// BlueprintKey objects.
 /// @throws std::runtime_error If blueprint parsing or inheritance expansion
 /// fails.
 ///////////////////////////////////////////////////////////////////////////////
-const std::unordered_map<std::string, BlueprintItem> &
+const std::unordered_map<std::string, BlueprintKey> &
 BlueprintParser::getKeysMapRef() {
-  static std::unordered_map<std::string, BlueprintItem> blueprintAllowedMap =
+  static std::unordered_map<std::string, BlueprintKey> blueprintAllowedMap =
       buildBlueprintMap("ALLOWED_KEYS");
   return blueprintAllowedMap;
 }
-const std::unordered_map<std::string, BlueprintItem> &
+const std::unordered_map<std::string, BlueprintKey> &
 BlueprintParser::getInternalKeysMapRef() {
-  static std::unordered_map<std::string, BlueprintItem> blueprintInternalMap =
+  static std::unordered_map<std::string, BlueprintKey> blueprintInternalMap =
       buildBlueprintMap("INTERNAL_KEYS");
   return blueprintInternalMap;
 }
-const std::unordered_map<std::string, BlueprintItem> &
+const std::unordered_map<std::string, BlueprintTask> &
 BlueprintParser::getTasksMapRef() {
-  static std::unordered_map<std::string, BlueprintItem> blueprintTasksMap =
-      buildBlueprintMap("TASKS");
+  static std::unordered_map<std::string, BlueprintTask> blueprintTasksMap =
+      buildBlueprintTasksMap("TASKS");
   return blueprintTasksMap;
 }
 
 std::string BlueprintParser::findClosestKey(
     const std::string &key,
-    const std::unordered_map<std::string, BlueprintItem> &map) {
+    const std::unordered_map<std::string, BlueprintKey> &map) {
   // Early return if the map is empty
   if (map.empty()) {
     return "";

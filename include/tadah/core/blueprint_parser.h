@@ -17,7 +17,7 @@ namespace core {
  * Contains allowed data types, formatting instructions, token count bounds,
  * description, and additional metadata.
  */
-struct BlueprintItem {
+struct BlueprintKey {
   std::string keyName;                     ///< Fully qualified key name (e.g., "ALLOWED_KEYS.CONFIG")
   std::vector<std::string> value_type;     ///< List of accepted types (e.g., "STRING", "INT", "DOUBLE", etc.)
   std::vector<std::string> value_format;   ///< Expected token format (e.g., "<file>", "<path>", "N", etc.)
@@ -30,7 +30,17 @@ struct BlueprintItem {
   std::vector<std::string> cli_excludes;       ///< List of CLI keys/options that must not coexist with this key
   bool cli_required;                           ///< Indicates if required in a cli task context
 
-  BlueprintItem() : cli_required(false) {}
+  BlueprintKey() : cli_required(false) {}
+};
+
+struct BlueprintTask {
+  std::string taskName;                     ///< The task's name, e.g., "TASK_A".
+  std::string description;                  ///< Short description (mandatory).
+  std::string longDescription;              ///< Extended description (mandatory).
+  std::vector<std::string> examples;        ///< Usage examples (mandatory).
+  std::vector<BlueprintKey> keyValuePairs;  ///< Multiple key-value pairs (optional).
+
+  BlueprintTask() {}
 };
 
 /**
@@ -54,54 +64,54 @@ public:
    *
    * Access does not cause a copy and the map is built on first invocation.
    *
-   * @return Const reference to the unordered_map mapping blueprint keys to BlueprintItem objects.
+   * @return Const reference to the unordered_map mapping blueprint keys to BlueprintKey objects.
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
-  static const std::unordered_map<std::string, BlueprintItem>& getKeysMapRef();
+  static const std::unordered_map<std::string, BlueprintKey>& getKeysMapRef();
 
   /**
    * @brief Retrieves a const reference to the statically cached TASKS blueprint map.
    *
    * Access does not cause a copy and the map is built on first invocation.
    *
-   * @return Const reference to the unordered_map mapping task names to BlueprintItem objects.
+   * @return Const reference to the unordered_map mapping task names to BlueprintKey objects.
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
-  static const std::unordered_map<std::string, BlueprintItem>& getTasksMapRef();
+  static const std::unordered_map<std::string, BlueprintTask>& getTasksMapRef();
 
   /**
    * @brief Retrieves a const reference to the statically cached INTERNAL_KEYS blueprint map.
    *
    * Access does not cause a copy and the map is built on first invocation.
    *
-   * @return Const reference to the unordered_map mapping internal keys to BlueprintItem objects.
+   * @return Const reference to the unordered_map mapping internal keys to BlueprintKey objects.
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
-  static const std::unordered_map<std::string, BlueprintItem>& getInternalKeysMapRef();
+  static const std::unordered_map<std::string, BlueprintKey>& getInternalKeysMapRef();
 
   /**
    * @brief Retrieves a copy of the statically cached ALLOWED_KEYS blueprint map.
    *
-   * @return A copy of the unordered_map mapping blueprint keys to BlueprintItem objects.
+   * @return A copy of the unordered_map mapping blueprint keys to BlueprintKey objects.
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
-  static std::unordered_map<std::string, BlueprintItem> getKeysMap();
+  static std::unordered_map<std::string, BlueprintKey> getKeysMap();
 
   /**
    * @brief Retrieves a copy of the statically cached TASKS blueprint map.
    *
-   * @return A copy of the unordered_map mapping blueprint keys to BlueprintItem objects.
+   * @return A copy of the unordered_map mapping blueprint keys to BlueprintKey objects.
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
-  static std::unordered_map<std::string, BlueprintItem> getTasksMap();
+  static std::unordered_map<std::string, BlueprintTask> getTasksMap();
 
   /**
    * @brief Retrieves a copy of the statically cached INTERNAL_KEYS blueprint map.
    *
-   * @return A copy of the unordered_map mapping blueprint keys to BlueprintItem objects.
+   * @return A copy of the unordered_map mapping blueprint keys to BlueprintKey objects.
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
-  static std::unordered_map<std::string, BlueprintItem> getInternalKeysMap();
+  static std::unordered_map<std::string, BlueprintKey> getInternalKeysMap();
 
   /**
  * @brief Computes the closest matching key name by measuring the edit distance to each valid blueprint key.
@@ -111,18 +121,18 @@ public:
  * similar mistakes are made in configuration files or command-line input.
  *
  * @param key The user-provided (potentially erroneous) key.
- * @param map The map of valid key names associated with BlueprintItem objects.
+ * @param map The map of valid key names associated with BlueprintKey objects.
  * @return The key name with the smallest edit distance or an empty string if the map is empty.
  *
  * Example usage:
  * @code
- *   std::unordered_map<std::string, BlueprintItem> blueprintMap = {{"ALLOWED_KEYS", {}}};
+ *   std::unordered_map<std::string, BlueprintKey> blueprintMap = {{"ALLOWED_KEYS", {}}};
  *   std::string closest = BlueprintParser::findClosestKey("ALOWED_KEYS", blueprintMap);
  *   // 'closest' would likely be "ALLOWED_KEYS"
  * @endcode
  */
   static std::string findClosestKey(const std::string &key,
-      const std::unordered_map<std::string, BlueprintItem> &map);
+      const std::unordered_map<std::string, BlueprintKey> &map);
 };
 
 } // namespace core

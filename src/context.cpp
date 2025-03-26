@@ -190,12 +190,12 @@ void Context::deserialize(const std::vector<char> &buffer) {
 // attemptDefaultInsertion_NoLock(upKey)
 ///////////////////////////////////////////////////////////////////////////////
 void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
-  const auto bAllowed = findBlueprintItem(upKey, "ALLOWED_KEYS");
+  const auto bAllowed = findBlueprintKey(upKey, "ALLOWED_KEYS");
   if (bAllowed != nullptr && !bAllowed->defaultValue.empty()) {
     storage_.insert(std::make_pair(upKey, bAllowed->defaultValue));
     return;
   }
-  const auto bInternal = findBlueprintItem(upKey, "INTERNAL_KEYS");
+  const auto bInternal = findBlueprintKey(upKey, "INTERNAL_KEYS");
   if (bInternal != nullptr && !bInternal->defaultValue.empty()) {
     storage_.insert(std::make_pair(upKey, bInternal->defaultValue));
     return;
@@ -211,11 +211,11 @@ Context::getMapRef() const {
 }
 
 //-------------------------------------------------------------
-// findBlueprintItem(upKey):
+// findBlueprintKey(upKey):
 // returns pointer to either allowed item or internal item
 //-------------------------------------------------------------
-const BlueprintItem *
-Context::findBlueprintItem(const std::string &upKey,
+const BlueprintKey *
+Context::findBlueprintKey(const std::string &upKey,
                            const std::string &xKeys) const {
   if (xKeys == "ALLOWED_KEYS") {
     auto itA = allowedKeys_.find(upKey);
