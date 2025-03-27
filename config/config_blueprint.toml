@@ -1,34 +1,39 @@
 ###############################################################################
-# Blueprint for Allowed Keys (ALLOWED_KEYS)
+# Blueprint for ALLOWED_KEYS, INTERNAL_KEYS, GLOBALS and TASKS
 ###############################################################################
 # ALLOWED_KEYS is a blueprint for the keys that can be used in the configuration file.
 # The description of of ALLOWED_KEYS should be generic and not tied to any specific task.
 # The tasks can inherit from ALLOWED_KEYS and add/override with own specific details.
 # Each key has a set of properties that define its expected type, format, and constraints.
 # The blueprint is used to validate the configuration file and to generate help messages.
-# The blueprint is also used to generate the CLI help messages and documenation.
+# The blueprint is also used to generate the CLI and documenation.
 
 # Fields:
 # - value_type: Ordered list of expected types (one-to-one corresponding to value_format).
-# - value_format: List showing expected tokens; a trailing "..." means the last <token> may repeat.
+# - value_format: Human readable list showing expected tokens; a trailing "..." means the last <token> may repeat.
 # - value_N: Maximum allowed tokens.
-# - description: Short explanation.
+# - description: Short explanation. (used by cli for a brief description)
 # - examples: Array of valid example usage strings.
-# - default: Default value (if applicable).
+# - default: Default value (optional).
 
 # Some ALLOWED_KEYS keys can be set via CLI flags or options. These keys have additional fields:
 # CLI-specific fields:
 # - cli_long_flag: Long option name.
 # - cli_short_flag: Short option name.
-# - long_description: Long description for the task.
-# - excludes: List of keys (flags/options) that are mutually exclusive.
+# - long_description: Long description for the task used by the CLI and documenation
+# - cli_excludes: List of CLI only keys (flags/options) that are mutually exclusive.
 # - cli_required: Whether the key is required for the task.
 #
 # {} denotes repetition, [] denotes optional, <> denotes a placeholder, 
 # capital letters denote a keyword.
 #
+# Inheritance rules:
+#  - The INHERIT field is a list of keys to inherit from.
+#  - ALLOWED_KEYS inherits fields from onther tables by using the INHERIT field.
+#  - If field is present in both tables, the existing values override the inherited values.
+#  - The INHERIT field can be used to inherit from multiple tables.
+#  - TASKS can inherit from ALLOWED_KEYS however they insert keys under keys.newkey.
 ###############################################################################
-
 
 [TYPES.BOOL]
 value_type = ["BOOL"]
