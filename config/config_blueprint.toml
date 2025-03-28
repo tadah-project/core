@@ -427,7 +427,7 @@ value_format = ["<file>"]
 description  = "HPO target file."
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
-cli_short_flag = "-h"
+cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.validation]
@@ -435,7 +435,7 @@ INHERIT = ["TYPES.STRINGS"]
 description  = "Validation dataset file(s)."
 examples     = ["valid.tadah"]
 cli_long_flag  = "--validation"
-cli_short_flag = "-v"
+cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.dft-file]
@@ -796,7 +796,7 @@ examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
 [TASKS.hpo]
 description      = "Optimize hyperparameters for model training."
 long_description = "Optimize hyperparameters for model training."
-examples         = ["tadah hpo -c config.tadah -h hpotargets.txt -v valid.tadah"]
+examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
   [TASKS.hpo.keys]
   INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose"]
     [TASKS.hpo.keys.config]
@@ -994,7 +994,7 @@ INHERIT          = ["ALLOWED_KEYS.verbose"]
 
   [TASKS.analysis.bfunc]
   description      = "Evaluate and plot basis functions."
-  long_description = "Evaluate and plot basis functions.\nExample: tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""
+  long_description = "Long description: Evaluate and plot basis functions."
   examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""]
     [TASKS.analysis.bfunc.keys]
     INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
