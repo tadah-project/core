@@ -62,25 +62,25 @@ void parseLines(const std::vector<std::string> &lines, Context &ctx) {
     if (!valid_schema) {
       Logger::instance().log(
           LogLevel::ERROR,
-          "CoreUserConfigParser::parse -> Invalid schema for key:value: ",
-          key, ":", val);
+          "CoreUserConfigParser::parse -> Invalid format for key: value -> ",
+          key, ": ", val);
       // log allowed schemas
-      Logger::instance().log(LogLevel::ERROR, "  Allowed schemas:");
+      Logger::instance().log(LogLevel::ERROR, "  Allowed schema:");
       for (const auto &schema : schemas) {
-        Logger::instance().log(LogLevel::ERROR, "    ", schema);
+        Logger::instance().log(LogLevel::ERROR, "    ", uKey, "   ", schema);
       }
       // log the user friendlier format
       const std::vector<std::string> &format = keyMap.at(uKey).value_format;
       Logger::instance().log(LogLevel::ERROR, "  Format:");
       for (const auto &fmt : format) {
-        Logger::instance().log(LogLevel::ERROR, "    ", fmt);
+        Logger::instance().log(LogLevel::ERROR, "    ", uKey, "   ", fmt);
       }
       // finally provide examples if available
       const auto &examples = keyMap.at(uKey).examples;
       if (!examples.empty()) {
         Logger::instance().log(LogLevel::ERROR, "  Examples:");
         for (const auto &ex : examples) {
-          Logger::instance().log(LogLevel::ERROR, "    ", ex);
+          Logger::instance().log(LogLevel::ERROR, "    ",uKey ,"   ", ex);
         }
       }
       
