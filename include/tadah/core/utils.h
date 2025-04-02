@@ -128,6 +128,7 @@ inline std::string to_string<bool>(const bool& value, int /*n*/)
 
 
 std::string to_upper(std::string s);
+std::string to_lower(std::string s);
 
 template <typename F>
 double central_difference(F f, double val, double h) {

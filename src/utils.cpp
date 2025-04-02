@@ -78,6 +78,10 @@ std::string to_upper(std::string s) {
   std::transform(s.begin(), s.end(), s.begin(), ::toupper);
   return s;
 }
+std::string to_lower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
+}
 bool is_blank_line(const std::string& line) {
     for (char c : line) {
         if (!std::isspace(static_cast<unsigned char>(c))) {
