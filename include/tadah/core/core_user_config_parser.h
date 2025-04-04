@@ -41,8 +41,49 @@ public:
    * @throws std::runtime_error if any key is not allowed or a parsing error occurs.
    */
   Context parse(const std::vector<std::string>& lines) const override;
-};
 
+  /**
+   * @brief Validate a (key, value) pair against Blueprint schema.
+   *
+   * Logs any errors if the value does not comply with the schema for this key
+   * (including showing allowed schemas, formats, and examples).
+   *
+   * @param key         The user-supplied key.
+   * @param val         The raw, trimmed value string to validate.
+   * @param keyInfo     The BlueprintKey struct containing the schema,
+   *                    formats, and examples for this key.
+   * @return            True if validation passes, otherwise false (and logs why).
+   */
+  static bool validateWithBlueprint(
+      const std::string &key,
+      const std::string &val,
+      const BlueprintKey &keyInfo);
+
+  /**
+   * @brief Validates a vector of string values against the blueprint.
+   *  
+   *  The same logic as validateWithBlueprint, but for a vector of values.
+   */
+  static bool validateWithBlueprint(
+      const std::string &key,
+      const std::vector<std::string> &vals,
+      const BlueprintKey &keyInfo);
+
+private:
+  /**
+   * @brief Internal helper that actually calls the BlueprintValidator and logs on failure.
+   *
+   * @param key        The user’s key (for logging)
+   * @param text       The concatenated or original text to validate
+   * @param keyInfo    The blueprint specification (schema, format, examples, etc.)
+   * @return           true if validation passes, false otherwise (and logs).
+   */
+  static bool validateWithBlueprintImpl(
+      const std::string &key,
+      const std::string &text,
+      const BlueprintKey &keyInfo);
+
+};
 } // namespace core
 } // namespace tadah
 

@@ -67,6 +67,17 @@ public:
   bool validate(const std::string &text) const;
 
   /**
+   * @brief Checks if the given list of tokens concatenated by a space match the blueprint.
+   *
+   * The tokens are concatenated with a single space delimiter and then validated against
+   * the compiled blueprint pattern.
+   *
+   * @param tokens The vector of string tokens.
+   * @return True if the concatenated tokens form a valid match, false otherwise.
+   */
+  bool validate(const std::vector<std::string> &tokens) const;
+
+  /**
    * @brief Retrieves captured groups from a matching string, in order.
    * @param text The string to match.
    * @return A vector of captured substrings; empty if not matched.

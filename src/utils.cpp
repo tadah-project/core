@@ -338,6 +338,17 @@ std::string removeFirstWord(const std::string &input, const std::string &knownWo
   return input;
 }
 
+std::string concat(const std::vector<std::string>& vec, const std::string& delim) {
+  std::string result;
+  for (const auto& str : vec) {
+    if (!result.empty()) {
+      result += delim;
+    }
+    result += str;
+  }
+  return result;
+}
+
 } // namespace core
 } // namespace tadah
 

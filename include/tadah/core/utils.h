@@ -424,6 +424,20 @@ inline void appendToStream(std::ostringstream &oss, T&& first, Rest&&... rest) {
  * @endcode
  */
 std::string removeFirstWord(const std::string &input, const std::string &knownWord);
+
+/**
+ * @brief Concatenates a vector of strings into a single string with a specified delimiter.
+ *
+ * This function takes a vector of strings and joins them into a single string,
+ * with each element separated by the specified delimiter. The default delimiter
+ * is a space character.
+ *
+ * @param vec The vector of strings to concatenate.
+ * @param delim The delimiter to use between elements (default is " ").
+ * @return A single string containing all elements of the vector, separated by the delimiter.
+ */
+std::string concat(const std::vector<std::string>& vec, const std::string& delim = " ");
+
 } // namespace core
 } // namespace tadah
 #endif

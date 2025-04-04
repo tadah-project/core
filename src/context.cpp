@@ -1,8 +1,3 @@
-/**
- * @file context.cpp
- * @brief Implementation of the Context class.
- */
-
 #include <tadah/core/context.h>
 #include <tadah/core/logger.h>
 

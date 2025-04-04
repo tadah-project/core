@@ -55,35 +55,9 @@ void parseLines(const std::vector<std::string> &lines, Context &ctx) {
       throw std::runtime_error("Invalid key: " + key);
     }
     // validate entry against blueprint schema
-    const std::vector<std::string> &schemas = keyMap.at(uKey).value_type;
-    BlueprintValidator validator(schemas);
     std::string val = removeFirstWord(rawLine, key);
-    bool valid_schema = validator.validate(val);
+    bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyMap.at(uKey));
     if (!valid_schema) {
-      Logger::instance().log(
-          LogLevel::ERROR,
-          "CoreUserConfigParser::parse -> Invalid format for key: value -> ",
-          key, ": ", val);
-      // log allowed schemas
-      Logger::instance().log(LogLevel::ERROR, "  Allowed schema:");
-      for (const auto &schema : schemas) {
-        Logger::instance().log(LogLevel::ERROR, "    ", uKey, "   ", schema);
-      }
-      // log the user friendlier format
-      const std::vector<std::string> &format = keyMap.at(uKey).value_format;
-      Logger::instance().log(LogLevel::ERROR, "  Format:");
-      for (const auto &fmt : format) {
-        Logger::instance().log(LogLevel::ERROR, "    ", uKey, "   ", fmt);
-      }
-      // finally provide examples if available
-      const auto &examples = keyMap.at(uKey).examples;
-      if (!examples.empty()) {
-        Logger::instance().log(LogLevel::ERROR, "  Examples:");
-        for (const auto &ex : examples) {
-          Logger::instance().log(LogLevel::ERROR, "    ",uKey ,"   ", ex);
-        }
-      }
-      
       throw std::runtime_error("Invalid schema for key: " + key);
     }
     // the rest are values
@@ -139,5 +113,64 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   return ctx;
 }
 
+bool CoreUserConfigParser::validateWithBlueprint(
+    const std::string &key,
+    const std::string &val,
+    const BlueprintKey &keyInfo)
+{
+  return validateWithBlueprintImpl(key, val, keyInfo);
+}
+
+bool CoreUserConfigParser::validateWithBlueprint(
+    const std::string &key,
+    const std::vector<std::string> &vals,
+    const BlueprintKey &keyInfo)
+{
+  std::string concatenated = core::concat(vals);
+  return validateWithBlueprintImpl(key, concatenated, keyInfo);
+}
+
+bool CoreUserConfigParser::validateWithBlueprintImpl(
+    const std::string &key,
+    const std::string &text,
+    const BlueprintKey &keyInfo)
+{
+  // 1. Build validator from keyInfo schemas
+  BlueprintValidator validator(keyInfo.value_type);
+  
+  // 2. Attempt validation
+  if (validator.validate(text)) {
+    return true;
+  }
+
+  // 3. If validation fails, log the details once:
+  Logger::instance().log(
+      LogLevel::ERROR,
+      "CoreUserConfigParser::parse -> Invalid format for key: value -> ",
+      key, ": ", text);
+
+  // Log allowed schemas
+  Logger::instance().log(LogLevel::ERROR, "  Allowed schema:");
+  for (const auto &schema : keyInfo.value_type) {
+    Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", schema);
+  }
+
+  // Log the user-friendly format
+  Logger::instance().log(LogLevel::ERROR, "  Format:");
+  for (const auto &fmt : keyInfo.value_format) {
+    Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", fmt);
+  }
+
+  // Provide examples if available
+  if (!keyInfo.examples.empty()) {
+    Logger::instance().log(LogLevel::ERROR, "  Examples:");
+    for (const auto &ex : keyInfo.examples) {
+      Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", ex);
+    }
+  }
+
+  // 4. Indicate failure
+  return false;
+}
 } // namespace core
 } // namespace tadah

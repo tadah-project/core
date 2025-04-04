@@ -348,6 +348,17 @@ bool BlueprintValidator::validate(const std::string &text) const {
   return false;
 }
 
+bool BlueprintValidator::validate(const std::vector<std::string> &tokens) const {
+  std::string concatenated;
+  for (size_t i = 0; i < tokens.size(); ++i) {
+    concatenated += tokens[i];
+    if (i + 1 < tokens.size()) {
+      concatenated += " ";
+    }
+  }
+  return validate(concatenated);
+}
+
 /**
  * @brief Retrieves captures by checking a set of regex patterns.
  *
