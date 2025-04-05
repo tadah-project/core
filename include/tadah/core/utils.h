@@ -237,6 +237,13 @@ bool is_number(const std::string& s);
 std::string trim(const std::string& str);
 
 /**
+ * @brief Trims leading and trailing spaces from a string in place.
+ * 
+ * @param str The string to trim.
+ */
+void trimInPlace(std::string& str);
+
+/**
  * @brief Combines a vector of strings into a single string, with each element separated by a space.
  * 
  * @param vec The vector of strings to join.

@@ -152,6 +152,17 @@ std::string trim(const std::string& str) {
     return str.substr(first, last - first + 1);
 }
 
+void trimInPlace(std::string& str) {
+    const std::string whitespace = " \t\n\r\f\v";
+    size_t first = str.find_first_not_of(whitespace);
+    if (first == std::string::npos) {
+        str.clear();
+        return;
+    }
+    size_t last = str.find_last_not_of(whitespace);
+    str = str.substr(first, last - first + 1);
+}
+
 std::string join(const std::vector<std::string>& vec) {
     std::ostringstream oss;
     if (!vec.empty()) {
