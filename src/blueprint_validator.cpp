@@ -33,11 +33,14 @@ namespace core {
 
 /// Internal mapping from token names to partial regex.
 static const std::unordered_map<std::string, std::string> g_primitiveMap = {
-  {"INT",    "[-+]?\\d+"},
-  {"DOUBLE", "[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?"},
-  {"STRING", "[^\\s]*[A-Za-z*][^\\s]*"},  /* non-empty string with a letter */
-  {"UINT",   "(?:0|[1-9]\\d*)"},           /* unsigned integer pattern */
-  {"BOOL",   "(?:true|false)"}
+  {"INT",    "\\s*[-+]?\\d+\\s*"},
+  {"DOUBLE", "\\s*[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?\\s*"},
+  {"STRING", "\\s*[^\\s]*[A-Za-z*][^\\s]*\\s*"},  /* non-empty string with a letter */
+  {"UINT",   "\\s*(?:0|[1-9]\\d*)\\s*"},           /* unsigned integer pattern */
+  {"BOOL",   "\\s*(?:true|false)\\s*"},
+  {"INDEX_PATTERN",
+    "\\s*[+]?\\d+(?:\\s*-\\s*[-+]?\\d+(?:\\s*:\\s*[+]?\\d+)?){0,1}\\s*"
+  },
 };
 
 /**
@@ -180,7 +183,6 @@ static std::string buildRegexFromBlueprint(const std::string &blueprint) {
     }
   }
   pattern += "\\s*$";
-  /*std::cout << "[DEBUG] Blueprint " << blueprint << " -> " << pattern << std::endl;*/
   return pattern;
 }
 
@@ -204,14 +206,14 @@ static std::string buildTokenRegex(const std::string &token) {
     bool first = true;
     for (auto &subTok : subTokens) {
       if (!first) {
-        singleBlock += "\\s+";
+        singleBlock += "[,\\s+]";
       }
       // Recursively build the subtoken pattern
       singleBlock += buildTokenRegex(subTok);
       first = false;
     }
     // Wrap into repeating pattern
-    return "(?:" + singleBlock + ")(?:\\s+" + singleBlock + ")*";
+    return "(?:" + singleBlock + ")(?:[,\\s+]" + singleBlock + ")*";
   }
   // Optional group: [...]
   else if (token.front() == '[' && token.back() == ']') {

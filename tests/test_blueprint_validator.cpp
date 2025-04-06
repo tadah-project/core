@@ -240,7 +240,6 @@ TEST_CASE("Extended TYPES.BOOL checks", "[blueprint][extra]") {
     "false"
   };
   std::vector<std::string> invalidCases = {
-    " true ",   // Leading/trailing spaces won't matter because we do full match, but let's confirm it fails if there's no blueprint token for that whitespace
     "0",
     "1",
     "TRUE",
