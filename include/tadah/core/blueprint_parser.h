@@ -18,19 +18,29 @@ namespace core {
  * description, and additional metadata.
  */
 struct BlueprintKey {
-  std::string keyName;                     ///< Fully qualified key name (e.g., "ALLOWED_KEYS.CONFIG")
-  std::vector<std::string> value_type;     ///< List of accepted types (e.g., "STRING", "INT", "DOUBLE", etc.)
-  std::vector<std::string> value_format;   ///< Expected token format (e.g., "<file>", "<path>", "N", etc.)
-  std::vector<int> value_N;                ///< Allowed token counts (for scalar or array values)
-  std::string description;                 ///< Short description for documentation and help
-  std::vector<std::string> examples;       ///< Example usages
-  std::vector<std::string> defaultValue;                ///< Default value (if any)
-  std::string cli_long_flag;                   ///< CLI long flag/option (if applicable)
-  std::string cli_short_flag;                  ///< CLI short flag/option (if applicable)
-  std::vector<std::string> cli_excludes;       ///< List of CLI keys/options that must not coexist with this key
-  bool cli_required;                           ///< Indicates if required in a cli task context
+  std::string keyName;                            ///< Fully qualified key name (e.g., "ALLOWED_KEYS.CONFIG")
+  std::vector<std::string> value_type;            ///< List of accepted types (e.g., "STRING", "INT", "DOUBLE", etc.)
+  std::vector<std::string> value_format;          ///< Expected token format (e.g., "<file>", "<path>", "N", etc.)
+  std::vector<int> value_N;                       ///< Allowed token counts (for scalar or array values)
+  std::string description;                        ///< Short description for documentation and help
+  std::vector<std::string> examples;              ///< Example usages
+  std::vector<std::string> defaultValue;          ///< Default value (if any)
+  std::string cli_long_flag;                      ///< CLI long flag/option (if applicable)
+  std::string cli_short_flag;                     ///< CLI short flag/option (if applicable)
+  std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
+  bool cli_required;                              ///< Indicates if required in a cli context
 
   BlueprintKey() : cli_required(false) {}
+};
+struct BlueprintKeyGroup {
+  std::string groupName;                          ///< Name of the group 
+  std::vector<std::string> description;           ///< Description of the group
+  std::vector<BlueprintKey> blueprintKeys;        ///< BlueprintKey objects in this group
+  bool cli_required;                              ///< Indicates if required in a cli context
+  size_t requiredMin;                             ///< Minimum number of required keys which must be selected
+  size_t requiredMax;                             ///< Maximum number of required keys which must be selected
+  std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
+  BlueprintKeyGroup() : cli_required(false), requiredMin(1), requiredMax(1) {}
 };
 
 struct BlueprintTask {
@@ -38,7 +48,8 @@ struct BlueprintTask {
   std::string description;                  ///< Short description (mandatory).
   std::string longDescription;              ///< Extended description (mandatory).
   std::vector<std::string> examples;        ///< Usage examples (mandatory).
-  std::vector<BlueprintKey> keyValuePairs;  ///< Multiple key-value pairs (optional).
+  std::vector<BlueprintKey> blueprintKeys;  ///< Multiple key-value pairs (optional).
+  std::vector<BlueprintKeyGroup> groups;    ///< Key groups (optional).
 
   BlueprintTask() {}
 };
@@ -50,7 +61,7 @@ struct BlueprintTadah {
   std::string description;                  ///< Description of the blueprint.
   std::string longDescription;              ///< Extended description of the blueprint.
   std::vector<std::string> examples;        ///< Examples of usage.
-  std::vector<BlueprintKey> keyValuePairs;  ///< Multiple key-value pairs (optional).
+  std::vector<BlueprintKey> blueprintKeys;  ///< Multiple key-value pairs (optional).
 };
 
 /**

@@ -316,6 +316,92 @@ static void prepareKeysInheritanceOneLevelWithMerge(toml::value &table) {
 }
 
 /**
+ * @brief Helper that parses a single group's "keys" subtable,
+ *        similarly to how parseTaskRec handles normal keys.
+ */
+static void parseGroupKeys(const toml::value &keysNode, std::vector<tadah::core::BlueprintKey> &outKeys, const std::string &parentGroup) {
+  using namespace tadah::core;
+
+  if (!keysNode.is_table()) {
+    throw std::runtime_error("[groups] 'keys' must be a table in group: " + parentGroup);
+  }
+
+  // Each field in 'keysNode' might use an INHERIT array or define fields directly
+  for (const auto &kv : keysNode.as_table()) {
+    const std::string localKeyName = kv.first;  // e.g. "dbfile"
+    std::string dottedKeyName = parentGroup + "." + localKeyName;
+
+    // buildBlueprintKey or handle INHERIT:
+    BlueprintKey newKey = buildBlueprintKey(dottedKeyName, kv.second);
+    outKeys.push_back(newKey);
+  }
+}
+
+/**
+ * @brief Parse the [TASKS.<task>.groups] block, storing the results in a vector
+ *        of BlueprintKeyGroup.
+ */
+static void parseGroups(const toml::value &groupsTbl,
+                        std::vector<tadah::core::BlueprintKeyGroup> &outGroups,
+                        const std::string &fullTaskName) {
+
+  if (!groupsTbl.is_table()) {
+    // "groups" block is not a table => ignore or throw
+    throw std::runtime_error(fullTaskName + " has 'groups' but it is not a table.");
+  }
+
+  for (const auto &groupPair : groupsTbl.as_table()) {
+    tadah::core::BlueprintKeyGroup group;
+    group.groupName = groupPair.first; // e.g. "input"
+
+    const toml::value &groupNode = groupPair.second;
+    if (!groupNode.is_table()) {
+      throw std::runtime_error("Group '" + group.groupName + "' under '" + fullTaskName + "' must be a table.");
+    }
+
+    // 1) description
+    if (groupNode.contains("description")) {
+      // could be string or array of strings. If it's a single string, store in group.description[0].
+      const toml::value &descVal = groupNode.at("description");
+      if (descVal.is_string()) {
+        group.description.push_back(descVal.as_string());
+      }
+      else if (descVal.is_array()) {
+        for (auto &elem : descVal.as_array()) {
+          group.description.push_back(elem.as_string());
+        }
+      }
+    }
+
+    // 2) required_min
+    if (groupNode.contains("required_min")) {
+      group.requiredMin = toml::find<size_t>(groupNode, "required_min");
+    }
+    // 3) required_max
+    if (groupNode.contains("required_max")) {
+      group.requiredMax = toml::find<size_t>(groupNode, "required_max");
+    }
+    // 4) cli_required
+    if (groupNode.contains("cli_required")) {
+      group.cli_required = toml::find<bool>(groupNode, "cli_required");
+    }
+    // 5) cli_excludes (if you need group-level excludes)
+    if (groupNode.contains("cli_excludes")) {
+      group.cli_excludes = toml::find<std::vector<std::string>>(groupNode, "cli_excludes");
+    }
+
+    // 6) The [TASKS.<task>.groups.<groupName>.keys] subtable
+    if (groupNode.contains("keys")) {
+      parseGroupKeys(groupNode.at("keys"), group.blueprintKeys, fullTaskName + "." + group.groupName);
+    }
+
+    // Done
+    outGroups.push_back(group);
+  }
+}
+
+
+/**
  * @brief Helper function that parses a TOML value and (if valid) constructs a BlueprintTask.
  *
  * If the table includes the mandatory fields 'description', 'long_description', and 'examples',
@@ -365,8 +451,13 @@ static void parseTaskRec(const std::string &fullTaskName,
         const std::string localKeyName = kv.first;
         // Build a fully qualified key name for debugging/trace
         std::string dottedKeyName = fullTaskName + "." + localKeyName;
-        newTask.keyValuePairs.push_back(buildBlueprintKey(dottedKeyName, kv.second));
+        newTask.blueprintKeys.push_back(buildBlueprintKey(dottedKeyName, kv.second));
       }
+    }
+
+    if (tomlNode.contains("groups")) {
+      const toml::value &groupsNode = tomlNode.at("groups");
+      parseGroups(groupsNode, newTask.groups, fullTaskName);
     }
 
     // Store the parsed task in the map
@@ -383,22 +474,23 @@ static void parseTaskRec(const std::string &fullTaskName,
   }
 
   // Now check for deeper subcommands in the current node
-  // We skip known fields (description, long_description, examples, keys) and see if the child is a table.
+  // We skip known fields (description, long_description, examples, keys and groups) and see if the child is a table.
   if (tomlNode.is_table()) {
-    for (const auto &child : tomlNode.as_table()) {
-      const std::string &k = child.first;
-      // List fields that we already handled or do not treat as subcommands
-      if (k == "description" || k == "long_description" || k == "examples" || k == "keys") {
-        continue;
-      }
-      // If this child is a table, it might represent a sub-task (like "twobody").
-      // Recursively parse it as fullTaskName + "." + k
-      if (child.second.is_table()) {
-        std::string subCommandName = fullTaskName.empty() ? k : (fullTaskName + "." + k);
-        parseTaskRec(subCommandName, child.second, outTasks);
-      }
+  for (const auto &child : tomlNode.as_table()) {
+    const std::string &k = child.first;
+
+    // Skip any keys that are not sub-tasks
+    if (k == "description" || k == "long_description" || k == "examples" ||
+        k == "keys"        || k == "groups") {
+      continue;
+    }
+
+    if (child.second.is_table()) {
+      std::string subCommandName = fullTaskName.empty() ? k : (fullTaskName + "." + k);
+      parseTaskRec(subCommandName, child.second, outTasks);
     }
   }
+}
 }
 
 /**
@@ -491,7 +583,7 @@ BlueprintTadah BlueprintParser::getBlueprintTadah() {
  *
  * This version includes corrected handling for:
  *  - Core TADAH fields (logo, version, website, description, longDescription, examples).
- *  - Optional "keys" subtable, each entry parsed as a BlueprintKey and added to keyValuePairs.
+ *  - Optional "keys" subtable, each entry parsed as a BlueprintKey and added to blueprintKeys.
  *
  * @return Const reference to the fully loaded and expanded BlueprintTadah.
  * @throws std::runtime_error if parsing or inheritance expansion fails, or if
@@ -600,7 +692,7 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
         for (toml::table::const_iterator kv = keysTbl.begin(); kv != keysTbl.end(); ++kv) {
           std::string dottedKeyName = /*std::string("TADAH.") +*/ kv->first;
           BlueprintKey newKey = buildBlueprintKey(dottedKeyName, kv->second);
-          bt.keyValuePairs.push_back(newKey);
+          bt.blueprintKeys.push_back(newKey);
         }
       }
     }

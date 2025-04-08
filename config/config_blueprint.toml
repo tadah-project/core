@@ -499,7 +499,7 @@ cli_required     = false
 
 [ALLOWED_KEYS.even]
 INHERIT = ["TYPES.BOOL"]
-description  = "Equal-size partition (excludes --chunk, --percent)."
+description  = "Equal-size partition."
 cli_long_flag    = "--even"
 cli_short_flag   = ""
 cli_required     = false
@@ -785,14 +785,15 @@ examples         = ["tadah train -c config.tadah"]
 description      = "Perform prediction using a trained model."
 long_description = "Perform prediction using a trained model."
 examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
+    [TASKS.predict.groups.input]
+    description      = "Input files for prediction."
+    cli_required = true
+    required_min = 1
+    required_max = 1
+    [TASKS.predict.groups.input.keys]
+      INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.config"]
   [TASKS.predict.keys]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
-    [TASKS.predict.keys.dbfile]
-    cli_required = true
-    cli_excludes   = ["structure"]
-    [TASKS.predict.keys.structure]
-    cli_required = true
-    cli_excludes   = ["dbfile"]
+  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
     [TASKS.predict.keys.potential]
     cli_required = true
 
@@ -851,7 +852,7 @@ examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
     INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
       [TASKS.data.write.keys.dbfile]
       cli_required = true
-      cli_excludes   = ["structure"]
+      # cli_excludes   = ["structure"]
       [TASKS.data.write.keys.outfile]
       cli_required = true
       [TASKS.data.write.keys.index]
