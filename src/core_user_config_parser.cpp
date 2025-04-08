@@ -60,6 +60,15 @@ void parseLines(const std::vector<std::string> &lines, Context &ctx) {
     if (!valid_schema) {
       throw std::runtime_error("Invalid schema for key: " + key);
     }
+    if (uKey == "CONFIG") {
+      // CONFIG is a special case, we need to parse it
+      // and merge it with the current context
+      tadah::core::CoreUserConfigParser parser;
+      Context configCtx = parser.parse(val);
+      ctx = tadah::core::Context::merge(ctx, configCtx);
+      continue; // skip the rest of the line, i.e.
+                // we do not want to add the CONFIG key
+    }
     // the rest are values
     for (size_t j = 1; j < tokens.size(); ++j) {
       ctx.add(key, tokens[j]);

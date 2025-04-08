@@ -43,6 +43,16 @@ struct BlueprintTask {
   BlueprintTask() {}
 };
 
+struct BlueprintTadah {
+  std::string logo;                         ///< Name of the Tadah! software.
+  std::string version;                      ///< Version of the Tadah! software.
+  std::string website;                      ///< Version of the Tadah! software.
+  std::string description;                  ///< Description of the blueprint.
+  std::string longDescription;              ///< Extended description of the blueprint.
+  std::vector<std::string> examples;        ///< Examples of usage.
+  std::vector<BlueprintKey> keyValuePairs;  ///< Multiple key-value pairs (optional).
+};
+
 /**
  * @brief Provides access to the static blueprint map.
  *
@@ -104,6 +114,24 @@ public:
    * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
    */
   static std::unordered_map<std::string, BlueprintTask> getTasksMap();
+
+  /**
+   * @brief Retrieves a copy of the statically cached blueprint map.
+   *
+   * @return A copy of the BlueprintTadah object containing the blueprint data.
+   * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
+   */
+  static BlueprintTadah getBlueprintTadah();
+
+  /**
+   * @brief Retrieves a const reference to the statically cached blueprint map.
+   *
+   * Access does not cause a copy and the map is built on first invocation.
+   *
+   * @return Const reference to the BlueprintTadah object containing the blueprint data.
+   * @throws std::runtime_error If blueprint parsing or inheritance expansion fails.
+   */
+  static const BlueprintTadah &getBlueprintTadahRef();
 
   /**
    * @brief Retrieves a copy of the statically cached INTERNAL_KEYS blueprint map.

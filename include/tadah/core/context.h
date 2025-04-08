@@ -376,6 +376,47 @@ public:
   }
 
   /**
+   * @brief Merges two contexts, add/override ALLOWED_KEYS keys from ctx2 into ctx1.
+   *
+   * @param ctx1 The first context (base).
+   * @param ctx2 The second context (overrides).
+   * @return A new Context object with merged values.
+   */
+  static Context merge(const Context &ctx1,
+                       const Context &ctx2, bool allowOverwrite = true) {
+    Context merged = ctx1;
+    std::lock_guard<std::mutex> lock1(ctx1.mtx_, std::adopt_lock);
+    std::lock_guard<std::mutex> lock2(ctx2.mtx_, std::adopt_lock);
+
+    for (const auto &pair : ctx2.storage_) {
+      const std::string &key = pair.first;
+      // only copy allowed keys
+      if (ctx1.allowedKeys_.find(key) == ctx1.allowedKeys_.end()) {
+        continue;
+      }      
+
+      if (merged.contains(key)) {
+        if (!allowOverwrite) {
+          core::Logger::instance().log(
+            core::LogLevel::WARNING,
+            "COREUserConfigParser::merge -> Attempting to add new values to an existing key: ", key);
+        } else {
+          core::Logger::instance().log(
+            core::LogLevel::WARNING,
+            "COREUserConfigParser::merge -> Overwriting key: ", key);
+          merged.remove(key);
+        }
+      }
+
+      const std::vector<std::string> &vals = pair.second;
+      for (const auto &val : vals) {
+        merged.add(key, val);
+      }
+    }
+    return merged;
+  }
+
+  /**
    * @brief Method for inserting an internal key (not in allowedKeys_).
    *
    * Internal keys come from [INTERNAL_KEYS] section of the blueprint.

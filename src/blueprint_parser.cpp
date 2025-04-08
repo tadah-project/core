@@ -481,6 +481,138 @@ std::unordered_map<std::string, BlueprintTask> BlueprintParser::getTasksMap() {
   // Return a copy of the static blueprint map.
   return getTasksMapRef();
 }
+
+BlueprintTadah BlueprintParser::getBlueprintTadah() {
+  // Return a copy of the static blueprint map.
+  return getBlueprintTadahRef();
+}
+/**
+ * @brief Returns a reference to a statically cached BlueprintTadah object.
+ *
+ * This version includes corrected handling for:
+ *  - Core TADAH fields (logo, version, website, description, longDescription, examples).
+ *  - Optional "keys" subtable, each entry parsed as a BlueprintKey and added to keyValuePairs.
+ *
+ * @return Const reference to the fully loaded and expanded BlueprintTadah.
+ * @throws std::runtime_error if parsing or inheritance expansion fails, or if
+ *         mandatory fields are missing in the [TADAH] table.
+ */
+const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
+  static BlueprintTadah blueprintTadah = []() -> BlueprintTadah {
+    BlueprintTadah bt;
+
+    // ------------------------------------------------------------
+    // 1) Parse the blueprint file from CMRC
+    // ------------------------------------------------------------
+    auto fs = cmrc::CORE::get_filesystem();
+    auto toml_file = fs.open("config/config_blueprint.toml");
+    std::stringstream ss;
+    ss << toml_file.begin();
+    toml::value blueprint = toml::parse(ss);
+
+    // ------------------------------------------------------------
+    // 2) Prepare single-level "keys" inheritance if required
+    // ------------------------------------------------------------
+    prepareKeysInheritanceOneLevelWithMerge(blueprint);
+
+    // ------------------------------------------------------------
+    // 3) Expand all inheritance references recursively
+    // ------------------------------------------------------------
+    toml::value bpCopy = blueprint;
+    expandInheritance(bpCopy, blueprint, "");
+
+    // ------------------------------------------------------------
+    // 4) Access the [TADAH] subtable
+    // ------------------------------------------------------------
+    const toml::value &tadahValue = toml::find(bpCopy, "TADAH");
+    if (!tadahValue.is_table()) {
+      throw std::runtime_error("Section [TADAH] must be a table in config_blueprint.toml");
+    }
+    const toml::table &tadahTable = tadahValue.as_table();
+
+    // ------------------------------------------------------------
+    // 5) Retrieve mandatory fields
+    // ------------------------------------------------------------
+    // logo
+    {
+      toml::table::const_iterator it = tadahTable.find("logo");
+      if (it == tadahTable.end()) {
+        throw std::runtime_error("[TADAH] is missing mandatory field 'logo'");
+      }
+      bt.logo = toml::get<std::string>(it->second);
+    }
+    // version
+    {
+      toml::table::const_iterator it = tadahTable.find("version");
+      if (it == tadahTable.end()) {
+        throw std::runtime_error("[TADAH] is missing mandatory field 'version'");
+      }
+      bt.version = toml::get<std::string>(it->second);
+    }
+    // website
+    {
+      toml::table::const_iterator it = tadahTable.find("website");
+      if (it == tadahTable.end()) {
+        throw std::runtime_error("[TADAH] is missing mandatory field 'website'");
+      }
+      bt.website = toml::get<std::string>(it->second);
+    }
+    // description
+    {
+      toml::table::const_iterator it = tadahTable.find("description");
+      if (it == tadahTable.end()) {
+        throw std::runtime_error("[TADAH] is missing mandatory field 'description'");
+      }
+      bt.description = toml::get<std::string>(it->second);
+    }
+    // longDescription
+    {
+      toml::table::const_iterator it = tadahTable.find("long_description");
+      if (it == tadahTable.end()) {
+        throw std::runtime_error("[TADAH] is missing mandatory field 'long_description'");
+      }
+      bt.longDescription = toml::get<std::string>(it->second);
+    }
+    // examples (array of strings)
+    {
+      toml::table::const_iterator it = tadahTable.find("examples");
+      if (it == tadahTable.end()) {
+        throw std::runtime_error("[TADAH] is missing mandatory field 'examples'");
+      }
+      // throws if not an array of strings
+      bt.examples = toml::get<std::vector<std::string>>(it->second);
+    }
+
+    // ------------------------------------------------------------
+    // 6) Parse optional "keys" subtable into a vector of BlueprintKey
+    // ------------------------------------------------------------
+    {
+      toml::table::const_iterator it = tadahTable.find("keys");
+      if (it != tadahTable.end()) {
+        // Ensure "keys" is a table
+        if (!it->second.is_table()) {
+          throw std::runtime_error("[TADAH].keys must be a table if present");
+        }
+        const toml::table &keysTbl = it->second.as_table();
+
+        // For each entry under [TADAH.keys], parse as a BlueprintKey
+        // The name is "TADAH.<entryName>"
+        for (toml::table::const_iterator kv = keysTbl.begin(); kv != keysTbl.end(); ++kv) {
+          std::string dottedKeyName = /*std::string("TADAH.") +*/ kv->first;
+          BlueprintKey newKey = buildBlueprintKey(dottedKeyName, kv->second);
+          bt.keyValuePairs.push_back(newKey);
+        }
+      }
+    }
+
+    // ------------------------------------------------------------
+    // Return the fully-constructed structure
+    // ------------------------------------------------------------
+    return bt;
+  }();
+
+  return blueprintTadah;
+}
 ///////////////////////////////////////////////////////////////////////////////
 /// Retrieves a const reference to the statically cached blueprint map.
 /// Uses a static local variable to guarantee one-time initialization.

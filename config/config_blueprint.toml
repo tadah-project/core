@@ -702,6 +702,13 @@ INHERIT = ["TYPES.UINTS"]
 description = """Indices of weights to be fixed during the optimisation process. Requires FIXWEIGHT."""
 examples = ["1 4 5"]
 
+[ALLOWED_KEYS.task]
+INHERIT = ["ALLOWED_KEYS.config"]
+description  = "A file containing the task to be executed."
+examples     = ["path/to/tasks.tadah"]
+cli_long_flag  = "--task"
+cli_short_flag = ""
+cli_required     = false
 
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
@@ -761,7 +768,7 @@ description = """Stress standard deviation."""
 value_N = [-6]
 
 ###############################################################################
-# Blueprint for GLOBALS
+# Blueprint for GLOBALS TODO Currently unused
 ###############################################################################
 [GLOBALS]
 INHERIT          = ["ALLOWED_KEYS.verbose"]
@@ -769,15 +776,16 @@ INHERIT          = ["ALLOWED_KEYS.verbose"]
 ###############################################################################
 # Task Blueprint (TASKS)
 ###############################################################################
+
 [TASKS.train]
 description      = "Train a model using a configuration file."
 long_description = "Train a model using a configuration file."
 examples         = ["tadah train -c config.tadah"]
 
   [TASKS.train.keys]
-  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty"]
+  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.task"]
     [TASKS.train.keys.config]
-    cli_required = true
+#cli_required = true
 
 [TASKS.predict]
 description      = "Perform prediction using a trained model."
@@ -813,7 +821,8 @@ long_description = "Dataset management commands (convert, read, write, merge, sp
 examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
 
   [TASKS.data.keys]
-  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.verbose"]
+#INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose"]
   
   [TASKS.data.convert]
   description      = "Convert DFT output file(s) to Tadah! dataset format."
@@ -1033,3 +1042,13 @@ TYPE_MISMATCH       = "Key type does not match the expected type."
 OUT_OF_BOUNDS       = "Key value does not meet size constraints."
 UNKNOWN_KEY         = "Unknown key found in configuration."
 CONFLICTING_OPTIONS = "Options are mutually exclusive."
+
+[TADAH]
+logo = "TADAH"
+description = "TADAH! is a machine learning interatomic potential package."
+long_description = "TADAH! is a machine learning interatomic potential package.\n\nTADAH! is a machine learning interatomic potential package.\n\nTADAH! is a machine learning interatomic potential package.\n\nTADAH! is a machine learning interatomic potential package."
+website = "https://tadah.readthedocs.io"
+version = "1.0.0"
+examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif"]
+  [TADAH.keys]
+  INHERIT = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
