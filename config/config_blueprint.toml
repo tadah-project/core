@@ -1,5 +1,5 @@
 ###############################################################################
-# Blueprint for ALLOWED_KEYS, INTERNAL_KEYS, GLOBALS and TASKS
+# Blueprint for ALLOWED_KEYS, INTERNAL_KEYS, and TASKS
 ###############################################################################
 # ALLOWED_KEYS is a blueprint for the keys that can be used in the configuration file.
 # The description of of ALLOWED_KEYS should be generic and not tied to any specific task.
@@ -768,12 +768,6 @@ description = """Stress standard deviation."""
 value_N = [-6]
 
 ###############################################################################
-# Blueprint for GLOBALS TODO Currently unused
-###############################################################################
-[GLOBALS]
-INHERIT          = ["ALLOWED_KEYS.verbose"]
-
-###############################################################################
 # Task Blueprint (TASKS)
 ###############################################################################
 
@@ -792,7 +786,7 @@ description      = "Perform prediction using a trained model."
 long_description = "Perform prediction using a trained model."
 examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
   [TASKS.predict.keys]
-  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
     [TASKS.predict.keys.dbfile]
     cli_required = true
     cli_excludes   = ["structure"]
@@ -807,7 +801,7 @@ description      = "Optimize hyperparameters for model training."
 long_description = "Optimize hyperparameters for model training."
 examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
   [TASKS.hpo.keys]
-  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
     [TASKS.hpo.keys.config]
     cli_required = true
     [TASKS.hpo.keys.hpotarget]
@@ -821,7 +815,7 @@ long_description = "Dataset management commands (convert, read, write, merge, sp
 examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
 
   [TASKS.data.keys]
-  INHERIT          = ["ALLOWED_KEYS.verbose"]
+  INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
 #INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose"]
   
   [TASKS.data.convert]
@@ -922,11 +916,16 @@ examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
 description      = "Structure transformation commands."
 long_description = "Structure transformation commands (rotate, shear, change-coords)."
 examples         = ["tadah transform rotate ..."]
+  [TASKS.transform.keys]
+  INHERIT = ["ALLOWED_KEYS.task"]
 
 [TASKS.properties]
 description      = "Evaluate physical properties for MLIP target evaluation."
 long_description = "Evaluate physical properties for MLIP target evaluation (e.g., twobody, ecurve, eos, defect, surface, mechanics)."
 examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+  [TASKS.properties.keys]
+  INHERIT = ["ALLOWED_KEYS.task"]
+
   [TASKS.properties.twobody]
   description      = "Compute two-body potential (E vs. r)."
   long_description = "Compute two-body potential (E vs. r) for a pair of elements."
@@ -990,6 +989,9 @@ description      = "Visual analysis commands."
 long_description = "Visual analysis commands (e.g., descriptor, bfunc, cutoff)."
 examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt"]
 INHERIT          = ["ALLOWED_KEYS.verbose"]
+  [TASKS.analysis.keys]
+  INHERIT          = ["ALLOWED_KEYS.task"]
+
   [TASKS.analysis.descriptor]
   description      = "Calculate structure descriptors."
   long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"
@@ -1034,7 +1036,7 @@ INHERIT          = ["ALLOWED_KEYS.verbose"]
       cli_required = true
 
 ###############################################################################
-# Error Messages (ERROR_MESSAGES)
+# Error Messages (ERROR_MESSAGES) TODO Not in use
 ###############################################################################
 [ERROR_MESSAGES]
 MISSING_KEY         = "Required key is missing."
@@ -1051,4 +1053,4 @@ website = "https://tadah.readthedocs.io"
 version = "1.0.0"
 examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif"]
   [TADAH.keys]
-  INHERIT = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+  INHERIT = ["ALLOWED_KEYS.task"]
