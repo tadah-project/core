@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_set>
 
 namespace tadah {
 namespace core {
@@ -61,7 +62,17 @@ void parseLines(const std::vector<std::string> &lines, Context &ctx) {
       throw std::runtime_error("Invalid schema for key: " + key);
     }
     if (uKey == "CONFIG") {
-      // CONFIG is a special case, we need to parse it
+      // CONFIG is a special case; check for circular dependency
+      static thread_local std::vector<std::string> configChain;
+      if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
+        std::string chainStr;
+        for (const auto &c : configChain) {
+          chainStr += c + " -> ";
+        }
+        chainStr += val;
+        throw std::runtime_error("Circular dependency detected between CONFIG files: " + chainStr);
+      }
+      configChain.push_back(val);
       // and merge it with the current context
       tadah::core::CoreUserConfigParser parser;
       Context configCtx = parser.parse(val);
