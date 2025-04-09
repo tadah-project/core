@@ -12,7 +12,7 @@ namespace core {
 namespace { // Anonymous namespace for internal helper functions
 
 // CMRC filesystem blueprint file path.
-const std::string blueprintFilePath = "config/config_blueprint.toml";
+const std::string blueprintFilePath = "blueprint/blueprint_tadah.toml";
 /**
  * @brief Recursively expands any INHERIT blocks in a TOML table.
  *
@@ -513,7 +513,7 @@ buildBlueprintTasksMap(const std::string &rootTable) {
   try {
     // Parse blueprint file from embedded resource (CMRC).
     auto fs = cmrc::CORE::get_filesystem();
-    auto toml_file = fs.open("config/config_blueprint.toml");
+    auto toml_file = fs.open(blueprintFilePath);
     std::stringstream ss;
     ss << toml_file.begin();
     toml::value blueprint = toml::parse(ss);
@@ -597,7 +597,7 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
     // 1) Parse the blueprint file from CMRC
     // ------------------------------------------------------------
     auto fs = cmrc::CORE::get_filesystem();
-    auto toml_file = fs.open("config/config_blueprint.toml");
+    auto toml_file = fs.open(blueprintFilePath);
     std::stringstream ss;
     ss << toml_file.begin();
     toml::value blueprint = toml::parse(ss);
@@ -618,7 +618,7 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
     // ------------------------------------------------------------
     const toml::value &tadahValue = toml::find(bpCopy, "TADAH");
     if (!tadahValue.is_table()) {
-      throw std::runtime_error("Section [TADAH] must be a table in config_blueprint.toml");
+      throw std::runtime_error("Section [TADAH] must be a table in "+blueprintFilePath);
     }
     const toml::table &tadahTable = tadahValue.as_table();
 

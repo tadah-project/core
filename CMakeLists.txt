@@ -51,7 +51,7 @@ cmrc_add_resource_library(
     config-resources
     ALIAS config::rc
     NAMESPACE CORE
-    ${PROJECT_SOURCE_DIR}/config/config_blueprint.toml
+    ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml
 )
 
 file(GLOB CORE_SRC CONFIGURE_DEPENDS "src/*.cpp")

@@ -1046,10 +1046,23 @@ OUT_OF_BOUNDS       = "Key value does not meet size constraints."
 UNKNOWN_KEY         = "Unknown key found in configuration."
 CONFLICTING_OPTIONS = "Options are mutually exclusive."
 
+###############################################################################
+# The main app metadata
+###############################################################################
 [TADAH]
-logo = "TADAH"
-description = "TADAH! is a machine learning interatomic potential package."
-long_description = "TADAH! is a machine learning interatomic potential package.\n\nTADAH! is a machine learning interatomic potential package.\n\nTADAH! is a machine learning interatomic potential package.\n\nTADAH! is a machine learning interatomic potential package."
+logo = '''
+                       _____           _         _      _
+                      |_   _|__ _   __| |  __ _ | |__  | |             
+                        | | / _` | / _` | / _` || '_ \\ | |            
+                        | || (_| || (_| || (_| || | | ||_|             
+                        |_| \__,_| \__,_| \__,_||_| |_|(_)                  
+                                                                       
+         Software for Developing Machine Learning Interatomic Potentials
+                          https://tadah.readthedocs.io    
+'''
+
+description = ""  # not
+long_description = ""
 website = "https://tadah.readthedocs.io"
 version = "1.0.0"
 examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif"]

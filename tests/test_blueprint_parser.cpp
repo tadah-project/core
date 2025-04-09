@@ -7,7 +7,7 @@
 
 using namespace tadah::core;
 
-TEST_CASE("BlueprintParser loads ALLOWED_KEYS from config_blueprint.toml", "[BlueprintParser]")
+TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[BlueprintParser]")
 {
   // Retrieve the statically cached blueprint map.
   const auto &blueprintMap = BlueprintParser::getKeysMapRef();
