@@ -122,7 +122,7 @@ description  = "Verbosity level. 0-4: ERROR, WARNING, INFO, DEBUG, TRACE."
 examples     = ["1", "2", "3"]
 default      = ["1"]
 cli_long_flag  = "--verbose"
-cli_short_flag = "-V"
+cli_short_flag = "-v"
 cli_required     = false
 
 [ALLOWED_KEYS.bias]
@@ -455,7 +455,6 @@ cli_short_flag = "-o"
 cli_required     = false
 
 [ALLOWED_KEYS.index]
-#INHERIT = ["TYPES.INTS", ""]
 value_type   = ["{INDEX_PATTERN}"]
 value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>"]
 value_N      = [-2147483647]
@@ -772,19 +771,26 @@ value_N = [-6]
 ###############################################################################
 
 [TASKS.train]
-description      = "Train a model using a configuration file."
-long_description = "Train a model using a configuration file."
-examples         = ["tadah train -c config.tadah"]
+description      = "Train a model."
+long_description = "Train a model using a configuration file. The result is a pot.tadah file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. Including forces and stresses is optional. The train command requires a configuration file and produces a pot.tadah file, a trained interatomic potential that can be used for molecular dynamics in LAMMPS using pair_style tadah."
+examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3"]
 
   [TASKS.train.keys]
-  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.task"]
-    [TASKS.train.keys.config]
-#cli_required = true
+  INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty"]
+
+    [TASKS.train.groups.input]
+      description      = "Either provide a configuration file for a single task or a complete tasks file."
+      cli_required = true
+      required_min = 1
+      required_max = 1
+      [TASKS.train.groups.input.keys]
+      INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
 
 [TASKS.predict]
 description      = "Perform prediction using a trained model."
 long_description = "Perform prediction using a trained model."
 examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
+
     [TASKS.predict.groups.input]
     description      = "Input files for prediction."
     cli_required = true
@@ -792,6 +798,7 @@ examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
     required_max = 1
     [TASKS.predict.groups.input.keys]
       INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.config"]
+
   [TASKS.predict.keys]
   INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
     [TASKS.predict.keys.potential]
