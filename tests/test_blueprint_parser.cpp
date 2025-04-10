@@ -54,7 +54,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(verboseKey.examples == std::vector<std::string>{"1", "2", "3"});
 
     // Validate default value and CLI options.
-    REQUIRE(verboseKey.defaultValue[0] == "1");
+    REQUIRE(verboseKey.default_value[0] == "1");
     REQUIRE(verboseKey.cli_long_flag == "--verbose");
     REQUIRE(verboseKey.cli_short_flag == "-V");
   }
@@ -74,7 +74,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(biasKey.examples == std::vector<std::string>{"true", "false"});
 
     // Validate that the default value (if defined) is as expected.
-    REQUIRE(biasKey.defaultValue[0] == "false");
+    REQUIRE(biasKey.default_value[0] == "false");
   }
 
   SECTION("The OALGO key is parsed correctly")
@@ -115,7 +115,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     
     // Validate CLI-specific fields.
     REQUIRE(numericKey.cli_long_flag == "--numeric");
-    REQUIRE(numericKey.defaultValue[0] == "12");
+    REQUIRE(numericKey.default_value[0] == "12");
   }
 
   SECTION("The blueprint map contains only ALLOWED_KEYS entries")
