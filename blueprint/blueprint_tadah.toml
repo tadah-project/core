@@ -14,7 +14,7 @@
 # - value_N: Maximum allowed tokens.
 # - description: Short explanation. (used by cli for a brief description)
 # - examples: Array of valid example usage strings.
-# - default: Default value (optional).
+# - default_value: Default value (optional).
 
 # Some ALLOWED_KEYS keys can be set via CLI flags or options. These keys have additional fields:
 # CLI-specific fields:
@@ -41,7 +41,7 @@ value_format = ["<boolean>"]
 value_N = [1]
 description = "Boolean value."
 examples = ["true", "false"]
-default      = ["false"]
+default_value      = ["false"]
 
 [TYPES.BOOLS]
 INHERIT = ["TYPES.BOOL"]
@@ -110,7 +110,7 @@ examples     = ["string1 string2", "string1 /path/to/file"]
 value_type     = ["STRING"]
 value_format   = ["<file>"]
 value_N        = [1]
-description    = "Path to configuration file."
+description    = "Path to a configuration file."
 examples       = ["config.tadah", "../config.tadah", "/path/to/config.tadah"]
 cli_long_flag  = "--config"
 cli_short_flag = "-c"
@@ -118,9 +118,9 @@ cli_required   = false
 
 [ALLOWED_KEYS.verbose]
 INHERIT = ["TYPES.UINT"]
-description  = "Verbosity level. 0-4: ERROR, WARNING, INFO, DEBUG, TRACE."
-examples     = ["1", "2", "3"]
-default      = ["1"]
+description  = "Verbosity level. 0-2: ERROR, WARNING, INFO."
+examples     = ["2"]
+default_value      = ["1"]
 cli_long_flag  = "--verbose"
 cli_short_flag = "-v"
 cli_required     = false
@@ -296,7 +296,7 @@ examples = ['CEMBFUNC 0.14 0.45 1.00 1.1']
 [ALLOWED_KEYS.OALGO]
 value_type   = ["INT", "INT DOUBLE"]
 value_format = ["<option>", "<option> <value>"]
-default = ["1"]
+default_value = ["1"]
 value_N = [-2]
 description = '''
 This key controls the optimization algorithm used to train the model. The **default algorithm** is **Option 1 (GELSD)** with a conditioning parameter (:math:`rcond`) of :math:`1 \times 10^{-8}`. The regularization parameter is handled separately by the :ref:`LAMBDA` key.
@@ -377,7 +377,7 @@ INHERIT = ["TYPES.BOOL"]
 description = """Set to true to standardise descriptors. Note that this usually makes sense only when energies are used for fitting."""
 
 [ALLOWED_KEYS.LAMBDA]
-default = ["0"]
+default_value = ["0"]
 value_type = ['INT','DOUBLE,','INT DOUBLE']
 value_format = ['<int>', '<double>', '<int> <double>']
 value_N = [-2]
@@ -386,13 +386,13 @@ examples = ['LAMBDA -1', 'LAMBDA 1e-4', 'LAMBDA 0', 'LAMBDA 0 1e-12']
 
 [ALLOWED_KEYS.ALPHA]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["1.0"]
+default_value = ["1.0"]
 description = """Weight precision hyper-parameter. Starting guess used in the evidence approximation algorithm."""
 examples = ['ALPHA 0.23']
 
 [ALLOWED_KEYS.BETA]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["1.0"]
+default_value = ["1.0"]
 description = """Noise precision hyper-parameter. Starting guess used in the evidence approximation algorithm."""
 examples = ['BETA 0.0001']
 
@@ -477,7 +477,7 @@ cli_required     = false
 INHERIT = ["TYPES.UINT"]
 description  = "Numeric output precision. Either number of decimal places or scientific notation. Depending on context."
 examples     = ["12"]
-default      = ["12"]
+default_value      = ["12"]
 cli_long_flag  = "--numeric"
 cli_short_flag = ""
 cli_required     = false
@@ -523,7 +523,7 @@ description  = "Floating point comparision threshold."
 examples     = ["1e-4"]
 cli_long_flag  = "--threshold"
 cli_short_flag = ""
-default      = ["1e-6"]
+default_value      = ["1e-6"]
 cli_required     = false
 
 [ALLOWED_KEYS.merge]
@@ -531,7 +531,7 @@ INHERIT = ["TYPES.BOOL"]
 description  = "Merge deduplication results into one file."
 cli_long_flag    = "--merge"
 cli_short_flag   = ""
-default      = ["false"]
+default_value      = ["false"]
 cli_required     = false
 
 [ALLOWED_KEYS.uniform]
@@ -605,7 +605,7 @@ INHERIT = ["TYPES.BOOL"]
 description  = "Generate error estimates."
 cli_long_flag    = "--error"
 cli_short_flag   = ""
-default      = ["false"]
+default_value      = ["false"]
 cli_required     = false
 
 [ALLOWED_KEYS.quantity]
@@ -625,26 +625,26 @@ cli_required     = false
 [ALLOWED_KEYS.DIMER]
 value_type = ['BOOL DOUBLE BOOL']
 value_format = ['<boolean> <double> <boolean>']
-default = ["false", "0", "false"]
+default_value = ["false", "0", "false"]
 value_N = [-3]
 description = """Control for DIMER models. Users should not modify this key."""
 examples = ['DIMER true 1.104 true']
 
 [ALLOWED_KEYS.EWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["1.0"]
+default_value = ["1.0"]
 description = """Global energy scaling factor for all configurations used in the training process. Note that energies are always scaled by 1/number of atoms. Individual scaling factors for every configuration can be set in a dataset file. The combined scaling factor is: EWEIGHT*(configuration eweight)/(number of atoms)"""
 examples = ['EWEIGHT 0.96']
 
 [ALLOWED_KEYS.FWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["1.0"]
+default_value = ["1.0"]
 description = """Global force scaling factor for all configurations used in the training process. Note that each force component is always scaled by 1/(number of atoms)/3. Individual scaling factors for every configuration can be set in a dataset file. The combined scaling factor is: FWEIGHT*(configuration fweight)/(number of atoms)/3"""
 examples = ['FWEIGHT 1e-2']
 
 [ALLOWED_KEYS.SWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["1.0"]
+default_value = ["1.0"]
 description = """Global stress scaling factor for all configurations used in the training process. Note that each stress component is always scaled by 1/6. Individual scaling factors for every configuration can be set in a dataset file. The combined scaling factor is: SWEIGHT*(configuration sweight)/6"""
 examples = ['SWEIGHT 1e-1']
 
@@ -677,18 +677,18 @@ description = """Basis vectors used by the non-linear Kernel Ridge Regression mo
 
 [ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
-default = ["50"]
+default_value = ["50"]
 description = """The number of structures in a single MPI work package."""
 
 [ALLOWED_KEYS.MBLOCK]
 INHERIT = ["TYPES.UINT"]
-default = ["64"]
+default_value = ["64"]
 description = """ScalaPACK row block size MB."""
 is_internal = [false]
 
 [ALLOWED_KEYS.NBLOCK]
 INHERIT = ["TYPES.UINT"]
-default = ["64"]
+default_value = ["64"]
 description = """ScalaPACK column block size NB."""
 
 [ALLOWED_KEYS.FIXWEIGHT]
@@ -708,61 +708,62 @@ examples     = ["path/to/tasks.tadah"]
 cli_long_flag  = "--task"
 cli_short_flag = ""
 cli_required     = false
+cli_excludes = ["ALL"]
 
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
 ###############################################################################
 [INTERNAL_KEYS.SIZE2B]
 INHERIT = ["TYPES.UINT"]
-default = ["0"]
+default_value = ["0"]
 description = """Size of two-body descriptor."""
 value_N = [1]
 
 [INTERNAL_KEYS.SIZEMB]
 INHERIT = ["TYPES.UINT"]
-default = ["0"]
+default_value = ["0"]
 description = """Size of many-body descriptor."""
 value_N = [1]
 
 [INTERNAL_KEYS.DSIZE]
 INHERIT = ["TYPES.UINT"]
-default = ["0"]
+default_value = ["0"]
 description = """The total size of the descriptor. Two-body + many-body + bias."""
 value_N = [1]
 
 [INTERNAL_KEYS.RCUTMAX]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0"]
+default_value = ["0.0"]
 description = """Maximum cutoff for all descriptors. Calculated from the cutoff of the individual descriptors."""
 value_N = [1]
 
 [INTERNAL_KEYS.RCUT2BMAX]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0"]
+default_value = ["0.0"]
 description = """Maximum cutoff for two-body descriptors. Calculated from the cutoff of the individual descriptors."""
 value_N = [1]
 
 [INTERNAL_KEYS.RCUTMBMAX]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0"]
+default_value = ["0.0"]
 description = """Maximum cutoff for many-body descriptors. Calculated from the cutoff of the individual descriptors."""
 value_N = [1]
 
 [INTERNAL_KEYS.ESTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0"]
+default_value = ["0.0"]
 description = """Energy standard deviation."""
 value_N = [1]
 
 [INTERNAL_KEYS.FSTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0"]
+default_value = ["0.0"]
 description = """Force standard deviation."""
 value_N = [1]
 
 [INTERNAL_KEYS.SSTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default = ["0.0", "0.0", "0.0", "0.0", "0.0", "0.0"]
+default_value = ["0.0", "0.0", "0.0", "0.0", "0.0", "0.0"]
 description = """Stress standard deviation."""
 value_N = [-6]
 
@@ -772,37 +773,39 @@ value_N = [-6]
 
 [TASKS.train]
 description      = "Train a model."
-long_description = "Train a model using a configuration file. The result is a pot.tadah file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. Including forces and stresses is optional. The train command requires a configuration file and produces a pot.tadah file, a trained interatomic potential that can be used for molecular dynamics in LAMMPS using pair_style tadah."
+long_description = "Train a model using a configuration file or a task file. The result is a pot.tadah file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. Including forces and stresses is optional. The train command requires a configuration file and produces a pot.tadah file, a trained interatomic potential that can be used for molecular dynamics in LAMMPS using pair_style tadah."
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3"]
 
   [TASKS.train.keys]
   INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty"]
 
     [TASKS.train.groups.input]
-      description      = "Either provide a configuration file for a single task or a complete tasks file."
-      cli_required = true
-      required_min = 1
-      required_max = 1
-      [TASKS.train.groups.input.keys]
-      INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+    description      = "Provide a configuration file for a single task or a complete tasks file."
+    cli_required = true
+    required_min = 1
+    required_max = 1
+    [TASKS.train.groups.input.keys]
+    INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
 
 [TASKS.predict]
-description      = "Perform prediction using a trained model."
-long_description = "Perform prediction using a trained model."
-examples         = ["tadah predict -p pot.tadah -s crystal.cif -F"]
+description      = "Predict properties using a trained model."
+long_description = "Predict using an already trained model. Energy per atom is always calculated, and calculating forces and stresses is optional. Energies are written to energy.pred, and if forces or stresses are calculated, they are written to forces.pred and stress.pred, respectively. You can use a task file with a DBFILE key to list prediction datasets. Alternatively, you can provide datasets and flags directly via the command line."
+examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12"]
 
     [TASKS.predict.groups.input]
-    description      = "Input files for prediction."
+    description      = "Input sources for prediction. Select one of the following options:"
     cli_required = true
     required_min = 1
     required_max = 1
     [TASKS.predict.groups.input.keys]
-      INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.config"]
+    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
 
   [TASKS.predict.keys]
-  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
     [TASKS.predict.keys.potential]
     cli_required = true
+    [TASKS.predict.keys.analytics]
+    cli_excludes = ["structure"]
 
 [TASKS.hpo]
 description      = "Optimize hyperparameters for model training."

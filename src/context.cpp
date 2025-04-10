@@ -186,13 +186,13 @@ void Context::deserialize(const std::vector<char> &buffer) {
 ///////////////////////////////////////////////////////////////////////////////
 void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
   const auto bAllowed = findBlueprintKey(upKey, "ALLOWED_KEYS");
-  if (bAllowed != nullptr && !bAllowed->defaultValue.empty()) {
-    storage_.insert(std::make_pair(upKey, bAllowed->defaultValue));
+  if (bAllowed != nullptr && !bAllowed->default_value.empty()) {
+    storage_.insert(std::make_pair(upKey, bAllowed->default_value));
     return;
   }
   const auto bInternal = findBlueprintKey(upKey, "INTERNAL_KEYS");
-  if (bInternal != nullptr && !bInternal->defaultValue.empty()) {
-    storage_.insert(std::make_pair(upKey, bInternal->defaultValue));
+  if (bInternal != nullptr && !bInternal->default_value.empty()) {
+    storage_.insert(std::make_pair(upKey, bInternal->default_value));
     return;
   }
   return;

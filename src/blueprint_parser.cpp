@@ -163,8 +163,8 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
   }
 
   // Handles other optional fields
-  if (table.contains("default")) {
-    item.defaultValue = toml::find<std::vector<std::string>>(table, "default");
+  if (table.contains("default_value")) {
+    item.default_value = toml::find<std::vector<std::string>>(table, "default_value");
   }
   if (table.contains("cli_long_flag")) {
     item.cli_long_flag = toml::find<std::string>(table, "cli_long_flag");
