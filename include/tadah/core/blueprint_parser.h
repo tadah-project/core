@@ -28,6 +28,7 @@ struct BlueprintKey {
   std::string cli_long_flag;                      ///< CLI long flag/option (if applicable)
   std::string cli_short_flag;                     ///< CLI short flag/option (if applicable)
   std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
+  std::vector<std::string> cli_needs;             ///< List of CLI keys/options that are required for this CLI option
   bool cli_required;                              ///< Indicates if required in a cli context
 
   BlueprintKey() : cli_required(false) {}
@@ -40,6 +41,7 @@ struct BlueprintKeyGroup {
   size_t requiredMin;                             ///< Minimum number of required keys which must be selected
   size_t requiredMax;                             ///< Maximum number of required keys which must be selected
   std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
+  std::vector<std::string> cli_needs;             ///< List of CLI keys/options that are required for this CLI option
   BlueprintKeyGroup() : cli_required(false), requiredMin(1), requiredMax(1) {}
 };
 

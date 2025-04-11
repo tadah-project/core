@@ -799,11 +799,13 @@ examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --f
     required_max = 1
     [TASKS.predict.groups.input.keys]
     INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+      [TASKS.predict.groups.input.keys.dbfile]
+      cli_needs = ["potential"]
+      [TASKS.predict.groups.input.keys.structure]
+      cli_needs = ["potential"]
 
   [TASKS.predict.keys]
   INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-    [TASKS.predict.keys.potential]
-    cli_required = true
     [TASKS.predict.keys.analytics]
     cli_excludes = ["structure"]
 

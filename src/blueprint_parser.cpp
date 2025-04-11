@@ -176,6 +176,10 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     item.cli_excludes =
         toml::find<std::vector<std::string>>(table, "cli_excludes");
   }
+  if (table.contains("cli_needs")) {
+    item.cli_needs =
+        toml::find<std::vector<std::string>>(table, "cli_needs");
+  }
   if (table.contains("cli_required")) {
     item.cli_required = toml::find<bool>(table, "cli_required");
   } else {
@@ -388,6 +392,10 @@ static void parseGroups(const toml::value &groupsTbl,
     // 5) cli_excludes (if you need group-level excludes)
     if (groupNode.contains("cli_excludes")) {
       group.cli_excludes = toml::find<std::vector<std::string>>(groupNode, "cli_excludes");
+    }
+    // 6) cli_needs (if you need group-level needs)
+    if (groupNode.contains("cli_needs")) {
+      group.cli_needs = toml::find<std::vector<std::string>>(groupNode, "cli_needs");
     }
 
     // 6) The [TASKS.<task>.groups.<groupName>.keys] subtable
