@@ -147,7 +147,7 @@ public:
     }
     if (n >= it->second.size()) {
       Logger::instance().log(LogLevel::ERROR,
-                             "Context::get(n) -> Index out of range: ", n);
+          "Context::get(n) -> Key: "+upKey+", index out of range: ", n);
       throw std::runtime_error("Index out of range for key: " + upKey);
     }
     return convertStringTo<T>(it->second[n], upKey);

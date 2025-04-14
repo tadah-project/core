@@ -135,6 +135,7 @@ description  = "Include forces."
 cli_long_flag    = "--force"
 cli_short_flag   = "-F"
 cli_required     = false
+default_value      = ["false"]
 
 [ALLOWED_KEYS.stress]
 INHERIT = ["TYPES.BOOL"]
@@ -142,6 +143,7 @@ description  = "Include stresses."
 cli_long_flag    = "--stress"
 cli_short_flag   = "-S"
 cli_required     = false
+default_value      = ["false"]
 
 [ALLOWED_KEYS.uncertainty]
 INHERIT = ["TYPES.BOOL"]
@@ -715,19 +717,19 @@ cli_excludes = ["ALL"]
 ###############################################################################
 [INTERNAL_KEYS.SIZE2B]
 INHERIT = ["TYPES.UINT"]
-default_value = ["0"]
+default_value = []
 description = """Size of two-body descriptor."""
 value_N = [1]
 
 [INTERNAL_KEYS.SIZEMB]
 INHERIT = ["TYPES.UINT"]
-default_value = ["0"]
+default_value = []
 description = """Size of many-body descriptor."""
 value_N = [1]
 
 [INTERNAL_KEYS.DSIZE]
 INHERIT = ["TYPES.UINT"]
-default_value = ["0"]
+default_value = []
 description = """The total size of the descriptor. Two-body + many-body + bias."""
 value_N = [1]
 
@@ -751,19 +753,19 @@ value_N = [1]
 
 [INTERNAL_KEYS.ESTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default_value = ["0.0"]
+default_value = []
 description = """Energy standard deviation."""
 value_N = [1]
 
 [INTERNAL_KEYS.FSTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default_value = ["0.0"]
+default_value = []
 description = """Force standard deviation."""
 value_N = [1]
 
 [INTERNAL_KEYS.SSTDEV]
 INHERIT = ["TYPES.DOUBLE"]
-default_value = ["0.0", "0.0", "0.0", "0.0", "0.0", "0.0"]
+default_value = []
 description = """Stress standard deviation."""
 value_N = [-6]
 
