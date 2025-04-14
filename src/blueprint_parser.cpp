@@ -624,7 +624,7 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
     // ------------------------------------------------------------
     // 4) Access the [TADAH] subtable
     // ------------------------------------------------------------
-    const toml::value &tadahValue = toml::find(bpCopy, "TADAH");
+    const toml::value tadahValue = toml::find(bpCopy, "TADAH");
     if (!tadahValue.is_table()) {
       throw std::runtime_error("Section [TADAH] must be a table in "+blueprintFilePath);
     }

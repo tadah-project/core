@@ -1070,8 +1070,7 @@ logo = '''
                         |_| \__,_| \__,_| \__,_||_| |_|(_)                  
                                                                        
          Software for Developing Machine Learning Interatomic Potentials
-                          https://tadah.readthedocs.io    
-'''
+                          https://tadah.readthedocs.io'''
 
 description = ""  # not
 long_description = ""
