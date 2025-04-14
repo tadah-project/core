@@ -445,6 +445,55 @@ std::string removeFirstWord(const std::string &input, const std::string &knownWo
  */
 std::string concat(const std::vector<std::string>& vec, const std::string& delim = " ");
 
+/**
+ * @brief
+ *   Wraps text at a specified column width, optionally preserving word boundaries and
+ *   prepending a padding string only to lines that result from "breaking" (i.e., wrapped segments),
+ *   thereby leaving the first line of each original input line unpadded.
+ *
+ * Behavior overview:
+ *   - Existing newlines in the input are respected. Each original line (split by '\n') is processed independently.
+ *   - If preserveWords = false, each line is split into consecutive chunks of size maxWidth.
+ *   - If preserveWords = true, each line is split at word boundaries to avoid breaking words. 
+ *     If a word is longer than maxWidth, it is placed on its own line.
+ *   - For each original line (prior to wrapping), the first wrapped segment is unpadded; subsequent segments are padded.
+ *
+ * @param text
+ *   The full text to be wrapped. May contain existing newlines.
+ * @param maxWidth
+ *   Maximum number of characters allowed per line. This must be a positive integer greater than zero.
+ * @param preserveWords
+ *   If true, the function attempts to keep words intact on each line by splitting on whitespace.
+ *   If false, lines are cut at the exact maxWidth boundary (unless shorter).
+ * @param linePadding
+ *   A string prepended only to "broken" lines (second and subsequent lines in each wrapped group).
+ *
+ * @return
+ *   A new string containing the wrapped text. Each line is terminated by a newline ('\n').
+ *
+ * @code
+ * #include <iostream>
+ *
+ * int main() {
+ *   std::string input =
+ *     "This sample text demonstrates two wrapping techniques:\n"
+ *     "  1) chunk wrapping.\n"
+ *     "  2) word wrapping.\n"
+ *     "A high degree of flexibility is provided, including preserving existing newlines.\n";
+ *
+ *   // Example: Wrap text to 50 characters wide, preserve words, and pad only broken lines with ">> "
+ *   std::string wrappedText = wrapText(input, 50, true, ">> ");
+ *
+ *   std::cout << "Wrapped Text:\n" << wrappedText << std::endl;
+ *
+ *   return 0;
+ * }
+ * @endcode
+ */
+std::string wrapText(const std::string &text,
+    std::size_t maxWidth, bool preserveWords,
+    const std::string &linePadding);
+
 } // namespace core
 } // namespace tadah
 #endif

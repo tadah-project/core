@@ -360,6 +360,140 @@ std::string concat(const std::vector<std::string>& vec, const std::string& delim
   return result;
 }
 
+std::string wrapText(const std::string &text,
+    std::size_t maxWidth,  bool preserveWords,
+    const std::string &linePadding) {
+  // Sanity check: ensure maxWidth is not zero
+  if (maxWidth == 0) {
+    return text;  // or throw an exception if preferred
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helper function for chunk-based wrapping (ignores word boundaries).
+  // ---------------------------------------------------------------------------
+  auto chunkWrapLine = [&](const std::string &line) {
+    std::vector<std::string> segments;
+    if (line.empty()) {
+      // Produce one empty segment for empty lines
+      segments.emplace_back();
+      return segments;
+    }
+
+    std::size_t startPos = 0;
+    // Continue until the entire line is processed
+    while (startPos < line.size()) {
+      // Determine remaining characters in the line
+      std::size_t remaining = line.size() - startPos;
+      // Number of characters to copy for this segment
+      std::size_t chunkSize = (remaining < maxWidth) ? remaining : maxWidth;
+
+      segments.push_back(line.substr(startPos, chunkSize));
+      startPos += chunkSize;
+    }
+    return segments;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Helper function for word-based wrapping (preserves word boundaries).
+  // ---------------------------------------------------------------------------
+  auto wordWrapLine = [&](const std::string &line) {
+    std::vector<std::string> segments;
+
+    if (line.empty()) {
+      // Produce one empty segment for empty lines
+      segments.emplace_back();
+      return segments;
+    }
+
+    // Split the line into words using a stream
+    std::istringstream iss(line);
+    std::string word;
+    
+    std::string currentLine;
+    while (iss >> word) {
+      // If adding this word (plus a preceding space if needed) exceeds maxWidth,
+      // then finalize the current line and start a new one.
+      if (currentLine.empty()) {
+        // If currentLine is empty, this is the first word on a new line.
+        if (word.size() > maxWidth) {
+          // If a single word itself exceeds maxWidth, place it alone on a line.
+          segments.push_back(word);
+        } else {
+          // Start a new line with this word
+          currentLine = word;
+        }
+      } else {
+        // If not empty, check if appending " word" would exceed maxWidth
+        if (currentLine.size() + 1 + word.size() > maxWidth) {
+          // Finalize currentLine and start a new line
+          segments.push_back(currentLine);
+          // If the new word exceeds maxWidth alone, put it on its own line
+          if (word.size() > maxWidth) {
+            segments.push_back(word);
+          } else {
+            currentLine = word;
+          }
+        } else {
+          // Append the word with a preceding space
+          currentLine += " " + word;
+        }
+      }
+    }
+
+    // Push the last accumulated line if not empty
+    if (!currentLine.empty()) {
+      segments.push_back(currentLine);
+    }
+
+    return segments;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Process the original text line by line, then wrap each line.
+  // For each line from the input, the first segment is not padded, 
+  // and subsequent "broken" segments are padded.
+  // ---------------------------------------------------------------------------
+  std::stringstream result;
+  std::size_t start = 0;
+  while (start <= text.size()) {
+    // Locate the next newline
+    std::size_t newlinePos = text.find('\n', start);
+    bool foundNewline = (newlinePos != std::string::npos);
+
+    // Extract the current logical line (up to newline or end of text)
+    std::string currentLine = foundNewline
+      ? text.substr(start, newlinePos - start)
+      : text.substr(start);
+
+    // Wrap the line using whichever mode is selected
+    std::vector<std::string> wrappedLines = preserveWords
+      ? wordWrapLine(currentLine)
+      : chunkWrapLine(currentLine);
+
+    // Write each wrapped segment to the result
+    // - No padding for the first segment
+    // - Padding for subsequent segments if any
+    for (std::size_t i = 0; i < wrappedLines.size(); ++i) {
+      if (i == 0) {
+        // First ("original") segment from this line has no padding
+        result << wrappedLines[i] << '\n';
+      } else {
+        // "Broken" line: apply padding
+        result << linePadding << wrappedLines[i] << '\n';
+      }
+    }
+
+    // Advance start position past the newline if one was found
+    if (foundNewline) {
+      start = newlinePos + 1;
+    } else {
+      // No more newlines -> done
+      break;
+    }
+  }
+
+  return result.str();
+}
 } // namespace core
 } // namespace tadah
 

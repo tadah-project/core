@@ -706,7 +706,7 @@ INHERIT = ["ALLOWED_KEYS.config"]
 description  = "A file containing the task to be executed."
 examples     = ["path/to/tasks.tadah"]
 cli_long_flag  = "--task"
-cli_short_flag = ""
+cli_short_flag = "-t"
 cli_required     = false
 cli_excludes = ["ALL"]
 
