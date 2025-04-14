@@ -12,88 +12,121 @@ namespace tadah {
 namespace core {
 
 namespace {
-/**
- * @brief Parse lines into an existing Context object.
- *
- * Ignores blank lines and comment lines starting with '#'.
- * For a valid line, the first token is treated as key, and all subsequent
- * tokens are appended as values. In-line comments (beginning with '#') are also
- * handled by stopping further parsing on that line.
- *
- * Each line is validated against the blueprint schema.
- */
-void parseLines(const std::vector<std::string> &lines, Context &ctx) {
-  const auto keyMap = BlueprintParser::getKeysMapRef();
-  for (size_t i = 0; i < lines.size(); ++i) {
-    std::string rawLine = trim(lines[i]);
-    if (rawLine.empty() || rawLine[0] == '#') {
-      continue;
-    }
-    // Remove in-line comments
-    rawLine = rawLine.substr(0, rawLine.find('#'));
-    std::istringstream iss(rawLine);
-    std::vector<std::string> tokens;
-    {
-      std::string token;
-      while (iss >> token) {
-        tokens.push_back(token);
-      }
-    }
-    if (tokens.empty()) {
-      continue;
-    }
+  /**
+   * @brief Holds the recursion depth of parse() to identify top-level calls.
+   *
+   * parse() might be called recursively when encountering nested CONFIG lines.
+   * If parseDepth is zero, it means a top-level parse() call starts.
+   */
+  static thread_local int parseDepth = 0;
 
-    // first token is the key
-    const std::string &key = tokens[0];
-    std::string uKey = to_upper(key);
-    if (keyMap.find(uKey) == keyMap.end()) {
-      std::string suggested = BlueprintParser::findClosestKey(key, keyMap);
-      Logger::instance().log(
-          LogLevel::ERROR, "CoreUserConfigParser::parse -> Invalid key: ", key);
-      if (!suggested.empty()) {
-        Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
+  /**
+   * @brief Tracks the chain of CONFIG files to detect circular references.
+   *
+   * On each nested parse for CONFIG, the file name is pushed. After that parse
+   * finishes, it is popped. If parseDepth resets to zero, the chain is cleared.
+   */
+  static thread_local std::vector<std::string> configChain;
+
+  /**
+   * @brief Parse lines into an existing Context object.
+   *
+   * Circular dependency detection is handled by tracking CONFIG filenames
+   * in configChain. When a CONFIG line is encountered, the file is pushed
+   * into configChain, parsed, then popped after the nested parse.
+   */
+  void parseLines(const std::vector<std::string> &lines, Context &ctx) {
+    const auto keyMap = BlueprintParser::getKeysMapRef();
+    for (size_t i = 0; i < lines.size(); ++i) {
+      std::string rawLine = trim(lines[i]);
+      if (rawLine.empty() || rawLine[0] == '#') {
+        continue;
       }
-      throw std::runtime_error("Invalid key: " + key);
-    }
-    // validate entry against blueprint schema
-    std::string val = removeFirstWord(rawLine, key);
-    bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyMap.at(uKey));
-    if (!valid_schema) {
-      throw std::runtime_error("Invalid schema for key: " + key);
-    }
-    if (uKey == "CONFIG") {
-      // CONFIG is a special case; check for circular dependency
-      static thread_local std::vector<std::string> configChain;
-      if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
-        std::string chainStr;
-        for (const auto &c : configChain) {
-          chainStr += c + " -> ";
+      // Remove in-line comments
+      rawLine = rawLine.substr(0, rawLine.find('#'));
+      std::istringstream iss(rawLine);
+      std::vector<std::string> tokens;
+      {
+        std::string token;
+        while (iss >> token) {
+          tokens.push_back(token);
         }
-        chainStr += val;
-        throw std::runtime_error("Circular dependency detected between CONFIG files: " + chainStr);
       }
-      configChain.push_back(val);
-      // and merge it with the current context
-      tadah::core::CoreUserConfigParser parser;
-      Context configCtx = parser.parse(val);
-      ctx = tadah::core::Context::merge(ctx, configCtx);
-      continue; // skip the rest of the line, i.e.
-                // we do not want to add the CONFIG key
-    }
-    // the rest are values
-    for (size_t j = 1; j < tokens.size(); ++j) {
-      ctx.add(key, tokens[j]);
+      if (tokens.empty()) {
+        continue;
+      }
+
+      // first token is the key
+      const std::string &key = tokens[0];
+      std::string uKey = to_upper(key);
+      if (keyMap.find(uKey) == keyMap.end()) {
+        std::string suggested = BlueprintParser::findClosestKey(key, keyMap);
+        Logger::instance().log(
+            LogLevel::ERROR, "CoreUserConfigParser::parse -> Invalid key: ", key);
+        if (!suggested.empty()) {
+          Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
+        }
+        throw std::runtime_error("Invalid key: " + key);
+      }
+      // validate entry against blueprint schema
+      std::string val = removeFirstWord(rawLine, key);
+      bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyMap.at(uKey));
+      if (!valid_schema) {
+        throw std::runtime_error("Invalid schema for key: " + key);
+      }
+      if (uKey == "CONFIG") {
+        // CONFIG is a special case; check for circular dependency
+        if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
+          std::string chainStr;
+          for (const auto &c : configChain) {
+            chainStr += c + " -> ";
+          }
+          chainStr += val;
+          throw std::runtime_error("Circular dependency detected between CONFIG files: " + chainStr);
+        }
+        // Push config name before nested parse
+        configChain.push_back(val);
+
+        // Perform nested parse
+        tadah::core::CoreUserConfigParser parser;
+        Context configCtx;
+        try {
+          configCtx = parser.parse(val);
+        } catch (...) {
+          // Clean up the chain if parsing fails
+          configChain.pop_back();
+          throw;
+        }
+
+        // Pop config name after nested parse
+        configChain.pop_back();
+        
+        // Merge the nested context
+        ctx = tadah::core::Context::merge(ctx, configCtx);
+        continue; // Skip adding "CONFIG" key or its value to the context
+      }
+      // Other keys store their values
+      for (size_t j = 1; j < tokens.size(); ++j) {
+        ctx.add(key, tokens[j]);
+      }
     }
   }
-}
 } // end anonymous namespace
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
+  // Check if this is a top-level parse
+  if (parseDepth == 0) {
+    // Clear the chain before starting a fresh top-level parse
+    configChain.clear();
+  }
+  ++parseDepth; // Increase recursion depth
+
   std::ifstream infile(filename.c_str());
   if (!infile.is_open()) {
     Logger::instance().log(
         LogLevel::ERROR,
         "CoreUserConfigParser::parse -> Failed to open file: ", filename);
+    --parseDepth; 
     throw std::runtime_error("Failed to open config file: " + filename);
   }
 
@@ -106,13 +139,25 @@ Context CoreUserConfigParser::parse(const std::string &filename) const {
   }
   infile.close();
 
-  // Construct a local Context, parse lines into it
   Context ctx;
   parseLines(lines, ctx);
-  return ctx; // Named object -> compiler can apply (N)RVO in C++11
+
+  --parseDepth; // Decrease recursion depth
+  // If returning to top-level, reset chain
+  if (parseDepth == 0) {
+    configChain.clear();
+  }
+
+  return ctx;
 }
 
 Context CoreUserConfigParser::parse(std::istream &in) const {
+  // Check if this is a top-level parse
+  if (parseDepth == 0) {
+    configChain.clear();
+  }
+  ++parseDepth;
+
   std::vector<std::string> lines;
   {
     std::string line;
@@ -123,13 +168,30 @@ Context CoreUserConfigParser::parse(std::istream &in) const {
 
   Context ctx;
   parseLines(lines, ctx);
+
+  --parseDepth;
+  if (parseDepth == 0) {
+    configChain.clear();
+  }
+
   return ctx;
 }
 
 Context
 CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
+  if (parseDepth == 0) {
+    configChain.clear();
+  }
+  ++parseDepth;
+
   Context ctx;
   parseLines(lines, ctx);
+
+  --parseDepth;
+  if (parseDepth == 0) {
+    configChain.clear();
+  }
+
   return ctx;
 }
 
@@ -163,7 +225,7 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
     return true;
   }
 
-  // 3. If validation fails, log the details once:
+  // 3. If validation fails, log details once:
   Logger::instance().log(
       LogLevel::ERROR,
       "CoreUserConfigParser::parse -> Invalid format for key: value -> ",
@@ -175,7 +237,7 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
     Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", schema);
   }
 
-  // Log the user-friendly format
+  // Log user-friendly formats
   Logger::instance().log(LogLevel::ERROR, "  Format:");
   for (const auto &fmt : keyInfo.value_format) {
     Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", fmt);
@@ -192,5 +254,6 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
   // 4. Indicate failure
   return false;
 }
+
 } // namespace core
 } // namespace tadah
