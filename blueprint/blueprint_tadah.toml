@@ -775,11 +775,17 @@ value_N = [-6]
 
 [TASKS.train]
 description      = "Train a model."
-long_description = "Train a model using a configuration file or a task file. The result is a pot.tadah file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. Including forces and stresses is optional. The train command requires a configuration file and produces a pot.tadah file, a trained interatomic potential that can be used for molecular dynamics in LAMMPS using pair_style tadah."
+long_description = "Train a model using a configuration file or a task file. The result is a potential file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. Including forces and stresses is optional. The train command requires a configuration file and produces a potential file, a trained interatomic potential that can be used for molecular dynamics in LAMMPS using pair_style tadah."
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3"]
 
   [TASKS.train.keys]
-  INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty"]
+  INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
+    [TASKS.train.keys.outfile]
+    default_value = ["pot.tadah"]
+    value_N = [1]
+    description = "Output file name for the trained model."
+    value_type   = ["STRING"]
+    value_format = ["<file>"]
 
     [TASKS.train.groups.input]
     description      = "Provide a configuration file for a single task or a complete tasks file."
