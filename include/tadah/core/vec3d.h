@@ -156,8 +156,10 @@ public:
   }
 
   inline double norm() const {
-
     return std::sqrt((*this)*(*this));
+  }
+  inline double squaredNorm() const {
+    return (*this)*(*this);
   }
 };
 } // namespace core

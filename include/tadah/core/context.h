@@ -250,6 +250,9 @@ public:
       }
     }
     updateInternalKeys();
+    if (upKey == "VERBOSE") {
+      Logger::instance().setLogLevel(static_cast<LogLevel>(std::stoi(value)));
+    }
   }
 
   /**
@@ -399,11 +402,11 @@ public:
         if (!allowOverwrite) {
           core::Logger::instance().log(
             core::LogLevel::WARNING,
-            "COREUserConfigParser::merge -> Attempting to add new values to an existing key: ", key);
+            "Context::merge -> Attempting to add new values to an existing key: ", key);
         } else {
           core::Logger::instance().log(
             core::LogLevel::WARNING,
-            "COREUserConfigParser::merge -> Overwriting key: ", key);
+            "Context::merge -> Overwriting key: ", key);
           merged.remove(key);
         }
       }
