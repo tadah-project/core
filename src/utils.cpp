@@ -11,10 +11,10 @@
 namespace tadah {
 namespace core {
 
-v_type logspace(double start, double stop, int num, double base) {
+v_type geomspace(double start, double stop, int num, double base) {
     // Disallow any non-positive start to avoid std::log of negative or zero
     if (start <= 0.0) {
-        throw std::runtime_error("logspace() start must be > 0");
+        throw std::runtime_error("geomspace() start must be > 0");
     }
 
     // existing code
@@ -25,6 +25,27 @@ v_type logspace(double start, double stop, int num, double base) {
     retval.reserve(num);
     std::generate_n(std::back_inserter(retval), num, Logspace<double>(realStart, realBase));
     return retval;
+}
+v_type linspace(double start, double end, int num) {
+
+  v_type ls(num);
+
+  if (num == 0) { return ls; }
+  if (num == 1)
+    {
+      ls[0] = start;
+      return ls;
+    }
+
+  double delta = (end - start) / (num - 1);
+
+  for(int i=0; i < num-1; ++i)
+    {
+      //ls.push_back(start + delta * i);
+      ls[i] = start + delta * i;
+    }
+  ls[num-1] = end;
+  return ls;
 }
 
 

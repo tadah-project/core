@@ -28,6 +28,16 @@ std::ostream& operator<< (std::ostream& os, const std::vector<T>& v) {
     return os;
 }
 
+/**
+ * @class Logspace
+ * @brief A generator (functor) for producing elements of a geometric progression.
+ *
+ * This class stores a current value and a base ratio. Each invocation of @c operator()
+ * returns the current value and then multiplies it by the base ratio, advancing
+ * the sequence in a geometric progression.
+ *
+ * @tparam T A numeric type (e.g., @c float, @c double, etc.).
+ */
 template<typename T>
 class Logspace {
     private:
@@ -43,34 +53,36 @@ class Logspace {
         }
 };
 
-v_type logspace(double start, double stop, int num, double base);
-template<typename T>
-v_type linspace(T start_in, T end_in, int num_in)
-{
+/**
+ * @brief Generates a geometric progression of @p num points between @p start and @p stop.
+ *
+ * The progression is computed by:
+ *   1. Converting @p start into \c realStart = base^(ln(start)).
+ *   2. Calculating the common ratio \c realBase = base^((ln(stop) - ln(start)) / (num - 1)).
+ *   3. Generating @p num values by repeatedly multiplying \c realStart by \c realBase.
+ *
+ * @param[in] start Beginning value of the sequence (must be > 0).
+ * @param[in] stop  Ending value of the sequence (should be > 0).
+ * @param[in] num   Number of elements in the sequence.
+ * @param[in] base  The base used to transform and compute the ratio (commonly @c exp(1)).
+ *
+ * @return A vector (`v_type`) of @p num values in geometric progression ranging
+ *         approximately from @p start to @p stop.
+ *
+ * @throws std::runtime_error if @p start <= 0 (since ln(start) would be invalid).
+ *
+ * ### Example
+ * @code{.cpp}
+ * // Suppose you want a geometric progression from 1.0 to 100.0 in 5 steps:
+ * // The ratio will be chosen so that the final value is 100.
+ *
+ * v_type seq = geomspace(1.0, 100.0, 5, std::exp(1));
+ * // seq might contain something like [1.0, ~3.162, ~10, ~31.622, 100.0]
+ * @endcode
+ */
+v_type geomspace(double start, double stop, int num, double base);
 
-  v_type ls(num_in);
-
-  double start = static_cast<double>(start_in);
-  double end = static_cast<double>(end_in);
-  double num = static_cast<double>(num_in);
-
-  if (num == 0) { return ls; }
-  if (num == 1)
-    {
-      ls[0] = start;
-      return ls;
-    }
-
-  double delta = (end - start) / (num - 1);
-
-  for(int i=0; i < num-1; ++i)
-    {
-      //ls.push_back(start + delta * i);
-      ls[i] = start + delta * i;
-    }
-  ls[num_in-1] = end;
-  return ls;
-}
+v_type linspace(double start, double end, int num);
 
 
 /**
