@@ -804,7 +804,7 @@ examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --f
     description      = "Input sources for prediction. Select one of the following options:"
     cli_required = true
     required_min = 1
-    required_max = 1
+    required_max = 2
     [TASKS.predict.groups.input.keys]
     INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
       [TASKS.predict.groups.input.keys.dbfile]
