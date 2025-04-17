@@ -15,7 +15,7 @@
 
 #include <tadah/core/utils.h>
 
-#ifdef MPI_ENABLED
+#ifdef TADAH_BUILD_MPI
   #include <mpi.h>
 #endif
 
@@ -136,7 +136,7 @@ private:
     std::lock_guard<std::mutex> lock(mutex_);
     std::ostringstream oss;
     oss << "[" << getCurrentTime() << "] ";
-#ifdef MPI_ENABLED
+#ifdef TADAH_BUILD_MPI
     int worldRank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
     oss << "Rank " << worldRank << " ";
@@ -153,15 +153,6 @@ private:
     }
   }
 
-  LogLevel currentLevel;
-  mutable std::mutex mutex_;
-  bool fileLoggingEnabled;
-  std::ofstream fileStream;
-
-  // Per-task overrides.
-  std::unordered_map<std::string, LogLevel> taskLevelMap;
-  std::unordered_map<std::string, std::ofstream> taskFileMap;
-
   // Utility: normalize a task name.
   static std::string toUpper(const std::string &s) {
     return Logger::instance()._toUpper(s);
@@ -173,6 +164,17 @@ private:
     std::transform(result.begin(), result.end(), result.begin(), ::toupper);
     return result;
   }
+
+private:
+  LogLevel currentLevel;
+  mutable std::mutex mutex_;
+  bool fileLoggingEnabled;
+  std::ofstream fileStream;
+
+  // Per-task overrides.
+  std::unordered_map<std::string, LogLevel> taskLevelMap;
+  std::unordered_map<std::string, std::ofstream> taskFileMap;
+
 };
 } // namespace core
 } // namespace tadah
