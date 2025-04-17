@@ -155,7 +155,7 @@ cli_required     = false
 [ALLOWED_KEYS.dbfile]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
-description  = "Absolute or relative path to the database file(s). The relative path is interpreted relative to the script's working directory. Multiple dataset paths can be provided either as space-separated tokens or by repeating this key."
+description  = "Absolute or relative path to the Tadah! database file(s). The relative path is interpreted relative to the script's working directory. Multiple dataset paths can be provided either as space-separated tokens or by repeating this key."
 examples     = ["dbfile /path/to/dbfile", "dbfile /path/to/dbfile1 /path/to/dbfile2"]
 cli_long_flag  = "--dbfile"
 cli_short_flag = "-d"
@@ -409,7 +409,8 @@ examples = ['Ta1_Ravelo_2013.eam.alloy']
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
 description  = "Unified structural input(s) (file or online)."
-examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42, crystal.cif"]
+long_description = "Supported file formats: Crystallographic Information File: .cif, VASP: POSCAR/CONTCAR and CASTEP: .cell file. The online option fetches requested structure from online database. Supported online formats:  Materials Project using MP IDs (e.g., mp-42), Crystallography Open Database using COD entry identifier (e.g. 1000238) and NOMAD using Entry id (e.g. 7LffuKVnQxsQ9UmTkVuPy7akIrs7). Multiple structures can be provided as space-separated tokens or by repeating this key. Mixture of files and online sources is allowed."
+examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
 cli_long_flag  = "--structure"
 cli_short_flag = "-s"
 cli_required     = false
@@ -705,12 +706,21 @@ examples = ["1 4 5"]
 
 [ALLOWED_KEYS.task]
 INHERIT = ["ALLOWED_KEYS.config"]
-description  = "A file containing the task to be executed."
+description  = "A file containing task(s) to be executed. The task file can contain multiple tasks, each with its own configuration."
+long_description= "The task file is a convenient way to specify multiple tasks without having to provide all the command-line arguments for each task. The task file should be in the same format as the configuration file, but it can also include additional information such as the task name and any specific parameters for that task. A task in a task file begins with the keyword 'TASK' followed by the task name. The task name is simply a command to be executed or both command and subcommand. The lines following the `TASK` keyword should contain parameters required for the task specified above. For example CLI `--verbose 2` is 'VERBOSE 2' in the task file."
 examples     = ["path/to/tasks.tadah"]
 cli_long_flag  = "--task"
 cli_short_flag = "-t"
 cli_required     = false
 cli_excludes = ["ALL"]
+
+[ALLOWED_KEYS.option]
+description      = "Positional argument"
+value_type   = ["STRING"]
+value_format = ["<arg>"]
+value_N      = [-1]
+cli_long_flag  = "OPTION"
+examples     = ["arg"]
 
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
@@ -775,8 +785,8 @@ value_N = [-6]
 
 [TASKS.train]
 description      = "Train a model."
-long_description = "Train a model using a configuration file or a task file. The result is a potential file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. Including forces and stresses is optional. The train command requires a configuration file and produces a potential file, a trained interatomic potential that can be used for molecular dynamics in LAMMPS using pair_style tadah."
-examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3"]
+long_description = "Train a model using a configuration file or a task file. The result is a potential file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. The train command requires a configuration file and produces a potential file, a trained interatomic potential that can be used for prediction or molecular dynamics in LAMMPS using pair_style tadah."
+examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 
   [TASKS.train.keys]
   INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
@@ -797,8 +807,18 @@ examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah 
 
 [TASKS.predict]
 description      = "Predict properties using a trained model."
-long_description = "Predict using an already trained model. Energy per atom is always calculated, and calculating forces and stresses is optional. Energies are written to energy.pred, and if forces or stresses are calculated, they are written to forces.pred and stress.pred, respectively. You can use a task file with a DBFILE key to list prediction datasets. Alternatively, you can provide datasets and flags directly via the command line."
-examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12"]
+long_description = "Predict using an already trained model. Energy per atom is always calculated, and calculating forces and stresses is optional. Energies are written to energy.pred, and if forces or stresses are calculated, they are written to forces.pred and stress.pred, respectively. You can use a task file with a DBFILE key to list prediction datasets or STRUCTURE to list files or online structures (see description of --structure for supported types). Alternatively, you can provide tadah datasets and/or individual structure files or online soruces via the command line."
+examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
+
+  [TASKS.predict.keys]
+  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile"]
+    [TASKS.predict.keys.analytics]
+    cli_excludes = ["structure"]
+    [TASKS.predict.keys.outfile]
+    default_value = ["energy.pred", "forces.pred", "stress.pred"]
+    value_N = [-3]
+    description = "Output file name(s) for predicted values. The first file is for energies, followed by forces/stresses if requested. Specify filename for every requested output."
+    value_format = ["<energy_file> [<force_file>] [<stress_file>]"]
 
     [TASKS.predict.groups.input]
     description      = "Input sources for prediction. Select one of the following options:"
@@ -811,11 +831,6 @@ examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --f
       cli_needs = ["potential"]
       [TASKS.predict.groups.input.keys.structure]
       cli_needs = ["potential"]
-
-  [TASKS.predict.keys]
-  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-    [TASKS.predict.keys.analytics]
-    cli_excludes = ["structure"]
 
 [TASKS.hpo]
 description      = "Optimize hyperparameters for model training."
@@ -1055,6 +1070,18 @@ INHERIT          = ["ALLOWED_KEYS.verbose"]
       cli_required = true
       [TASKS.analysis.cutoff.keys.type]
       cli_required = true
+
+# work in progress
+[TASKS.explain]
+description      = "Explain tadah command or option in more detail."
+long_description      = "This is a help command that provides detailed information about a specific command or option in the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option."
+examples         = ["tadah explain task", "tadah explain train.verbose"]
+
+[TASKS.explain.keys]
+INHERIT = ["ALLOWED_KEYS.option"]
+[TASKS.explain.keys.option]
+description = "Command or option to explain in a dot separated format. For example: train.verbose"
+value_format = ["<command> | <option>"]
 
 ###############################################################################
 # Error Messages (ERROR_MESSAGES) TODO Not in use

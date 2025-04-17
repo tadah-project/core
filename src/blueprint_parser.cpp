@@ -161,6 +161,12 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
                            "Missing optional fields for key " + fullKey + ": " +
                                std::string(ex.what()));
   }
+  // quietly ignore if long_description is not found
+  try {
+    item.longDescription = toml::find<std::string>(table, "long_description");
+  } catch (const std::exception &ex) {
+    // Ignore the error
+  }
 
   // Handles other optional fields
   if (table.contains("default_value")) {

@@ -22,7 +22,8 @@ struct BlueprintKey {
   std::vector<std::string> value_type;            ///< List of accepted types (e.g., "STRING", "INT", "DOUBLE", etc.)
   std::vector<std::string> value_format;          ///< Expected token format (e.g., "<file>", "<path>", "N", etc.)
   std::vector<int> value_N;                       ///< Allowed token counts (for scalar or array values)
-  std::string description;                        ///< Short description for documentation and help
+  std::string description;                        ///< Short description for help
+  std::string longDescription;                    ///< Long description for documentation and help
   std::vector<std::string> examples;              ///< Example usages
   std::vector<std::string> default_value;         ///< Default value (if any)
   std::string cli_long_flag;                      ///< CLI long flag/option (if applicable)
