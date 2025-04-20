@@ -507,14 +507,14 @@ cli_short_flag   = ""
 cli_required     = false
 
 [ALLOWED_KEYS.chunk]
-INHERIT = ["TYPES.UINT"]
+INHERIT = ["TYPES.UINTS"]
 description  = "Specify chunk sizes."
 cli_long_flag  = "--chunk"
 cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.percent]
-INHERIT = ["TYPES.UINT"]
+INHERIT = ["TYPES.UINTS"]
 description  = "Specify percentage partition."
 cli_long_flag  = "--percent"
 cli_short_flag = ""
@@ -722,6 +722,14 @@ value_N      = [-1]
 cli_long_flag  = "OPTION"
 examples     = ["arg"]
 
+[ALLOWED_KEYS.append]
+INHERIT = ["TYPES.BOOL"]
+description  = "Append to the existing file."
+cli_long_flag  = "--append"
+cli_short_flag = ""
+cli_required     = false
+cli_needs = ["outfile"]
+
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
 ###############################################################################
@@ -787,289 +795,321 @@ value_N = [-6]
 description      = "Train a model."
 long_description = "Train a model using a configuration file or a task file. The result is a potential file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. The train command requires a configuration file and produces a potential file, a trained interatomic potential that can be used for prediction or molecular dynamics in LAMMPS using pair_style tadah."
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3 --outfile potential.tadah", "tadah train --task tasks.tadah"]
-
-  [TASKS.train.keys]
-  INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
-    [TASKS.train.keys.outfile]
-    default_value = ["pot.tadah"]
-    value_N = [1]
-    description = "Output file name for the trained model."
-    value_type   = ["STRING"]
-    value_format = ["<file>"]
-
-    [TASKS.train.groups.input]
-    description      = "Provide a configuration file for a single task or a complete tasks file."
-    cli_required = true
-    required_min = 1
-    required_max = 1
-    [TASKS.train.groups.input.keys]
-    INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+[TASKS.train.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
+[TASKS.train.keys.outfile]
+default_value = ["pot.tadah"]
+value_N = [1]
+description = "Output file name for the trained model."
+value_type   = ["STRING"]
+value_format = ["<file>"]
+[TASKS.train.groups.input]
+description      = "Provide a configuration file for a single task or a complete tasks file."
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.train.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
 
 [TASKS.predict]
 description      = "Predict properties using a trained model."
 long_description = "Predict using an already trained model. Energy per atom is always calculated, and calculating forces and stresses is optional. Energies are written to energy.pred, and if forces or stresses are calculated, they are written to forces.pred and stress.pred, respectively. You can use a task file with a DBFILE key to list prediction datasets or STRUCTURE to list files or online structures (see description of --structure for supported types). Alternatively, you can provide tadah datasets and/or individual structure files or online soruces via the command line."
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
-
-  [TASKS.predict.keys]
-  INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile"]
-    [TASKS.predict.keys.analytics]
-    cli_excludes = ["structure"]
-    [TASKS.predict.keys.outfile]
-    default_value = ["energy.pred", "forces.pred", "stress.pred"]
-    value_N = [-3]
-    description = "Output file name(s) for predicted values. The first file is for energies, followed by forces/stresses if requested. Specify filename for every requested output."
-    value_format = ["<energy_file> [<force_file>] [<stress_file>]"]
-
-    [TASKS.predict.groups.input]
-    description      = "Input sources for prediction. Select one of the following options:"
-    cli_required = true
-    required_min = 1
-    required_max = 2
-    [TASKS.predict.groups.input.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
-      [TASKS.predict.groups.input.keys.dbfile]
-      cli_needs = ["potential"]
-      [TASKS.predict.groups.input.keys.structure]
-      cli_needs = ["potential"]
+[TASKS.predict.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile"]
+[TASKS.predict.keys.analytics]
+cli_excludes = ["structure"]
+[TASKS.predict.keys.outfile]
+default_value = ["energy.pred", "forces.pred", "stress.pred"]
+value_N = [-3]
+description = "Output file name(s) for predicted values. The first file is for energies, followed by forces/stresses if requested. Specify filename for every requested output."
+value_format = ["<energy_file> [<force_file>] [<stress_file>]"]
+[TASKS.predict.groups.input]
+description      = "Input sources for prediction. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 2
+[TASKS.predict.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.predict.groups.input.keys.dbfile]
+cli_needs = ["potential"]
+[TASKS.predict.groups.input.keys.structure]
+cli_needs = ["potential"]
 
 [TASKS.hpo]
 description      = "Optimize hyperparameters for model training."
 long_description = "Optimize hyperparameters for model training."
 examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
-  [TASKS.hpo.keys]
-  INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
-    [TASKS.hpo.keys.config]
-    cli_required = true
-    [TASKS.hpo.keys.hpotarget]
-    cli_required = true
-    [TASKS.hpo.keys.validation]
-    cli_required = true
+[TASKS.hpo.keys]
+INHERIT          = ["ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose"]
+[TASKS.hpo.groups.input]
+description      = "Input sources for hpo. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 3
+[TASKS.hpo.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.validation","ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.task"]
+[TASKS.hpo.groups.input.keys.config]
+cli_needs = ["validation", "hpotarget"]
+cli_excludes = ["task"]
 
 [TASKS.data]
 description      = "Dataset management commands."
 long_description = "Dataset management commands (convert, read, write, merge, split, dedup, sample, balance)."
 examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
+[TASKS.data.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+[TASKS.data.convert]
+description      = "Convert DFT output file(s) to Tadah! dataset format."
+long_description = "Convert DFT output file(s) to Tadah! dataset format.\nExample: tadah data convert --dft-file run1.outcar -o output.tadah"
+examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
+[TASKS.data.convert.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
+[TASKS.data.convert.groups.input]
+description      = "Input sources for printing. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.convert.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dft-file", "ALLOWED_KEYS.task"]
+[TASKS.data.convert.groups.input.keys.dft-file]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
 
-  [TASKS.data.keys]
-  INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
-#INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.verbose"]
-  
-  [TASKS.data.convert]
-  description      = "Convert DFT output file(s) to Tadah! dataset format."
-  long_description = "Convert DFT output file(s) to Tadah! dataset format.\nExample: tadah data convert --dft-file run1.outcar -o output.tadah"
-  examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
-    [TASKS.data.convert.keys]
-    INHERIT          = ["ALLOWED_KEYS.dft-file", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.data.print]
+description      = "Print structures from dataset or structure files."
+long_description = "Print structures from dataset or structure files."
+examples         = ["tadah data print -d dataset.tadah", "tadah data print -s crystal.cif"]
+[TASKS.data.print.keys]
+INHERIT          = ["ALLOWED_KEYS.index", "ALLOWED_KEYS.numeric"]
+[TASKS.data.print.groups.input]
+description      = "Input sources for printing. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 2
+[TASKS.data.print.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.data.print.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["index"]
+[TASKS.data.print.groups.input.keys.structure]
+cli_excludes   = ["task", "index"]
 
-      [TASKS.data.convert.keys.dft-file]
-      cli_required = true
-      [TASKS.data.convert.keys.outfile]
-      cli_required = true
+[TASKS.data.write]
+description      = "Write structures into a chosen format."
+long_description = "Write structures from a dataset or a structure file or online source into a chosen format."
+examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
+[TASKS.data.write.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.data.write.groups.input]
+description      = "Structure sources for writing. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.write.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.data.write.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile", "index", "format"]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.write.groups.input.keys.structure]
+cli_excludes   = ["task", "index"]
+cli_needs = ["outfile", "format"]
 
-  [TASKS.data.read]
-  description      = "Read and print structures from dataset or structure files."
-  long_description = "Read and print structures from dataset or structure files.\nExample: tadah data read -d dataset.tadah"
-  examples         = ["tadah data read -d dataset.tadah", "tadah data read -s crystal.cif"]
-    [TASKS.data.read.keys]
-      INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.index", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-        [TASKS.data.read.keys.dbfile]
-        cli_required = false
-        cli_excludes   = ["structure"]
-        [TASKS.data.read.keys.structure]
-        cli_required = true
-        cli_excludes   = ["dbfile"]
+[TASKS.data.merge]
+description      = "Merge multiple dataset files into a single file."
+long_description = "Merge multiple dataset files into a single file."
+examples         = ["tadah data merge -d ds1.tadah ds2.tadah -o merged.tadah"]
+[TASKS.data.merge.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric"]
+[TASKS.data.merge.keys.outfile]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.merge.groups.input]
+description      = "Sources for merging. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.merge.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
 
-  [TASKS.data.write]
-  description      = "Write structures from a dataset into a chosen format."
-  long_description = "Write structures from a dataset into a chosen format.\nExample: tadah data write -d dataset.tadah -o output.cell -f cell -i 7"
-  examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
-    [TASKS.data.write.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-      [TASKS.data.write.keys.dbfile]
-      cli_required = true
-      # cli_excludes   = ["structure"]
-      [TASKS.data.write.keys.outfile]
-      cli_required = true
-      [TASKS.data.write.keys.index]
-      cli_required = true
-      [TASKS.data.write.keys.format]
-      cli_required = true
+[TASKS.data.split]
+description      = "Split a dataset into parts."
+long_description = "Split a dataset into parts."
+examples         = ["tadah data split -d big.tadah -o part1.tadah part2.tadah"]
+[TASKS.data.split.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
+[TASKS.data.split.keys.even]
+description = "Split dataset into equal-size partitions. The number of partitions is determined by the number of output files provided. The last partition may be smaller if the dataset size is not divisible by the number of partitions."
+cli_excludes = ["chunk", "percent"]
+[TASKS.data.split.keys.chunk]
+cli_excludes = ["even", "percent"]
+[TASKS.data.split.keys.percent]
+cli_excludes = ["even", "chunk"]
+[TASKS.data.split.groups.input]
+description      = "Sources for merging. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.split.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
 
-  [TASKS.data.merge]
-  description      = "Merge multiple dataset files."
-  long_description = "Merge multiple dataset files.\nExample: tadah data merge -d ds1.tadah ds2.tadah -o merged.tadah"
-  examples         = ["tadah data merge -d ds1.tadah ds2.tadah -o merged.tadah"]
-    [TASKS.data.merge.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
-      [TASKS.data.merge.keys.dbfile]
-      cli_required = true
-      [TASKS.data.merge.keys.outfile]
-      cli_required = true
-      [TASKS.data.merge.keys.verbose]
-      cli_required = false
 
-  [TASKS.data.split]
-  description      = "Split a dataset into parts."
-  long_description = "Split a dataset into parts.\nExample: tadah data split -d big.tadah -o part1.tadah part2.tadah"
-  examples         = ["tadah data split -d big.tadah -o part1.tadah part2.tadah"]
-    [TASKS.data.split.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-      [TASKS.data.split.keys.dbfile]
-      cli_required = true
-      [TASKS.data.split.keys.outfile]
-      cli_required = true
 
-  [TASKS.data.dedup]
-  description      = "Deduplicate structures from a dataset."
-  long_description = "Deduplicate structures from a dataset.\nExample: tadah data dedup -d db.tadah"
-  examples         = ["tadah data dedup -d db.tadah"]
-    [TASKS.data.dedup.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge"]
-      [TASKS.data.dedup.keys.dbfile]
-      cli_required = true
 
-  [TASKS.data.sample]
-  description      = "Sample configurations from a dataset."
-  long_description = "Sample configurations from a dataset.\nExample: tadah data sample -d full.tadah -o sample.tadah"
-  examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
-    [TASKS.data.sample.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
-      [TASKS.data.sample.keys.dbfile]
-      cli_required = true
-      [TASKS.data.sample.keys.outfile]
-      cli_required = true
 
-  [TASKS.data.balance]
-  description      = "Apply energy shift and/or rescaling to a dataset."
-  long_description = "Apply energy shift and/or rescaling to a dataset.\nExample: tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"
-  examples         = ["tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"]
-    [TASKS.data.balance.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale"]
-      [TASKS.data.balance.keys.dbfile]
-      cli_required = true
+[TASKS.data.dedup]
+description      = "Deduplicate structures from a dataset."
+long_description = "Deduplicate structures from a dataset.\nExample: tadah data dedup -d db.tadah"
+examples         = ["tadah data dedup -d db.tadah"]
+[TASKS.data.dedup.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge"]
+[TASKS.data.dedup.keys.dbfile]
+cli_required = true
+
+[TASKS.data.sample]
+description      = "Sample configurations from a dataset."
+long_description = "Sample configurations from a dataset.\nExample: tadah data sample -d full.tadah -o sample.tadah"
+examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
+[TASKS.data.sample.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
+[TASKS.data.sample.keys.dbfile]
+cli_required = true
+[TASKS.data.sample.keys.outfile]
+cli_required = true
+
+[TASKS.data.balance]
+description      = "Apply energy shift and/or rescaling to a dataset."
+long_description = "Apply energy shift and/or rescaling to a dataset.\nExample: tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"
+examples         = ["tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"]
+[TASKS.data.balance.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale"]
+[TASKS.data.balance.keys.dbfile]
+cli_required = true
 
 [TASKS.transform]
 description      = "Structure transformation commands."
 long_description = "Structure transformation commands (rotate, shear, change-coords)."
 examples         = ["tadah transform rotate ..."]
-  [TASKS.transform.keys]
-  INHERIT = ["ALLOWED_KEYS.task"]
+[TASKS.transform.keys]
+INHERIT = ["ALLOWED_KEYS.task"]
 
 [TASKS.properties]
 description      = "Evaluate physical properties for MLIP target evaluation."
 long_description = "Evaluate physical properties for MLIP target evaluation (e.g., twobody, ecurve, eos, defect, surface, mechanics)."
 examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
-  [TASKS.properties.keys]
-  INHERIT = ["ALLOWED_KEYS.task"]
+[TASKS.properties.keys]
+INHERIT = ["ALLOWED_KEYS.task"]
 
-  [TASKS.properties.twobody]
-  description      = "Compute two-body potential (E vs. r)."
-  long_description = "Compute two-body potential (E vs. r) for a pair of elements."
-  examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
-    [TASKS.properties.twobody.keys]
-    INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.ATOMPAIR", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose"]
-      [TASKS.properties.twobody.keys.potential]
-      cli_required = true
-      [TASKS.properties.twobody.keys.outfile]
-      cli_required = true
-      [TASKS.properties.twobody.keys.range]
-      cli_required = true
-      [TASKS.properties.twobody.keys.ATOMPAIR]
-      cli_required = true
+[TASKS.properties.twobody]
+description      = "Compute two-body potential (E vs. r)."
+long_description = "Compute two-body potential (E vs. r) for a pair of elements."
+examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+[TASKS.properties.twobody.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.ATOMPAIR", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose"]
+[TASKS.properties.twobody.keys.potential]
+cli_required = true
+[TASKS.properties.twobody.keys.outfile]
+cli_required = true
+[TASKS.properties.twobody.keys.range]
+cli_required = true
+[TASKS.properties.twobody.keys.ATOMPAIR]
+cli_required = true
 
-  [TASKS.properties.ecurve]
-  description      = "Compute energy versus volume/density/pressure curve."
-  long_description = "Compute energy versus volume/density/pressure curve."
-  examples         = ["tadah properties ecurve -s crystal.cif -r 10 100 200 --quantity volume -o evcurve.txt"]
-    [TASKS.properties.ecurve.keys]
-    INHERIT          = ["ALLOWED_KEYS.structure", "ALLOWED_KEYS.range", "ALLOWED_KEYS.quantity", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-      [TASKS.properties.ecurve.keys.structure]
-      cli_required = true
-      [TASKS.properties.ecurve.keys.range]
-      cli_required = true
-      [TASKS.properties.ecurve.keys.quantity]
-      cli_required = true
-      [TASKS.properties.ecurve.keys.outfile]
-      cli_required = true
+[TASKS.properties.ecurve]
+description      = "Compute energy versus volume/density/pressure curve."
+long_description = "Compute energy versus volume/density/pressure curve."
+examples         = ["tadah properties ecurve -s crystal.cif -r 10 100 200 --quantity volume -o evcurve.txt"]
+[TASKS.properties.ecurve.keys]
+INHERIT          = ["ALLOWED_KEYS.structure", "ALLOWED_KEYS.range", "ALLOWED_KEYS.quantity", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.properties.ecurve.keys.structure]
+cli_required = true
+[TASKS.properties.ecurve.keys.range]
+cli_required = true
+[TASKS.properties.ecurve.keys.quantity]
+cli_required = true
+[TASKS.properties.ecurve.keys.outfile]
+cli_required = true
 
-  [TASKS.properties.eos]
-  description      = "Compute Equation of State (stub)."
-  long_description = "Compute Equation of State for a given structure (stub)."
-  examples         = ["tadah properties eos ..."]
-    [TASKS.properties.eos.keys]
-    INHERIT          = ["ALLOWED_KEYS.verbose"]
+[TASKS.properties.eos]
+description      = "Compute Equation of State (stub)."
+long_description = "Compute Equation of State for a given structure (stub)."
+examples         = ["tadah properties eos ..."]
+[TASKS.properties.eos.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose"]
 
-  [TASKS.properties.defect]
-  description      = "Compute defect formation energies (stub)."
-  long_description = "Compute defect formation energies (stub)."
-  examples         = ["tadah properties defect ..."]
-    [TASKS.properties.defect.keys]
-    INHERIT          = ["ALLOWED_KEYS.verbose"]
+[TASKS.properties.defect]
+description      = "Compute defect formation energies (stub)."
+long_description = "Compute defect formation energies (stub)."
+examples         = ["tadah properties defect ..."]
+[TASKS.properties.defect.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose"]
 
-  [TASKS.properties.surface]
-  description      = "Compute surface energies (stub)."
-  long_description = "Compute surface energies (stub)."
-  examples         = ["tadah properties surface ..."]
-    [TASKS.properties.surface.keys]
-    INHERIT          = ["ALLOWED_KEYS.verbose"]
+[TASKS.properties.surface]
+description      = "Compute surface energies (stub)."
+long_description = "Compute surface energies (stub)."
+examples         = ["tadah properties surface ..."]
+[TASKS.properties.surface.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose"]
 
-  [TASKS.properties.mechanics]
-  description      = "Compute bulk modulus and elastic constants (stub)."
-  long_description = "Compute bulk modulus and elastic constants (stub)."
-  examples         = ["tadah properties mechanics ..."]
-    [TASKS.properties.mechanics.keys]
-    INHERIT          = ["ALLOWED_KEYS.verbose"]
+[TASKS.properties.mechanics]
+description      = "Compute bulk modulus and elastic constants (stub)."
+long_description = "Compute bulk modulus and elastic constants (stub)."
+examples         = ["tadah properties mechanics ..."]
+[TASKS.properties.mechanics.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose"]
 
 [TASKS.analysis]
 description      = "Visual analysis commands."
 long_description = "Visual analysis commands (e.g., descriptor, bfunc, cutoff)."
 examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt"]
 INHERIT          = ["ALLOWED_KEYS.verbose"]
-  [TASKS.analysis.keys]
-  INHERIT          = ["ALLOWED_KEYS.task"]
+[TASKS.analysis.keys]
+INHERIT          = ["ALLOWED_KEYS.task"]
 
-  [TASKS.analysis.descriptor]
-  description      = "Calculate structure descriptors."
-  long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"
-  examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"]
-    [TASKS.analysis.descriptor.keys]
-    INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.structure"]
-      [TASKS.analysis.descriptor.keys.dbfile]
-      cli_required = true
-      cli_excludes   = ["structure"]
-      [TASKS.analysis.descriptor.keys.structure]
-      cli_required = true
-      cli_excludes   = ["dbfile"]
-      [TASKS.analysis.descriptor.keys.potential]
-      cli_required = true
+[TASKS.analysis.descriptor]
+description      = "Calculate structure descriptors."
+long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"
+examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"]
+[TASKS.analysis.descriptor.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.structure"]
+[TASKS.analysis.descriptor.keys.dbfile]
+cli_required = true
+cli_excludes   = ["structure"]
+[TASKS.analysis.descriptor.keys.structure]
+cli_required = true
+cli_excludes   = ["dbfile"]
+[TASKS.analysis.descriptor.keys.potential]
+cli_required = true
 
-  [TASKS.analysis.bfunc]
-  description      = "Evaluate and plot basis functions."
-  long_description = "Long description: Evaluate and plot basis functions."
-  examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""]
-    [TASKS.analysis.bfunc.keys]
-    INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-      [TASKS.analysis.bfunc.keys.config]
-      cli_required = true
-      [TASKS.analysis.bfunc.keys.outfile]
-      cli_required = true
-      [TASKS.analysis.bfunc.keys.range]
-      cli_required = true
-      [TASKS.analysis.bfunc.keys.type]
-      cli_required = true
+[TASKS.analysis.bfunc]
+description      = "Evaluate and plot basis functions."
+long_description = "Long description: Evaluate and plot basis functions."
+examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""]
+[TASKS.analysis.bfunc.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.analysis.bfunc.keys.config]
+cli_required = true
+[TASKS.analysis.bfunc.keys.outfile]
+cli_required = true
+[TASKS.analysis.bfunc.keys.range]
+cli_required = true
+[TASKS.analysis.bfunc.keys.type]
+cli_required = true
 
-  [TASKS.analysis.cutoff]
-  description      = "Evaluate and plot cutoff functions."
-  long_description = "Evaluate and plot cutoff functions.\nExample: tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"
-  examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
-    [TASKS.analysis.cutoff.keys]
-    INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-      [TASKS.analysis.cutoff.keys.outfile]
-      cli_required = true
-      [TASKS.analysis.cutoff.keys.range]
-      cli_required = true
-      [TASKS.analysis.cutoff.keys.type]
-      cli_required = true
+[TASKS.analysis.cutoff]
+description      = "Evaluate and plot cutoff functions."
+long_description = "Evaluate and plot cutoff functions.\nExample: tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"
+examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
+[TASKS.analysis.cutoff.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.analysis.cutoff.keys.outfile]
+cli_required = true
+[TASKS.analysis.cutoff.keys.range]
+cli_required = true
+[TASKS.analysis.cutoff.keys.type]
+cli_required = true
 
 # work in progress
 [TASKS.explain]
