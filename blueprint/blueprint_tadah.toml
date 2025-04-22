@@ -461,7 +461,7 @@ cli_required     = false
 value_type   = ["{INDEX_PATTERN}"]
 value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>"]
 value_N      = [-2147483647]
-description = "One or more indices. The indices can be a single index, a range (<start>-<stop>), or a list of indices separated by commas (<i1>, <i2>, <i3>). The indices are 1-based. To select every N-th index, use the format '<start>-<stop>:<step>'. A combination of these formats is also allowed if separated by commas. Spaces are not allowed unless the string is enclosed in quotation marks (e.g., \"1,2 ,4\"). Repeated indices are removed automatically."
+description = "One or more indices. The indices can be a single index, a range (<start>-<stop>), or a list of indices separated by commas (<i1>, <i2>, <i3>). The indices are 1-based. To select every N-th index, use the format '<start>-<stop>:<step>'. A combination of these formats is also allowed if separated by commas. Repeated indices are removed automatically."
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 cli_long_flag  = "--index"
 cli_short_flag = "-i"
@@ -554,9 +554,9 @@ cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.eshift]
-INHERIT = ["TYPES.DOUBLE"]
-description  = "Energy shift per atom."
-examples     = ["0.5"]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Energy shift per atom. If multispecies, the number of values must match the number of species. The energy shift is applied to the energy of each atom in the system."
+examples     = ["0.5", "0.5 0.1"]
 cli_long_flag  = "--eshift"
 cli_short_flag = ""
 cli_required     = false
@@ -856,12 +856,13 @@ cli_excludes = ["task"]
 [TASKS.data]
 description      = "Dataset management commands."
 long_description = "Dataset management commands (convert, read, write, merge, split, dedup, sample, balance)."
-examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
+examples         = ["tadah data --task tasks.tadah"]
 [TASKS.data.keys]
 INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+
 [TASKS.data.convert]
 description      = "Convert DFT output file(s) to Tadah! dataset format."
-long_description = "Convert DFT output file(s) to Tadah! dataset format.\nExample: tadah data convert --dft-file run1.outcar -o output.tadah"
+long_description = "Convert DFT output file(s) to Tadah! dataset format."
 examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
 [TASKS.data.convert.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
@@ -892,6 +893,8 @@ INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KE
 [TASKS.data.print.groups.input.keys.dbfile]
 cli_excludes   = ["task"]
 cli_needs = ["index"]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
 [TASKS.data.print.groups.input.keys.structure]
 cli_excludes   = ["task", "index"]
 
@@ -920,7 +923,7 @@ cli_needs = ["outfile", "format"]
 [TASKS.data.merge]
 description      = "Merge multiple dataset files into a single file."
 long_description = "Merge multiple dataset files into a single file."
-examples         = ["tadah data merge -d ds1.tadah ds2.tadah -o merged.tadah"]
+examples         = ["tadah data merge -d db1.tadah db2.tadah -o merged.tadah"]
 [TASKS.data.merge.keys]
 INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric"]
 [TASKS.data.merge.keys.outfile]
@@ -937,7 +940,7 @@ INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
 [TASKS.data.split]
 description      = "Split a dataset into parts."
 long_description = "Split a dataset into parts."
-examples         = ["tadah data split -d big.tadah -o part1.tadah part2.tadah"]
+examples         = ["tadah data split -d db.tadah -o part1.tadah part2.tadah"]
 [TASKS.data.split.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
 [TASKS.data.split.keys.even]
@@ -972,35 +975,63 @@ INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
 cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
-
-
-
 [TASKS.data.sample]
-description      = "Sample configurations from a dataset."
-long_description = "Sample configurations from a dataset.\nExample: tadah data sample -d full.tadah -o sample.tadah"
+description      = "Sample configurations from a dataset and dump to a single dataset."
+long_description = "Sample configurations from a dataset. For --index: size <= total size of dataset."
 examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
 [TASKS.data.sample.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
-[TASKS.data.sample.keys.dbfile]
-cli_required = true
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.uniform", "ALLOWED_KEYS.random", "ALLOWED_KEYS.index", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.append"]
 [TASKS.data.sample.keys.outfile]
-cli_required = true
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.sample.keys.uniform]
+cli_excludes = ["random", "index"]
+[TASKS.data.sample.keys.random]
+cli_excludes = ["uniform", "index"]
+[TASKS.data.sample.keys.index]
+cli_excludes = ["random", "uniform"]
+[TASKS.data.sample.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+[TASKS.data.sample.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
 
 [TASKS.data.balance]
 description      = "Apply energy shift and/or rescaling to a dataset."
-long_description = "Apply energy shift and/or rescaling to a dataset.\nExample: tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"
-examples         = ["tadah data balance -d sample.tadah --rescale --eshift 0.5 --numeric 6"]
+long_description = "Apply energy shift and/or rescaling to a dataset.."
+examples         = ["tadah data balance -d db.tadah --rescale --eshift 0.5 --numeric 16 --outfile balanced.tadah", "tadah data balance -d db1.tadah db2.tadah --rescale --outfile balanced1.tadah balanced2.tadah"]
 [TASKS.data.balance.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale"]
-[TASKS.data.balance.keys.dbfile]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.index"]
+[TASKS.data.balance.keys.force]
+description = "Apply energy shift and/or rescaling to forces."
+[TASKS.data.balance.keys.stress]
+description = "Apply energy shift and/or rescaling to stresses."
+[TASKS.data.balance.keys.threshold]
+INHERIT = ["TYPES.DOUBLES"]
+description = "Floating point threshold(s) for energy, force and stress --rescale. If energy / sum_i norm(force_i) / norm(stress) is greater than threshold, the corresponding scaling factor is applied."
+default_value = ["1e-10", "1e-10", "1e-10"]
+value_N = [-3]
+[TASKS.data.balance.keys.rescale]
+description = "Rescale individual structure weights. The rescaling is applied to the energies, forces, and stresses in the dataset. The rescaling is done by multiplying the energies, forces, and stresses by the corresponding scaling factors: energy 1/(energy), force 1/(sum of force norm), stress 1/(stress matrix norm)."
+[TASKS.data.balance.groups.input]
+description      = "Select from the following options:"
 cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.balance.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+[TASKS.data.balance.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
 
-[TASKS.transform]
-description      = "Structure transformation commands."
-long_description = "Structure transformation commands (rotate, shear, change-coords)."
-examples         = ["tadah transform rotate ..."]
-[TASKS.transform.keys]
-INHERIT = ["ALLOWED_KEYS.task"]
+
+
+# [TASKS.transform]
+# description      = "Structure transformation commands."
+# long_description = "Structure transformation commands (rotate, shear, change-coords)."
+# examples         = ["tadah transform rotate ..."]
+# [TASKS.transform.keys]
+# INHERIT = ["ALLOWED_KEYS.task"]
 
 [TASKS.properties]
 description      = "Evaluate physical properties for MLIP target evaluation."
@@ -1039,33 +1070,33 @@ cli_required = true
 [TASKS.properties.ecurve.keys.outfile]
 cli_required = true
 
-[TASKS.properties.eos]
-description      = "Compute Equation of State (stub)."
-long_description = "Compute Equation of State for a given structure (stub)."
-examples         = ["tadah properties eos ..."]
-[TASKS.properties.eos.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose"]
+# [TASKS.properties.eos]
+# description      = "Compute Equation of State (stub)."
+# long_description = "Compute Equation of State for a given structure (stub)."
+# examples         = ["tadah properties eos ..."]
+# [TASKS.properties.eos.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
 
-[TASKS.properties.defect]
-description      = "Compute defect formation energies (stub)."
-long_description = "Compute defect formation energies (stub)."
-examples         = ["tadah properties defect ..."]
-[TASKS.properties.defect.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose"]
-
-[TASKS.properties.surface]
-description      = "Compute surface energies (stub)."
-long_description = "Compute surface energies (stub)."
-examples         = ["tadah properties surface ..."]
-[TASKS.properties.surface.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose"]
-
-[TASKS.properties.mechanics]
-description      = "Compute bulk modulus and elastic constants (stub)."
-long_description = "Compute bulk modulus and elastic constants (stub)."
-examples         = ["tadah properties mechanics ..."]
-[TASKS.properties.mechanics.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose"]
+# [TASKS.properties.defect]
+# description      = "Compute defect formation energies (stub)."
+# long_description = "Compute defect formation energies (stub)."
+# examples         = ["tadah properties defect ..."]
+# [TASKS.properties.defect.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
+#
+# [TASKS.properties.surface]
+# description      = "Compute surface energies (stub)."
+# long_description = "Compute surface energies (stub)."
+# examples         = ["tadah properties surface ..."]
+# [TASKS.properties.surface.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
+#
+# [TASKS.properties.mechanics]
+# description      = "Compute bulk modulus and elastic constants (stub)."
+# long_description = "Compute bulk modulus and elastic constants (stub)."
+# examples         = ["tadah properties mechanics ..."]
+# [TASKS.properties.mechanics.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
 
 [TASKS.analysis]
 description      = "Visual analysis commands."

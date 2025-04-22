@@ -196,81 +196,81 @@ std::string join(const std::vector<std::string>& vec) {
 }
 
 std::vector<size_t> parse_indices(const std::string& input) {
-    std::vector<size_t> result;
-    std::set<size_t> uniqueNumbers;
-    std::stringstream ss(input);
-    std::string segment;
-    bool hasDuplicates = false;
+  std::vector<size_t> result;
+  std::set<size_t> uniqueNumbers;
+  std::stringstream ss(input);
+  std::string segment;
+  bool hasDuplicates = false;
 
-    while (std::getline(ss, segment, ',')) {
-        segment = trim(segment);
-        size_t dashPos = segment.find('-');
-        size_t colonPos = segment.find(':');
+  while (std::getline(ss, segment, ',')) {
+    segment = trim(segment);
+    size_t dashPos = segment.find('-');
+    size_t colonPos = segment.find(':');
 
-        if (dashPos == std::string::npos) {
-            // Single number
-            if (is_integer(segment)) {
-                size_t number = static_cast<size_t>(std::stoul(segment));
-                if (!uniqueNumbers.insert(number).second) {
-                    hasDuplicates = true;
-                } else {
-                    result.push_back(number);
-                }
-            } else {
-                std::cerr << "Error: Non-numeric value or incorrect syntax found: " << segment << std::endl;
-            }
+    if (dashPos == std::string::npos) {
+      // Single number
+      if (is_integer(segment)) {
+        size_t number = static_cast<size_t>(std::stoul(segment));
+        if (!uniqueNumbers.insert(number).second) {
+          hasDuplicates = true;
         } else {
-            // Extract range start
-            std::string startStr = trim(segment.substr(0, dashPos));
-            if (!is_integer(startStr)) {
-                std::cerr << "Error: Non-numeric start value or incorrect syntax found: " << startStr << std::endl;
-                continue;
-            }
-            size_t start = static_cast<size_t>(std::stoul(startStr));
-
-            size_t end, step = 1;  // Default step is 1
-
-            if (colonPos != std::string::npos) {
-                std::string endStr = trim(segment.substr(dashPos + 1, colonPos - dashPos - 1));
-                std::string stepStr = trim(segment.substr(colonPos + 1));
-                if (!is_integer(endStr) || !is_integer(stepStr)) {
-                    std::cerr << "Error: Non-numeric end or step value or incorrect syntax found." << std::endl;
-                    continue;
-                }
-                end = static_cast<size_t>(std::stoul(endStr));
-                step = static_cast<size_t>(std::stoul(stepStr));
-            } else if (dashPos + 1 < segment.size()) {
-                std::string endStr = trim(segment.substr(dashPos + 1));
-                if (!is_integer(endStr)) {
-                    std::cerr << "Error: Non-numeric end value or incorrect syntax found: " << endStr << std::endl;
-                    continue;
-                }
-                end = static_cast<size_t>(std::stoul(endStr));
-            } else {
-                if (!uniqueNumbers.insert(start).second) {
-                    hasDuplicates = true;
-                } else {
-                    result.push_back(start);
-                }
-                continue;
-            }
-
-            // Generate numbers in range [start, end] with given step
-            for (size_t i = start; i <= end; i += step) {
-                if (!uniqueNumbers.insert(i).second) {
-                    hasDuplicates = true;
-                } else {
-                    result.push_back(i);
-                }
-            }
+          result.push_back(number);
         }
-    }
+      } else {
+        std::cerr << "Error: Non-numeric value or incorrect syntax found: " << segment << std::endl;
+      }
+    } else {
+      // Extract range start
+      std::string startStr = trim(segment.substr(0, dashPos));
+      if (!is_integer(startStr)) {
+        std::cerr << "Error: Non-numeric start value or incorrect syntax found: " << startStr << std::endl;
+        continue;
+      }
+      size_t start = static_cast<size_t>(std::stoul(startStr));
 
-    if (hasDuplicates) {
-        std::cerr << "Warning: Duplicate indices found and removed." << std::endl;
-    }
+      size_t end, step = 1;  // Default step is 1
 
-    return result;
+      if (colonPos != std::string::npos) {
+        std::string endStr = trim(segment.substr(dashPos + 1, colonPos - dashPos - 1));
+        std::string stepStr = trim(segment.substr(colonPos + 1));
+        if (!is_integer(endStr) || !is_integer(stepStr)) {
+          std::cerr << "Error: Non-numeric end or step value or incorrect syntax found." << std::endl;
+          continue;
+        }
+        end = static_cast<size_t>(std::stoul(endStr));
+        step = static_cast<size_t>(std::stoul(stepStr));
+      } else if (dashPos + 1 < segment.size()) {
+        std::string endStr = trim(segment.substr(dashPos + 1));
+        if (!is_integer(endStr)) {
+          std::cerr << "Error: Non-numeric end value or incorrect syntax found: " << endStr << std::endl;
+          continue;
+        }
+        end = static_cast<size_t>(std::stoul(endStr));
+      } else {
+        if (!uniqueNumbers.insert(start).second) {
+          hasDuplicates = true;
+        } else {
+          result.push_back(start);
+        }
+        continue;
+      }
+
+      // Generate numbers in range [start, end] with given step
+      for (size_t i = start; i <= end; i += step) {
+        if (!uniqueNumbers.insert(i).second) {
+          hasDuplicates = true;
+        } else {
+          result.push_back(i);
+        }
+      }
+    }
+  }
+
+  if (hasDuplicates) {
+    std::cerr << "Warning: Duplicate indices found and removed." << std::endl;
+  }
+
+  return result;
 }
 std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
   std::string input_str = join(input);
