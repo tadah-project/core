@@ -478,7 +478,7 @@ cli_required     = false
 
 [ALLOWED_KEYS.numeric]
 INHERIT = ["TYPES.UINT"]
-description  = "Numeric output precision. Either number of decimal places or scientific notation. Depending on context."
+description  = "Numeric output precision. Sets number of decimal places for output."
 examples     = ["12"]
 default_value      = ["12"]
 cli_long_flag  = "--numeric"
@@ -588,7 +588,7 @@ cli_long_flag  = "--atom"
 cli_short_flag = "-a"
 cli_required     = false
 
-[ALLOWED_KEYS.ATOMPAIR]
+[ALLOWED_KEYS.atompair]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["<element1> <element2>"]
 value_N      = [-2]
@@ -729,6 +729,13 @@ cli_long_flag  = "--append"
 cli_short_flag = ""
 cli_required     = false
 cli_needs = ["outfile"]
+
+[ALLOWED_KEYS.bondenergy]
+INHERIT = ["TYPES.BOOL"]
+description  = "Calculate bond energy instead of per atom value."
+cli_long_flag  = "--bondenergy"
+cli_short_flag = ""
+cli_required     = false
 
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
@@ -1026,49 +1033,50 @@ cli_needs = ["outfile"]
 
 
 
-# [TASKS.transform]
-# description      = "Structure transformation commands."
-# long_description = "Structure transformation commands (rotate, shear, change-coords)."
-# examples         = ["tadah transform rotate ..."]
-# [TASKS.transform.keys]
-# INHERIT = ["ALLOWED_KEYS.task"]
-
 [TASKS.properties]
 description      = "Evaluate physical properties for MLIP target evaluation."
-long_description = "Evaluate physical properties for MLIP target evaluation (e.g., twobody, ecurve, eos, defect, surface, mechanics)."
-examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+long_description = "Evaluate physical properties for MLIP target evaluation (e.g., pairwise, ecurve, eos, defect, surface, mechanics)."
+examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
 [TASKS.properties.keys]
-INHERIT = ["ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
 
-[TASKS.properties.twobody]
-description      = "Compute two-body potential (E vs. r)."
-long_description = "Compute two-body potential (E vs. r) for a pair of elements."
-examples         = ["tadah properties twobody -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
-[TASKS.properties.twobody.keys]
-INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.ATOMPAIR", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose"]
-[TASKS.properties.twobody.keys.potential]
-cli_required = true
-[TASKS.properties.twobody.keys.outfile]
-cli_required = true
-[TASKS.properties.twobody.keys.range]
-cli_required = true
-[TASKS.properties.twobody.keys.ATOMPAIR]
-cli_required = true
+[TASKS.properties.pairwise]
+description      = "Compute E vs. r for a given potential."
+long_description = ""
+examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+[TASKS.properties.pairwise.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.atompair", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.bondenergy"]
+[TASKS.properties.pairwise.keys.eshift]
+INHERIT = ["TYPES.DOUBLE"]
+description = "Shift the energy curve by this value. If zero is provided the curve will be shifted by the furthest right value of the curve."
+value_N = [1]
 
-[TASKS.properties.ecurve]
-description      = "Compute energy versus volume/density/pressure curve."
-long_description = "Compute energy versus volume/density/pressure curve."
-examples         = ["tadah properties ecurve -s crystal.cif -r 10 100 200 --quantity volume -o evcurve.txt"]
-[TASKS.properties.ecurve.keys]
-INHERIT          = ["ALLOWED_KEYS.structure", "ALLOWED_KEYS.range", "ALLOWED_KEYS.quantity", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-[TASKS.properties.ecurve.keys.structure]
+
+[TASKS.properties.pairwise.groups.input]
+description      = "Select from the following options:"
 cli_required = true
-[TASKS.properties.ecurve.keys.range]
-cli_required = true
-[TASKS.properties.ecurve.keys.quantity]
-cli_required = true
-[TASKS.properties.ecurve.keys.outfile]
-cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.properties.pairwise.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.task"]
+[TASKS.properties.pairwise.groups.input.keys.potential]
+cli_excludes   = ["task"]
+cli_needs = ["outfile", "range", "atompair"]
+
+# [TASKS.properties.ecurve]
+# description      = "Compute energy versus volume/density/pressure curve."
+# long_description = "Compute energy versus volume/density/pressure curve."
+# examples         = ["tadah properties ecurve -s crystal.cif -r 10 100 200 --quantity volume -o evcurve.txt"]
+# [TASKS.properties.ecurve.keys]
+# INHERIT          = ["ALLOWED_KEYS.structure", "ALLOWED_KEYS.range", "ALLOWED_KEYS.quantity", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+# [TASKS.properties.ecurve.keys.structure]
+# cli_required = true
+# [TASKS.properties.ecurve.keys.range]
+# cli_required = true
+# [TASKS.properties.ecurve.keys.quantity]
+# cli_required = true
+# [TASKS.properties.ecurve.keys.outfile]
+# cli_required = true
 
 # [TASKS.properties.eos]
 # description      = "Compute Equation of State (stub)."
@@ -1148,6 +1156,13 @@ cli_required = true
 cli_required = true
 [TASKS.analysis.cutoff.keys.type]
 cli_required = true
+
+# [TASKS.transform]
+# description      = "Structure transformation commands."
+# long_description = "Structure transformation commands (rotate, shear, change-coords)."
+# examples         = ["tadah transform rotate ..."]
+# [TASKS.transform.keys]
+# INHERIT = ["ALLOWED_KEYS.task"]
 
 # work in progress
 [TASKS.explain]
