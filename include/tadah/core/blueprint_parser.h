@@ -57,14 +57,10 @@ struct BlueprintTask {
   BlueprintTask() {}
 };
 
-struct BlueprintTadah {
+struct BlueprintTadah: public BlueprintTask {
   std::string logo;                         ///< Name of the Tadah! software.
   std::string version;                      ///< Version of the Tadah! software.
   std::string website;                      ///< Version of the Tadah! software.
-  std::string description;                  ///< Description of the blueprint.
-  std::string longDescription;              ///< Extended description of the blueprint.
-  std::vector<std::string> examples;        ///< Examples of usage.
-  std::vector<BlueprintKey> blueprintKeys;  ///< Multiple key-value pairs (optional).
 };
 
 /**

@@ -264,8 +264,8 @@ description  = "Specifies a list of numerical parameters for models that require
 examples     = ["MPARAMS 0.1", "MPARAMS 0.1 0.2 0.3"]
 
 [ALLOWED_KEYS.MODEL]
-value_type   = ["STRING STRING", "STRING STRING STRING"] 
-value_format = ["MODEL FUNCTION", "MODEL FUNCTION OPTION"]
+value_type   = ["STRING STRING", "STRING STRING STRING",  "STRING STRING UINT"] 
+value_format = ["MODEL FUNCTION", "MODEL FUNCTION OPTION", "MODEL FUNCTION OPTION"]
 value_N      = [-3]
 description  = "Defines the training model and its associated function. MODEL can be any class that inherits from M_Base (e.g., M_KRR, M_BLR), while FUNCTION must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, BF_Polynomial2). Different models are supported, such as KRR with various kernels and BLR with linear or nonlinear basis functions."
 examples     = [
@@ -951,7 +951,7 @@ cli_excludes = ["even", "percent"]
 [TASKS.data.split.keys.percent]
 cli_excludes = ["even", "chunk"]
 [TASKS.data.split.groups.input]
-description      = "Sources for merging. Select from the following options:"
+description      = "Select from the following options:"
 cli_required = true
 required_min = 1
 required_max = 1
@@ -1009,7 +1009,7 @@ description = "Apply energy shift and/or rescaling to stresses."
 [TASKS.data.balance.keys.threshold]
 INHERIT = ["TYPES.DOUBLES"]
 description = "Floating point threshold(s) for energy, force and stress --rescale. If energy / sum_i norm(force_i) / norm(stress) is greater than threshold, the corresponding scaling factor is applied."
-default_value = ["1e-10", "1e-10", "1e-10"]
+default_value = ["1e-1", "2e-2", "3e-3"]
 value_N = [-3]
 [TASKS.data.balance.keys.rescale]
 description = "Rescale individual structure weights. The rescaling is applied to the energies, forces, and stresses in the dataset. The rescaling is done by multiplying the energies, forces, and stresses by the corresponding scaling factors: energy 1/(energy), force 1/(sum of force norm), stress 1/(stress matrix norm)."

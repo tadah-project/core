@@ -204,7 +204,7 @@ public:
    * @param key Key name.
    * @param val Value to append.
    */
-  template <typename T> void add(const std::string &key, const T &val) {
+  template <typename T> void add(const std::string &key, const T &val, size_t maxVals = 0) {
     std::string upKey = to_upper(key);
     // Validate blueprint
     const auto bi = findBlueprintKey(upKey, "ALLOWED_KEYS");
@@ -221,7 +221,7 @@ public:
       }
       keyNotFoundLogSuggestThrow(key, "add");
     }
-    size_t maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
+    if (!maxVals) maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
     std::lock_guard<std::mutex> lock(mtx_);
     std::vector<std::string> &bucket = storage_[upKey];
