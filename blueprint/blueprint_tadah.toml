@@ -198,7 +198,7 @@ examples     = [
 ]
 
 [ALLOWED_KEYS.TYPEMB]
-value_type   = ["{STRING INT INT STRING STRING}"]
+value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}"]
 value_format = ["<descriptor_name> <n> <m> <element1 element2> ..."]
 value_N      = [-2147483647]
 description  = "Specifies the many-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple descriptors, use the meta descriptor DM_mJoin followed by the individual descriptor parameters. Elements should be provided in pairs."
@@ -380,7 +380,7 @@ description = """Set to true to standardise descriptors. Note that this usually 
 
 [ALLOWED_KEYS.LAMBDA]
 default_value = ["0"]
-value_type = ['INT','DOUBLE,','INT DOUBLE']
+value_type = ['INT','DOUBLE','INT DOUBLE']
 value_format = ['<int>', '<double>', '<int> <double>']
 value_N = [-2]
 description = """This KEY controls the regularisation parameter :math:`\\lambda` for both :cpp:class:`M_BLR` and :cpp:class:`M_KRR`. If :code:`N=0`, no regularisation is applied. If :code:`N>0`, :math:`\\lambda` is set to this value. If :code:`N<0`, an evidence-approximation algorithm estimates the value of :math:`\\lambda`. For LAMBDA 0, second number, M (double), can be specified, i.e. LAMBDA 0 1e-12, which helps to determine the effective rank of matrix ::math:`\\Phi` (default 1e-8)."""
@@ -1005,7 +1005,7 @@ cli_needs = ["outfile"]
 
 [TASKS.data.balance]
 description      = "Apply energy shift and/or rescaling to a dataset."
-long_description = "Apply energy shift and/or rescaling to a dataset.."
+long_description = "Apply energy shift and/or rescaling to a dataset."
 examples         = ["tadah data balance -d db.tadah --rescale --eshift 0.5 --numeric 16 --outfile balanced.tadah", "tadah data balance -d db1.tadah db2.tadah --rescale --outfile balanced1.tadah balanced2.tadah"]
 [TASKS.data.balance.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.index"]
@@ -1048,8 +1048,10 @@ examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 1
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.atompair", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.bondenergy"]
 [TASKS.properties.pairwise.keys.eshift]
 INHERIT = ["TYPES.DOUBLE"]
-description = "Shift the energy curve by this value. If zero is provided the curve will be shifted by the furthest right value of the curve."
-value_N = [1]
+description = "Shift the energy curve by this value. If zero is provided the curve will be shifted by the furthest right value of the curve. Provide single double for --eshift if potential is either two- or many-body. If potential is both two- and many-body, provide three doubles for --eshift. The first double if for total energy second double is for two-body, the third for many-body."
+value_N = [-3]
+required_min = 1
+required_max = 3
 
 
 [TASKS.properties.pairwise.groups.input]

@@ -234,19 +234,19 @@ Context::findBlueprintKey(const std::string &upKey,
 }
 
 void Context::keyNotFoundLogSuggestThrow(const std::string &key,
-                                         const std::string &method) const {
+    const std::string &method) const {
   Logger::instance().log(LogLevel::ERROR,
-                         "Context::" + method + "() -> Key not found: ", key);
-  std::string suggested = BlueprintParser::findClosestKey(key, allowedKeys_);
-  if (!suggested.empty()) {
-    Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
-  }
-  bool isAllowed = allowedKeys_.find(to_upper(key)) != allowedKeys_.end();
+      "Context::" + method + "() -> Key not found: ", key);
 
+  bool isAllowed = allowedKeys_.find(to_upper(key)) != allowedKeys_.end();
   if (isAllowed) {
     throw std::runtime_error("Key not found in the Context object: " + key);
   } else {
-  throw std::runtime_error("Key not allowed: " + key);
+    std::string suggested = BlueprintParser::findClosestKey(key, allowedKeys_);
+    if (!suggested.empty()) {
+      Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
+    }
+    throw std::runtime_error("Key not allowed: " + key);
   }
 }
 
