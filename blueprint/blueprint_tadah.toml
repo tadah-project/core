@@ -622,7 +622,7 @@ cli_required     = false
 INHERIT = ["TYPES.STRINGS"]
 description  = "Generic types."
 cli_long_flag  = "--type"
-cli_short_flag = "-t"
+cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.DIMER]
@@ -1177,11 +1177,16 @@ long_description = "Evaluate and plot cutoff functions.\nExample: tadah analysis
 examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
 [TASKS.analysis.cutoff.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative"]
+[TASKS.analysis.cutoff.groups.input]
+description      = "Provide either a cutoff type or a task file."
+cli_required = true
+required_min = 1
+required_max = 1
 [TASKS.analysis.cutoff.groups.input.keys]
 INHERIT          = ["ALLOWED_KEYS.type", "ALLOWED_KEYS.task"]
-[TASKS.analysis.cutoff.groups.input.keys.type]
-cli_excludes   = ["task"]
-cli_needs = ["range"]
+# [TASKS.analysis.cutoff.groups.input.keys.type]
+# cli_excludes   = ["task"]
+# cli_needs = ["range"]
 
 # [TASKS.transform]
 # description      = "Structure transformation commands."
