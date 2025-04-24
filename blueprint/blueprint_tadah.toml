@@ -1118,18 +1118,26 @@ INHERIT          = ["ALLOWED_KEYS.task"]
 
 [TASKS.analysis.descriptor]
 description      = "Calculate structure descriptors."
-long_description = "Calculate structure descriptors.\nExample: tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"
+long_description = "Calculate structure descriptors."
 examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"]
 [TASKS.analysis.descriptor.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.structure"]
-[TASKS.analysis.descriptor.keys.dbfile]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.append"]
+[TASKS.analysis.descriptor.groups.input]
+description      = "Structure source or a task file. Select from the following options:"
 cli_required = true
-cli_excludes   = ["structure"]
-[TASKS.analysis.descriptor.keys.structure]
-cli_required = true
-cli_excludes   = ["dbfile"]
-[TASKS.analysis.descriptor.keys.potential]
-cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.descriptor.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.analysis.descriptor.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile", "potential"]
+[TASKS.analysis.descriptor.groups.input.keys.structure]
+cli_excludes   = ["task", "index"]
+cli_needs = ["outfile", "potential"]
+
+
+
 
 [TASKS.analysis.bfunc]
 description      = "Evaluate and plot basis functions."
