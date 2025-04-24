@@ -619,8 +619,8 @@ cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.type]
-INHERIT = ["TYPES.STRING"]
-description  = "Generic type."
+INHERIT = ["TYPES.STRINGS"]
+description  = "Generic types."
 cli_long_flag  = "--type"
 cli_short_flag = "-t"
 cli_required     = false
@@ -736,6 +736,14 @@ description  = "Calculate bond energy instead of per atom value."
 cli_long_flag  = "--bondenergy"
 cli_short_flag = ""
 cli_required     = false
+
+[ALLOWED_KEYS.derivative]
+INHERIT = ["TYPES.BOOL"]
+description  = "Calculate derivative of the function."
+cli_long_flag  = "--derivative"
+cli_short_flag = ""
+cli_required     = false
+
 
 ###############################################################################
 # Blueprint for Internal Keys (INTERNAL_KEYS)
@@ -1136,36 +1144,44 @@ cli_needs = ["outfile", "potential"]
 cli_excludes   = ["task", "index"]
 cli_needs = ["outfile", "potential"]
 
-
-
-
 [TASKS.analysis.bfunc]
 description      = "Evaluate and plot basis functions."
 long_description = "Long description: Evaluate and plot basis functions."
 examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""]
 [TASKS.analysis.bfunc.keys]
-INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-[TASKS.analysis.bfunc.keys.config]
-cli_required = true
-[TASKS.analysis.bfunc.keys.outfile]
-cli_required = true
-[TASKS.analysis.bfunc.keys.range]
-cli_required = true
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative", "ALLOWED_KEYS.index", "ALLOWED_KEYS.rescale"]
 [TASKS.analysis.bfunc.keys.type]
+value_N = [-2]
+description  = "Choice of basis function. For example: \"2b Y\" or \"mb N\". Where Y/N controls computation of the cutoff function."
+[TASKS.analysis.bfunc.keys.rescale]
+description = "Rescale the basis function by the cutoff function. This is useful for visualisation purposes."
+[TASKS.analysis.bfunc.keys.outfile]
+INHERIT = ["TYPES.STRING"]
+[TASKS.analysis.bfunc.groups.input]
+description      = "Provide either a potential file, a configuration file, or a task file."
 cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.bfunc.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+[TASKS.analysis.bfunc.groups.input.keys.potential]
+cli_excludes   = ["task", "config"]
+cli_needs = ["range", "type"]
+[TASKS.analysis.bfunc.groups.input.keys.config]
+cli_excludes   = ["task", "potential"]
+cli_needs = ["range", "type"]
 
 [TASKS.analysis.cutoff]
 description      = "Evaluate and plot cutoff functions."
 long_description = "Evaluate and plot cutoff functions.\nExample: tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"
 examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
 [TASKS.analysis.cutoff.keys]
-INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
-[TASKS.analysis.cutoff.keys.outfile]
-cli_required = true
-[TASKS.analysis.cutoff.keys.range]
-cli_required = true
-[TASKS.analysis.cutoff.keys.type]
-cli_required = true
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative"]
+[TASKS.analysis.cutoff.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.type", "ALLOWED_KEYS.task"]
+[TASKS.analysis.cutoff.groups.input.keys.type]
+cli_excludes   = ["task"]
+cli_needs = ["range"]
 
 # [TASKS.transform]
 # description      = "Structure transformation commands."
