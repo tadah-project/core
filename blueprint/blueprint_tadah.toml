@@ -454,6 +454,7 @@ cli_required     = false
 [ALLOWED_KEYS.outfile]
 INHERIT = ["TYPES.STRINGS"]
 description  = "Output file."
+long_description = ""
 examples     = ["output.tadah"]
 cli_long_flag  = "--outfile"
 cli_short_flag = "-o"
@@ -709,8 +710,32 @@ examples = ["1 4 5"]
 
 [ALLOWED_KEYS.task]
 INHERIT = ["ALLOWED_KEYS.config"]
-description  = "A file containing task(s) to be executed. The task file can contain multiple tasks, each with its own configuration."
-long_description= "The task file is a convenient way to specify multiple tasks without having to provide all the command-line arguments for each task. The task file should be in the same format as the configuration file, but it can also include additional information such as the task name and any specific parameters for that task. A task in a task file begins with the keyword 'TASK' followed by the task name. The task name is simply a command to be executed or both command and subcommand. The lines following the `TASK` keyword should contain parameters required for the task specified above. For example CLI `--verbose 2` is 'VERBOSE 2' in the task file."
+description = "A file containing task(s) to be executed."
+long_description = """
+The task file is a convenient way to specify multiple tasks without having to
+provide all the command-line arguments for each task. The task file should be
+in the same format as the configuration file, but it can also include additional
+information such as the task name and any specific parameters for that task.
+A task in a task file begins with the keyword 'TASK' followed by the task name.
+The task name is simply a command to be executed or both command and subcommand.
+The lines following the `TASK` keyword should contain parameters required for
+the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
+task file.
+
+# Example TASK file containing two tasks:
+# Global options
+NUMERIC 14 # output precision
+VERBOSE 2  # verbosity level
+
+TASK predict
+DBFILE db1.tadah db2.tadah db3.tadah
+DBFILE db4.tadah db5.tadah db6.tadah
+FORCE true
+ANALYTICS true
+
+TASK data print
+STRUCTURE crystal1.cif crystal2.cif
+"""
 examples     = ["path/to/tasks.tadah"]
 cli_long_flag  = "--task"
 cli_short_flag = "-t"
@@ -811,8 +836,14 @@ value_N = [-6]
 
 [TASKS.train]
 description      = "Train a model."
-long_description = "Train a model using a configuration file or a task file. The result is a potential file for use with LAMMPS. The model can train on energies, forces, and stresses. By default, it only trains on energies. The train command requires a configuration file and produces a potential file, a trained interatomic potential that can be used for prediction or molecular dynamics in LAMMPS using pair_style tadah."
-examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 3 --outfile potential.tadah", "tadah train --task tasks.tadah"]
+long_description = """
+Train a model using either a configuration file or a task file. By default,
+it trains on energies; however, forces and stresses can also be included.
+This command requires a configuration file and yields a trained interatomic
+potential which can be used with Tadah! or for molecular
+dynamics simulations in LAMMPS via pair_style tadah.
+"""
+examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 [TASKS.train.keys]
 INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
 [TASKS.train.keys.outfile]
@@ -831,8 +862,17 @@ required_max = 1
 INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
 
 [TASKS.predict]
-description      = "Predict properties using a trained model."
-long_description = "Predict using an already trained model. Energy per atom is always calculated, and calculating forces and stresses is optional. Energies are written to energy.pred, and if forces or stresses are calculated, they are written to forces.pred and stress.pred, respectively. You can use a task file with a DBFILE key to list prediction datasets or STRUCTURE to list files or online structures (see description of --structure for supported types). Alternatively, you can provide tadah datasets and/or individual structure files or online soruces via the command line."
+description = "Predict properties using a trained model."
+long_description = """
+Predict using an already trained model. Energy per atom is always calculated,
+while forces and stresses are optional. By default, energies are written to
+energy.pred, and if forces or stresses are calculated, they are written to
+forces.pred and stress.pred, respectively. You can use a task file with a DBFILE
+key to list prediction datasets or STRUCTURE to list files or online structures
+(see tadah explain predict.structure for supported types). Alternatively, you
+can provide Tadah! datasets or individual structure files or online sources via
+the command line.
+"""
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
 [TASKS.predict.keys]
 INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile"]
@@ -856,8 +896,20 @@ cli_needs = ["potential"]
 cli_needs = ["potential"]
 
 [TASKS.hpo]
-description      = "Optimize hyperparameters for model training."
-long_description = "Optimize hyperparameters for model training."
+description = "Optimize the model architecture and hyperparameters."
+long_description = """
+Refine your model's architecture and hyperparameters using Tadah!'s nested
+fitting procedure, an iterative approach that goes beyond standard force-
+and energy-focused methods. By evaluating trial potentials with LAMMPS
+scripts, this framework allows you to incorporate performance constraints
+such as surface energies or phase stability, significantly enhancing model
+transferability. The global optimization algorithm systematically explores
+the parameter space, producing a robust interatomic potential tailored to
+your priorities for accuracy, speed, and other metrics. This flexible
+workflow enables users to define search space constraints, assign weights
+to different objectives, and tune performance for a wide range of
+applications.
+"""
 examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
 [TASKS.hpo.keys]
 INHERIT          = ["ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose"]
@@ -874,7 +926,7 @@ cli_excludes = ["task"]
 
 [TASKS.data]
 description      = "Dataset management commands."
-long_description = "Dataset management commands (convert, read, write, merge, split, dedup, sample, balance)."
+long_description = "Dataset management commands (convert, print, write, merge, split, dedup, sample, balance)."
 examples         = ["tadah data --task tasks.tadah"]
 [TASKS.data.keys]
 INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
@@ -897,8 +949,10 @@ cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.print]
-description      = "Print structures from dataset or structure files."
-long_description = "Print structures from dataset or structure files."
+description = "Print structure information to screen."
+long_description = """
+Print structure(s) information from dataset or structure files.
+"""
 examples         = ["tadah data print -d dataset.tadah", "tadah data print -s crystal.cif"]
 [TASKS.data.print.keys]
 INHERIT          = ["ALLOWED_KEYS.index", "ALLOWED_KEYS.numeric"]
@@ -995,8 +1049,12 @@ cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.sample]
-description      = "Sample configurations from a dataset and dump to a single dataset."
-long_description = "Sample configurations from a dataset. For --index: size <= total size of dataset."
+description = "Sample configurations from a dataset."
+long_description = """
+Sample a subset of configurations from an existing dataset to create a new,
+single output dataset. For the --index option, ensure requested sample size
+does not exceed the number of available configurations.
+"""
 examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
 [TASKS.data.sample.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.uniform", "ALLOWED_KEYS.random", "ALLOWED_KEYS.index", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.append"]
@@ -1016,8 +1074,16 @@ cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.balance]
-description      = "Apply energy shift and/or rescaling to a dataset."
-long_description = "Apply energy shift and/or rescaling to a dataset."
+description = "Apply energy shifts and/or rescaling to a dataset."
+long_description = """
+Modify a dataset by applying element-specific energy shifts or rescaling
+the weights for energies, forces, and stresses. The procedure can include
+threshold checks, forcing near-zero values to a default weight, while large
+magnitudes are inversely weighted. The updated dataset is then written to
+one or more output files, which can be merged if desired. This approach
+enhances the dataset's consistency and is especially useful when refining
+potential parameters or emphasizing certain configurations during training.
+"""
 examples         = ["tadah data balance -d db.tadah --rescale --eshift 0.5 --numeric 16 --outfile balanced.tadah", "tadah data balance -d db1.tadah db2.tadah --rescale --outfile balanced1.tadah balanced2.tadah"]
 [TASKS.data.balance.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.index"]
@@ -1027,11 +1093,25 @@ description = "Apply energy shift and/or rescaling to forces."
 description = "Apply energy shift and/or rescaling to stresses."
 [TASKS.data.balance.keys.threshold]
 INHERIT = ["TYPES.DOUBLES"]
-description = "Floating point threshold(s) for energy, force and stress --rescale. If energy / sum_i norm(force_i) / norm(stress) is greater than threshold, the corresponding scaling factor is applied."
+description = "Floating point thresholds for energy, force, and stress."
+long_description = """
+If energy or the sum of force norms or the stress matrix norm exceeds the
+corresponding threshold, the relevant quantity will be rescaled using an
+inverse weighting..
+"""
 default_value = ["1e-1", "2e-2", "3e-3"]
 value_N = [-3]
 [TASKS.data.balance.keys.rescale]
-description = "Rescale individual structure weights. The rescaling is applied to the energies, forces, and stresses in the dataset. The rescaling is done by multiplying the energies, forces, and stresses by the corresponding scaling factors: energy 1/(energy), force 1/(sum of force norm), stress 1/(stress matrix norm)."
+description = "Rescale structure weights."
+long_description = """
+Applies inverse weighting to energies, forces, and stresses based on their
+magnitudes. Specifically:
+  • Energies: 1 / |energy|
+  • Total force: 1 / Σ‖force_i‖
+  • Stress: 1 / ‖stress‖
+This ensures smaller magnitudes keep their weights, while large values are
+downweighted to mitigate numerical instability.
+"""
 [TASKS.data.balance.groups.input]
 description      = "Select from the following options:"
 cli_required = true
