@@ -212,6 +212,7 @@ Context::getMapRef() const {
 const BlueprintKey *
 Context::findBlueprintKey(const std::string &upKey,
                            const std::string &xKeys) const {
+  // print size of allowedKeys_ and internalKeys_
   if (xKeys == "ALLOWED_KEYS") {
     auto itA = allowedKeys_.find(upKey);
     if (itA != allowedKeys_.end()) {
