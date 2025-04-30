@@ -119,12 +119,16 @@ cli_required   = false
 [ALLOWED_KEYS.verbose]
 INHERIT = ["TYPES.UINT"]
 description  = "Verbosity level. 0-2: ERROR, WARNING, INFO."
-long_description = "Verbosity level. 0: ERROR, 1: WARNING, 2: INFO. The verbosity level controls the amount of information printed during execution. Higher levels provide more detailed output."
+long_description = """
+Verbosity level. 0: ERROR, 1: WARNING, 2: INFO. The verbosity level controls 
+the amount of information printed during execution. Higher levels provide 
+more detailed output.
+"""
 examples     = ["2"]
-default_value      = ["1"]
+default_value = ["1"]
 cli_long_flag  = "--verbose"
 cli_short_flag = "-v"
-cli_required     = false
+cli_required   = false
 
 [ALLOWED_KEYS.bias]
 INHERIT = ["TYPES.BOOL"]
@@ -156,7 +160,13 @@ cli_required     = false
 [ALLOWED_KEYS.dbfile]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
-description  = "Absolute or relative path to the Tadah! database file(s). The relative path is interpreted relative to the current working directory. Multiple dataset paths can be provided either as space-separated tokens or by repeating this key."
+description  = "Path(s) to Tadah! database file(s)."
+long_description = """
+Absolute or relative path to the Tadah! database file(s). The relative path 
+is interpreted relative to the current working directory. Multiple dataset 
+paths can be provided either as space-separated tokens or by repeating 
+this key.
+"""
 examples     = ["dbfile /path/to/dbfile", "dbfile /path/to/dbfile1 /path/to/dbfile2"]
 cli_long_flag  = "--dbfile"
 cli_short_flag = "-d"
@@ -165,23 +175,40 @@ cli_required     = false
 [ALLOWED_KEYS.RCTYPE2B]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["Cut_<name>"]
-description  = "Specifies the cutoff function type(s) for the two-body descriptor(s). Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or multiple types corresponding to each descriptor when using the D2_mJoin meta descriptor."
+description  = "Specifies the cutoff function type(s) for two-body descriptor(s)."
+long_description = """
+Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or multiple 
+types corresponding to each descriptor when using the D2_mJoin meta descriptor.
+"""
 examples     = ["RCTYPE2B Cut_Cos", "RCTYPE2B Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCTYPEMB]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["Cut_<name>"]
-description  = "Specifies the cutoff function type(s) for the many-body descriptor(s). Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or a series of types—each for a corresponding descriptor when using the DM_mJoin meta descriptor."
+description  = "Specifies the cutoff function type(s) for many-body descriptor(s)."
+long_description = """
+Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or a series of 
+types—each for a corresponding descriptor when using the DM_mJoin 
+meta descriptor.
+"""
 examples     = ["RCTYPEMB Cut_Cos", "RCTYPEMB Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCUT2B]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Specifies the cutoff distance(s) for the two-body descriptor(s). Provide a single value for one descriptor or multiple values—one for each descriptor when using the D2_mJoin meta descriptor."
+description  = "Specifies the cutoff distance(s) for two-body descriptor(s)."
+long_description = """
+Provide a single value for one descriptor or multiple values—one for each 
+descriptor when using the D2_mJoin meta descriptor.
+"""
 examples     = ["RCUT2B 3.0", "RCUT2B 3.0 7.5"]
 
 [ALLOWED_KEYS.RCUTMB]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Specifies the cutoff distance(s) for the many-body descriptor(s). Provide a single value for a standalone descriptor or multiple values corresponding to each descriptor when using the DM_mJoin meta descriptor."
+description  = "Specifies the cutoff distance(s) for many-body descriptor(s)."
+long_description = """
+Provide a single value for a standalone descriptor or multiple values 
+corresponding to each descriptor when using the DM_mJoin meta descriptor.
+"""
 examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
 
 [ALLOWED_KEYS.TYPE2B]
@@ -189,7 +216,12 @@ value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}"]
 #value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {[INT]} {STRING STRING}", "STRING INT INT {STRING STRING}"]
 value_format = ["D2_<name> {[param]} {ELEMENT ELEMENT}"]
 value_N      = [-2147483647]
-description  = "Specifies the two-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g. D2_LJ). To concatenate multiple descriptors, use the meta descriptor D2_mJoin followed by the individual descriptor parameters. Elements should be provided in pairs."
+description  = "Specifies the two-body descriptor type(s) to be used."
+long_description = """
+For a single descriptor, provide its type (e.g., D2_LJ). To concatenate multiple 
+descriptors, use the meta descriptor D2_mJoin followed by the individual 
+descriptor parameters. Elements should be provided in pairs.
+"""
 examples     = [
   "TYPE2B D2_LJ Kr Kr",
   """TYPE2B    D2_mJoin
@@ -202,7 +234,12 @@ examples     = [
 value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}"]
 value_format = ["<descriptor_name> <n> <m> <element1 element2> ..."]
 value_N      = [-2147483647]
-description  = "Specifies the many-body descriptor type(s) to be used. For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple descriptors, use the meta descriptor DM_mJoin followed by the individual descriptor parameters. Elements should be provided in pairs."
+description  = "Specifies the many-body descriptor type(s) to be used."
+long_description = """
+For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple 
+descriptors, use the meta descriptor DM_mJoin followed by the individual 
+descriptor parameters. Elements should be provided in pairs.
+"""
 examples     = [
   "TYPEMB DM_Blip 6 6 Ti Ti",
   """TYPEMB    DM_mJoin
@@ -215,7 +252,15 @@ examples     = [
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
-description  = "Controls the center positions for the radial basis functions in two-body descriptors (e.g., Gaussian centers). The parameter list may be provided manually or generated automatically. When using the meta descriptor D2_mJoin, specify one or more lists of centers corresponding to each concatenated descriptor. The number of centers should typically match the number of width parameters provided via SGRID2B and remain below the cutoff distance. Alternatively, use the algorithm keyword followed by the parameters to generate the centers automatically. Available algorithms include numbers spaced evenly on a log scale (e.g. 'LOG') or linear scale (e.g. 'LIN')."
+description  = "Controls the center positions for radial basis functions (two-body)."
+long_description = """
+The parameter list may be provided manually or generated automatically. When 
+using the meta descriptor D2_mJoin, specify one or more lists of centers 
+corresponding to each descriptor. The number of centers should typically match 
+the number of width parameters (SGRID2B) and remain below the cutoff distance. 
+Alternatively, use the algorithm keyword followed by parameters to generate 
+centers automatically (e.g., LOG or LIN).
+"""
 examples     = [
     "CGRID2B LIN 10 0 6",
     "CGRID2B 1.0 2.0",
@@ -227,21 +272,34 @@ CGRID2B   1.5 2.5"""
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
-description  = "Specifies the width parameters for the radial basis functions in two-body descriptors (e.g., Gaussian widths). The widths can be supplied manually or auto-generated. When using the meta descriptor D2_mJoin, provide one or more lists of width values corresponding to each concatenated descriptor, ensuring that the number of widths matches the number of centers (CGRID2B). Alternatively, include the algorithm keyword with its parameters to generate the widths automatically using the same available schemes (logarithmic LOG or uniform spacing LIN)."
+description  = "Specifies the width parameters for two-body radial basis functions."
+long_description = """
+These widths can be supplied manually or auto-generated. When using the meta 
+descriptor D2_mJoin, provide one or more lists of width values for each 
+concatenated descriptor. The number of widths must match the number of centers 
+(CGRID2B). Alternatively, specify the algorithm keyword with parameters to 
+generate widths automatically (e.g., LOG or LIN).
+"""
 examples     = [
     "SGRID2B LIN 3 0 1.0",
-    "SGRID2B LOG 6 0.1 10",
+    "SGRID2B GEOM 6 0.1 10",
     """SGRID2B   0.01 0.02 0.03
-SGRID2B   LOG 6 0.1 10"""
+SGRID2B   GEOM 6 0.1 10"""
 ]
 
 [ALLOWED_KEYS.CGRIDMB]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
-description  = "Specifies the center positions for the radial basis functions in many-body descriptors. The list of centers may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, supply one or more lists of centers corresponding to each concatenated descriptor. The generated centers should be consistent with the requirements of the descriptor and remain within appropriate bounds. Alternatively, use an algorithm (e.g., 'L' for logarithmic or 'U' for uniform spacing) followed by the parameters to generate the centers automatically."
+description  = "Specifies the center positions for many-body radial basis functions."
+long_description = """
+Centers may be provided manually or generated automatically. When using the 
+DM_mJoin meta descriptor, supply one or more lists of centers for each 
+concatenated descriptor. Alternatively, include an algorithm such as 'L' 
+(logarithmic) or 'U' (uniform spacing) followed by parameters.
+"""
 examples     = [
-    "CGRIDMB L 4 0 6.2",
+    "CGRIDMB LIN 4 0 6.2",
     "CGRIDMB 0.5 0.7",
     """CGRIDMB   0.5 0.7
 CGRIDMB   0.6 0.8"""
@@ -251,9 +309,16 @@ CGRIDMB   0.6 0.8"""
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
-description  = "Specifies the width (or spread) parameters for the radial basis functions in many-body descriptors. Values may be provided manually or generated automatically. When using the DM_mJoin meta descriptor, provide one or more lists of widths corresponding to each concatenated descriptor, ensuring consistency with the centers defined in CGRIDMB. Alternatively, include an algorithm keyword along with its parameters to generate the widths automatically (available algorithms include those that produce logarithmically or uniformly spaced values)."
+description  = "Specifies the width parameters for many-body radial basis functions."
+long_description = """
+Values may be provided manually or generated automatically. When using the 
+DM_mJoin meta descriptor, provide one or more lists of widths for each 
+descriptor. Ensure consistency with the centers defined in CGRIDMB. Alternatively,
+use an algorithm (e.g., LOG or LIN) and its parameters to generate widths 
+automatically.
+"""
 examples     = [
-    "SGRIDMB U 3 0 1.0",
+    "SGRIDMB LIN 3 0 1.0",
     "SGRIDMB 0.01 0.02 0.03",
     """SGRIDMB   0.01 0.02 0.03
 SGRIDMB   0.02 0.03 0.04"""
@@ -261,14 +326,24 @@ SGRIDMB   0.02 0.03 0.04"""
 
 [ALLOWED_KEYS.MPARAMS]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Specifies a list of numerical parameters for models that require additional configuration details. Consult the specific model documentation for the required parameters; many models may not need any extra parameters."
+description  = "Specifies additional numeric parameters for certain models."
+long_description = """
+Some models require extra parameters. Refer to the model-specific documentation 
+for details. Many models do not need any extra parameters.
+"""
 examples     = ["MPARAMS 0.1", "MPARAMS 0.1 0.2 0.3"]
 
 [ALLOWED_KEYS.MODEL]
 value_type   = ["STRING STRING", "STRING STRING STRING",  "STRING STRING UINT"] 
 value_format = ["MODEL FUNCTION", "MODEL FUNCTION OPTION", "MODEL FUNCTION OPTION"]
 value_N      = [-3]
-description  = "Defines the training model and its associated function. MODEL can be any class that inherits from M_Base (e.g., M_KRR, M_BLR), while FUNCTION must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, BF_Polynomial2). Different models are supported, such as KRR with various kernels and BLR with linear or nonlinear basis functions."
+description  = "Defines the training model and function."
+long_description = """
+MODEL can be any class inheriting from M_Base (e.g., M_KRR, M_BLR). FUNCTION 
+must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, 
+BF_Polynomial2). Various combinations (KRR with different kernels, BLR with 
+various basis functions) are possible.
+"""
 examples     = [
     "MODEL M_BLR BF_Linear",
     "MODEL M_BLR BF_Polynomial2",
@@ -288,13 +363,22 @@ examples = ["INITMB true"]
 
 [ALLOWED_KEYS.SEMBFUNC]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Specifies the shape parameters of the embedding function used by some many-body descriptors (e.g., F_RLR). When using the DM_mJoin meta descriptor, supply one or more lists of parameters corresponding to each concatenated descriptor, ensuring consistency with the position parameters defined in CEMBFUNC."
-examples = ['SEMBFUNC 0.14 0.45 1.00 1.1']
+description  = "Shape parameters for an embedding function."
+long_description = """
+Used by certain many-body descriptors (e.g., F_RLR). When using the DM_mJoin 
+descriptor, provide lists of parameters corresponding to each descriptor, 
+ensuring consistency with CEMBFUNC.
+"""
+examples = ["SEMBFUNC 0.14 0.45 1.00 1.1"]
 
 [ALLOWED_KEYS.CEMBFUNC]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Specifies the position parameters of the embedding function used by some many-body descriptors (e.g., F_RLR). When using the DM_mJoin meta descriptor, supply one or more lists of parameters corresponding to each concatenated descriptor, ensuring consistency with the shape parameters defined in SEMBFUNC."
-examples = ['CEMBFUNC 0.14 0.45 1.00 1.1']
+description  = "Position parameters for an embedding function."
+long_description = """
+Used by certain many-body descriptors (e.g., F_RLR). When using DM_mJoin, 
+supply one or more lists of parameters matching those in SEMBFUNC.
+"""
+examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
 
 [ALLOWED_KEYS.OALGO]
 value_type   = ["INT", "INT DOUBLE"]
@@ -372,33 +456,51 @@ examples = ["OALGO 1", "OALGO 1 -1", "OALGO 2", "OALGO 3 1e-10", "OALGO 4"]
 
 [ALLOWED_KEYS.SBASIS]
 INHERIT = ["TYPES.UINT"]
-description = """The number of basis functions to use when constructing the :cpp:class:`DesignMatrix`. Note that many models do not require this parameter at all."""
-examples = ['10', '102']
+description = "Number of basis functions for the DesignMatrix."
+long_description = """
+Many models do not require this. If specified, it sets the number of basis 
+functions used in the design matrix.
+"""
+examples = ["10", "102"]
 
 [ALLOWED_KEYS.NORM]
 INHERIT = ["TYPES.BOOL"]
-description = """Set to true to standardise descriptors. Note that this usually makes sense only when energies are used for fitting."""
+description = "Standardize descriptors."
+long_description = """
+Set to true to standardize descriptors, typically relevant if energies are used 
+for fitting.
+"""
 
 [ALLOWED_KEYS.LAMBDA]
 default_value = ["0"]
-value_type = ['INT','DOUBLE','INT DOUBLE']
-value_format = ['<int>', '<double>', '<int> <double>']
+value_type = ["INT","DOUBLE","INT DOUBLE"]
+value_format = ["<int>", "<double>", "<int> <double>"]
 value_N = [-2]
-description = """This KEY controls the regularisation parameter :math:`\\lambda` for both :cpp:class:`M_BLR` and :cpp:class:`M_KRR`. If :code:`N=0`, no regularisation is applied. If :code:`N>0`, :math:`\\lambda` is set to this value. If :code:`N<0`, an evidence-approximation algorithm estimates the value of :math:`\\lambda`. For LAMBDA 0, second number, M (double), can be specified, i.e. LAMBDA 0 1e-12, which helps to determine the effective rank of matrix ::math:`\\Phi` (default 1e-8)."""
-examples = ['LAMBDA -1', 'LAMBDA 1e-4', 'LAMBDA 0', 'LAMBDA 0 1e-12']
+description = "Controls the regularization parameter λ for BLR and KRR."
+long_description = """
+If N=0, no regularization. If N>0, λ is set to that value. If N<0, an evidence 
+approximation is used to estimate λ. For LAMBDA 0, you can provide a second 
+number (double) that sets the effective rank threshold (default 1e-8).
+"""
+examples = ["LAMBDA -1", "LAMBDA 1e-4", "LAMBDA 0", "LAMBDA 0 1e-12"]
 
 [ALLOWED_KEYS.ALPHA]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
-description = """Weight precision hyper-parameter. Starting guess used in the evidence approximation algorithm."""
-examples = ['ALPHA 0.23']
+description = "Weight precision hyper-parameter."
+long_description = """
+This is the starting guess for the evidence approximation algorithm. 
+"""
+examples = ["ALPHA 0.23"]
 
 [ALLOWED_KEYS.BETA]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
-description = """Noise precision hyper-parameter. Starting guess used in the evidence approximation algorithm."""
-examples = ['BETA 0.0001']
-
+description = "Noise precision hyper-parameter."
+long_description = """
+This is the starting guess for the evidence approximation algorithm.
+"""
+examples = ["BETA 0.0001"]
 
 [ALLOWED_KEYS.SETFL]
 INHERIT = ["TYPES.STRING"]
@@ -409,12 +511,17 @@ examples = ['Ta1_Ravelo_2013.eam.alloy']
 [ALLOWED_KEYS.structure]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
-description  = "Unified structural input(s) (file or online)."
-long_description = "Supported file formats: Crystallographic Information File: .cif, VASP: POSCAR/CONTCAR and CASTEP: .cell file. The online option fetches requested structure from online database. Supported online formats:  Materials Project using MP IDs (e.g., mp-42), Crystallography Open Database using COD entry identifier (e.g. 1000238) and NOMAD using Entry id (e.g. 7LffuKVnQxsQ9UmTkVuPy7akIrs7). Multiple structures can be provided as space-separated tokens or by repeating this key. Mixture of files and online sources is allowed."
+description  = "Unified structural input(s)."
+long_description = """
+Supported file formats: .cif (Crystallographic Information File), VASP 
+(POSCAR/CONTCAR), and CASTEP (.cell). The online option fetches structures 
+from databases (MP, COD, NOMAD). Multiple structures can be space-separated 
+or repeated. A mix of files and online sources is allowed.
+"""
 examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
 cli_long_flag  = "--structure"
 cli_short_flag = "-s"
-cli_required     = false
+cli_required   = false
 
 [ALLOWED_KEYS.potential]
 INHERIT = ["TYPES.STRING"]
@@ -445,27 +552,38 @@ cli_required     = false
 [ALLOWED_KEYS.dft-file]
 INHERIT = ["TYPES.STRINGS"]
 description  = "Input DFT file(s)."
-long_description = "The DFT file(s) can be a single file or multiple files separated by spaces. The DFT file(s) are used to extract the reference data for training the model. Multiple DFT files can be provided as space-separated tokens or by repeating this key. Supported formats are VASP (OUTCAR and vasprun.xml) and CASTEP (.castep, .md, .geom)."
+long_description = """
+A single file or multiple files (space-separated). Used to extract reference 
+data for training. Supported formats: VASP (OUTCAR, vasprun.xml), CASTEP 
+(.castep, .md, .geom).
+"""
 examples     = ["run1.outcar", "run1.outcar run2.outcar"]
 cli_long_flag  = "--dft-file"
 cli_short_flag = ""
-cli_required     = false
+cli_required   = false
 
 [ALLOWED_KEYS.outfile]
 INHERIT = ["TYPES.STRINGS"]
 description  = "Output file."
-long_description = ""
+long_description = """
+The output file to be written. Multiple files can be specified if the command 
+produces more than one output.
+"""
 examples     = ["output.tadah"]
 cli_long_flag  = "--outfile"
 cli_short_flag = "-o"
-cli_required     = false
+cli_required   = false
 
 [ALLOWED_KEYS.index]
 value_type   = ["{INDEX_PATTERN}"]
 value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>"]
 value_N      = [-2147483647]
 description = "Index pattern."
-long_description = "The index pattern allows for flexible selection of indices from a dataset. The indices can be specified in various formats, including a single index, a range (e.g., <start>-<stop>), or a list of indices separated by commas (e.g., <i1>, <i2>, <i3>). The indices are 1-based, meaning the first entry is index 1. To select every N-th index, use the format '<start>-<stop>:<step>'. A combination of these formats is also allowed if separated by commas. Repeated indices are automatically removed."
+long_description = """
+Allows flexible selection of dataset indices. Supports single indices, ranges 
+(e.g., start-stop), lists, or intervals (start-stop:step). Indices are 1-based. 
+Repeated indices are removed automatically.
+"""
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 cli_long_flag  = "--index"
 cli_short_flag = "-i"
@@ -482,12 +600,15 @@ cli_required     = false
 
 [ALLOWED_KEYS.numeric]
 INHERIT = ["TYPES.UINT"]
-description  = "Numeric output precision. Sets number of decimal places for output."
+description  = "Numeric output precision."
+long_description = """
+Sets the number of decimal places for output. 
+"""
 examples     = ["12"]
-default_value      = ["12"]
+default_value = ["12"]
 cli_long_flag  = "--numeric"
 cli_short_flag = ""
-cli_required     = false
+cli_required   = false
 
 [ALLOWED_KEYS.analytics]
 INHERIT = ["TYPES.BOOL"]
@@ -559,7 +680,11 @@ cli_required     = false
 
 [ALLOWED_KEYS.eshift]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Energy shift per atom. If multispecies, the number of values must match the number of species. The energy shift is applied to the energy of each atom in the system."
+description  = "Energy shift per atom."
+long_description = """
+If multispecies, the number of values must match the number of species. 
+The shift is added to the energy of each atom.
+"""
 examples     = ["0.5", "0.5 0.1"]
 cli_long_flag  = "--eshift"
 cli_short_flag = ""
@@ -576,7 +701,7 @@ cli_required     = false
 value_type   = ["DOUBLE DOUBLE INT"]
 value_format = ["<START> <STOP> <NPOINTS>"]
 value_N      = [-3]
-description  = "Plotting range: [start stop number_of_points]."
+description  = "Plotting range [start stop npoints]."
 examples     = ["0.1 9.5 100"]
 cli_long_flag  = "--range"
 cli_short_flag = "-r"
@@ -605,7 +730,10 @@ cli_required     = false
 [ALLOWED_KEYS.WATOM]
 INHERIT = ["TYPES.DOUBLE"]
 value_N = [-118]
-description = """Weights sorted by the atomic number of the corresponding atom, with the lowest Z value first. WATOMS.size() == ATOMS.size()"""
+description = """
+Weights sorted by atomic number, from lowest Z to highest. WATOMS.size() must 
+match ATOMS.size().
+"""
 
 [ALLOWED_KEYS.error]
 INHERIT = ["TYPES.BOOL"]
@@ -640,47 +768,74 @@ examples = ['DIMER true 1.104 true']
 [ALLOWED_KEYS.EWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
-description = """Global energy scaling factor for all configurations used in the training process. Note that energies are always scaled by 1/number of atoms. Individual scaling factors for every configuration can be set in a dataset file. The combined scaling factor is: EWEIGHT*(configuration eweight)/(number of atoms)"""
-examples = ['EWEIGHT 0.96']
+description = "Global energy scaling factor."
+long_description = """
+Energies are always scaled by 1/(number of atoms). Additional configuration-level 
+scaling factors can apply. Combined factor = EWEIGHT*(config eweight)/(#atoms).
+"""
+examples = ["EWEIGHT 0.96"]
 
 [ALLOWED_KEYS.FWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
-description = """Global force scaling factor for all configurations used in the training process. Note that each force component is always scaled by 1/(number of atoms)/3. Individual scaling factors for every configuration can be set in a dataset file. The combined scaling factor is: FWEIGHT*(configuration fweight)/(number of atoms)/3"""
-examples = ['FWEIGHT 1e-2']
+description = "Global force scaling factor."
+long_description = """
+Each force component is scaled by 1/(#atoms)/3. Additional config-level 
+scaling factors can apply. Combined factor = FWEIGHT*(config fweight)/(#atoms)/3.
+"""
+examples = ["FWEIGHT 1e-2"]
 
 [ALLOWED_KEYS.SWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
-description = """Global stress scaling factor for all configurations used in the training process. Note that each stress component is always scaled by 1/6. Individual scaling factors for every configuration can be set in a dataset file. The combined scaling factor is: SWEIGHT*(configuration sweight)/6"""
-examples = ['SWEIGHT 1e-1']
+description = "Global stress scaling factor."
+long_description = """
+Each stress component is scaled by 1/6. Additional config-level scaling can 
+apply. Combined factor = SWEIGHT*(config sweight)/6.
+"""
+examples = ["SWEIGHT 1e-1"]
 
 [ALLOWED_KEYS.WEIGHTS]
 INHERIT = ["TYPES.DOUBLES"]
-description = """The machine-learned coefficients for the model, obtained during the optimisation process. These are species-dependent weights and can be set by the user. The default weight is an atomic number."""
-examples = ['WEIGHTS 0.12 1.2 0.3']
+description = "Machine-learned coefficients for the model."
+long_description = """
+These are species-dependent weights, obtained during optimization. Defaults 
+to atomic numbers if unspecified.
+"""
+examples = ["WEIGHTS 0.12 1.2 0.3"]
 
 [ALLOWED_KEYS.SIGMA]
-value_type = ['INT {DOUBLE}']
-value_format = ['<integer> <double> ...']
+value_type = ["INT {DOUBLE}"]
+value_format = ["<integer> <double> ..."]
 value_N = [-2147483647]
-description = """The :math:`\\Sigma` matrix used in Bayesian Linear Regression :cpp:class:`M_BLR`. The matrix is :math:`N\\times N` and stored in column-major order."""
-examples = ['`2 1.2 2.2 2.3 3.3`']
+description = "The Σ matrix used in Bayesian Linear Regression."
+long_description = """
+An N×N matrix in column-major order. Applies to M_BLR. 
+"""
+examples = ["`2 1.2 2.2 2.3 3.3`"]
 
-#TODO
 [ALLOWED_KEYS.NSTDEV]
 INHERIT = ["TYPES.DOUBLES"]
-description = """Standard deviations obtained during standardisation (see NORM_) of the columns of the :cpp:class:`DesignMatrix`. The size of the vector is equal to the number of columns."""
+description = "Standard deviations from descriptor normalization."
+long_description = """
+Obtained after standardizing the columns of the DesignMatrix (see NORM).
+The vector size equals the number of columns.
+"""
 
-#TODO
 [ALLOWED_KEYS.NMEAN]
 INHERIT = ["TYPES.DOUBLES"]
-description = """Mean values for the columns of the :cpp:class:`DesignMatrix`. This vector is obtained during standardisation (see NORM_)."""
+description = "Mean values from descriptor normalization."
+long_description = """
+Obtained after standardizing the columns of the DesignMatrix (see NORM).
+"""
 
-#TODO verify whether we need int int double ...
 [ALLOWED_KEYS.BASIS]
 INHERIT = ["TYPES.DOUBLES"]
-description = """Basis vectors used by the non-linear Kernel Ridge Regression model. In this context, they represent the features or functions used to map input data into a higher-dimensional feature space to capture non-linear relationships."""
+description = "Basis vectors for non-linear Kernel Ridge Regression."
+long_description = """
+They represent the features or functions used to map input data into a 
+higher-dimensional feature space.
+"""
 
 [ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
@@ -700,12 +855,19 @@ description = """ScalaPACK column block size NB."""
 
 [ALLOWED_KEYS.FIXWEIGHT]
 INHERIT = ["TYPES.DOUBLES"]
-description = """Values for weights to be fixed during the optimisation process. Requires FIXINDEX."""
+description = "Values for weights to be fixed in optimization."
+long_description = """
+Must be used with FIXINDEX. The i-th value in FIXWEIGHT corresponds to the 
+i-th index in FIXINDEX.
+"""
 examples = ["1.0 1.0 0.5"]
 
 [ALLOWED_KEYS.FIXINDEX]
 INHERIT = ["TYPES.UINTS"]
-description = """Indices of weights to be fixed during the optimisation process. Requires FIXWEIGHT."""
+description = "Indices of weights to be fixed in optimization."
+long_description = """
+Must be used with FIXWEIGHT. 
+"""
 examples = ["1 4 5"]
 
 [ALLOWED_KEYS.task]
@@ -835,13 +997,10 @@ value_N = [-6]
 ###############################################################################
 
 [TASKS.train]
-description      = "Train a model."
 long_description = """
-Train a model using either a configuration file or a task file. By default,
-it trains on energies; however, forces and stresses can also be included.
-This command requires a configuration file and yields a trained interatomic
-potential which can be used with Tadah! or for molecular
-dynamics simulations in LAMMPS via pair_style tadah.
+Train a model using either a configuration file or a task file. By default, 
+it trains on energies; forces and stresses can also be included. Produces a 
+trained interatomic potential for use with Tadah! or in LAMMPS (pair_style tadah).
 """
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 [TASKS.train.keys]
@@ -850,7 +1009,9 @@ INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.
 default_value = ["pot.tadah"]
 value_N = [1]
 description = "Output file name for the trained model."
-long_description = "Long description: Output file name for the trained model."
+long_description = """
+Output file name for the trained model. 
+"""
 value_type   = ["STRING"]
 value_format = ["<file>"]
 [TASKS.train.groups.input]
