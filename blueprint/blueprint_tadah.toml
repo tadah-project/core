@@ -997,10 +997,13 @@ value_N = [-6]
 ###############################################################################
 
 [TASKS.train]
+description      = "Train a model."
 long_description = """
-Train a model using either a configuration file or a task file. By default, 
-it trains on energies; forces and stresses can also be included. Produces a 
-trained interatomic potential for use with Tadah! or in LAMMPS (pair_style tadah).
+Train a model using either a configuration file or a task file. By default,
+it trains on energies; however, forces and stresses can also be included.
+This command requires a configuration file and yields a trained interatomic
+potential which can be used with Tadah! or for molecular
+dynamics simulations in LAMMPS via pair_style tadah.
 """
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 [TASKS.train.keys]
