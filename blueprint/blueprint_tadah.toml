@@ -212,7 +212,7 @@ corresponding to each descriptor when using the DM_mJoin meta descriptor.
 examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
 
 [ALLOWED_KEYS.TYPE2B]
-value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}"]
+value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}"]
 #value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {[INT]} {STRING STRING}", "STRING INT INT {STRING STRING}"]
 value_format = ["D2_<name> {[param]} {ELEMENT ELEMENT}"]
 value_N      = [-2147483647]
