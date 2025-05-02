@@ -232,7 +232,7 @@ examples     = [
 
 [ALLOWED_KEYS.TYPEMB]
 value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}"]
-value_format = ["<descriptor_name> <n> <m> <element1 element2> ..."]
+value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
 value_N      = [-2147483647]
 description  = "Specifies the many-body descriptor type(s) to be used."
 long_description = """
@@ -700,7 +700,7 @@ cli_required     = false
 [ALLOWED_KEYS.range]
 value_type   = ["DOUBLE DOUBLE INT"]
 value_format = ["<START> <STOP> <NPOINTS>"]
-value_N      = [-3]
+value_N      = [-3,-3]
 description  = "Plotting range [start stop npoints]."
 examples     = ["0.1 9.5 100"]
 cli_long_flag  = "--range"
@@ -1270,8 +1270,8 @@ description = "Rescale structure weights."
 long_description = """
 Applies inverse weighting to energies, forces, and stresses based on their
 magnitudes. Specifically:
-  • Energies: 1 / |energy|
-  • Total force: 1 / Σ‖force_i‖
+  • Energies: 1 / | energy |
+  • Total force: 1 / Σ‖ force_i ‖
   • Stress: 1 / ‖stress‖
 This ensures smaller magnitudes keep their weights, while large values are
 downweighted to mitigate numerical instability.
@@ -1400,7 +1400,11 @@ examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 50
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative", "ALLOWED_KEYS.index", "ALLOWED_KEYS.rescale"]
 [TASKS.analysis.bfunc.keys.type]
 value_N = [-2]
-description  = "Choice of basis function. For example: \"2b Y\" or \"mb N\". Where Y/N controls computation of the cutoff function."
+description  = "Basis function type. \"2b Y\" or \"mb N\"."
+long_description  = """
+Choice of basis function. For example: \"2b Y\" or \"mb N\".
+Where Y/N controls computation of the cutoff function.
+"""
 [TASKS.analysis.bfunc.keys.rescale]
 description = "Rescale the basis function by the cutoff function. This is useful for visualisation purposes."
 [TASKS.analysis.bfunc.keys.outfile]
@@ -1456,6 +1460,7 @@ description = "Command or option to explain in a dot separated format."
 long_description = "The command or option to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'."
 value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>"]
 cli_required = true
+examples = ["tadah explain train.task", "tadah explain data.split.even"]
 
 ###############################################################################
 # Error Messages (ERROR_MESSAGES) TODO Not in use
