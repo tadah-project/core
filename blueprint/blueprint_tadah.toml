@@ -231,7 +231,7 @@ examples     = [
 ]
 
 [ALLOWED_KEYS.TYPEMB]
-value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}"]
+value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}", "{STRING UINT UINT UINT UINT UINT STRING STRING}"]
 value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
 value_N      = [-2147483647]
 description  = "Specifies the many-body descriptor type(s) to be used."
