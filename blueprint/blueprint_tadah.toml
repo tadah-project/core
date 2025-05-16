@@ -646,7 +646,7 @@ cli_short_flag = ""
 cli_required     = false
 
 [ALLOWED_KEYS.threshold]
-INHERIT = ["TYPES.DOUBLE"]
+INHERIT = ["TYPES.DOUBLES"]
 description  = "Floating point comparision threshold."
 examples     = ["1e-4"]
 cli_long_flag  = "--threshold"
