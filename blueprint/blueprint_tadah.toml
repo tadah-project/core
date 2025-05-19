@@ -1395,7 +1395,7 @@ cli_needs = ["outfile", "potential"]
 [TASKS.analysis.bfunc]
 description      = "Evaluate and plot basis functions."
 long_description = "Long description: Evaluate and plot basis functions."
-examples         = ["tadah analysis bfunc -c config.tadah -o bfunc.txt -r 0 5 500 -t \"2b Y\""]
+examples         = ["tadah analysis bfunc -p pot.tadah -o bfunc.txt -r 0 5 500 --type 2b Y"]
 [TASKS.analysis.bfunc.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative", "ALLOWED_KEYS.index", "ALLOWED_KEYS.rescale"]
 [TASKS.analysis.bfunc.keys.type]
