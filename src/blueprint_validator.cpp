@@ -296,11 +296,25 @@ public:
   /**
    * @brief Constructs and stores all patterns as separate regex objects in a list.
    */
-  explicit Impl(const std::vector<std::string> &patterns) {
+  // explicit Impl(const std::vector<std::string> &patterns) {
+  //   compiledPatterns.reserve(patterns.size());
+  //   for (auto &p : patterns) {
+  //     compiledPatterns.emplace_back(std::regex(p, std::regex::ECMAScript));
+  //   }
+  // }
+    explicit Impl(const std::vector<std::string>& patterns) {
     compiledPatterns.reserve(patterns.size());
-    for (auto &p : patterns) {
-      compiledPatterns.emplace_back(std::regex(p, std::regex::ECMAScript));
+    for (auto& p : patterns)
+      compiledPatterns.emplace_back(p, std::regex::ECMAScript);
+  }
+      ~Impl() {
+    // Swap each regex with a default one; that tears down its NFA internally.
+    for (auto& r : compiledPatterns) {
+      std::regex{}.swap(r);
     }
+    compiledPatterns.clear();
+    // Optionally shrink to free vector's buffer:
+    std::vector<std::regex>().swap(compiledPatterns);
   }
 
   std::vector<std::regex> compiledPatterns;
@@ -449,7 +463,11 @@ bool BlueprintValidator::validateOnce(const std::vector<std::string> &blueprints
 std::string BlueprintValidator::getPattern() const {
   return m_patterns;
 }
-
+// BlueprintValidator destructor must delete the pImpl
+BlueprintValidator::~BlueprintValidator() {
+  delete m_impl;
+  m_impl = nullptr;
+}
 } // namespace core
 } // namespace tadah
 

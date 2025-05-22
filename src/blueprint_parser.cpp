@@ -135,22 +135,69 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     throw std::runtime_error("Missing mandatory field 'value_type' in key: " +
                              fullKey);
   }
-  item.value_type = toml::find<std::vector<std::string>>(table, "value_type");
+  // item.value_type = toml::find<std::vector<std::string>>(table, "value_type");
+  {
+    // Extract value_type[] safely
+    auto const &node = table.at("value_type");
+    if (!node.is_array()) {
+      throw std::runtime_error("value_type must be an array of strings in key: " + fullKey);
+    }
+    auto const &arr = node.as_array();
+    item.value_type.clear();
+    item.value_type.reserve(arr.size());
+    for (auto const &e : arr) {
+      if (!e.is_string()) {
+        throw std::runtime_error("Non-string element in value_type of key: " + fullKey);
+      }
+      item.value_type.push_back(e.as_string());
+    }
+  }
 
   // Throws an exception if 'value_format' is not found
   if (!table.contains("value_format")) {
     throw std::runtime_error("Missing mandatory field 'value_format' in key: " +
                              fullKey);
   }
-  item.value_format =
-      toml::find<std::vector<std::string>>(table, "value_format");
+  //item.value_format = toml::find<std::vector<std::string>>(table, "value_format");
+    {
+    // Extract value_format[] safely
+    auto const &node = table.at("value_format");
+    if (!node.is_array()) {
+      throw std::runtime_error("value_format must be an array of strings in key: " + fullKey);
+    }
+    auto const &arr = node.as_array();
+    item.value_format.clear();
+    item.value_format.reserve(arr.size());
+    for (auto const &e : arr) {
+      if (!e.is_string()) {
+        throw std::runtime_error("Non-string element in value_format of key: " + fullKey);
+      }
+      item.value_format.push_back(e.as_string());
+    }
+  }
 
   // Throws an exception if 'value_N' is not found
   if (!table.contains("value_N")) {
     throw std::runtime_error("Missing mandatory field 'value_N' in key: " +
                              fullKey);
   }
-  item.value_N = toml::find<std::vector<int>>(table, "value_N");
+  // item.value_N = toml::find<std::vector<int>>(table, "value_N");
+  {
+    // Extract value_N[] safely
+    auto const &node = table.at("value_N");
+    if (!node.is_array()) {
+      throw std::runtime_error("value_N must be an array of integers in key: " + fullKey);
+    }
+    auto const &arr = node.as_array();
+    item.value_N.clear();
+    item.value_N.reserve(arr.size());
+    for (auto const &e : arr) {
+      if (!e.is_integer()) {
+        throw std::runtime_error("Non-integer element in value_N of key: " + fullKey);
+      }
+      item.value_N.push_back(static_cast<int>(e.as_integer()));
+    }
+  }
 
   // Warns if optional fields are missing
   try {

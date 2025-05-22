@@ -50,6 +50,9 @@ public:
    */
   explicit BlueprintValidator(const std::string &blueprint);
 
+  /** @brief Destructor releases all compiled regex internally. */
+  ~BlueprintValidator();
+
   /**
    * @brief Construct a validator for the given set of blueprint.
    * @param blueprints A vector of blueprints to validate against.
