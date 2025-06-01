@@ -1,47 +1,112 @@
-#ifndef TADAH_CORE_REGISTRY_H
-#define TADAH_CORE_REGISTRY_H
+// #ifndef TADAH_CORE_REGISTRY_H
+// #define TADAH_CORE_REGISTRY_H
+//
+// #include <map>
+// #include <functional>
+// #include <stdexcept>
+// #include <string>
+// #include <sstream>
+// #include <iostream>
+//
+// namespace tadah {
+// namespace core {
+//
+// template<typename T, typename... Args>
+// using Factory = std::function<T*(Args&...)>;
+//
+// template<typename Base, typename... Args>
+// struct Registry {
+//
+//   using Map = std::map<std::string, Factory<Base, Args...>>;
+//   static Map registry;
+//
+//   template<typename T>
+//   struct Register {
+//     Register(const std::string& name) {
+//       registry[name] = [](Args&... args) -> T* { return new T(args...); };
+//     }
+//   };
+// };
+//
+// template<typename Base, typename... Args>
+// Base* factory(const std::string& type, Args&... args) {
+//   auto it = Registry<Base, Args...>::registry.find(type);
+//
+//   if (it != Registry<Base, Args...>::registry.end()) {
+//     return (it->second)(args...);
+//   }
+//
+//   std::ostringstream oss;
+//   oss << "Type: " << type << " of base type: " << typeid(Base).name()
+//     << " does not exist.";
+//
+//   throw std::runtime_error(oss.str());
+// }
+// } // namespace core
+// } // namespace tadah
+// #endif
+
+
+
+#ifndef REGISTRY_H
+#define REGISTRY_H
 
 #include <map>
 #include <functional>
 #include <stdexcept>
 #include <string>
 #include <sstream>
-#include <iostream>
-
-namespace tadah {
-namespace core {
-
-template<typename T, typename... Args>
-using Factory = std::function<T*(Args&...)>;
+#include <utility>        // std::forward
+#include <typeinfo>
 
 template<typename Base, typename... Args>
-struct Registry {
+using Factory = std::function<Base*(Args...)>;
 
-  using Map = std::map<std::string, Factory<Base, Args...>>;
-  static Map registry;
+namespace tadah { 
+namespace core { 
 
-  template<typename T>
-  struct Register {
-    Register(const std::string& name) {
-      registry[name] = [](Args&... args) -> T* { return new T(args...); };
-    }
-  };
+template<typename Base, typename... Args>
+struct Registry
+{
+    using Map = std::map<std::string, Factory<Base, Args...>>;
+    static Map registry;
+
+    template<typename Derived>
+    struct Register
+    {
+        Register(const std::string& name)
+        {
+            /* 2.  Perfect-forward the arguments – works for l-values,
+             *     const l-values and r-values equally well.
+             */
+            registry[name] = [](Args... args) -> Derived*
+            {
+                return new Derived(std::forward<Args>(args)...);
+            };
+        }
+    };
 };
 
+/* 3.  The factory itself is now also a perfect-forwarding function.
+ *     The exact type of the arguments (const / non-const, l-value /
+ *     r-value) is preserved and therefore selects the right registry
+ *     instance automatically.
+ */
 template<typename Base, typename... Args>
-Base* factory(const std::string& type, Args&... args) {
-  auto it = Registry<Base, Args...>::registry.find(type);
+Base* factory(const std::string& type, Args&&... args)
+{
+    using Reg   = Registry<Base, Args...>;
+    auto  it    = Reg::registry.find(type);
 
-  if (it != Registry<Base, Args...>::registry.end()) {
-    return (it->second)(args...);
-  }
+    if (it != Reg::registry.end())
+        return (it->second)(std::forward<Args>(args)...);
 
-  std::ostringstream oss;
-  oss << "Type: " << type << " of base type: " << typeid(Base).name()
-    << " does not exist.";
-
-  throw std::runtime_error(oss.str());
+    std::ostringstream oss;
+    oss << "Type \"" << type << "\" of base \"" << typeid(Base).name()
+        << "\" is not registered.";
+    throw std::runtime_error(oss.str());
 }
-} // namespace core
-} // namespace tadah
+
+}   // namespace core
+}   // namespace tadah
 #endif
