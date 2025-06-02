@@ -4,7 +4,7 @@ namespace tadah {
 namespace core {
 
 Normaliser_Core::Normaliser_Core() {}
-Normaliser_Core::Normaliser_Core(Context &c)
+Normaliser_Core::Normaliser_Core(const Context &c)
     : bias(c.get<bool>("BIAS")) {
   if (c.contains("NORM") && c.get<bool>("NORM")) {
     if (c.contains("NSTDEV")) {

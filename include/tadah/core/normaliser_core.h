@@ -20,7 +20,7 @@ class Normaliser_Core {
         v_type mean;
 
         Normaliser_Core ();
-        Normaliser_Core (Context &c);
+        Normaliser_Core (const Context &c);
 
         /** Normalise AED */
         void normalise(aed_type &aed);
