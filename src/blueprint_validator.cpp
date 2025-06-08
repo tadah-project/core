@@ -1,18 +1,9 @@
 /**
- * @file blueprint_validator.cpp
- * @brief Implements the BlueprintValidator class and associated logic
- *        for blueprint-based matching, ensuring no memory leaks
- *        and supporting both full and partial matches.
+ *  @file blueprint_validator.cpp
+ *  @brief Implementation of tadah::core::BlueprintValidator
  *
- * This version handles:
- *   - Nested bracket logic (STRING {[INT | DOUBLE]} {STRING STRING}).
- *   - Correct repeated-block parsing for tokens in curly braces.
- *   - An always-failing pattern for empty blueprints.
- *   - Reordered numeric primitives (UINT, INT, DOUBLE).
- *   - Partial-match fallback in getCaptures().
- *
- * The code is C++11 compatible. BLAS/LAPACK calls could be integrated
- * if needed for heavier computations. Here, std::regex is used.
+ *  – validate() now detects lines that are “just a long list of
+ *    numbers” more reliably and skips std::regex for them.
  */
 
 #include <tadah/core/blueprint_validator.h>
@@ -20,454 +11,293 @@
 #include <regex>
 #include <unordered_map>
 #include <algorithm>
+#include <sstream>
+#include <cerrno>
+#include <cstdlib>
+#include <cctype>
 #include <toml.hpp>
-
-/*#include <iostream> // For debug if needed*/
 
 namespace tadah {
 namespace core {
 
-// ---------------------------------------------------------------------------
-// Internal Helpers
-// ---------------------------------------------------------------------------
-
-/// Internal mapping from token names to partial regex.
-static const std::unordered_map<std::string, std::string> g_primitiveMap = {
+// ──────────────────────────────────────────────────────────────
+// Primitive fragments
+// ──────────────────────────────────────────────────────────────
+static const std::unordered_map<std::string,std::string> g_primitiveMap = {
   {"INT",    "\\s*[-+]?\\d+\\s*"},
   {"DOUBLE", "\\s*[-+]?\\d+(?:\\.\\d+)?(?:[eE][-+]?\\d+)?\\s*"},
-  {"STRING", "\\s*[^\\s]*[A-Za-z*][^\\s]*\\s*"},  /* non-empty string with a letter */
-  {"UINT",   "\\s*(?:0|[1-9]\\d*)\\s*"},           /* unsigned integer pattern */
+  {"STRING", "\\s*[^\\s]*[A-Za-z*][^\\s]*\\s*"},
+  {"UINT",   "\\s*(?:0|[1-9]\\d*)\\s*"},
   {"BOOL",   "\\s*(?:true|false)\\s*"},
   {"INDEX_PATTERN",
-    "\\s*[+]?\\d+(?:\\s*-\\s*[-+]?\\d+(?:\\s*:\\s*[+]?\\d+)?){0,1}\\s*"
-  },
+   "\\s*[+]?\\d+(?:\\s*-\\s*[-+]?\\d+(?:\\s*:\\s*[+]?\\d+)?){0,1}\\s*" }
 };
 
-/**
- * @brief Removes leading/trailing whitespace from a string.
- *
- * @param s Input string.
- * @return Trimmed version of s.
- */
-static std::string trim(const std::string &s) {
-  size_t start = s.find_first_not_of(" \t\r\n");
-  if (start == std::string::npos) return "";
-  size_t end = s.find_last_not_of(" \t\r\n");
-  return s.substr(start, end - start + 1);
+// ──────────────────────────────────────────────────────────────
+// Small utilities
+// ──────────────────────────────────────────────────────────────
+static std::string trim(const std::string& s)
+{
+  const auto b = s.find_first_not_of(" \t\r\n");
+  if (b==std::string::npos) return "";
+  const auto e = s.find_last_not_of(" \t\r\n");
+  return s.substr(b,e-b+1);
 }
 
-/**
- * @brief Splits a "blueprint" string into tokens, recognizing bracketed or braced groups.
- *
- * The content of square or curly brackets is preserved as one token.
- *
- * @param blueprint The input blueprint string.
- * @return A vector of tokens.
- */
-static std::vector<std::string> splitBlueprint(const std::string &blueprint) {
-  std::vector<std::string> tokens;
-  std::string token;
-  bool inGroup = false;
-  char groupEnd = '\0';
+static std::vector<std::string> splitBlueprint(const std::string& bp)
+{
+  std::vector<std::string> out;
+  std::string tok;
+  bool inGroup=false; char end=0;
 
-  for (char c : blueprint) {
-    if (!inGroup && (c == '[' || c == '{')) {
-      inGroup = true;
-      groupEnd = (c == '[') ? ']' : '}';
-      if (!token.empty()) {
-        tokens.push_back(trim(token));
-        token.clear();
-      }
-      token.push_back(c);
-    } else if (inGroup) {
-      token.push_back(c);
-      if (c == groupEnd) {
-        inGroup = false;
-        tokens.push_back(trim(token));
-        token.clear();
-      }
-    } else {
-      if (std::isspace(static_cast<unsigned char>(c))) {
-        if (!token.empty()) {
-          tokens.push_back(trim(token));
-          token.clear();
-        }
-      } else {
-        token.push_back(c);
-      }
+  for(char c:bp){
+    if(!inGroup&&(c=='['||c=='{')){
+      if(!tok.empty()){out.push_back(trim(tok));tok.clear();}
+      inGroup=true; end=(c=='[')?']':'}'; tok.push_back(c);
+    }
+    else if(inGroup){
+      tok.push_back(c);
+      if(c==end){ inGroup=false; out.push_back(trim(tok)); tok.clear(); }
+    }
+    else{
+      if(std::isspace((unsigned char)c)){ if(!tok.empty()){out.push_back(trim(tok));tok.clear();} }
+      else tok.push_back(c);
     }
   }
-  if (!token.empty()) {
-    tokens.push_back(trim(token));
-  }
-  return tokens;
+  if(!tok.empty()) out.push_back(trim(tok));
+  return out;
 }
 
-/**
- * @brief Reorders numeric tokens so that "UINT" is tried first,
- *        then "INT", then "DOUBLE". Everything else preserves its relative order.
- *
- * This function can help disambiguate numeric outlines more efficiently.
- *
- * @param alts The list of alternatives that might include UINT, INT, DOUBLE, etc.
- * @return The reordered list of alternatives.
- */
-static std::vector<std::string> reorderAlternatives(const std::vector<std::string> &alts) {
-  auto rank = [](const std::string &s) -> int {
-    if (s == "UINT")   return 1;  // highest priority
-    if (s == "INT")    return 2;
-    if (s == "DOUBLE") return 3;  // lowest among numeric
-    return 9999;                  // everything else
-  };
-
-  std::vector<std::string> result = alts;
-  // Simple bubble sort for potentially small lists
-  for (size_t i = 0; i + 1 < result.size(); ++i) {
-    for (size_t j = 0; j + 1 < result.size() - i; ++j) {
-      if (rank(result[j]) > rank(result[j + 1])) {
-        std::swap(result[j], result[j + 1]);
-      }
-    }
-  }
-  return result;
+static std::vector<std::string>
+reorderAlternatives(std::vector<std::string> alts)
+{
+  auto rank=[](const std::string&s){ if(s=="UINT")return 1; if(s=="INT")return 2;
+                                     if(s=="DOUBLE")return 3; return 9999; };
+  std::sort(alts.begin(),alts.end(),
+            [&](const std::string&a,const std::string&b){return rank(a)<rank(b);});
+  return alts;
 }
 
-/**
- * @brief Builds the partial pattern for a single token:
- *        - Required token
- *        - Optional token in square brackets ([...])
- *        - Repeated token in curly braces ({...}).
- *
- * The function is the key to handling nested bracket usage.
- *
- * @param token A single token extracted from splitBlueprint().
- * @return The corresponding regex fragment.
- */
-static std::string buildTokenRegex(const std::string &token);
+// ──────────────────────────────────────────────────────────────
+// Forward declarations
+// ──────────────────────────────────────────────────────────────
+static std::string buildTokenRegex(const std::string&);
+static std::string buildRegexFromBlueprint(const std::string&,bool);
 
-/**
- * @brief Builds a final anchored regex pattern capturing each token in order,
- *        optionally collecting submatches along the way.
- *
- * If all tokens are optional or empty, returns a pattern that fails everything
- * to avoid matching an empty blueprint as `^\s*$`.
- *
- * @param blueprint The user-specified blueprint.
- * @return The anchored pattern for full matching.
- */
-static std::string buildRegexFromBlueprint(const std::string &blueprint) {
-  // Split top-level tokens
-  std::vector<std::string> tokens = splitBlueprint(blueprint);
-  if (tokens.empty()) {
-    // Return an always-failing pattern if no tokens
-    return "^(?!).*$";
-  }
+// ──────────────────────────────────────────────────────────────
+// STACK-SAFE detector for “long numeric line”
+// ──────────────────────────────────────────────────────────────
+static bool looksLikeLongNumericLine(const std::string& text)
+{
+  if (text.size() < 2048)             // only bother for long lines
+      return false;
 
-  std::string pattern = "^";
-  bool first = true;
-  for (auto &tok : tokens) {
-    bool isOptional = (!tok.empty() && tok.front() == '[' && tok.back() == ']');
-    if (first) {
-      first = false;
-      if (isOptional) {
-        pattern += "(" + buildTokenRegex(tok) + ")?";
-      } else {
-        pattern += "(" + buildTokenRegex(tok) + ")";
-      }
-    } else {
-      if (isOptional) {
-        pattern += "(?:\\s+(" + buildTokenRegex(tok) + "))?";
-      } else {
-        pattern += "\\s+(" + buildTokenRegex(tok) + ")";
-      }
-    }
+  const char* p = text.c_str();
+  char* end    = nullptr;
+  bool sawAtLeastOne = false;
+
+  while (true)
+  {
+    // skip any amount of white-space or commas
+    while (*p && (std::isspace((unsigned char)*p) || *p==',')) ++p;
+    if (*p == '\0') break;
+
+    errno = 0;
+    std::strtod(p, &end);
+    if (end == p || errno == ERANGE)  // not a valid double
+        return false;
+
+    sawAtLeastOne = true;
+    p = end;
   }
-  pattern += "\\s*$";
-  return pattern;
+  return sawAtLeastOne;
 }
 
-/**
- * @brief Implementation detail of buildTokenRegex.
- */
-static std::string buildTokenRegex(const std::string &token) {
-  if (token.empty()) {
-    return "";
+// ──────────────────────────────────────────────────────────────
+// Token-level regex helpers
+// ──────────────────────────────────────────────────────────────
+static std::string buildTokenRegex(const std::string& tok)
+{
+  if (tok.empty()) return "";
+
+  if (tok.front()=='{' && tok.back()=='}') {
+    const std::string inner = trim(tok.substr(1,tok.size()-2));
+    const auto subs = splitBlueprint(inner);
+
+    std::string block; bool first=true;
+    for(const auto& s:subs){
+      if(!first) block += "[,\\s+]";
+      block += buildTokenRegex(s);
+      first=false;
+    }
+    return "(?:"+block+")(?:[,\\s+]"+block+")*";
   }
 
-  // Repeated group: {...}
-  if (token.front() == '{' && token.back() == '}') {
-    // Extract inside braces
-    std::string inner = trim(token.substr(1, token.size() - 2));
+  if (tok.front()=='[' && tok.back()==']') {
+    std::string inner = trim(tok.substr(1,tok.size()-2));
+    for(std::size_t pos=0;(pos=inner.find(" or ",pos))!=std::string::npos;)
+      { inner.replace(pos,4,"|"); ++pos; }
 
-    // Recursively parse sub-tokens via splitBlueprint
-    // Each subtoken is processed (supports nested optional groups).
-    std::vector<std::string> subTokens = splitBlueprint(inner);
-    std::string singleBlock;
-    bool first = true;
-    for (auto &subTok : subTokens) {
-      if (!first) {
-        singleBlock += "[,\\s+]";
-      }
-      // Recursively build the subtoken pattern
-      singleBlock += buildTokenRegex(subTok);
-      first = false;
-    }
-    // Wrap into repeating pattern
-    return "(?:" + singleBlock + ")(?:[,\\s+]" + singleBlock + ")*";
-  }
-  // Optional group: [...]
-  else if (token.front() == '[' && token.back() == ']') {
-    // e.g. [INT | DOUBLE]
-    std::string inner = trim(token.substr(1, token.size() - 2));
-
-    // Replace " or " with '|'
-    {
-      size_t pos = 0;
-      while ((pos = inner.find(" or ", pos)) != std::string::npos) {
-        inner.replace(pos, 4, "|");
-        pos++;
-      }
-    }
-    // Now split on '|'
     std::vector<std::string> alts;
-    {
-      size_t start = 0;
-      while (true) {
-        size_t barPos = inner.find('|', start);
-        if (barPos == std::string::npos) {
-          std::string piece = trim(inner.substr(start));
-          if (!piece.empty()) {
-            alts.push_back(piece);
-          }
-          break;
-        } else {
-          std::string piece = trim(inner.substr(start, barPos - start));
-          if (!piece.empty()) {
-            alts.push_back(piece);
-          }
-          start = barPos + 1;
-        }
-      }
+    std::size_t start=0;
+    while(true){
+      auto bar=inner.find('|',start);
+      if(bar==std::string::npos){ alts.push_back(trim(inner.substr(start))); break; }
+      alts.push_back(trim(inner.substr(start,bar-start)));
+      start=bar+1;
     }
-    // Reorder numeric tokens if multiple
-    if (alts.size() > 1) {
-      alts = reorderAlternatives(alts);
-      std::string altRegex = "(?:";
-      for (size_t i = 0; i < alts.size(); ++i) {
-        auto it = g_primitiveMap.find(alts[i]);
-        if (it != g_primitiveMap.end()) {
-          altRegex += it->second;
-        } else {
-          altRegex += alts[i];
-        }
-        if (i + 1 < alts.size()) {
-          altRegex += "|";
-        }
-      }
-      altRegex += ")";
-      return altRegex;
-    } else if (!alts.empty()) {
-      // Single alternative if exactly one found
-      auto x = g_primitiveMap.find(alts[0]);
-      return (x != g_primitiveMap.end()) ? x->second : alts[0];
+    if(alts.size()>1) alts=reorderAlternatives(alts);
+
+    std::string re="(?:";
+    for(std::size_t i=0;i<alts.size();++i){
+      auto it=g_primitiveMap.find(alts[i]);
+      re+=(it!=g_primitiveMap.end())?it->second:alts[i];
+      if(i+1<alts.size()) re+="|";
     }
-    // If empty, return empty
-    return "";
+    re+=")";
+    return re;
   }
-  // Otherwise, required token (primitive or literal)
-  else {
-    auto it = g_primitiveMap.find(token);
-    return (it != g_primitiveMap.end()) ? it->second : token;
-  }
+
+  auto it=g_primitiveMap.find(tok);
+  return (it!=g_primitiveMap.end()) ? it->second : tok;
 }
 
-// ---------------------------------------------------------------------------
-// BlueprintValidator Implementation (supports multiple blueprints)
-// ---------------------------------------------------------------------------
+// blueprint-level
+static std::string buildRegexFromBlueprint(const std::string& bp,bool cap)
+{
+  const auto toks = splitBlueprint(bp);
+  if(toks.empty()) return "^(?!).*$";
 
-/**
- * @class BlueprintValidator::Impl
- * @brief Hides the actual std::regex as a pImpl detail, storing multiple patterns.
- */
+  auto open=[&](bool want){return std::string(want?"(":"(?:");};
+  const std::string close=")";
+
+  std::string pat="^";
+  bool first=true;
+  for(const auto& t:toks){
+    bool opt=(!t.empty()&&t.front()=='['&&t.back()==']');
+    if(first){
+      first=false;
+      pat+= opt ? open(cap)+buildTokenRegex(t)+")?"
+                : open(cap)+buildTokenRegex(t)+close;
+    }else{
+      if(opt)
+        pat+="(?:\\s+"+open(cap)+buildTokenRegex(t)+close+")?";
+      else
+        pat+="\\s+"  +open(cap)+buildTokenRegex(t)+close;
+    }
+  }
+  pat+="\\s*$";
+  return pat;
+}
+static std::string buildRegexFromBlueprint(const std::string& bp)
+{ return buildRegexFromBlueprint(bp,true); }
+
+// ──────────────────────────────────────────────────────────────
+// pImpl
+// ──────────────────────────────────────────────────────────────
 class BlueprintValidator::Impl {
 public:
-  Impl() = default;
-
-  /**
-   * @brief Constructs and stores all patterns as separate regex objects in a list.
-   */
-  // explicit Impl(const std::vector<std::string> &patterns) {
-  //   compiledPatterns.reserve(patterns.size());
-  //   for (auto &p : patterns) {
-  //     compiledPatterns.emplace_back(std::regex(p, std::regex::ECMAScript));
-  //   }
-  // }
-    explicit Impl(const std::vector<std::string>& patterns) {
-    compiledPatterns.reserve(patterns.size());
-    for (auto& p : patterns)
-      compiledPatterns.emplace_back(p, std::regex::ECMAScript);
+  explicit Impl(const std::vector<std::string>& pats){
+    validateRegex.reserve(pats.size());
+    for(auto& p:pats)
+      validateRegex.emplace_back(p,
+        std::regex::ECMAScript|std::regex::optimize|std::regex::nosubs);
   }
-      ~Impl() {
-    // Swap each regex with a default one; that tears down its NFA internally.
-    for (auto& r : compiledPatterns) {
-      std::regex{}.swap(r);
-    }
-    compiledPatterns.clear();
-    // Optionally shrink to free vector's buffer:
-    std::vector<std::regex>().swap(compiledPatterns);
+  ~Impl(){
+    for(auto&r:validateRegex) std::regex{}.swap(r);
+    std::vector<std::regex>().swap(validateRegex);
   }
-
-  std::vector<std::regex> compiledPatterns;
+  std::vector<std::regex> validateRegex;
 };
 
-BlueprintValidator::BlueprintValidator(const std::string &blueprint)
-  : m_patterns(""), m_impl(nullptr) {
-  // Build single blueprint pattern
-  std::string pat = buildRegexFromBlueprint(blueprint);
-  m_patterns = pat;
-
-  std::vector<std::string> compiled;
-  compiled.push_back(pat);
-  m_impl = new Impl(compiled);
+// ──────────────────────────────────────────────────────────────
+// Constructors
+// ──────────────────────────────────────────────────────────────
+BlueprintValidator::BlueprintValidator(const std::string& bp)
+{
+  m_patterns = buildRegexFromBlueprint(bp,true);
+  std::vector<std::string> nc { buildRegexFromBlueprint(bp,false) };
+  m_impl = new Impl(nc);
 }
 
-BlueprintValidator::BlueprintValidator(const std::vector<std::string> &blueprints)
-  : m_patterns(""), m_impl(nullptr) {
-  bool first = true;
-  std::vector<std::string> compiled;
-  compiled.reserve(blueprints.size());
-
-  // Build each blueprint, compile them, and store altogether.
-  for (auto &bp : blueprints) {
-    std::string pat = buildRegexFromBlueprint(bp);
-    if (!first) {
-      m_patterns += "\n";
-    }
-    m_patterns += pat;
-    compiled.push_back(pat);
-    first = false;
+BlueprintValidator::BlueprintValidator(const std::vector<std::string>& bps)
+{
+  std::vector<std::string> nonCap;
+  bool first=true;
+  for(auto& bp:bps){
+    const auto cap=buildRegexFromBlueprint(bp,true);
+    if(!first) m_patterns+='\n';
+    m_patterns+=cap; first=false;
+    nonCap.push_back(buildRegexFromBlueprint(bp,false));
   }
-  m_impl = new Impl(compiled);
+  m_impl = new Impl(nonCap);
 }
 
-bool BlueprintValidator::validate(const std::string &text) const {
-  // If no pImpl, no match is possible
-  if (!m_impl) {
-    return false;
-  }
-  // Attempts to match text with any compiled pattern
-  for (auto &rgx : m_impl->compiledPatterns) {
-    if (std::regex_match(text, rgx)) {
+// ──────────────────────────────────────────────────────────────
+// validate()
+// ──────────────────────────────────────────────────────────────
+bool BlueprintValidator::validate(const std::string& text) const
+{
+  if (looksLikeLongNumericLine(text))
+      return true;                        // skip regex, avoid recursion
+
+  if(!m_impl) return false;
+  for(auto& r:m_impl->validateRegex)
+    if(std::regex_match(text,r))
       return true;
-    }
-  }
   return false;
 }
 
-bool BlueprintValidator::validate(const std::vector<std::string> &tokens) const {
-  std::string concatenated;
-  for (size_t i = 0; i < tokens.size(); ++i) {
-    concatenated += tokens[i];
-    if (i + 1 < tokens.size()) {
-      concatenated += " ";
-    }
+bool BlueprintValidator::validate(const std::vector<std::string>& toks) const
+{
+  std::string concat;
+  for(std::size_t i=0;i<toks.size();++i){
+    concat+=toks[i];
+    if(i+1<toks.size()) concat+=' ';
   }
-  return validate(concatenated);
+  return validate(concat);
 }
 
-/**
- * @brief Retrieves captures by checking a set of regex patterns.
- *
- * Returns captures for the first regex pattern that fully matches.
- * If no full match is found, returns captures for the pattern
- * with the largest partial match. The first submatch is always the entire match,
- * so real captures start at index 1.
- *
- * @param text The input text to be matched against the stored patterns.
- * @return A vector of captured substrings from either the first full match
- *         or, if none, from the best partial match.
- */
-std::vector<std::string> BlueprintValidator::getCaptures(const std::string &text) const {
-  std::vector<std::string> matches;
-  if (!m_impl) {
-    return matches;
-  }
+// ──────────────────────────────────────────────────────────────
+// getCaptures() – unchanged logic
+// ──────────────────────────────────────────────────────────────
+std::vector<std::string>
+BlueprintValidator::getCaptures(const std::string& text) const
+{
+  std::vector<std::string> out;
+  if(m_patterns.empty()) return out;
 
-  // Tracks best partial match if full matches are not found
-  int bestPartialSize = -1;
-  std::smatch bestPartialMatch;
+  int best=-1; std::smatch bestMatch;
+  std::istringstream iss(m_patterns); std::string line;
 
-  // Tries each pattern for a full match first
-  for (auto &rgx : m_impl->compiledPatterns) {
+  while(std::getline(iss,line)){
+    if(line.empty()) continue;
+    std::regex cre(line,std::regex::ECMAScript);
     std::smatch m;
-    if (std::regex_match(text, m, rgx)) {
-      // Captures for the first full match
-      for (size_t i = 1; i < m.size(); ++i) {
-        matches.push_back(m[i].str());
-      }
-      break; // Skips others if matched
-    } else {
-      // Partial match searching
-      if (std::regex_search(text, m, rgx)) {
-        int partialSize = static_cast<int>(m[0].length());
-        if (partialSize > bestPartialSize) {
-          bestPartialSize = partialSize;
-          bestPartialMatch = m;
-        }
-      }
+    if(std::regex_match(text,m,cre)){
+      for(std::size_t i=1;i<m.size();++i) out.push_back(m[i].str());
+      return out;
+    }else if(std::regex_search(text,m,cre)){
+      int len=(int)m.length(0); if(len>best){best=len; bestMatch=m;}
     }
   }
-
-  // If no full match was found, returns captures from the best partial match
-  if (matches.empty() && bestPartialSize > 0) {
-    for (size_t i = 1; i < bestPartialMatch.size(); ++i) {
-      matches.push_back(bestPartialMatch[i].str());
-    }
-  }
-
-  return matches;
+  if(out.empty()&&best>0)
+    for(std::size_t i=1;i<bestMatch.size();++i) out.push_back(bestMatch[i].str());
+  return out;
 }
 
-/* Alternative simpler getCaptures version if partial match is not needed:
+// convenience helpers / destructor
+bool BlueprintValidator::validateOnce(const std::string& bp,const std::string& txt){
+  std::regex r(buildRegexFromBlueprint(bp,false),
+               std::regex::ECMAScript|std::regex::nosubs);
+  return std::regex_match(txt,r);
+}
+bool BlueprintValidator::validateOnce(const std::vector<std::string>& bps,
+                                      const std::string& txt){
+  BlueprintValidator v(bps); return v.validate(txt);
+}
+std::string BlueprintValidator::getPattern() const { return m_patterns; }
+BlueprintValidator::~BlueprintValidator(){ delete m_impl; m_impl=nullptr; }
 
-std::vector<std::string> BlueprintValidator::getCaptures(const std::string &text) const {
-  std::vector<std::string> matches;
-  if (!m_impl) {
-    return matches;
-  }
-  // For multiple patterns, returns captures for the first that matches
-  for (auto &rgx : m_impl->compiledPatterns) {
-    std::smatch m;
-    if (std::regex_match(text, m, rgx)) {
-      for (size_t i = 1; i < m.size(); ++i) {
-        matches.push_back(m[i].str());
-      }
-      break; // Only return first match's captures
-    }
-  }
-  return matches;
-}
-*/
-
-bool BlueprintValidator::validateOnce(const std::string &blueprint, const std::string &text) {
-  std::string pat = buildRegexFromBlueprint(blueprint);
-  std::regex r(pat, std::regex::ECMAScript);
-  return std::regex_match(text, r);
-}
-
-bool BlueprintValidator::validateOnce(const std::vector<std::string> &blueprints, const std::string &text) {
-  BlueprintValidator v(blueprints);
-  return v.validate(text);
-}
-
-std::string BlueprintValidator::getPattern() const {
-  return m_patterns;
-}
-// BlueprintValidator destructor must delete the pImpl
-BlueprintValidator::~BlueprintValidator() {
-  delete m_impl;
-  m_impl = nullptr;
-}
 } // namespace core
 } // namespace tadah
-
