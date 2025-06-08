@@ -212,9 +212,10 @@ corresponding to each descriptor when using the DM_mJoin meta descriptor.
 examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
 
 [ALLOWED_KEYS.TYPE2B]
-value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}"]
+value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}", "STRING"]
 #value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {[INT]} {STRING STRING}", "STRING INT INT {STRING STRING}"]
 value_format = ["D2_<name> {[param]} {ELEMENT ELEMENT}"]
+formatting = ["D2_", "\n"]
 value_N      = [-2147483647]
 description  = "Specifies the two-body descriptor type(s) to be used."
 long_description = """
@@ -233,6 +234,7 @@ examples     = [
 [ALLOWED_KEYS.TYPEMB]
 value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}", "{STRING UINT UINT UINT UINT UINT STRING STRING}"]
 value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
+formatting = ["DM_", "\n"]
 value_N      = [-2147483647]
 description  = "Specifies the many-body descriptor type(s) to be used."
 long_description = """

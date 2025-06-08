@@ -208,9 +208,14 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
                            "Missing optional fields for key " + fullKey + ": " +
                                std::string(ex.what()));
   }
-  // quietly ignore if long_description is not found
+  // quietly ignore below
   try {
     item.longDescription = toml::find<std::string>(table, "long_description");
+  } catch (const std::exception &ex) {
+    // Ignore the error
+  }
+  try {
+    item.formatting = toml::find<std::vector<std::string>>(table, "formatting");
   } catch (const std::exception &ex) {
     // Ignore the error
   }

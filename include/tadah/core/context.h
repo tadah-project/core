@@ -351,6 +351,7 @@ public:
       // Take the first element of value_N for printing logic.
       int valN = bi->value_N[0];
 
+
       if (valN > 0) {
         // Print each value on its own line preceded by key.
         // Example:
@@ -364,9 +365,21 @@ public:
         // Print all values on a single line, preceded by key.
         // Example:
         // KEY     val1     val2     val3
+        // Format accordingly to the blueprint.
         os << key;
+        bool doFormatting = false;
         for (auto const &v : vals) {
-          os << space << v;
+          bool formatingAvail = false;
+          if (bi->formatting.size() && v.find(bi->formatting[0]) != std::string::npos) {
+            formatingAvail = true;
+          }
+
+          if (formatingAvail && doFormatting) {
+            os << bi->formatting[1] << key << space << v;
+          } else {
+            os << space << v;
+            doFormatting = true;
+          }
         }
         os << "\n";
       } else {

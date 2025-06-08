@@ -24,6 +24,7 @@ struct BlueprintKey {
   std::vector<int> value_N;                       ///< Allowed token counts (for scalar or array values)
   std::string description;                        ///< Short description for help
   std::string longDescription;                    ///< Long description for documentation and help
+  std::vector<std::string> formatting;            ///< Output formatting options
   std::vector<std::string> examples;              ///< Example usages
   std::vector<std::string> default_value;         ///< Default value (if any)
   std::string cli_long_flag;                      ///< CLI long flag/option (if applicable)
