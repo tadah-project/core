@@ -1131,7 +1131,7 @@ required_max = 2
 INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
 [TASKS.data.print.groups.input.keys.dbfile]
 cli_excludes   = ["task"]
-cli_needs = ["index"]
+# cli_needs = ["index"]
 value_N = [1]
 INHERIT = ["TYPES.STRING"]
 [TASKS.data.print.groups.input.keys.structure]
