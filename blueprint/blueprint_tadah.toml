@@ -594,8 +594,8 @@ cli_required     = false
 [ALLOWED_KEYS.format]
 INHERIT = ["TYPES.STRING"]
 value_format = ["<fmt>"]
-description  = "Output format (e.g., cif, cell, poscar)."
-examples     = ["cell", "cif", "poscar"]
+description  = "Output format (e.g., vasp, castep, lammps)."
+examples     = ["castep", "lammps", "vasp"]
 cli_long_flag  = "--format"
 cli_short_flag = "-f"
 cli_required     = false
