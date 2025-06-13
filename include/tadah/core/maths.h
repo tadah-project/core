@@ -479,6 +479,11 @@ public:
     }
     return temp;
   }
+  static Matrix3d_T<T> Zero() {
+    Matrix3d_T<T> temp;
+    temp.set_zero();
+    return temp;
+  }
 };
 
 class Mat6R3C {
