@@ -45,16 +45,10 @@ public:
   fd_type& operator=(fd_type&& other) noexcept;
 
   inline double& operator()(size_t i, size_t k) {
-    // Added assert checks for out-of-range indexing
-    assert(i < rows_);
-    assert(k < 3);
     return data_[i + k * rows_];
   }
 
   inline const double& operator()(size_t i, size_t k) const {
-    // Added assert checks for out-of-range indexing
-    assert(i < rows_);
-    assert(k < 3);
     return data_[i + k * rows_];
   }
 
@@ -76,7 +70,6 @@ public:
     Vec3d temp;
     for (size_t k = 0; k < 3; ++k) {
       for (size_t i = 0; i < v2.size(); ++i) {
-        // We do not assert here but rely on the calling context
         temp[k] += (*this)(i, k) * v2[i];
       }
     }

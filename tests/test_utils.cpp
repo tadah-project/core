@@ -5,18 +5,18 @@
 
 using namespace tadah::core;
 
-TEST_CASE( "Testing logspace() 1", "[utils]" ) {
-    REQUIRE_THROWS(logspace(0,2,10,10));
+TEST_CASE( "Testing geomspace() 1", "[utils]" ) {
+    REQUIRE_THROWS(geomspace(0,2,10,10));
 }
-TEST_CASE( "Testing logspace() 2", "[utils]" ) {
-    v_type v = logspace(1,10,4, 10);
+TEST_CASE( "Testing geomspace() 2", "[utils]" ) {
+    v_type v = geomspace(1,10,4, 10);
     REQUIRE_THAT( v[0], Catch::Matchers::WithinAbs(1 ,1e-12) );
     REQUIRE_THAT( v[1], Catch::Matchers::WithinAbs(5.8550197495911 ,1e-12) );
     REQUIRE_THAT( v[2], Catch::Matchers::WithinAbs(34.2812562681019 ,1e-12) );
     REQUIRE_THAT( v[3], Catch::Matchers::WithinAbs(200.71743249053 ,1e-12) );
 }
-TEST_CASE( "Testing logspace() 3", "[utils]" ) {
-    v_type v = logspace(1,4,4, log(10));
+TEST_CASE( "Testing geomspace() 3", "[utils]" ) {
+    v_type v = geomspace(1,4,4, log(10));
     REQUIRE_THAT( v[0], Catch::Matchers::WithinAbs(1 ,1e-12) );
     REQUIRE_THAT( v[1], Catch::Matchers::WithinAbs(1.4702093789085, 1e-12) );
     REQUIRE_THAT( v[2], Catch::Matchers::WithinAbs(2.1615156178305, 1e-12) );
@@ -329,21 +329,21 @@ TEST_CASE("Testing reverse_vector()", "[utils][new]") {
         REQUIRE(rearranged[i] == originalVec[i]);
     }
 }
-// 1) Testing logspace with stop < start and base < 1, etc.
-TEST_CASE("Testing logspace() - stop < start and base < 1", "[utils][improvements]") {
-    // Expect a possibly incorrect or unexpected result if we do not handle "stop < start" in logspace.
+// 1) Testing geomspace with stop < start and base < 1, etc.
+TEST_CASE("Testing geomspace() - stop < start and base < 1", "[utils][improvements]") {
+    // Expect a possibly incorrect or unexpected result if we do not handle "stop < start" in geomspace.
     // If the underlying implementation doesn't handle it, it may not throw. We'll simply confirm it doesn't crash.
     // The user can decide if a throw or normal return is desired.
-    REQUIRE_NOTHROW(logspace(10, 1, 5, 10)); // Larger start, smaller stop
+    REQUIRE_NOTHROW(geomspace(10, 1, 5, 10)); // Larger start, smaller stop
 
     // Test with base < 1
-    // Logspace might produce decreasing values. No explicit error is in the code, so we only check for exceptions.
-    REQUIRE_NOTHROW(logspace(1, 10, 5, 0.5));
+    // geomspace might produce decreasing values. No explicit error is in the code, so we only check for exceptions.
+    REQUIRE_NOTHROW(geomspace(1, 10, 5, 0.5));
 
     // Check negative start as well
     // The function uses log(start) internally; negative start can lead to domain error in std::log
     // This might throw a runtime_error or produce NaN. We can see if it throws.
-    REQUIRE_THROWS(logspace(-1, 10, 5, 10));
+    REQUIRE_THROWS(geomspace(-1, 10, 5, 10));
 }
 
 // 2) Testing linspace with reversed range
@@ -456,26 +456,26 @@ TEST_CASE("generate_2d_histogram() invalid min/max and empty data", "[utils][mis
     }
 }
 
-// 3) Testing logspace() with additional invalid or edge scenarios
-TEST_CASE("logspace() with invalid/edge scenarios", "[utils][missing_tests]") {
+// 3) Testing geomspace() with additional invalid or edge scenarios
+TEST_CASE("geomspace() with invalid/edge scenarios", "[utils][missing_tests]") {
     SECTION("start <= 0 => throws") {
         // Already tested for start==0. Let's confirm negative start throws
         REQUIRE_THROWS_WITH(
-            logspace(-1, 10, 5, 10),
-            Catch::Matchers::Contains("logspace() start must be > 0")
+            geomspace(-1, 10, 5, 10),
+            Catch::Matchers::Contains("geomspace() start must be > 0")
         );
     }
     SECTION("num=1 => single value") {
         // If num==1, the function might produce exactly one point at 'start'
         // Just confirm it doesn’t crash and yields a single-element vector
-        auto result = logspace(1.0, 100.0, 1, 10.0);
+        auto result = geomspace(1.0, 100.0, 1, 10.0);
         REQUIRE(result.size() == 1);
         REQUIRE(result[0] == Approx(1.0));
     }
     SECTION("stop < start => might produce decreasing exponent range") {
         // The function won't throw in your code; it just yields something.
         // We'll confirm it doesn't crash
-        REQUIRE_NOTHROW(logspace(10, 1, 5, 10));
+        REQUIRE_NOTHROW(geomspace(10, 1, 5, 10));
     }
 }
 

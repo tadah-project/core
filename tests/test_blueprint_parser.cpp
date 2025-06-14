@@ -29,7 +29,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(configKey.value_type == std::vector<std::string>{"STRING"});
     REQUIRE(configKey.value_format == std::vector<std::string>{"<file>"});
     REQUIRE(configKey.value_N == std::vector<int>{1});
-    REQUIRE(configKey.description == "Path to configuration file.");
+    REQUIRE(configKey.description == "Path to a configuration file.");
     REQUIRE(configKey.examples.size() >= 1);
     REQUIRE(configKey.examples[0] == "config.tadah");
 
@@ -50,13 +50,13 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(verboseKey.value_format == std::vector<std::string>{"<unsigned integer>"});
     REQUIRE(verboseKey.value_N == std::vector<int>{1});
     REQUIRE(verboseKey.description ==
-            "Verbosity level. 0-4: ERROR, WARNING, INFO, DEBUG, TRACE.");
-    REQUIRE(verboseKey.examples == std::vector<std::string>{"1", "2", "3"});
+            "Verbosity level. 0-2: ERROR, WARNING, INFO.");
+    REQUIRE(verboseKey.examples == std::vector<std::string>{"2"});
 
     // Validate default value and CLI options.
     REQUIRE(verboseKey.default_value[0] == "1");
     REQUIRE(verboseKey.cli_long_flag == "--verbose");
-    REQUIRE(verboseKey.cli_short_flag == "-V");
+    REQUIRE(verboseKey.cli_short_flag == "-v");
   }
 
   SECTION("The BIAS key is parsed correctly")
@@ -110,7 +110,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(numericKey.value_format == std::vector<std::string>{"<unsigned integer>"});
     REQUIRE(numericKey.value_N == std::vector<int>{1});
     REQUIRE(numericKey.description ==
-            "Numeric output precision. Either number of decimal places or scientific notation. Depending on context.");
+            "Numeric output precision.");
     REQUIRE(numericKey.examples == std::vector<std::string>{"12"});
     
     // Validate CLI-specific fields.

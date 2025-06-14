@@ -109,10 +109,10 @@ bool Context::contains(const std::string &key) const {
   std::lock_guard<std::mutex> lock(mtx_);
   std::string upKey = to_upper(key);
   auto it = storage_.find(upKey);
-  // if (it == storage_.end() || it->second.empty()) {
-  //   attemptDefaultInsertion_NoLock(upKey);
-  //   it = storage_.find(upKey);
-  // }
+  if (it == storage_.end() || it->second.empty()) {
+    attemptDefaultInsertion_NoLock(upKey);
+    it = storage_.find(upKey);
+  }
   return (it != storage_.end() && !it->second.empty());
 }
 

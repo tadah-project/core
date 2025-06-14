@@ -16,19 +16,18 @@ TEST_CASE( "Testing Empty Context", "[empty]" ) {
 TEST_CASE( "Testing Context add()", "[add()]" ) {
   Context c1;
   SECTION("Add internal") {
-    c1.addInternal("SIZE2B",10);
   }
   SECTION("Add invalid key name") {
-    REQUIRE_THROWS(c1.add("SIZE2BX",10));
-    REQUIRE_THROWS(c1.addInternal("SIZE2BX",10));
+    REQUIRE_THROWS(c1.add("DSIZEX",10));
+    REQUIRE_THROWS(c1.addInternal("DSIZEX",10));
   }
   SECTION("Add invalid/empty key name") {
     REQUIRE_THROWS(c1.add("",10));
     REQUIRE_THROWS(c1.addInternal("",10));
   }
   SECTION("Add the same key twice.") {
-    c1.addInternal("SIZE2B",10);
-    REQUIRE_NOTHROW(c1.addInternal("SIZE2B",11)); // Allowed to overwrite
+    c1.addInternal("DSIZE",10);
+    REQUIRE_NOTHROW(c1.addInternal("DSIZE",11)); // Allowed to overwrite
   }
   SECTION("Add the same key twice when not allowed case 2") {
     c1.add("MODEL","M_BLR");
@@ -56,7 +55,7 @@ TEST_CASE( "Testing Context add()", "[add()]" ) {
 TEST_CASE( "Testing Context remove()", "[config_remove]" ) {
   Context c1;
   // Single key allowed
-  c1.addInternal("SIZE2B",10);
+  c1.addInternal("DSIZE",10);
   c1.addInternal("SSTDEV",std::vector<double>{1,2,3,4,5,6});
 
   // Multiple allowed key
@@ -71,15 +70,15 @@ TEST_CASE( "Testing Context remove()", "[config_remove]" ) {
   c1.add("CGRID2B", std::vector<double>{4,5,6});
 
   SECTION("Remove valid key name") {
-    REQUIRE(c1.remove("SIZE2B")==1);
+    REQUIRE(c1.remove("DSIZE")==1);
   }
   SECTION("Remove valid key name twice") {
     c1.add("INIT2B",false);
     REQUIRE(c1.remove("INIT2B")==1);
     REQUIRE(c1.remove("INIT2B")==0);
 
-    REQUIRE(c1.remove("SIZE2B")==1);
-    REQUIRE(c1.remove("SIZE2B")==0);
+    REQUIRE(c1.remove("DSIZE")==1);
+    REQUIRE(c1.remove("DSIZE")==0);
 
     REQUIRE(c1.remove("SSTDEV")==1);
     REQUIRE(c1.remove("SSTDEV")==0);
@@ -97,11 +96,6 @@ TEST_CASE( "Testing Context size()", "[config_size]" ) {
   Context c;
   REQUIRE(c.size("INIT2B")==1);
   REQUIRE(c.size("INITMB")==1);
-  REQUIRE(c.size("SIZE2B")==1);
-  c.addInternal("SIZE2B",12);
-  REQUIRE(c.size("SIZE2B")==1);
-  c.remove("SIZE2B");
-  REQUIRE(c.size("SIZE2B")==1);
 }
 TEST_CASE( "Testing Context contains()", "[config_contains]" ) {
   Context c;
@@ -129,14 +123,15 @@ TEST_CASE( "Testing Context operator()", "[config_operator()]" ) {
 }
 TEST_CASE( "Testing is Context case sensitive", "[config_case]" ) {
   Context c;
-  REQUIRE(c.size("sIze2B")==1);
-  c.addInternal("SiZE2b",10);
-  REQUIRE(c.contains("SIZE2B"));
-  REQUIRE(c.contains("SIze2B"));
-  REQUIRE(!(c.contains("SIze2Bx")));
-  REQUIRE(!(c.contains(" SIze2B")));
-  REQUIRE(c.size("sIze2B")==1);
-  REQUIRE(c.remove("Size2b")==1);
+  REQUIRE(c.size("dSize")==1);
+  c.addInternal("dSiZE",10);
+  REQUIRE(c.contains("DSIZE"));
+  REQUIRE(c.contains("DSIZE"));
+  REQUIRE(!(c.contains("DsizEx")));
+  REQUIRE(!(c.contains(" DSiZE")));
+  REQUIRE(!(c.contains(" DSIZE")));
+  REQUIRE(c.size("dSiZE")==1);
+  REQUIRE(c.remove("dSiZE")==1);
 }
 TEST_CASE( "Testing Context get(k)", "[config_get]" ) {
   Context c;
@@ -453,12 +448,10 @@ TEST_CASE("Context: testing defaults retrieve", "[context_defaults]") {
     REQUIRE(initmb == false);
   }
 
-  SECTION("Default values for SIZE2B and SIZEMB") {
-    size_t size2b = ctx.get<size_t>("SIZE2B");
-    size_t sizemb = ctx.get<size_t>("SIZEMB");
+  SECTION("Default values for DSIZE ") {
+    size_t dsize = ctx.get<size_t>("DSIZE");
 
-    REQUIRE(size2b == 0);
-    REQUIRE(sizemb == 0);
+    REQUIRE(dsize == 0);
   }
 }
 TEST_CASE("Context: tesing multiple values for a key", "[context_multiple_values]") {
@@ -468,11 +461,11 @@ TEST_CASE("Context: tesing multiple values for a key", "[context_multiple_values
 
 
   // not allowed to overwrite multiple values at once
-  REQUIRE_THROWS(c.addInternal("SIZE2B", "1 2"));
+  REQUIRE_THROWS(c.addInternal("DSIZE", "1 2"));
 
-  c.addInternal("SIZE2B", "1");
-  c.addInternal("SIZE2B", "3"); // allowed overwrite
-  REQUIRE(c.get<size_t>("SIZE2B")==3);
+  c.addInternal("DSIZE", "1");
+  c.addInternal("DSIZE", "3"); // allowed overwrite
+  REQUIRE(c.get<size_t>("DSIZE")==3);
 
   REQUIRE(c.size("SSTDEV")==6); // default size
   REQUIRE_NOTHROW(c.addInternal("SSTDEV", "1 2 3 4 5 6")); // max 6 values

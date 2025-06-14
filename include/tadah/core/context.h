@@ -518,7 +518,6 @@ private:
     return value;
   }
 
-private:
   // Formatting for floating point numbers string conversion.
   size_t fmt18 = 18;
 
@@ -587,6 +586,11 @@ private:
     storage_["RCUTMBMAX"] = {to_string(maxValMB, fmt18)};
     storage_["RCUTMAX"] = {to_string(std::max(maxVal2B, maxValMB), fmt18)};
   }
+
+  bool isInternalKey(const std::string &key) const {
+    return internalKeys_.find(to_upper(key)) != internalKeys_.end();
+  }
+
 };
 
 } // namespace core
