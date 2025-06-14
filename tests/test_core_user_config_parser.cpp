@@ -28,7 +28,7 @@ TEST_CASE( "Testing Context read()", "[config_read]" ) {
     while ((entry = readdir(dir)) != nullptr) {
       std::string filename(entry->d_name);
       if (filename != "." && filename != "..") {
-        std::cerr << "Testing: " << filename << std::endl;
+        std::cerr << "Testing: " << path+"/"+filename << std::endl;
         REQUIRE_THROWS(CoreUserConfigParser().parse(path+"/"+filename));
       }
     }

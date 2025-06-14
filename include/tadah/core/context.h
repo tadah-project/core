@@ -579,7 +579,28 @@ private:
     return maxVal;
   }
 
+  // helper method to check all values for a given allowed key
+  bool isPositiveValue(const std::string &allowedKey) const {
+    auto it = storage_.find(allowedKey);
+    if (it == storage_.end()) {
+      return true;
+    }
+    for (const std::string &valStr : it->second) {
+      double val = convertStringTo<double>(valStr, allowedKey);
+      if (val < 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   void updateInternalKeys() {
+    if (!isPositiveValue("RCUT2B") ||
+        !isPositiveValue("RCUTMB")) {
+      Logger::instance().log(LogLevel::ERROR,
+                             "Context::updateInternalKeys -> RCUT2B or RCUTMB has negative values.");
+      throw std::runtime_error("RCUT2B or RCUTMB has negative values.");
+    }
     double maxVal2B = findMaxValue("RCUT2B");
     double maxValMB = findMaxValue("RCUTMB");
     storage_["RCUT2BMAX"] = {to_string(maxVal2B, fmt18)};

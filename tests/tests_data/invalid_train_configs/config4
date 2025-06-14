@@ -3,7 +3,6 @@
 
 
 INIT2B true
-INIT3B false
 INITMB false
 
 TYPE2B D2_Dummy
@@ -22,7 +21,7 @@ BIAS true
 NORM false
 VERBOSE 1
 
-OUTPREC 14
+NUMERIC 14
 
 EWEIGHT 1.0
 #FWEIGHT 1e-2
