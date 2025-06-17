@@ -72,7 +72,8 @@ static std::vector<std::string>
 reorderAlternatives(std::vector<std::string> alts)
 {
   auto rank=[](const std::string&s){ if(s=="UINT")return 1; if(s=="INT")return 2;
-                                     if(s=="DOUBLE")return 3; return 9999; };
+                                     if(s=="DOUBLE")return 3;
+                                     return 9999; };
   std::sort(alts.begin(),alts.end(),
             [&](const std::string&a,const std::string&b){return rank(a)<rank(b);});
   return alts;
@@ -189,8 +190,6 @@ static std::string buildRegexFromBlueprint(const std::string& bp,bool cap)
   pat+="\\s*$";
   return pat;
 }
-static std::string buildRegexFromBlueprint(const std::string& bp)
-{ return buildRegexFromBlueprint(bp,true); }
 
 // ──────────────────────────────────────────────────────────────
 // pImpl
