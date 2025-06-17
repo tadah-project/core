@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <toml.hpp>  // toml11 v4.4.0
-#include <boost/algorithm/string.hpp>
 
 namespace tadah {
 namespace core {
