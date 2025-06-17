@@ -1,6 +1,8 @@
 #include <tadah/core/fd_type.h>
 #include <tadah/core/aed_type.h>
 
+namespace tadah {
+namespace core {
 
 fd_type::fd_type(const fd_type& other) : rows_(other.rows_) {
   data_ = static_cast<double*>(malloc(3 * rows_ * sizeof(double)));
@@ -126,4 +128,8 @@ bool fd_type::operator==(const fd_type& v1) const {
   double EPS = std::numeric_limits<double>::epsilon();
   return isApprox(v1, EPS);
 }
+
+
+} // namespace core
+} // namespace tadah
 

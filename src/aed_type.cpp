@@ -1,5 +1,8 @@
 #include <tadah/core/aed_type.h>
 
+namespace tadah {
+namespace core {
+
 aed_type& aed_type::operator=(const aed_type& other) {
     if (this != &other) {
         if (allocated_) {
@@ -89,3 +92,7 @@ void aed_type::random(int seed, double lower, double upper) {
         (*this)[i] = unif(engine);
     }
 }
+
+} // namespace core
+} // namespace tadah
+
