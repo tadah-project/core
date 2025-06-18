@@ -82,7 +82,6 @@ target_link_libraries(tadah.core
   PUBLIC 
     tadah::compile_options
     ${LAPACK_LIBRARIES}
-  PRIVATE
     toml11::toml11
 )
 target_include_directories(tadah.core
