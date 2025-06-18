@@ -44,6 +44,40 @@ if (BUILD_SHARED_LIBS)
   endif("${isSystemDir}" STREQUAL "-1")
 endif()
 
+# Check is build supported
+string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE STREQUAL "DEBUG" 
+    OR
+    CMAKE_BUILD_TYPE STREQUAL "RELEASE"
+    OR
+    CMAKE_BUILD_TYPE STREQUAL "PROFILE"
+    OR
+    CMAKE_BUILD_TYPE STREQUAL "DEVELOP"
+)
+  message(STATUS "${PROJECT_NAME} Build type:  ${CMAKE_BUILD_TYPE}.")
+else()
+  message(FATAL_ERROR "
+  Selected build type is not supported: ${CMAKE_BUILD_TYPE}.
+  Supported build types: Release, Debug, Profile Develop"
+  )
+endif()
+
+# Update the documentation string of CMAKE_BUILD_TYPE for GUIs
+set(CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" CACHE STRING
+  "Choose the type of build, options are: None Debug Release Profile."
+  FORCE)
+
+if(NOT DEFINED GIT_BRANCH AND DEFINED ENV{CI_COMMIT_REF_NAME})
+  set(GIT_BRANCH "$ENV{CI_COMMIT_REF_NAME}")
+else()
+  execute_process(
+    COMMAND bash -c "git status | grep origin |sed -e 's/.*origin\\///' -e 's/[^a-zA-Z\/_-].*//'"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_BRANCH
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+endif()
+message(STATUS "${PROJECT_NAME} module is using GIT_BRANCH:  ${GIT_BRANCH}")
+
 add_subdirectory(external/toml11)
 # embedd config.toml into tadah.core library
 include(${PROJECT_SOURCE_DIR}/external/cmrc-master/CMakeRC.cmake)
