@@ -1,3 +1,10 @@
+workflow:
+  # Cancel any older pipeline of the **same branch** when a new one is created
+  # (pipelines on different branches keep running in parallel)
+  rules:
+    - when: always
+
+
 stages:
   - build_debug
   - run_unit_tests
@@ -5,7 +12,7 @@ stages:
   - trigger
 
 cache:
-    key: "$CI_PIPELINE_ID"
+    key: "build-cache-$CI_COMMIT_REF_SLUG"
     paths:
     - ${BUILD_DIR}
   
@@ -60,6 +67,7 @@ build_release_static:
 
 trigger:
   stage: trigger
+  resource_group: models-$CI_COMMIT_REF_SLUG
   trigger:
     project: tadah/models
     branch: $CI_COMMIT_REF_NAME
