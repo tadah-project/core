@@ -8,7 +8,7 @@ TEST_CASE("Find Element by Symbol", "[find_by_symbol]") {
     PeriodicTable::initialize();
 
     SECTION("Known symbol") {
-        const Element& oxygen = PeriodicTable::find_by_symbol("O");
+        const Element oxygen = PeriodicTable::find_by_symbol("O");
         REQUIRE(oxygen.symbol == "O");
         REQUIRE(oxygen.Z == 8);
     }
@@ -24,7 +24,7 @@ TEST_CASE("Find Element by Name", "[find_by_name]") {
     PeriodicTable::initialize();
 
     SECTION("Known name") {
-        const Element& carbon = PeriodicTable::find_by_name("Carbon");
+        const Element carbon = PeriodicTable::find_by_name("Carbon");
         REQUIRE(carbon.symbol == "C");
         REQUIRE(carbon.Z == 6);
     }
@@ -61,7 +61,7 @@ TEST_CASE("Get Atomic Mass", "[get_mass]") {
     }
 
     SECTION("By Element object") {
-        const Element& gold = PeriodicTable::find_by_symbol("Au");
+        const Element gold = PeriodicTable::find_by_symbol("Au");
         double mass_Au = PeriodicTable::get_mass(gold);
         REQUIRE(mass_Au == Approx(196.967).epsilon(0.0001));
     }
