@@ -1,19 +1,16 @@
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/logger.h>
 #include <algorithm>
-#include <cmrc/cmrc.hpp>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
+#include <blueprint_tadah.hpp>
 
-CMRC_DECLARE(CORE);
 
 namespace tadah {
 namespace core {
 
 namespace { // Anonymous namespace for internal helper functions
-
-// CMRC filesystem blueprint file path.
-const std::string blueprintFilePath = "blueprint/blueprint_tadah.toml";
+#define BLUEPRINT_ORIGIN "embedded blueprint_tadah.toml"
 /**
  * @brief Recursively expands any INHERIT blocks in a TOML table.
  *
@@ -264,10 +261,9 @@ buildBlueprintMap(const std::string &table) {
   std::unordered_map<std::string, BlueprintKey> map;
   try {
     // Parse the blueprint file.
-    auto fs = cmrc::CORE::get_filesystem();
-    auto toml_file = fs.open(blueprintFilePath);
-    std::stringstream ss;
-    ss << toml_file.begin();
+    std::istringstream ss(
+        std::string(blueprint_tadah,
+          blueprint_tadah_size));           // embed-to-stream
     toml::value blueprint = toml::parse(ss);
     // Create a copy to process inheritance.
     toml::value bpCopy = blueprint;
@@ -564,7 +560,7 @@ static void parseTaskRec(const std::string &fullTaskName,
  * @brief Builds the blueprint map for tasks from the TOML blueprint file,
  *        handling nested (dot-separated) sub-commands.
  *
- * - Reads the file from CMRC.
+ * - Reads the blueprint file from an embedded file.
  * - Expands inheritance for each table.
  * - Locates the "TASKS" subtable to parse top-level and nested tasks.
  * - Calls parseTaskRec(...) to handle each subtable recursively.
@@ -578,11 +574,10 @@ buildBlueprintTasksMap(const std::string &rootTable) {
   std::unordered_map<std::string, BlueprintTask> tasksMap;
 
   try {
-    // Parse blueprint file from embedded resource (CMRC).
-    auto fs = cmrc::CORE::get_filesystem();
-    auto toml_file = fs.open(blueprintFilePath);
-    std::stringstream ss;
-    ss << toml_file.begin();
+    // Parse blueprint file from embedded resource
+    std::istringstream ss(
+        std::string(blueprint_tadah,
+          blueprint_tadah_size));           // embed-to-stream
     toml::value blueprint = toml::parse(ss);
 
     // Make a copy for safe expansion
@@ -661,12 +656,11 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
     BlueprintTadah bt;
 
     // ------------------------------------------------------------
-    // 1) Parse the blueprint file from CMRC
+    // 1) Parse the blueprint file
     // ------------------------------------------------------------
-    auto fs = cmrc::CORE::get_filesystem();
-    auto toml_file = fs.open(blueprintFilePath);
-    std::stringstream ss;
-    ss << toml_file.begin();
+    std::istringstream ss(
+        std::string(blueprint_tadah,
+          blueprint_tadah_size));           // embed-to-stream
     toml::value blueprint = toml::parse(ss);
 
     // ------------------------------------------------------------
@@ -685,7 +679,7 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
     // ------------------------------------------------------------
     const toml::value tadahValue = toml::find(bpCopy, "TADAH");
     if (!tadahValue.is_table()) {
-      throw std::runtime_error("Section [TADAH] must be a table in "+blueprintFilePath);
+      throw std::runtime_error("Section [TADAH] must be a table in embedded bluprint");
     }
     const toml::table &tadahTable = tadahValue.as_table();
 
