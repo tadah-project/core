@@ -856,13 +856,13 @@ default_value = ["64"]
 description = """ScalaPACK column block size NB."""
 
 [ALLOWED_KEYS.FIXWEIGHT]
-INHERIT = ["TYPES.DOUBLES"]
+INHERIT = ["TYPES.UINTS"]
 description = "Values for weights to be fixed in optimization."
 long_description = """
 Must be used with FIXINDEX. The i-th value in FIXWEIGHT corresponds to the 
 i-th index in FIXINDEX.
 """
-examples = ["1.0 1.0 0.5"]
+examples = ["1 5 9"]
 
 [ALLOWED_KEYS.FIXINDEX]
 INHERIT = ["TYPES.UINTS"]
