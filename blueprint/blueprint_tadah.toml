@@ -1167,7 +1167,7 @@ INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
 [TASKS.data.split]
 description      = "Split a dataset into parts."
 long_description = "Split a dataset into parts."
-examples         = ["tadah data split -d db.tadah -o part1.tadah part2.tadah"]
+examples         = ["tadah data split -d db.tadah -o part1.tadah part2.tadah --even"]
 [TASKS.data.split.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
 [TASKS.data.split.keys.even]
