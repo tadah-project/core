@@ -172,6 +172,17 @@ cli_long_flag  = "--dbfile"
 cli_short_flag = "-d"
 cli_required     = false
 
+[ALLOWED_KEYS.INIT2B]
+INHERIT = ["TYPES.BOOL"]
+description = """If set to true, the two-body descriptor will be calculated."""
+examples = ["INIT2B true"]
+
+
+[ALLOWED_KEYS.INITMB]
+INHERIT = ["TYPES.BOOL"]
+description = """If set to true, the many-body descriptor will be calculated."""
+examples = ["INITMB true"]
+
 [ALLOWED_KEYS.RCTYPE2B]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["Cut_<name>"]
@@ -326,6 +337,25 @@ examples     = [
 SGRIDMB   0.02 0.03 0.04"""
 ]
 
+[ALLOWED_KEYS.SEMBFUNC]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Shape parameters for an embedding function."
+long_description = """
+Used by certain many-body descriptors (e.g., F_RLR). When using the DM_mJoin 
+descriptor, provide lists of parameters corresponding to each descriptor, 
+ensuring consistency with CEMBFUNC.
+"""
+examples = ["SEMBFUNC 0.14 0.45 1.00 1.1"]
+
+[ALLOWED_KEYS.CEMBFUNC]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Position parameters for an embedding function."
+long_description = """
+Used by certain many-body descriptors (e.g., F_RLR). When using DM_mJoin, 
+supply one or more lists of parameters matching those in SEMBFUNC.
+"""
+examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
+
 [ALLOWED_KEYS.MPARAMS]
 INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies additional numeric parameters for certain models."
@@ -351,36 +381,6 @@ examples     = [
     "MODEL M_BLR BF_Polynomial2",
     "MODEL M_KRR Kern_Linear"
 ]
-
-[ALLOWED_KEYS.INIT2B]
-INHERIT = ["TYPES.BOOL"]
-description = """If set to true, the two-body descriptor will be calculated."""
-examples = ["INIT2B true"]
-
-
-[ALLOWED_KEYS.INITMB]
-INHERIT = ["TYPES.BOOL"]
-description = """If set to true, the many-body descriptor will be calculated."""
-examples = ["INITMB true"]
-
-[ALLOWED_KEYS.SEMBFUNC]
-INHERIT = ["TYPES.DOUBLES"]
-description  = "Shape parameters for an embedding function."
-long_description = """
-Used by certain many-body descriptors (e.g., F_RLR). When using the DM_mJoin 
-descriptor, provide lists of parameters corresponding to each descriptor, 
-ensuring consistency with CEMBFUNC.
-"""
-examples = ["SEMBFUNC 0.14 0.45 1.00 1.1"]
-
-[ALLOWED_KEYS.CEMBFUNC]
-INHERIT = ["TYPES.DOUBLES"]
-description  = "Position parameters for an embedding function."
-long_description = """
-Used by certain many-body descriptors (e.g., F_RLR). When using DM_mJoin, 
-supply one or more lists of parameters matching those in SEMBFUNC.
-"""
-examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
 
 [ALLOWED_KEYS.OALGO]
 value_type   = ["INT", "INT DOUBLE"]
