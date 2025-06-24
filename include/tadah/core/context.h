@@ -234,7 +234,7 @@ public:
                              "Context::add -> capacity exceeded for: ", upKey);
       throw std::runtime_error("Exceeded capacity for key: " + upKey);
     } else if (maxVals == 1 && bucket.size() == maxVals) {
-      Logger::instance().log(LogLevel::WARNING,
+      Logger::instance().log(LogLevel::DEBUG,
                              "Context::add -> Overwriting: ", upKey);
       iss >> std::boolalpha >> value;
       bucket[0] = value;
@@ -418,7 +418,7 @@ public:
             "Context::merge -> Attempting to add new values to an existing key: ", key);
         } else {
           core::Logger::instance().log(
-            core::LogLevel::WARNING,
+            core::LogLevel::DEBUG,
             "Context::merge -> Overwriting key: ", key);
           merged.remove(key);
         }
@@ -465,7 +465,7 @@ public:
     std::istringstream iss(valStr);
     std::string value;
     if (bucket.size() == maxVals) {
-      Logger::instance().log(LogLevel::WARNING,
+      Logger::instance().log(LogLevel::DEBUG,
                              "Context::add -> Overwriting: ", upKey);
       bucket.clear();
       attemptDefaultInsertion_NoLock(upKey);
