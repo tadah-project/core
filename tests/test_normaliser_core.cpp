@@ -1,26 +1,25 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/normaliser_core.h>
 #include <tadah/core/core_types.h>
+#include <tadah/core/context.h>
+#include <tadah/core/core_user_config_parser.h>
+
+using namespace tadah::core;
 
 TEST_CASE( "Testing Normaliser_Core()", "[create]" ) {
     REQUIRE_NOTHROW(Normaliser_Core());
 }
-TEST_CASE( "Testing Normaliser_Core(Config&)", "[create]" ) {
+TEST_CASE( "Testing Normaliser_Core(Context&)", "[create]" ) {
 
-    Config c;
+    Context c;
     REQUIRE_NOTHROW(Normaliser_Core(c));
-
-    c.remove("BIAS");
-    REQUIRE_THROWS(Normaliser_Core(c));
 
     c.add("BIAS", true);
     REQUIRE_NOTHROW(Normaliser_Core(c));
 
-    c.remove("VERBOSE");
-    REQUIRE_THROWS(Normaliser_Core(c));
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(aed)", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config5");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
     aed_type a(c.size("NMEAN"));    // zeros
     a.set_zero();
@@ -37,7 +36,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(aed)", "[method]" ) {
     REQUIRE_THAT( a.mean(), !Catch::Matchers::WithinAbs(0, 1e-12) );
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(fd)", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config5");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
     f.set_zero();
@@ -55,7 +54,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd)", "[method]" ) {
     REQUIRE_THAT( f(2).mean(), !Catch::Matchers::WithinAbs(0, 1e-12) );
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(fd,k)", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config5");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config5");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
     f.set_zero();
@@ -76,7 +75,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd,k)", "[method]" ) {
 }
 
 TEST_CASE( "Testing Normaliser_Core::normalise(aed) nobias", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config6");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
     aed_type a(c.size("NMEAN"));    // zeros
     a.set_zero();
@@ -94,7 +93,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(aed) nobias", "[method]" ) {
     REQUIRE_THAT( a.mean(), !Catch::Matchers::WithinAbs(0, 1e-12) );
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(fd) nobias", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config6");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
     f.set_zero();
@@ -110,7 +109,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd) nobias", "[method]" ) {
     REQUIRE_THAT( f(2).mean(), !Catch::Matchers::WithinAbs(0, 1e-12) );
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(fd,k) nobias", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config6");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm(c);
     fd_type f(c.size("NMEAN"));
     f.set_zero();
@@ -130,7 +129,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd,k) nobias", "[method]" ) {
     REQUIRE_THAT( f(2).mean(), !Catch::Matchers::WithinAbs(0, 1e-12) );
 }
 TEST_CASE( "Testing Normaliser_Core normaliser value", "[method]" ) {
-    Config c("tests_data/valid_configs/valid_config6");
+    Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm;
     norm.bias = false;
     size_t n = 2;

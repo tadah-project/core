@@ -1,9 +1,9 @@
-#ifndef FD_TYPE_H
-#define FD_TYPE_H
-
+#ifndef TADAH_CORE_FD_TYPE_H
+#define TADAH_CORE_FD_TYPE_H
 #include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
@@ -11,6 +11,9 @@
 #include <random>
 #include <cstring>
 #include <limits>
+
+namespace tadah {
+namespace core {
 
 class fd_type {
   size_t rows_ = 0;
@@ -81,7 +84,11 @@ public:
               double lower = -1e4, double upper = 1e4);
 
   bool isApprox(const fd_type& v1, double EPS) const;
+
   bool operator==(const fd_type& v1) const;
 };
 
+} // namespace core
+} // namespace tadah
 #endif // FD_TYPE_H
+

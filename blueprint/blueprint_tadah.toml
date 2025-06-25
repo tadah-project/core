@@ -1,0 +1,1485 @@
+###############################################################################
+# Blueprint for ALLOWED_KEYS, INTERNAL_KEYS, and TASKS
+###############################################################################
+# ALLOWED_KEYS is a blueprint for the keys that can be used in the configuration file.
+# The description of of ALLOWED_KEYS should be generic and not tied to any specific task.
+# The tasks can inherit from ALLOWED_KEYS and add/override with own specific details.
+# Each key has a set of properties that define its expected type, format, and constraints.
+# The blueprint is used to validate the configuration file and to generate help messages.
+# The blueprint is also used to generate the CLI and documenation.
+
+# Fields:
+# - value_type: Ordered list of expected types (one-to-one corresponding to value_format).
+# - value_format: Human readable list showing expected tokens; a trailing "..." means the last <token> may repeat.
+# - value_N: Maximum allowed tokens.
+# - description: Short explanation. (used by cli for a brief description)
+# - examples: Array of valid example usage strings.
+# - default_value: Default value (optional).
+
+# Some ALLOWED_KEYS keys can be set via CLI flags or options. These keys have additional fields:
+# CLI-specific fields:
+# - cli_long_flag: Long option name.
+# - cli_short_flag: Short option name.
+# - long_description: Long description for the task used by the CLI and documenation
+# - cli_excludes: List of CLI only keys (flags/options) that are mutually exclusive.
+# - cli_required: Whether the key is required for the task.
+#
+# {} denotes repetition, [] denotes optional, <> denotes a placeholder, 
+# capital letters denote a keyword.
+#
+# Inheritance rules:
+#  - The INHERIT field is a list of keys to inherit from.
+#  - ALLOWED_KEYS inherits fields from onther tables by using the INHERIT field.
+#  - If field is present in both tables, the existing values override the inherited values.
+#  - The INHERIT field can be used to inherit from multiple tables.
+#  - TASKS can inherit from ALLOWED_KEYS however they insert keys under keys.newkey.
+###############################################################################
+
+[TYPES.BOOL]
+value_type = ["BOOL"]
+value_format = ["<boolean>"]
+value_N = [1]
+description = "Boolean value."
+examples = ["true", "false"]
+default_value      = ["false"]
+
+[TYPES.BOOLS]
+INHERIT = ["TYPES.BOOL"]
+value_type = ["{BOOL}"]
+value_format = ["<boolean> [<boolean> ...]"]
+value_N = [-2147483647]
+examples = ["true true false", "false"]
+
+[TYPES.INT]
+value_type   = ["INT"]
+value_format = ["<integer>"]
+value_N      = [1]
+description  = "Signed integer value."
+examples     = ["20", "-10"]
+
+[TYPES.INTS]
+INHERIT = ["TYPES.INT"]
+value_type   = ["{INT}"]
+value_format = ["<integer> [<integer> ...]"]
+value_N      = [-2147483647]
+examples     = ["20 5 -3", "-10"]
+
+[TYPES.UINT]
+value_type   = ["UINT"]
+value_format = ["<unsigned integer>"]
+value_N      = [1]
+description  = "Unsigned integer value."
+examples     = ["20"]
+
+[TYPES.UINTS]
+INHERIT = ["TYPES.UINT"]
+value_type   = ["{UINT}"]
+value_format = ["<unsigned integer> [<unsigned integer> ...]"]
+value_N      = [-2147483647]
+examples     = ["20 5 3", "10"]
+
+[TYPES.DOUBLE]
+value_type   = ["DOUBLE"]
+value_format = ["<double>"]
+value_N      = [1]
+description  = "Floating point value."
+examples     = ["2.0", "-1.0"]
+
+[TYPES.DOUBLES]
+INHERIT = ["TYPES.DOUBLE"]
+value_type   = ["{DOUBLE}"]
+value_format = ["<double> [<double> ...]"]
+value_N      = [-2147483647]
+examples     = ["2.0 -4.65 0.4", "-1.0"]
+
+[TYPES.STRING]
+value_type   = ["STRING"]
+value_format = ["<string>"]
+value_N      = [1]
+description  = "String value."
+examples     = ["validString", "/path/to/file"]
+
+[TYPES.STRINGS]
+INHERIT = ["TYPES.STRING"]
+value_type   = ["{STRING}"]
+value_format = ["<string> [<string> ...]"]
+value_N      = [-2147483647]
+examples     = ["string1 string2", "string1 /path/to/file"]
+
+[ALLOWED_KEYS.config]
+value_type     = ["STRING"]
+value_format   = ["<file>"]
+value_N        = [1]
+description    = "Path to a configuration file."
+examples       = ["config.tadah", "../config.tadah", "/path/to/config.tadah"]
+cli_long_flag  = "--config"
+cli_short_flag = "-c"
+cli_required   = false
+
+[ALLOWED_KEYS.verbose]
+INHERIT = ["TYPES.UINT"]
+description  = "Verbosity level. 0-2: ERROR, WARNING, INFO."
+long_description = """
+Verbosity level. 0: ERROR, 1: WARNING, 2: INFO. The verbosity level controls 
+the amount of information printed during execution. Higher levels provide 
+more detailed output.
+"""
+examples     = ["2"]
+default_value = ["1"]
+cli_long_flag  = "--verbose"
+cli_short_flag = "-v"
+cli_required   = false
+
+[ALLOWED_KEYS.bias]
+INHERIT = ["TYPES.BOOL"]
+description  = "Bias"
+
+[ALLOWED_KEYS.force]
+INHERIT = ["TYPES.BOOL"]
+description  = "Include forces."
+cli_long_flag    = "--force"
+cli_short_flag   = "-F"
+cli_required     = false
+default_value      = ["false"]
+
+[ALLOWED_KEYS.stress]
+INHERIT = ["TYPES.BOOL"]
+description  = "Include stresses."
+cli_long_flag    = "--stress"
+cli_short_flag   = "-S"
+cli_required     = false
+default_value      = ["false"]
+
+[ALLOWED_KEYS.uncertainty]
+INHERIT = ["TYPES.BOOL"]
+description  = "Output uncertainty estimates."
+cli_long_flag    = "--uncertainty"
+cli_short_flag   = ""
+cli_required     = false
+
+[ALLOWED_KEYS.dbfile]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [2147483647]
+description  = "Path(s) to Tadah! database file(s)."
+long_description = """
+Absolute or relative path to the Tadah! database file(s). The relative path 
+is interpreted relative to the current working directory. Multiple dataset 
+paths can be provided either as space-separated tokens or by repeating 
+this key.
+"""
+examples     = ["dbfile /path/to/dbfile", "dbfile /path/to/dbfile1 /path/to/dbfile2"]
+cli_long_flag  = "--dbfile"
+cli_short_flag = "-d"
+cli_required     = false
+
+[ALLOWED_KEYS.INIT2B]
+INHERIT = ["TYPES.BOOL"]
+description = """If set to true, the two-body descriptor will be calculated."""
+examples = ["INIT2B true"]
+
+
+[ALLOWED_KEYS.INITMB]
+INHERIT = ["TYPES.BOOL"]
+description = """If set to true, the many-body descriptor will be calculated."""
+examples = ["INITMB true"]
+
+[ALLOWED_KEYS.RCTYPE2B]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["Cut_<name>"]
+description  = "Specifies the cutoff function type(s) for two-body descriptor(s)."
+long_description = """
+Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or multiple 
+types corresponding to each descriptor when using the D2_mJoin meta descriptor.
+"""
+examples     = ["RCTYPE2B Cut_Cos", "RCTYPE2B Cut_Cos Cut_Tanh"]
+
+[ALLOWED_KEYS.RCTYPEMB]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["Cut_<name>"]
+description  = "Specifies the cutoff function type(s) for many-body descriptor(s)."
+long_description = """
+Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or a series of 
+types—each for a corresponding descriptor when using the DM_mJoin 
+meta descriptor.
+"""
+examples     = ["RCTYPEMB Cut_Cos", "RCTYPEMB Cut_Cos Cut_Tanh"]
+
+[ALLOWED_KEYS.RCUT2B]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Specifies the cutoff distance(s) for two-body descriptor(s)."
+long_description = """
+Provide a single value for one descriptor or multiple values—one for each 
+descriptor when using the D2_mJoin meta descriptor.
+"""
+examples     = ["RCUT2B 3.0", "RCUT2B 3.0 7.5"]
+
+[ALLOWED_KEYS.RCUTMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Specifies the cutoff distance(s) for many-body descriptor(s)."
+long_description = """
+Provide a single value for a standalone descriptor or multiple values 
+corresponding to each descriptor when using the DM_mJoin meta descriptor.
+"""
+examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
+
+[ALLOWED_KEYS.TYPE2B]
+value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}", "STRING"]
+#value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {[INT]} {STRING STRING}", "STRING INT INT {STRING STRING}"]
+value_format = ["D2_<name> {[param]} {ELEMENT ELEMENT}"]
+formatting = ["D2_", "\n"]
+value_N      = [-2147483647]
+description  = "Specifies the two-body descriptor type(s) to be used."
+long_description = """
+For a single descriptor, provide its type (e.g., D2_LJ). To concatenate multiple 
+descriptors, use the meta descriptor D2_mJoin followed by the individual 
+descriptor parameters. Elements should be provided in pairs.
+"""
+examples     = [
+  "TYPE2B D2_LJ Kr Kr",
+  """TYPE2B    D2_mJoin
+  TYPE2B    D2_MIE 11 6 Ti Ti
+  TYPE2B    D2_Blip 6 6 Ti Nb Nb Nb
+  """
+]
+
+[ALLOWED_KEYS.TYPEMB]
+value_type   = ["{STRING UINT UINT STRING STRING}", "{STRING UINT UINT UINT STRING STRING}", "{STRING UINT UINT UINT UINT UINT STRING STRING}"]
+value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
+formatting = ["DM_", "\n"]
+value_N      = [-2147483647]
+description  = "Specifies the many-body descriptor type(s) to be used."
+long_description = """
+For a single descriptor, provide its type (e.g., DM_EAD). To combine multiple 
+descriptors, use the meta descriptor DM_mJoin followed by the individual 
+descriptor parameters. Elements should be provided in pairs.
+"""
+examples     = [
+  "TYPEMB DM_Blip 6 6 Ti Ti",
+  """TYPEMB    DM_mJoin
+  TYPEMB    DM_Blip 6 6 Ti TI
+  TYPEMB    DM_Blip 6 6 Ti Nb Nb Nb
+  """
+]
+
+[ALLOWED_KEYS.CGRID2B]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
+value_N      = [-2147483647]
+description  = "Controls the center positions for radial basis functions (two-body)."
+long_description = """
+The parameter list may be provided manually or generated automatically. When 
+using the meta descriptor D2_mJoin, specify one or more lists of centers 
+corresponding to each descriptor. The number of centers should typically match 
+the number of width parameters (SGRID2B) and remain below the cutoff distance. 
+Alternatively, use the algorithm keyword followed by parameters to generate 
+centers automatically (e.g., LOG or LIN).
+"""
+examples     = [
+    "CGRID2B LIN 10 0 6",
+    "CGRID2B 1.0 2.0",
+    """CGRID2B   1.0 2.0
+CGRID2B   1.5 2.5"""
+]
+
+[ALLOWED_KEYS.SGRID2B]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
+value_N      = [-2147483647]
+description  = "Specifies the width parameters for two-body radial basis functions."
+long_description = """
+These widths can be supplied manually or auto-generated. When using the meta 
+descriptor D2_mJoin, provide one or more lists of width values for each 
+concatenated descriptor. The number of widths must match the number of centers 
+(CGRID2B). Alternatively, specify the algorithm keyword with parameters to 
+generate widths automatically (e.g., LOG or LIN).
+"""
+examples     = [
+    "SGRID2B LIN 3 0 1.0",
+    "SGRID2B GEOM 6 0.1 10",
+    """SGRID2B   0.01 0.02 0.03
+SGRID2B   GEOM 6 0.1 10"""
+]
+
+[ALLOWED_KEYS.CGRIDMB]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
+value_N      = [-2147483647]
+description  = "Specifies the center positions for many-body radial basis functions."
+long_description = """
+Centers may be provided manually or generated automatically. When using the 
+DM_mJoin meta descriptor, supply one or more lists of centers for each 
+concatenated descriptor. Alternatively, include an algorithm such as 'L' 
+(logarithmic) or 'U' (uniform spacing) followed by parameters.
+"""
+examples     = [
+    "CGRIDMB LIN 4 0 6.2",
+    "CGRIDMB 0.5 0.7",
+    """CGRIDMB   0.5 0.7
+CGRIDMB   0.6 0.8"""
+]
+
+[ALLOWED_KEYS.SGRIDMB]
+value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
+value_N      = [-2147483647]
+description  = "Specifies the width parameters for many-body radial basis functions."
+long_description = """
+Values may be provided manually or generated automatically. When using the 
+DM_mJoin meta descriptor, provide one or more lists of widths for each 
+descriptor. Ensure consistency with the centers defined in CGRIDMB. Alternatively,
+use an algorithm (e.g., LOG or LIN) and its parameters to generate widths 
+automatically.
+"""
+examples     = [
+    "SGRIDMB LIN 3 0 1.0",
+    "SGRIDMB 0.01 0.02 0.03",
+    """SGRIDMB   0.01 0.02 0.03
+SGRIDMB   0.02 0.03 0.04"""
+]
+
+[ALLOWED_KEYS.SEMBFUNC]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Shape parameters for an embedding function."
+long_description = """
+Used by certain many-body descriptors (e.g., F_RLR). When using the DM_mJoin 
+descriptor, provide lists of parameters corresponding to each descriptor, 
+ensuring consistency with CEMBFUNC.
+"""
+examples = ["SEMBFUNC 0.14 0.45 1.00 1.1"]
+
+[ALLOWED_KEYS.CEMBFUNC]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Position parameters for an embedding function."
+long_description = """
+Used by certain many-body descriptors (e.g., F_RLR). When using DM_mJoin, 
+supply one or more lists of parameters matching those in SEMBFUNC.
+"""
+examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
+
+[ALLOWED_KEYS.MPARAMS]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Specifies additional numeric parameters for certain models."
+long_description = """
+Some models require extra parameters. Refer to the model-specific documentation 
+for details. Many models do not need any extra parameters.
+"""
+examples     = ["MPARAMS 0.1", "MPARAMS 0.1 0.2 0.3"]
+
+[ALLOWED_KEYS.MODEL]
+value_type   = ["STRING STRING", "STRING STRING STRING",  "STRING STRING UINT"] 
+value_format = ["MODEL FUNCTION", "MODEL FUNCTION OPTION", "MODEL FUNCTION OPTION"]
+value_N      = [-3]
+description  = "Defines the training model and function."
+long_description = """
+MODEL can be any class inheriting from M_Base (e.g., M_KRR, M_BLR). FUNCTION 
+must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, 
+BF_Polynomial2). Various combinations (KRR with different kernels, BLR with 
+various basis functions) are possible.
+"""
+examples     = [
+    "MODEL M_BLR BF_Linear",
+    "MODEL M_BLR BF_Polynomial2",
+    "MODEL M_KRR Kern_Linear"
+]
+
+[ALLOWED_KEYS.OALGO]
+value_type   = ["INT", "INT DOUBLE"]
+value_format = ["<option>", "<option> <value>"]
+default_value = ["1"]
+value_N = [-2]
+description = '''
+This key controls the optimization algorithm used to train the model. The **default algorithm** is **Option 1 (GELSD)** with a conditioning parameter (:math:`rcond`) of :math:`1 \times 10^{-8}`. The regularization parameter is handled separately by the :ref:`LAMBDA` key.
+
+Available options:
+
+**1** - **GELSD**: Utilizes the LAPACK routine :code:`DGELSD` to solve linear least squares problems using the Singular Value Decomposition (SVD). This method is robust and can handle rank-deficient systems. It computes the minimum-norm solution and is suitable for ill-conditioned problems. The parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`). It defaults to :math:`1 \times 10^{-8}` if not specified. Setting :code:`M = -1` uses machine precision, which may be unstable for ill-conditioned problems.
+
+**2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorization. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
+
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance matrix :math:`\Sigma`, providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
+
+**4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It does not require additional parameters.
+
+**Performance Comparison**:
+
+- **Option 2** is the fastest but assumes a full-rank matrix and is less robust for ill-conditioned problems.
+- **Option 4** is also efficient but may suffer from numerical instability in ill-conditioned or rank-deficient problems due to squaring of the condition number.
+- **Option 1** offers a balance between speed and robustness, handling rank-deficient and ill-conditioned problems better than options 2 and 4.
+- **Option 3** is the slowest due to the additional computations but provides valuable extra information like the covariance matrix.
+
+**Usage**:
+
+- To select an algorithm, set the :code:`OALGO` key followed by the option number.
+- For options **1** and **3**, you can specify the conditioning parameter :code:`M` after the option number.
+- Option **4** does not require any additional parameters.
+
+**Regularization Parameter**:
+
+- The regularization parameter is controlled by the :ref:`LAMBDA` key, which should be set separately to apply regularization to the model.
+
+**Examples**:
+
+- :code:`OALGO 1`          # Uses GELSD with default conditioning parameter (:code:`M = 1e-8`)
+- :code:`OALGO 1 -1`       # Uses GELSD with machine precision (:code:`M = -1`)
+- :code:`OALGO 2`          # Uses GELS
+- :code:`OALGO 3 1e-10`    # Uses custom implementation with :code:`M = 1e-10`
+- :code:`OALGO 4`          # Uses Cholesky Decomposition
+
+**Notes**:
+
+- **Conditioning Parameter** :code:`M`: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
+- **Machine Precision** (:code:`M = -1`): Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
+- **Covariance Matrix** :math:`\Sigma`: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
+- **Cholesky Decomposition**: Option **4** solves the normal equations using Cholesky decomposition. It is efficient but may be numerically unstable for ill-conditioned or rank-deficient problems due to squaring the condition number. It is best used when the matrix is well-conditioned and of full rank.
+
+**Additional Information**:
+
+- **Regularization with** :ref:`LAMBDA`:
+
+  - The :ref:`LAMBDA` key controls the regularization parameter used in the training process. It should be specified separately to apply regularization to the model.
+  - Regularization helps prevent overfitting by adding a penalty for larger parameter values.
+
+- **LAPACK Routines**:
+
+  - :code:`DGELSD`: Computes the minimum-norm solution to a real linear least squares problem using the SVD of the coefficient matrix.
+  - :code:`DGELS`: Solves overdetermined or underdetermined real linear systems involving an :math:`M \times N` matrix, using a QR or LQ factorization of the matrix.
+  - :code:`DPOTRF` and :code:`DPOTRS`: Used in the Cholesky decomposition to factorize a symmetric positive-definite matrix and solve the resulting linear system.
+
+- **When to Use Each Option**:
+
+  - Use **Option 1 (GELSD)** when you need robustness against rank deficiency and moderate performance.
+  - Use **Option 2 (GELS)** for the fastest performance on well-conditioned, full-rank matrices where robustness is less of a concern.
+  - Use **Option 3 (Custom SVD Implementation)** when you require additional outputs like the covariance matrix and are willing to trade off performance for more comprehensive results.
+  - Use **Option 4 (Cholesky Decomposition)** when you have a well-conditioned, full-rank matrix and need an efficient solution, but be cautious of potential numerical instability in ill-conditioned or rank-deficient problems.
+
+'''
+examples = ["OALGO 1", "OALGO 1 -1", "OALGO 2", "OALGO 3 1e-10", "OALGO 4"]
+
+
+[ALLOWED_KEYS.SBASIS]
+INHERIT = ["TYPES.UINT"]
+description = "Number of basis functions for the DesignMatrix."
+long_description = """
+Many models do not require this. If specified, it sets the number of basis 
+functions used in the design matrix.
+"""
+examples = ["10", "102"]
+
+[ALLOWED_KEYS.NORM]
+INHERIT = ["TYPES.BOOL"]
+description = "Standardize descriptors."
+long_description = """
+Set to true to standardize descriptors, typically relevant if energies are used 
+for fitting.
+"""
+
+[ALLOWED_KEYS.LAMBDA]
+default_value = ["0"]
+value_type = ["INT","DOUBLE","INT DOUBLE"]
+value_format = ["<int>", "<double>", "<int> <double>"]
+value_N = [-2]
+description = "Controls the regularization parameter λ for BLR and KRR."
+long_description = """
+If N=0, no regularization. If N>0, λ is set to that value. If N<0, an evidence 
+approximation is used to estimate λ. For LAMBDA 0, you can provide a second 
+number (double) that sets the effective rank threshold (default 1e-8).
+"""
+examples = ["LAMBDA -1", "LAMBDA 1e-4", "LAMBDA 0", "LAMBDA 0 1e-12"]
+
+[ALLOWED_KEYS.ALPHA]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["1.0"]
+description = "Weight precision hyper-parameter."
+long_description = """
+This is the starting guess for the evidence approximation algorithm. 
+"""
+examples = ["ALPHA 0.23"]
+
+[ALLOWED_KEYS.BETA]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["1.0"]
+description = "Noise precision hyper-parameter."
+long_description = """
+This is the starting guess for the evidence approximation algorithm.
+"""
+examples = ["BETA 0.0001"]
+
+[ALLOWED_KEYS.SETFL]
+INHERIT = ["TYPES.STRING"]
+description = """Path to the setfl file with the EAM potential."""
+examples = ['Ta1_Ravelo_2013.eam.alloy']
+
+
+[ALLOWED_KEYS.structure]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [2147483647]
+description  = "Unified structural input(s)."
+long_description = """
+Supported file formats: .cif (Crystallographic Information File), VASP 
+(POSCAR/CONTCAR), and CASTEP (.cell). The online option fetches structures 
+from databases (MP, COD, NOMAD). Multiple structures can be space-separated 
+or repeated. A mix of files and online sources is allowed.
+"""
+examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
+cli_long_flag  = "--structure"
+cli_short_flag = "-s"
+cli_required   = false
+
+[ALLOWED_KEYS.potential]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "Trained model file."
+examples     = ["pot.tadah"]
+cli_long_flag  = "--potential"
+cli_short_flag = "-p"
+cli_required     = false
+
+[ALLOWED_KEYS.hpotarget]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "HPO target file."
+examples     = ["hpotargets.txt"]
+cli_long_flag  = "--hpotarget"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.validation]
+INHERIT = ["TYPES.STRINGS"]
+description  = "Validation dataset file(s)."
+examples     = ["valid.tadah"]
+cli_long_flag  = "--validation"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.dft-file]
+INHERIT = ["TYPES.STRINGS"]
+description  = "Input DFT file(s)."
+long_description = """
+A single file or multiple files (space-separated). Used to extract reference 
+data for training. Supported formats: VASP (OUTCAR, vasprun.xml), CASTEP 
+(.castep, .md, .geom).
+"""
+examples     = ["run1.outcar", "run1.outcar run2.outcar"]
+cli_long_flag  = "--dft-file"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.outfile]
+INHERIT = ["TYPES.STRINGS"]
+description  = "Output file."
+long_description = """
+The output file to be written. Multiple files can be specified if the command 
+produces more than one output.
+"""
+examples     = ["output.tadah"]
+cli_long_flag  = "--outfile"
+cli_short_flag = "-o"
+cli_required   = false
+
+[ALLOWED_KEYS.index]
+value_type   = ["{INDEX_PATTERN}"]
+value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>"]
+value_N      = [-2147483647]
+description = "Index pattern."
+long_description = """
+Allows flexible selection of dataset indices. Supports single indices, ranges 
+(e.g., start-stop), lists, or intervals (start-stop:step). Indices are 1-based. 
+Repeated indices are removed automatically.
+"""
+examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
+cli_long_flag  = "--index"
+cli_short_flag = "-i"
+cli_required     = false
+
+[ALLOWED_KEYS.format]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<fmt>"]
+description  = "Output format (e.g., vasp, castep, lammps)."
+examples     = ["castep", "lammps", "vasp"]
+cli_long_flag  = "--format"
+cli_short_flag = "-f"
+cli_required     = false
+
+[ALLOWED_KEYS.numeric]
+INHERIT = ["TYPES.UINT"]
+description  = "Numeric output precision."
+long_description = """
+Sets the number of decimal places for output. 
+"""
+examples     = ["12"]
+default_value = ["12"]
+cli_long_flag  = "--numeric"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.analytics]
+INHERIT = ["TYPES.BOOL"]
+description  = "Perform analytics."
+cli_long_flag    = "--analytics"
+cli_short_flag   = "-A"
+cli_required     = false
+
+[ALLOWED_KEYS.shuffle]
+INHERIT = ["TYPES.BOOL"]
+description  = "Randomize entries before splitting."
+cli_long_flag    = "--shuffle"
+cli_short_flag   = ""
+cli_required     = false
+
+[ALLOWED_KEYS.even]
+INHERIT = ["TYPES.BOOL"]
+description  = "Equal-size partition."
+cli_long_flag    = "--even"
+cli_short_flag   = ""
+cli_required     = false
+
+[ALLOWED_KEYS.chunk]
+INHERIT = ["TYPES.UINTS"]
+description  = "Specify chunk sizes."
+cli_long_flag  = "--chunk"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.percent]
+INHERIT = ["TYPES.UINTS"]
+description  = "Specify percentage partition."
+cli_long_flag  = "--percent"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.threshold]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Floating point comparision threshold."
+examples     = ["1e-4"]
+cli_long_flag  = "--threshold"
+cli_short_flag = ""
+default_value      = ["1e-6"]
+cli_required     = false
+
+[ALLOWED_KEYS.merge]
+INHERIT = ["TYPES.BOOL"]
+description  = "Merge deduplication results into one file."
+cli_long_flag    = "--merge"
+cli_short_flag   = ""
+default_value      = ["false"]
+cli_required     = false
+
+[ALLOWED_KEYS.uniform]
+INHERIT = ["TYPES.UINT"]
+description  = "Sample uniformly every N-th entry."
+examples     = ["10"]
+cli_long_flag  = "--uniform"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.random]
+INHERIT = ["TYPES.UINT"]
+description  = "Randomly sample N entries."
+examples     = ["5"]
+cli_long_flag  = "--random"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.eshift]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Energy shift per atom."
+long_description = """
+If multispecies, the number of values must match the number of species. 
+The shift is added to the energy of each atom.
+"""
+examples     = ["0.5", "0.5 0.1"]
+cli_long_flag  = "--eshift"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.rescale]
+INHERIT = ["TYPES.BOOL"]
+description  = "Enable rescaling of training weights."
+cli_long_flag    = "--rescale"
+cli_short_flag   = ""
+cli_required     = false
+
+[ALLOWED_KEYS.range]
+value_type   = ["DOUBLE DOUBLE INT"]
+value_format = ["<START> <STOP> <NPOINTS>"]
+value_N      = [-3,-3]
+description  = "Plotting range [start stop npoints]."
+examples     = ["0.1 9.5 100"]
+cli_long_flag  = "--range"
+cli_short_flag = "-r"
+cli_required     = false
+
+[ALLOWED_KEYS.atom]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["<element> ...>"]
+value_N      = [-118]
+description  = "Chemical elements."
+examples     = ['"Kr"']
+cli_long_flag  = "--atom"
+cli_short_flag = "-a"
+cli_required     = false
+
+[ALLOWED_KEYS.atompair]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["<element1> <element2>"]
+value_N      = [-2]
+description  = "Pair of chemical elements."
+examples     = ['"Kr Kr"']
+cli_long_flag  = "--atompair"
+cli_short_flag = "-a"
+cli_required     = false
+
+[ALLOWED_KEYS.WATOM]
+INHERIT = ["TYPES.DOUBLE"]
+value_N = [-118]
+description = """
+Weights sorted by atomic number, from lowest Z to highest. WATOMS.size() must 
+match ATOMS.size().
+"""
+
+[ALLOWED_KEYS.error]
+INHERIT = ["TYPES.BOOL"]
+description  = "Generate error estimates."
+cli_long_flag    = "--error"
+cli_short_flag   = ""
+default_value      = ["false"]
+cli_required     = false
+
+[ALLOWED_KEYS.quantity]
+INHERIT = ["TYPES.STRING"]
+description  = "Generic quantity."
+cli_long_flag  = "--quantity"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.type]
+INHERIT = ["TYPES.STRINGS"]
+description  = "Generic types."
+cli_long_flag  = "--type"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.DIMER]
+value_type = ['BOOL DOUBLE BOOL']
+value_format = ['<boolean> <double> <boolean>']
+default_value = ["false", "0", "false"]
+value_N = [-3]
+description = """Control for DIMER models. Users should not modify this key."""
+examples = ['DIMER true 1.104 true']
+
+[ALLOWED_KEYS.EWEIGHT]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["1.0"]
+description = "Global energy scaling factor."
+long_description = """
+Energies are always scaled by 1/(number of atoms). Additional configuration-level 
+scaling factors can apply. Combined factor = EWEIGHT*(config eweight)/(#atoms).
+"""
+examples = ["EWEIGHT 0.96"]
+
+[ALLOWED_KEYS.FWEIGHT]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["1.0"]
+description = "Global force scaling factor."
+long_description = """
+Each force component is scaled by 1/(#atoms)/3. Additional config-level 
+scaling factors can apply. Combined factor = FWEIGHT*(config fweight)/(#atoms)/3.
+"""
+examples = ["FWEIGHT 1e-2"]
+
+[ALLOWED_KEYS.SWEIGHT]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["1.0"]
+description = "Global stress scaling factor."
+long_description = """
+Each stress component is scaled by 1/6. Additional config-level scaling can 
+apply. Combined factor = SWEIGHT*(config sweight)/6.
+"""
+examples = ["SWEIGHT 1e-1"]
+
+[ALLOWED_KEYS.WEIGHTS]
+INHERIT = ["TYPES.DOUBLES"]
+description = "Machine-learned coefficients for the model."
+long_description = """
+These are species-dependent weights, obtained during optimization. Defaults 
+to atomic numbers if unspecified.
+"""
+examples = ["WEIGHTS 0.12 1.2 0.3"]
+
+[ALLOWED_KEYS.SIGMA]
+value_type = ["INT {DOUBLE}"]
+value_format = ["<integer> <double> ..."]
+value_N = [-2147483647]
+description = "The Σ matrix used in Bayesian Linear Regression."
+long_description = """
+An N×N matrix in column-major order. Applies to M_BLR. 
+"""
+examples = ["`2 1.2 2.2 2.3 3.3`"]
+
+[ALLOWED_KEYS.NSTDEV]
+INHERIT = ["TYPES.DOUBLES"]
+description = "Standard deviations from descriptor normalization."
+long_description = """
+Obtained after standardizing the columns of the DesignMatrix (see NORM).
+The vector size equals the number of columns.
+"""
+
+[ALLOWED_KEYS.NMEAN]
+INHERIT = ["TYPES.DOUBLES"]
+description = "Mean values from descriptor normalization."
+long_description = """
+Obtained after standardizing the columns of the DesignMatrix (see NORM).
+"""
+
+[ALLOWED_KEYS.BASIS]
+INHERIT = ["TYPES.DOUBLES"]
+description = "Basis vectors for non-linear Kernel Ridge Regression."
+long_description = """
+They represent the features or functions used to map input data into a 
+higher-dimensional feature space.
+"""
+
+[ALLOWED_KEYS.MPIWPCKG]
+INHERIT = ["TYPES.UINT"]
+default_value = ["50"]
+description = """The number of structures in a single MPI work package."""
+
+[ALLOWED_KEYS.MBLOCK]
+INHERIT = ["TYPES.UINT"]
+default_value = ["64"]
+description = """ScalaPACK row block size MB."""
+is_internal = [false]
+
+[ALLOWED_KEYS.NBLOCK]
+INHERIT = ["TYPES.UINT"]
+default_value = ["64"]
+description = """ScalaPACK column block size NB."""
+
+[ALLOWED_KEYS.FIXWEIGHT]
+INHERIT = ["TYPES.UINTS"]
+description = "Values for weights to be fixed in optimization."
+long_description = """
+Must be used with FIXINDEX. The i-th value in FIXWEIGHT corresponds to the 
+i-th index in FIXINDEX.
+"""
+examples = ["1 5 9"]
+
+[ALLOWED_KEYS.FIXINDEX]
+INHERIT = ["TYPES.UINTS"]
+description = "Indices of weights to be fixed in optimization."
+long_description = """
+Must be used with FIXWEIGHT. 
+"""
+examples = ["1 4 5"]
+
+[ALLOWED_KEYS.task]
+INHERIT = ["ALLOWED_KEYS.config"]
+description = "A file containing task(s) to be executed."
+long_description = """
+The task file is a convenient way to specify multiple tasks without having to
+provide all the command-line arguments for each task. The task file should be
+in the same format as the configuration file, but it can also include additional
+information such as the task name and any specific parameters for that task.
+A task in a task file begins with the keyword 'TASK' followed by the task name.
+The task name is simply a command to be executed or both command and subcommand.
+The lines following the `TASK` keyword should contain parameters required for
+the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
+task file.
+
+# Example TASK file containing two tasks:
+# Global options
+NUMERIC 14 # output precision
+VERBOSE 2  # verbosity level
+
+TASK predict
+DBFILE db1.tadah db2.tadah db3.tadah
+DBFILE db4.tadah db5.tadah db6.tadah
+FORCE true
+ANALYTICS true
+
+TASK data print
+STRUCTURE crystal1.cif crystal2.cif
+"""
+examples     = ["path/to/tasks.tadah"]
+cli_long_flag  = "--task"
+cli_short_flag = "-t"
+cli_required     = false
+cli_excludes = ["ALL"]
+
+[ALLOWED_KEYS.option]
+description      = "Positional argument"
+value_type   = ["STRING"]
+value_format = ["<arg>"]
+value_N      = [1]
+cli_long_flag  = "OPTION"
+examples     = ["arg"]
+
+[ALLOWED_KEYS.append]
+INHERIT = ["TYPES.BOOL"]
+description  = "Append to the existing file."
+cli_long_flag  = "--append"
+cli_short_flag = ""
+cli_required     = false
+cli_needs = ["outfile"]
+
+[ALLOWED_KEYS.bondenergy]
+INHERIT = ["TYPES.BOOL"]
+description  = "Calculate bond energy instead of per atom value."
+cli_long_flag  = "--bondenergy"
+cli_short_flag = ""
+cli_required     = false
+
+[ALLOWED_KEYS.derivative]
+INHERIT = ["TYPES.BOOL"]
+description  = "Calculate derivative of the function."
+cli_long_flag  = "--derivative"
+cli_short_flag = ""
+cli_required     = false
+
+
+###############################################################################
+# Blueprint for Internal Keys (INTERNAL_KEYS) Loaded as defaults on request
+###############################################################################
+[INTERNAL_KEYS.DSIZE]
+INHERIT = ["TYPES.UINT"]
+default_value = ["0"]
+description = """The total size of the descriptor. Two-body + many-body + bias."""
+value_N = [1]
+
+[INTERNAL_KEYS.RCUTMAX]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0.0"]
+description = """Maximum cutoff for all descriptors. Calculated from the cutoff of the individual descriptors."""
+value_N = [1]
+
+[INTERNAL_KEYS.RCUT2BMAX]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0.0"]
+description = """Maximum cutoff for two-body descriptors. Calculated from the cutoff of the individual descriptors."""
+value_N = [1]
+
+[INTERNAL_KEYS.RCUTMBMAX]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0.0"]
+description = """Maximum cutoff for many-body descriptors. Calculated from the cutoff of the individual descriptors."""
+value_N = [1]
+
+[INTERNAL_KEYS.ESTDEV]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0"]
+description = """Energy standard deviation."""
+value_N = [1]
+
+[INTERNAL_KEYS.FSTDEV]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0"]
+description = """Force standard deviation."""
+value_N = [1]
+
+[INTERNAL_KEYS.SSTDEV]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0", "0", "0", "0", "0", "0"]
+description = """Stress standard deviation."""
+value_N = [-6]
+
+###############################################################################
+# Task Blueprint (TASKS)
+###############################################################################
+
+[TASKS.train]
+description      = "Train a model."
+long_description = """
+Train a model using either a configuration file or a task file. By default,
+it trains on energies; however, forces and stresses can also be included.
+This command requires a configuration file and yields a trained interatomic
+potential which can be used with Tadah! or for molecular
+dynamics simulations in LAMMPS via pair_style tadah.
+"""
+examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
+[TASKS.train.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
+[TASKS.train.keys.outfile]
+default_value = ["pot.tadah"]
+value_N = [1]
+description = "Output file name for the trained model."
+long_description = """
+Output file name for the trained model. 
+"""
+value_type   = ["STRING"]
+value_format = ["<file>"]
+[TASKS.train.groups.input]
+description      = "Provide a configuration file for a single task or a complete tasks file."
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.train.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+
+[TASKS.predict]
+description = "Predict properties using a trained model."
+long_description = """
+Predict using an already trained model. Energy per atom is always calculated,
+while forces and stresses are optional. By default, energies are written to
+energy.pred, and if forces or stresses are calculated, they are written to
+forces.pred and stress.pred, respectively. You can use a task file with a DBFILE
+key to list prediction datasets or STRUCTURE to list files or online structures
+(see tadah explain predict.structure for supported types). Alternatively, you
+can provide Tadah! datasets or individual structure files or online sources via
+the command line.
+"""
+examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
+[TASKS.predict.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile"]
+[TASKS.predict.keys.analytics]
+cli_excludes = ["structure"]
+[TASKS.predict.keys.outfile]
+default_value = ["energy.pred", "forces.pred", "stress.pred"]
+value_N = [-3]
+description = "Output file name(s) for predicted values. The first file is for energies, followed by forces/stresses if requested. Specify filename for every requested output."
+value_format = ["<energy_file> [<force_file>] [<stress_file>]"]
+[TASKS.predict.groups.input]
+description      = "Input sources for prediction. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 2
+[TASKS.predict.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.predict.groups.input.keys.dbfile]
+cli_needs = ["potential"]
+[TASKS.predict.groups.input.keys.structure]
+cli_needs = ["potential"]
+
+[TASKS.hpo]
+description = "Optimize the model architecture and hyperparameters."
+long_description = """
+Refine your model's architecture and hyperparameters using Tadah!'s nested
+fitting procedure, an iterative approach that goes beyond standard force-
+and energy-focused methods. By evaluating trial potentials with LAMMPS
+scripts, this framework allows you to incorporate performance constraints
+such as surface energies or phase stability, significantly enhancing model
+transferability. The global optimization algorithm systematically explores
+the parameter space, producing a robust interatomic potential tailored to
+your priorities for accuracy, speed, and other metrics. This flexible
+workflow enables users to define search space constraints, assign weights
+to different objectives, and tune performance for a wide range of
+applications.
+"""
+examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
+[TASKS.hpo.keys]
+INHERIT          = ["ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose"]
+[TASKS.hpo.groups.input]
+description      = "Input sources for hpo. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 3
+[TASKS.hpo.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.validation","ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.task"]
+[TASKS.hpo.groups.input.keys.config]
+cli_needs = ["validation", "hpotarget"]
+cli_excludes = ["task"]
+
+[TASKS.data]
+description      = "Dataset management commands."
+long_description = "Dataset management commands (convert, print, write, merge, split, dedup, sample, balance)."
+examples         = ["tadah data --task tasks.tadah"]
+[TASKS.data.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+
+[TASKS.data.convert]
+description      = "Convert DFT output file(s) to Tadah! dataset format."
+long_description = "Convert DFT output file(s) to Tadah! dataset format."
+examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah"]
+[TASKS.data.convert.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
+[TASKS.data.convert.groups.input]
+description      = "Input sources for printing. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.convert.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dft-file", "ALLOWED_KEYS.task"]
+[TASKS.data.convert.groups.input.keys.dft-file]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
+
+[TASKS.data.print]
+description = "Print structure information to screen."
+long_description = """
+Print structure(s) information from dataset or structure files.
+"""
+examples         = ["tadah data print -d dataset.tadah", "tadah data print -s crystal.cif"]
+[TASKS.data.print.keys]
+INHERIT          = ["ALLOWED_KEYS.index", "ALLOWED_KEYS.numeric"]
+[TASKS.data.print.groups.input]
+description      = "Input sources for printing. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 2
+[TASKS.data.print.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.data.print.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+# cli_needs = ["index"]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.print.groups.input.keys.structure]
+cli_excludes   = ["task", "index"]
+
+[TASKS.data.write]
+description      = "Write structures into a chosen format."
+long_description = "Write structures from a dataset or a structure file or online source into a chosen format."
+examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
+[TASKS.data.write.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.data.write.groups.input]
+description      = "Structure sources for writing. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.write.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.data.write.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile", "index", "format"]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.write.groups.input.keys.structure]
+cli_excludes   = ["task", "index"]
+cli_needs = ["outfile", "format"]
+
+[TASKS.data.merge]
+description      = "Merge multiple dataset files into a single file."
+long_description = "Merge multiple dataset files into a single file."
+examples         = ["tadah data merge -d db1.tadah db2.tadah -o merged.tadah"]
+[TASKS.data.merge.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric"]
+[TASKS.data.merge.keys.outfile]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.merge.groups.input]
+description      = "Sources for merging. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.merge.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+
+[TASKS.data.split]
+description      = "Split a dataset into parts."
+long_description = "Split a dataset into parts."
+examples         = ["tadah data split -d db.tadah -o part1.tadah part2.tadah --even"]
+[TASKS.data.split.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.shuffle", "ALLOWED_KEYS.even", "ALLOWED_KEYS.chunk", "ALLOWED_KEYS.percent", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append"]
+[TASKS.data.split.keys.even]
+description = "Split dataset into equal-size partitions. The number of partitions is determined by the number of output files provided. The last partition may be smaller if the dataset size is not divisible by the number of partitions."
+cli_excludes = ["chunk", "percent"]
+[TASKS.data.split.keys.chunk]
+cli_excludes = ["even", "percent"]
+[TASKS.data.split.keys.percent]
+cli_excludes = ["even", "chunk"]
+[TASKS.data.split.groups.input]
+description      = "Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.split.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+
+[TASKS.data.dedup]
+description      = "Remove duplicate structures from a dataset."
+long_description = "Remove duplicate structures from Tadah! dataset(s). The merge option combines output into single file."
+examples         = ["tadah data dedup -d db1.tadah db2.tadah -o dedup1.tadah dedup2.tadah", "tadah data dedup -d db1.tadah db2,tadah -o db_merged.tadah --merge"]
+[TASKS.data.dedup.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.append"]
+[TASKS.data.dedup.groups.input]
+description      = "Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.dedup.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+[TASKS.data.dedup.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
+
+[TASKS.data.sample]
+description = "Sample configurations from a dataset."
+long_description = """
+Sample a subset of configurations from an existing dataset to create a new,
+single output dataset. For the --index option, ensure requested sample size
+does not exceed the number of available configurations.
+"""
+examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
+[TASKS.data.sample.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.uniform", "ALLOWED_KEYS.random", "ALLOWED_KEYS.index", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.append"]
+[TASKS.data.sample.keys.outfile]
+value_N = [1]
+INHERIT = ["TYPES.STRING"]
+[TASKS.data.sample.keys.uniform]
+cli_excludes = ["random", "index"]
+[TASKS.data.sample.keys.random]
+cli_excludes = ["uniform", "index"]
+[TASKS.data.sample.keys.index]
+cli_excludes = ["random", "uniform"]
+[TASKS.data.sample.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+[TASKS.data.sample.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
+
+[TASKS.data.balance]
+description = "Apply energy shifts and/or rescaling to a dataset."
+long_description = """
+Modify a dataset by applying element-specific energy shifts or rescaling
+the weights for energies, forces, and stresses. The procedure can include
+threshold checks, forcing near-zero values to a default weight, while large
+magnitudes are inversely weighted. The updated dataset is then written to
+one or more output files, which can be merged if desired. This approach
+enhances the dataset's consistency and is especially useful when refining
+potential parameters or emphasizing certain configurations during training.
+"""
+examples         = ["tadah data balance -d db.tadah --rescale --eshift 0.5 --numeric 16 --outfile balanced.tadah", "tadah data balance -d db1.tadah db2.tadah --rescale --outfile balanced1.tadah balanced2.tadah"]
+[TASKS.data.balance.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.index"]
+[TASKS.data.balance.keys.force]
+description = "Apply energy shift and/or rescaling to forces."
+[TASKS.data.balance.keys.stress]
+description = "Apply energy shift and/or rescaling to stresses."
+[TASKS.data.balance.keys.threshold]
+INHERIT = ["TYPES.DOUBLES"]
+description = "Floating point thresholds for energy, force, and stress."
+long_description = """
+If energy or the sum of force norms or the stress matrix norm exceeds the
+corresponding threshold, the relevant quantity will be rescaled using an
+inverse weighting..
+"""
+default_value = ["1e-1", "2e-2", "3e-3"]
+value_N = [-3]
+[TASKS.data.balance.keys.rescale]
+description = "Rescale structure weights."
+long_description = """
+Applies inverse weighting to energies, forces, and stresses based on their
+magnitudes. Specifically:
+  • Energies: 1 / | energy |
+  • Total force: 1 / Σ‖ force_i ‖
+  • Stress: 1 / ‖stress‖
+This ensures smaller magnitudes keep their weights, while large values are
+downweighted to mitigate numerical instability.
+"""
+[TASKS.data.balance.groups.input]
+description      = "Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.data.balance.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+[TASKS.data.balance.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile"]
+
+
+
+[TASKS.properties]
+description      = "Evaluate physical properties for MLIP target evaluation."
+long_description = "Evaluate physical properties for MLIP target evaluation (e.g., pairwise, ecurve, eos, defect, surface, mechanics)."
+examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+[TASKS.properties.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+
+[TASKS.properties.pairwise]
+description      = "Compute E vs. r for a given potential."
+long_description = ""
+examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
+[TASKS.properties.pairwise.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.atompair", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.bondenergy"]
+[TASKS.properties.pairwise.keys.eshift]
+INHERIT = ["TYPES.DOUBLE"]
+description = "Shift the energy curve by this value. If zero is provided the curve will be shifted by the furthest right value of the curve. Provide single double for --eshift if potential is either two- or many-body. If potential is both two- and many-body, provide three doubles for --eshift. The first double if for total energy second double is for two-body, the third for many-body."
+value_N = [-3]
+required_min = 1
+required_max = 3
+
+
+[TASKS.properties.pairwise.groups.input]
+description      = "Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.properties.pairwise.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.task"]
+[TASKS.properties.pairwise.groups.input.keys.potential]
+cli_excludes   = ["task"]
+cli_needs = ["outfile", "range", "atompair"]
+
+# [TASKS.properties.ecurve]
+# description      = "Compute energy versus volume/density/pressure curve."
+# long_description = "Compute energy versus volume/density/pressure curve."
+# examples         = ["tadah properties ecurve -s crystal.cif -r 10 100 200 --quantity volume -o evcurve.txt"]
+# [TASKS.properties.ecurve.keys]
+# INHERIT          = ["ALLOWED_KEYS.structure", "ALLOWED_KEYS.range", "ALLOWED_KEYS.quantity", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+# [TASKS.properties.ecurve.keys.structure]
+# cli_required = true
+# [TASKS.properties.ecurve.keys.range]
+# cli_required = true
+# [TASKS.properties.ecurve.keys.quantity]
+# cli_required = true
+# [TASKS.properties.ecurve.keys.outfile]
+# cli_required = true
+
+# [TASKS.properties.eos]
+# description      = "Compute Equation of State (stub)."
+# long_description = "Compute Equation of State for a given structure (stub)."
+# examples         = ["tadah properties eos ..."]
+# [TASKS.properties.eos.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
+
+# [TASKS.properties.defect]
+# description      = "Compute defect formation energies (stub)."
+# long_description = "Compute defect formation energies (stub)."
+# examples         = ["tadah properties defect ..."]
+# [TASKS.properties.defect.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
+#
+# [TASKS.properties.surface]
+# description      = "Compute surface energies (stub)."
+# long_description = "Compute surface energies (stub)."
+# examples         = ["tadah properties surface ..."]
+# [TASKS.properties.surface.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
+#
+# [TASKS.properties.mechanics]
+# description      = "Compute bulk modulus and elastic constants (stub)."
+# long_description = "Compute bulk modulus and elastic constants (stub)."
+# examples         = ["tadah properties mechanics ..."]
+# [TASKS.properties.mechanics.keys]
+# INHERIT          = ["ALLOWED_KEYS.verbose"]
+
+[TASKS.analysis]
+description      = "Visual analysis commands."
+long_description = "Visual analysis commands (e.g., descriptor, bfunc, cutoff)."
+examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt"]
+INHERIT          = ["ALLOWED_KEYS.verbose"]
+[TASKS.analysis.keys]
+INHERIT          = ["ALLOWED_KEYS.task"]
+
+[TASKS.analysis.descriptor]
+description      = "Calculate structure descriptors."
+long_description = "Calculate structure descriptors."
+examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"]
+[TASKS.analysis.descriptor.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.append"]
+[TASKS.analysis.descriptor.groups.input]
+description      = "Structure source or a task file. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.descriptor.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.analysis.descriptor.groups.input.keys.dbfile]
+cli_excludes   = ["task"]
+cli_needs = ["outfile", "potential"]
+[TASKS.analysis.descriptor.groups.input.keys.structure]
+cli_excludes   = ["task", "index"]
+cli_needs = ["outfile", "potential"]
+
+[TASKS.analysis.bfunc]
+description      = "Evaluate and plot basis functions."
+long_description = "Long description: Evaluate and plot basis functions."
+examples         = ["tadah analysis bfunc -p pot.tadah -o bfunc.txt -r 0 5 500 --type 2b Y"]
+[TASKS.analysis.bfunc.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.type", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative", "ALLOWED_KEYS.index", "ALLOWED_KEYS.rescale"]
+[TASKS.analysis.bfunc.keys.type]
+value_N = [-2]
+description  = "Basis function type. \"2b Y\" or \"mb N\"."
+long_description  = """
+Choice of basis function. For example: \"2b Y\" or \"mb N\".
+Where Y/N controls computation of the cutoff function.
+"""
+[TASKS.analysis.bfunc.keys.rescale]
+description = "Rescale the basis function by the cutoff function. This is useful for visualisation purposes."
+[TASKS.analysis.bfunc.keys.outfile]
+INHERIT = ["TYPES.STRING"]
+[TASKS.analysis.bfunc.groups.input]
+description      = "Provide either a potential file, a configuration file, or a task file."
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.bfunc.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+[TASKS.analysis.bfunc.groups.input.keys.potential]
+cli_excludes   = ["task", "config"]
+cli_needs = ["range", "type"]
+[TASKS.analysis.bfunc.groups.input.keys.config]
+cli_excludes   = ["task", "potential"]
+cli_needs = ["range", "type"]
+
+[TASKS.analysis.cutoff]
+description      = "Evaluate and plot cutoff functions."
+long_description = "Long description: Evaluate and plot cutoff functions."
+examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
+[TASKS.analysis.cutoff.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative"]
+[TASKS.analysis.cutoff.groups.input]
+description      = "Provide either a cutoff type or a task file."
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.cutoff.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.type", "ALLOWED_KEYS.task"]
+[TASKS.analysis.cutoff.groups.input.keys.type]
+cli_excludes   = ["task"]
+cli_needs = ["range"]
+
+# [TASKS.transform]
+# description      = "Structure transformation commands."
+# long_description = "Structure transformation commands (rotate, shear, change-coords)."
+# examples         = ["tadah transform rotate ..."]
+# [TASKS.transform.keys]
+# INHERIT = ["ALLOWED_KEYS.task"]
+
+# work in progress
+[TASKS.explain]
+description      = "Explain tadah command or option in more detail."
+long_description      = "This is a help command that provides detailed information about a specific command or option in the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option."
+examples         = ["tadah explain task", "tadah explain train.verbose", "tadah explain data.split.even"]
+
+[TASKS.explain.keys]
+INHERIT = ["ALLOWED_KEYS.option"]
+[TASKS.explain.keys.option]
+description = "Command or option to explain in a dot separated format."
+long_description = "The command or option to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'."
+value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>"]
+cli_required = true
+examples = ["tadah explain train.task", "tadah explain data.split.even"]
+
+###############################################################################
+# Error Messages (ERROR_MESSAGES) TODO Not in use
+###############################################################################
+[ERROR_MESSAGES]
+MISSING_KEY         = "Required key is missing."
+TYPE_MISMATCH       = "Key type does not match the expected type."
+OUT_OF_BOUNDS       = "Key value does not meet size constraints."
+UNKNOWN_KEY         = "Unknown key found in configuration."
+CONFLICTING_OPTIONS = "Options are mutually exclusive."
+
+###############################################################################
+# The main app metadata
+###############################################################################
+[TADAH]
+logo = '''
+                       _____           _         _      _
+                      |_   _|__ _   __| |  __ _ | |__  | |             
+                        | | / _` | / _` | / _` || '_ \\ | |            
+                        | || (_| || (_| || (_| || | | ||_|             
+                        |_| \__,_| \__,_| \__,_||_| |_|(_)                  
+                                                                       
+         Software for Developing Machine Learning Interatomic Potentials
+                          https://tadah.readthedocs.io'''
+
+description = ""  # not
+long_description = ""
+website = "https://tadah.readthedocs.io"
+version = "1.0.0"
+examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.rescale"]
+[TADAH.keys]
+INHERIT = ["ALLOWED_KEYS.task"]

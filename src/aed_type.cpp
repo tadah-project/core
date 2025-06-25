@@ -1,5 +1,8 @@
 #include <tadah/core/aed_type.h>
 
+namespace tadah {
+namespace core {
+
 aed_type& aed_type::operator=(const aed_type& other) {
     if (this != &other) {
         if (allocated_) {
@@ -41,6 +44,7 @@ double* aed_type::data() { return data_; }
 const double* aed_type::data() const { return data_; }
 
 void aed_type::resize(const size_t n) {
+  size_t size_orig = size_;
   if (n != size_) {
     if (allocated_) {
       data_ = static_cast<double*>(realloc(data_, stride_ * n * sizeof(double)));
@@ -50,7 +54,7 @@ void aed_type::resize(const size_t n) {
     }
     size_ = n;
   }
-  std::fill(data_, data_ + stride_ * n, 0.0);
+  std::fill(data_+stride_*size_orig, data_ + stride_ * n, 0.0);
 }
 
 aed_type aed_type::copy(size_t nelements, size_t start) const {
@@ -88,3 +92,7 @@ void aed_type::random(int seed, double lower, double upper) {
         (*this)[i] = unif(engine);
     }
 }
+
+} // namespace core
+} // namespace tadah
+

@@ -1,9 +1,12 @@
-#ifndef PERIODIC_TABLE_H
-#define PERIODIC_TABLE_H
+#ifndef TADAH_CORE_PERIODIC_TABLE_H
+#define TADAH_CORE_PERIODIC_TABLE_H
 
 #include <string>
 #include <map>
 #include <tadah/core/element.h>
+
+namespace tadah {
+namespace core {
 
 struct PeriodicTable {
   static std::map<std::string, Element> symbol;
@@ -26,7 +29,10 @@ struct PeriodicTable {
 
   private:
   static void fill();
+
   static void init_masses();
 };
 
+} // namespace core
+} // namespace tadah
 #endif

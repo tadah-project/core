@@ -1,5 +1,6 @@
-#ifndef UTILS_H
-#define UTILS_H
+#ifndef TADAH_CORE_UTILS_H
+#define TADAH_CORE_UTILS_H
+
 #include <tadah/core/core_types.h>
 
 #include <iterator>
@@ -11,7 +12,10 @@
 #include <random>
 #include <tuple>
 #include <cstddef>
+#include <utility>
 
+namespace tadah {
+namespace core {
 
 /** Vector printing to streams */
 template <typename T>
@@ -24,6 +28,16 @@ std::ostream& operator<< (std::ostream& os, const std::vector<T>& v) {
     return os;
 }
 
+/**
+ * @class Logspace
+ * @brief A generator (functor) for producing elements of a geometric progression.
+ *
+ * This class stores a current value and a base ratio. Each invocation of @c operator()
+ * returns the current value and then multiplies it by the base ratio, advancing
+ * the sequence in a geometric progression.
+ *
+ * @tparam T A numeric type (e.g., @c float, @c double, etc.).
+ */
 template<typename T>
 class Logspace {
     private:
@@ -39,53 +53,94 @@ class Logspace {
         }
 };
 
-v_type logspace(double start, double stop, int num, double base);
-template<typename T>
-v_type linspace(T start_in, T end_in, int num_in)
+/**
+ * @brief Generates a geometric progression of @p num points between @p start and @p stop.
+ *
+ * The progression is computed by:
+ *   1. Converting @p start into \c realStart = base^(ln(start)).
+ *   2. Calculating the common ratio \c realBase = base^((ln(stop) - ln(start)) / (num - 1)).
+ *   3. Generating @p num values by repeatedly multiplying \c realStart by \c realBase.
+ *
+ * @param[in] start Beginning value of the sequence (must be > 0).
+ * @param[in] stop  Ending value of the sequence (should be > 0).
+ * @param[in] num   Number of elements in the sequence.
+ * @param[in] base  The base used to transform and compute the ratio (commonly @c exp(1)).
+ *
+ * @return A vector (`v_type`) of @p num values in geometric progression ranging
+ *         approximately from @p start to @p stop.
+ *
+ * @throws std::runtime_error if @p start <= 0 (since ln(start) would be invalid).
+ *
+ * ### Example
+ * @code{.cpp}
+ * // Suppose you want a geometric progression from 1.0 to 100.0 in 5 steps:
+ * // The ratio will be chosen so that the final value is 100.
+ *
+ * v_type seq = geomspace(1.0, 100.0, 5, std::exp(1));
+ * // seq might contain something like [1.0, ~3.162, ~10, ~31.622, 100.0]
+ * @endcode
+ */
+v_type geomspace(double start, double stop, int num, double base);
+
+v_type linspace(double start, double end, int num);
+
+
+/**
+ * @brief Convert a value to string (no precision specified).
+ *
+ * @tparam T Any type supporting operator<< to std::ostream.
+ * @param value The value to convert.
+ * @return std::string Representation of the value.
+ */
+template <typename T>
+inline std::string to_string(const T& value)
 {
-
-  v_type ls(num_in);
-
-  double start = static_cast<double>(start_in);
-  double end = static_cast<double>(end_in);
-  double num = static_cast<double>(num_in);
-
-  if (num == 0) { return ls; }
-  if (num == 1)
-    {
-      ls[0] = start;
-      return ls;
-    }
-
-  double delta = (end - start) / (num - 1);
-
-  for(int i=0; i < num-1; ++i)
-    {
-      //ls.push_back(start + delta * i);
-      ls[i] = start + delta * i;
-    }
-  ls[num_in-1] = end;
-  return ls;
-}
-
-
-
-
-template <typename T>
-std::string to_string(const T& value,int n) {
     std::stringstream ss;
-    ss <<  std::setprecision(n) << value;
+    ss << value; 
     return ss.str();
 }
 
+/**
+ * @brief Convert a value to string with given precision (for numeric types).
+ *
+ * @tparam T Any type supporting operator<< to std::ostream.
+ * @param value The value to convert.
+ * @param n   Decimal precision (for floating types).
+ * @return std::string Representation of the value with precision n.
+ */
 template <typename T>
-std::string to_string(const T& value) {
+inline std::string to_string(const T& value, int n)
+{
     std::stringstream ss;
-    ss << value;
+    ss << std::fixed << std::setprecision(n) << value;
     return ss.str();
 }
 
-std::string to_upper(const std::string s);
+/**
+ * @brief Specialization for bool (no precision).
+ *
+ * Writes "true" or "false" instead of "1" or "0".
+ */
+template <>
+inline std::string to_string<bool>(const bool& value)
+{
+    return value ? "true" : "false";
+}
+
+/**
+ * @brief Specialization for bool (with precision).
+ *
+ * Ignores the precision parameter and writes "true" or "false".
+ */
+template <>
+inline std::string to_string<bool>(const bool& value, int /*n*/)
+{
+    return value ? "true" : "false";
+}
+
+
+std::string to_upper(std::string s);
+std::string to_lower(std::string s);
 
 template <typename F>
 double central_difference(F f, double val, double h) {
@@ -150,7 +205,7 @@ bool is_blank_line(const std::string& line);
  * @param n The number of parts to divide into.
  * @return A vector containing the parts.
  */
-std::vector<size_t> divide_into_parts(size_t number, size_t n);
+std::vector<size_t> divide_into_parts(size_t number, int n);
 
 /**
  * @brief Divides a number according to specified percentages.
@@ -192,6 +247,13 @@ bool is_number(const std::string& s);
  * @return A new string with leading and trailing spaces removed.
  */
 std::string trim(const std::string& str);
+
+/**
+ * @brief Trims leading and trailing spaces from a string in place.
+ * 
+ * @param str The string to trim.
+ */
+void trimInPlace(std::string& str);
 
 /**
  * @brief Combines a vector of strings into a single string, with each element separated by a space.
@@ -314,4 +376,136 @@ std::vector<histogram_bin> generate_2d_histogram(
     const std::vector<std::pair<double,double>>& data_2d,
     int x_bins,
     int y_bins);
+
+
+/**
+ * @brief Base case for appendToStream: handles the scenario when no arguments remain.
+ *
+ * This function is the termination point for the recursive template overloads. 
+ * When the parameter pack is empty, it simply returns.
+ *
+ * @param oss Reference to the output string stream to which data is appended.
+ */
+inline void appendToStream([[maybe_unused]] std::ostringstream &oss) {}
+
+/**
+ * @brief Appends a variable number of arguments into an std::ostringstream.
+ *
+ * This function processes one argument at a time and then recurses, 
+ * eventually calling the base case when no arguments remain. It uses 
+ * perfect forwarding to preserve value categories (lvalue or rvalue).
+ *
+ * @tparam T    The type of the first argument.
+ * @tparam Rest Parameter pack representing the remaining argument types.
+ *
+ * @param oss   Reference to the output string stream to which data is appended.
+ * @param first The first argument that is appended to the stream.
+ * @param rest  The remaining arguments to be appended.
+ *
+ * @note
+ * By using std::forward, we avoid unnecessary copies or moves, which 
+ * can be particularly important for performance-critical code.
+ *
+ * ### Example
+ * \code{.cpp}
+ * std::ostringstream oss;
+ * appendToStream(oss, "The number is: ", 42, '\n');
+ * std::cout << oss.str(); // Outputs: "The number is: 42\n"
+ * \endcode
+ */
+template <typename T, typename... Rest>
+inline void appendToStream(std::ostringstream &oss, T&& first, Rest&&... rest) {
+    oss << std::forward<T>(first);
+    appendToStream(oss, std::forward<Rest>(rest)...);
+}
+
+/**
+ * @brief Removes the first known word from the beginning of a string if present.
+ *
+ * This function compares the beginning of the input string to the known word
+ * and, if it matches, removes that word and any immediately trailing spacing.
+ * If the known word is absent or does not appear at the start, no removal is performed.
+ *
+ * @param input The string from which the known word is removed.
+ * @param knownWord The known word that is expected at the start of the string.
+ * @return A new string with the known word (and subsequent space) removed at the start.
+ *
+ * Example:
+ * @code
+ * #include <iostream>
+ * int main() {
+ *   std::string line = "Hello World!";
+ *   std::string result = removeFirstWord(line, "Hello");
+ *   // result now contains "World!"
+ *   std::cout << result << std::endl;
+ *   return 0;
+ * }
+ * @endcode
+ */
+std::string removeFirstWord(const std::string &input, const std::string &knownWord);
+
+/**
+ * @brief Concatenates a vector of strings into a single string with a specified delimiter.
+ *
+ * This function takes a vector of strings and joins them into a single string,
+ * with each element separated by the specified delimiter. The default delimiter
+ * is a space character.
+ *
+ * @param vec The vector of strings to concatenate.
+ * @param delim The delimiter to use between elements (default is " ").
+ * @return A single string containing all elements of the vector, separated by the delimiter.
+ */
+std::string concat(const std::vector<std::string>& vec, const std::string& delim = " ");
+
+/**
+ * @brief
+ *   Wraps text at a specified column width, optionally preserving word boundaries and
+ *   prepending a padding string only to lines that result from "breaking" (i.e., wrapped segments),
+ *   thereby leaving the first line of each original input line unpadded.
+ *
+ * Behavior overview:
+ *   - Existing newlines in the input are respected. Each original line (split by '\n') is processed independently.
+ *   - If preserveWords = false, each line is split into consecutive chunks of size maxWidth.
+ *   - If preserveWords = true, each line is split at word boundaries to avoid breaking words. 
+ *     If a word is longer than maxWidth, it is placed on its own line.
+ *   - For each original line (prior to wrapping), the first wrapped segment is unpadded; subsequent segments are padded.
+ *
+ * @param text
+ *   The full text to be wrapped. May contain existing newlines.
+ * @param maxWidth
+ *   Maximum number of characters allowed per line. This must be a positive integer greater than zero.
+ * @param preserveWords
+ *   If true, the function attempts to keep words intact on each line by splitting on whitespace.
+ *   If false, lines are cut at the exact maxWidth boundary (unless shorter).
+ * @param linePadding
+ *   A string prepended only to "broken" lines (second and subsequent lines in each wrapped group).
+ *
+ * @return
+ *   A new string containing the wrapped text. Each line is terminated by a newline ('\n').
+ *
+ * @code
+ * #include <iostream>
+ *
+ * int main() {
+ *   std::string input =
+ *     "This sample text demonstrates two wrapping techniques:\n"
+ *     "  1) chunk wrapping.\n"
+ *     "  2) word wrapping.\n"
+ *     "A high degree of flexibility is provided, including preserving existing newlines.\n";
+ *
+ *   // Example: Wrap text to 50 characters wide, preserve words, and pad only broken lines with ">> "
+ *   std::string wrappedText = wrapText(input, 50, true, ">> ");
+ *
+ *   std::cout << "Wrapped Text:\n" << wrappedText << std::endl;
+ *
+ *   return 0;
+ * }
+ * @endcode
+ */
+std::string wrapText(const std::string &text,
+    std::size_t maxWidth, bool preserveWords,
+    const std::string &linePadding);
+
+} // namespace core
+} // namespace tadah
 #endif

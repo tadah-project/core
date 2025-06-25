@@ -1,4 +1,8 @@
 #include <tadah/core/lapack.h>
+
+namespace tadah {
+namespace core {
+
 // Some usefull operations on vectors and matrices
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
   int m = mat.rows();
@@ -75,3 +79,7 @@ double condition_number(Matrix &A, char uplo) {
 
   return 1/rcond;
 }
+
+} // namespace core
+} // namespace tadah
+

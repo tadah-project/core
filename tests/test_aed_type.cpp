@@ -1,6 +1,9 @@
 #define CATCH_AED_TYPE_MAIN
 #include "catch2/catch.hpp"
 #include <tadah/core/aed_type.h>
+#include <sstream>
+
+using namespace tadah::core;
 
 TEST_CASE("aed_type default constructor") {
     aed_type vec;
@@ -125,3 +128,52 @@ TEST_CASE("aed_type copy method") {
     REQUIRE(vec_copy[1] == 2.0);
 }
 
+TEST_CASE("aed_type copy() out-of-range throws", "[aed_type][new]") {
+    // copy(size_t nelements, size_t start) checks if (nelements + start > size())
+    aed_type vec({10.0, 20.0, 30.0});
+    REQUIRE_THROWS_AS(vec.copy(2, 2), std::runtime_error);
+    // because 2 + 2 = 4 > size 3 => "Out of range"
+
+    REQUIRE_NOTHROW(vec.copy(3, 0)); // 3 + 0 = 3 => valid
+}
+
+TEST_CASE("aed_type copy assignment self-assignment", "[aed_type][new]") {
+    // Confirm that self-assignment won't break anything
+    aed_type vec({1.1, 2.2, 3.3});
+    aed_type &vecRef = vec;
+    REQUIRE_NOTHROW(vec = vecRef); // self-assignment
+    REQUIRE(vec.size() == 3);
+    REQUIRE(vec[1] == 2.2);
+}
+
+TEST_CASE("aed_type move assignment self-assignment", "[aed_type][new]") {
+    aed_type vec({1.1, 2.2, 3.3});
+    aed_type &vecRef = vec;
+    REQUIRE_NOTHROW(vec = std::move(vecRef)); 
+    // Technically self move-assignment is discouraged. We test that it won’t crash 
+    // though behavior can be arbitrary. Just for coverage.
+}
+
+TEST_CASE("aed_type operator*(T) with size mismatch (potential UB)", "[aed_type][new]") {
+    // The code does not do a size check before summation => potential out-of-bounds
+    // If using dynamically allocated arrays, this can crash or read random memory.
+    // Note it’s undefined behavior (not an exception).
+    aed_type vec1({1.0, 2.0});
+    aed_type vec2({3.0});
+    
+    // Because there's no check, we can't guarantee a result.
+    // We'll show the call in a REQUIRE_NOTHROW if the implementation doesn't throw:
+    REQUIRE_NOTHROW(static_cast<void>(vec1 * vec2));
+    // The result is likely out-of-bounds for the second element. 
+}
+
+TEST_CASE("aed_type operator<<(std::ostream&)", "[aed_type][new]") {
+    aed_type vec({5.5, 6.6, 7.7});
+    std::stringstream ss;
+    ss << vec;
+    // We expect something like "5.5  6.6  7.7"
+    REQUIRE_FALSE(ss.str().empty());
+    REQUIRE(ss.str().find("5.5") != std::string::npos);
+    REQUIRE(ss.str().find("6.6") != std::string::npos);
+    REQUIRE(ss.str().find("7.7") != std::string::npos);
+}

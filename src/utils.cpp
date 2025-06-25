@@ -8,18 +8,46 @@
 #include <cmath>
 #include <limits>
 
-v_type logspace(double start, double stop, int num, double base) {
-    if (start==0) {
-        throw std::runtime_error("log series cannot start at 0\n");
+namespace tadah {
+namespace core {
+
+v_type geomspace(double start, double stop, int num, double base) {
+    // Disallow any non-positive start to avoid std::log of negative or zero
+    if (start <= 0.0) {
+        throw std::runtime_error("geomspace() start must be > 0");
     }
-    double realStart = pow(base, log(start));
-    double realBase = pow(base, (log(stop)-log(start))/(num-1));
+
+    // existing code
+    double realStart = std::pow(base, std::log(start));
+    double realBase  = std::pow(base, (std::log(stop)-std::log(start)) / (num - 1));
 
     v_type retval;
     retval.reserve(num);
-    std::generate_n(std::back_inserter(retval), num, Logspace<double>(realStart,realBase));
+    std::generate_n(std::back_inserter(retval), num, Logspace<double>(realStart, realBase));
     return retval;
 }
+v_type linspace(double start, double end, int num) {
+
+  v_type ls(num);
+
+  if (num == 0) { return ls; }
+  if (num == 1)
+    {
+      ls[0] = start;
+      return ls;
+    }
+
+  double delta = (end - start) / (num - 1);
+
+  for(int i=0; i < num-1; ++i)
+    {
+      //ls.push_back(start + delta * i);
+      ls[i] = start + delta * i;
+    }
+  ls[num-1] = end;
+  return ls;
+}
+
 
 size_t number_of_digits (size_t i)
 {
@@ -67,10 +95,13 @@ std::string vec_to_string(std::vector<double> vec,
 //    }
 //    return rho;
 //}
-std::string to_upper(const std::string s) {
-    std::string str = s;
-    std::transform(str.begin(), str.end(),str.begin(), ::toupper);
-    return str;
+std::string to_upper(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+  return s;
+}
+std::string to_lower(std::string s) {
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
 }
 bool is_blank_line(const std::string& line) {
     for (char c : line) {
@@ -82,13 +113,16 @@ bool is_blank_line(const std::string& line) {
 }
 
 
-std::vector<size_t> divide_into_parts(size_t number, size_t n) {
-    std::vector<size_t> parts(n, number / n);
-    size_t remainder = number % n;
-    for (size_t i = 0; i < remainder; ++i) {
-        parts[i] += 1;
-    }
-    return parts;
+std::vector<size_t> divide_into_parts(size_t number, int n) {
+  if (n <= 0) {
+    throw std::runtime_error("divide_into_parts called with n=0");
+  }
+  std::vector<size_t> parts(n, number / n);
+  size_t remainder = number % n;
+  for (size_t i = 0; i < remainder; ++i) {
+    parts[i] += 1;
+  }
+  return parts;
 }
 
 std::vector<size_t> divide_by_percentage(size_t number, const std::vector<size_t>& percentages) {
@@ -130,11 +164,24 @@ bool is_number(const std::string& str) {
 }
 
 std::string trim(const std::string& str) {
-    size_t first = str.find_first_not_of(' ');
-    if (first == std::string::npos)
+    const std::string whitespace = " \t\n\r\f\v";
+    size_t first = str.find_first_not_of(whitespace);
+    if (first == std::string::npos) {
         return "";
-    size_t last = str.find_last_not_of(' ');
-    return str.substr(first, (last - first + 1));
+    }
+    size_t last = str.find_last_not_of(whitespace);
+    return str.substr(first, last - first + 1);
+}
+
+void trimInPlace(std::string& str) {
+    const std::string whitespace = " \t\n\r\f\v";
+    size_t first = str.find_first_not_of(whitespace);
+    if (first == std::string::npos) {
+        str.clear();
+        return;
+    }
+    size_t last = str.find_last_not_of(whitespace);
+    str = str.substr(first, last - first + 1);
 }
 
 std::string join(const std::vector<std::string>& vec) {
@@ -149,81 +196,81 @@ std::string join(const std::vector<std::string>& vec) {
 }
 
 std::vector<size_t> parse_indices(const std::string& input) {
-    std::vector<size_t> result;
-    std::set<size_t> uniqueNumbers;
-    std::stringstream ss(input);
-    std::string segment;
-    bool hasDuplicates = false;
+  std::vector<size_t> result;
+  std::set<size_t> uniqueNumbers;
+  std::stringstream ss(input);
+  std::string segment;
+  bool hasDuplicates = false;
 
-    while (std::getline(ss, segment, ',')) {
-        segment = trim(segment);
-        size_t dashPos = segment.find('-');
-        size_t colonPos = segment.find(':');
+  while (std::getline(ss, segment, ',')) {
+    segment = trim(segment);
+    size_t dashPos = segment.find('-');
+    size_t colonPos = segment.find(':');
 
-        if (dashPos == std::string::npos) {
-            // Single number
-            if (is_integer(segment)) {
-                size_t number = static_cast<size_t>(std::stoul(segment));
-                if (!uniqueNumbers.insert(number).second) {
-                    hasDuplicates = true;
-                } else {
-                    result.push_back(number);
-                }
-            } else {
-                std::cerr << "Error: Non-numeric value or incorrect syntax found: " << segment << std::endl;
-            }
+    if (dashPos == std::string::npos) {
+      // Single number
+      if (is_integer(segment)) {
+        size_t number = static_cast<size_t>(std::stoul(segment));
+        if (!uniqueNumbers.insert(number).second) {
+          hasDuplicates = true;
         } else {
-            // Extract range start
-            std::string startStr = trim(segment.substr(0, dashPos));
-            if (!is_integer(startStr)) {
-                std::cerr << "Error: Non-numeric start value or incorrect syntax found: " << startStr << std::endl;
-                continue;
-            }
-            size_t start = static_cast<size_t>(std::stoul(startStr));
-
-            size_t end, step = 1;  // Default step is 1
-
-            if (colonPos != std::string::npos) {
-                std::string endStr = trim(segment.substr(dashPos + 1, colonPos - dashPos - 1));
-                std::string stepStr = trim(segment.substr(colonPos + 1));
-                if (!is_integer(endStr) || !is_integer(stepStr)) {
-                    std::cerr << "Error: Non-numeric end or step value or incorrect syntax found." << std::endl;
-                    continue;
-                }
-                end = static_cast<size_t>(std::stoul(endStr));
-                step = static_cast<size_t>(std::stoul(stepStr));
-            } else if (dashPos + 1 < segment.size()) {
-                std::string endStr = trim(segment.substr(dashPos + 1));
-                if (!is_integer(endStr)) {
-                    std::cerr << "Error: Non-numeric end value or incorrect syntax found: " << endStr << std::endl;
-                    continue;
-                }
-                end = static_cast<size_t>(std::stoul(endStr));
-            } else {
-                if (!uniqueNumbers.insert(start).second) {
-                    hasDuplicates = true;
-                } else {
-                    result.push_back(start);
-                }
-                continue;
-            }
-
-            // Generate numbers in range [start, end] with given step
-            for (size_t i = start; i <= end; i += step) {
-                if (!uniqueNumbers.insert(i).second) {
-                    hasDuplicates = true;
-                } else {
-                    result.push_back(i);
-                }
-            }
+          result.push_back(number);
         }
-    }
+      } else {
+        std::cerr << "Error: Non-numeric value or incorrect syntax found: " << segment << std::endl;
+      }
+    } else {
+      // Extract range start
+      std::string startStr = trim(segment.substr(0, dashPos));
+      if (!is_integer(startStr)) {
+        std::cerr << "Error: Non-numeric start value or incorrect syntax found: " << startStr << std::endl;
+        continue;
+      }
+      size_t start = static_cast<size_t>(std::stoul(startStr));
 
-    if (hasDuplicates) {
-        std::cerr << "Warning: Duplicate indices found and removed." << std::endl;
-    }
+      size_t end, step = 1;  // Default step is 1
 
-    return result;
+      if (colonPos != std::string::npos) {
+        std::string endStr = trim(segment.substr(dashPos + 1, colonPos - dashPos - 1));
+        std::string stepStr = trim(segment.substr(colonPos + 1));
+        if (!is_integer(endStr) || !is_integer(stepStr)) {
+          std::cerr << "Error: Non-numeric end or step value or incorrect syntax found." << std::endl;
+          continue;
+        }
+        end = static_cast<size_t>(std::stoul(endStr));
+        step = static_cast<size_t>(std::stoul(stepStr));
+      } else if (dashPos + 1 < segment.size()) {
+        std::string endStr = trim(segment.substr(dashPos + 1));
+        if (!is_integer(endStr)) {
+          std::cerr << "Error: Non-numeric end value or incorrect syntax found: " << endStr << std::endl;
+          continue;
+        }
+        end = static_cast<size_t>(std::stoul(endStr));
+      } else {
+        if (!uniqueNumbers.insert(start).second) {
+          hasDuplicates = true;
+        } else {
+          result.push_back(start);
+        }
+        continue;
+      }
+
+      // Generate numbers in range [start, end] with given step
+      for (size_t i = start; i <= end; i += step) {
+        if (!uniqueNumbers.insert(i).second) {
+          hasDuplicates = true;
+        } else {
+          result.push_back(i);
+        }
+      }
+    }
+  }
+
+  if (hasDuplicates) {
+    std::cerr << "Warning: Duplicate indices found and removed." << std::endl;
+  }
+
+  return result;
 }
 std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
   std::string input_str = join(input);
@@ -306,3 +353,168 @@ std::vector<histogram_bin> generate_2d_histogram(
 
     return histogram_bins;
 }
+
+std::string removeFirstWord(const std::string &input, const std::string &knownWord) {
+  // Check whether 'input' starts with 'knownWord'
+  if (input.compare(0, knownWord.size(), knownWord) == 0) {
+    // Compute new starting position after removing the known word
+    // plus any subsequent whitespace
+    std::size_t startPos = knownWord.size();
+    while (startPos < input.size() && std::isspace(static_cast<unsigned char>(input[startPos]))) {
+      ++startPos;
+    }
+    // Return the substring excluding the known word and trailing spaces
+    return input.substr(startPos);
+  }
+  // Return original string if the word does not appear at the start
+  return input;
+}
+
+std::string concat(const std::vector<std::string>& vec, const std::string& delim) {
+  std::string result;
+  for (const auto& str : vec) {
+    if (!result.empty()) {
+      result += delim;
+    }
+    result += str;
+  }
+  return result;
+}
+
+std::string wrapText(const std::string &text,
+    std::size_t maxWidth,  bool preserveWords,
+    const std::string &linePadding) {
+  // Sanity check: ensure maxWidth is not zero
+  if (maxWidth == 0) {
+    return text;  // or throw an exception if preferred
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helper function for chunk-based wrapping (ignores word boundaries).
+  // ---------------------------------------------------------------------------
+  auto chunkWrapLine = [&](const std::string &line) {
+    std::vector<std::string> segments;
+    if (line.empty()) {
+      // Produce one empty segment for empty lines
+      segments.emplace_back();
+      return segments;
+    }
+
+    std::size_t startPos = 0;
+    // Continue until the entire line is processed
+    while (startPos < line.size()) {
+      // Determine remaining characters in the line
+      std::size_t remaining = line.size() - startPos;
+      // Number of characters to copy for this segment
+      std::size_t chunkSize = (remaining < maxWidth) ? remaining : maxWidth;
+
+      segments.push_back(line.substr(startPos, chunkSize));
+      startPos += chunkSize;
+    }
+    return segments;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Helper function for word-based wrapping (preserves word boundaries).
+  // ---------------------------------------------------------------------------
+  auto wordWrapLine = [&](const std::string &line) {
+    std::vector<std::string> segments;
+
+    if (line.empty()) {
+      // Produce one empty segment for empty lines
+      segments.emplace_back();
+      return segments;
+    }
+
+    // Split the line into words using a stream
+    std::istringstream iss(line);
+    std::string word;
+    
+    std::string currentLine;
+    while (iss >> word) {
+      // If adding this word (plus a preceding space if needed) exceeds maxWidth,
+      // then finalize the current line and start a new one.
+      if (currentLine.empty()) {
+        // If currentLine is empty, this is the first word on a new line.
+        if (word.size() > maxWidth) {
+          // If a single word itself exceeds maxWidth, place it alone on a line.
+          segments.push_back(word);
+        } else {
+          // Start a new line with this word
+          currentLine = word;
+        }
+      } else {
+        // If not empty, check if appending " word" would exceed maxWidth
+        if (currentLine.size() + 1 + word.size() > maxWidth) {
+          // Finalize currentLine and start a new line
+          segments.push_back(currentLine);
+          // If the new word exceeds maxWidth alone, put it on its own line
+          if (word.size() > maxWidth) {
+            segments.push_back(word);
+          } else {
+            currentLine = word;
+          }
+        } else {
+          // Append the word with a preceding space
+          currentLine += " " + word;
+        }
+      }
+    }
+
+    // Push the last accumulated line if not empty
+    if (!currentLine.empty()) {
+      segments.push_back(currentLine);
+    }
+
+    return segments;
+  };
+
+  // ---------------------------------------------------------------------------
+  // Process the original text line by line, then wrap each line.
+  // For each line from the input, the first segment is not padded, 
+  // and subsequent "broken" segments are padded.
+  // ---------------------------------------------------------------------------
+  std::stringstream result;
+  std::size_t start = 0;
+  while (start <= text.size()) {
+    // Locate the next newline
+    std::size_t newlinePos = text.find('\n', start);
+    bool foundNewline = (newlinePos != std::string::npos);
+
+    // Extract the current logical line (up to newline or end of text)
+    std::string currentLine = foundNewline
+      ? text.substr(start, newlinePos - start)
+      : text.substr(start);
+
+    // Wrap the line using whichever mode is selected
+    std::vector<std::string> wrappedLines = preserveWords
+      ? wordWrapLine(currentLine)
+      : chunkWrapLine(currentLine);
+
+    // Write each wrapped segment to the result
+    // - No padding for the first segment
+    // - Padding for subsequent segments if any
+    for (std::size_t i = 0; i < wrappedLines.size(); ++i) {
+      if (i == 0) {
+        // First ("original") segment from this line has no padding
+        result << wrappedLines[i] << '\n';
+      } else {
+        // "Broken" line: apply padding
+        result << linePadding << wrappedLines[i] << '\n';
+      }
+    }
+
+    // Advance start position past the newline if one was found
+    if (foundNewline) {
+      start = newlinePos + 1;
+    } else {
+      // No more newlines -> done
+      break;
+    }
+  }
+
+  return result.str();
+}
+} // namespace core
+} // namespace tadah
+
