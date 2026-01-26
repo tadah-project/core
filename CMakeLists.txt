@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.15)
 project(Tadah.CORE LANGUAGES CXX)
 
 # 0. Guard against in-source builds
@@ -13,9 +13,16 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# default build type for single-config generators (Ninja/Make)
+# Default build type for single-config generators (Ninja/Unix Makefiles).
+set(TADAH_DEFAULT_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+    "Default build type for single-config generators when CMAKE_BUILD_TYPE is not set.")
+
 if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
+  message(STATUS "CMAKE_BUILD_TYPE not set; defaulting to ${TADAH_DEFAULT_BUILD_TYPE}")
+  set(CMAKE_BUILD_TYPE "${TADAH_DEFAULT_BUILD_TYPE}" CACHE STRING
+      "Choose the type of build (Debug, Release, RelWithDebInfo, MinSizeRel).")
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+      "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
 
 if(BUILD_SHARED_LIBS)
