@@ -254,10 +254,10 @@ descriptors, use the meta descriptor DM_mJoin followed by the individual
 descriptor parameters. Elements should be provided in pairs.
 """
 examples     = [
-  "TYPEMB DM_Blip 6 6 Ti Ti",
+  "TYPEMB DM_Blip 0 6 6 Ti Ti",
   """TYPEMB    DM_mJoin
-  TYPEMB    DM_Blip 6 6 Ti TI
-  TYPEMB    DM_Blip 6 6 Ti Nb Nb Nb
+  TYPEMB    DM_Blip 1 6 6 Ti TI
+  TYPEMB    DM_Blip 0 6 6 Ti Nb Nb Nb
   """
 ]
 
@@ -709,7 +709,7 @@ cli_long_flag  = "--range"
 cli_short_flag = "-r"
 cli_required     = false
 
-[ALLOWED_KEYS.atom]
+[ALLOWED_KEYS.ATOM]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["<element> ...>"]
 value_N      = [-118]
@@ -730,7 +730,7 @@ cli_short_flag = "-a"
 cli_required     = false
 
 [ALLOWED_KEYS.WATOM]
-INHERIT = ["TYPES.DOUBLE"]
+INHERIT = ["TYPES.DOUBLES"]
 value_N = [-118]
 description = """
 Weights sorted by atomic number, from lowest Z to highest. WATOMS.size() must 
