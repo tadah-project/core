@@ -684,10 +684,10 @@ cli_required     = false
 INHERIT = ["TYPES.DOUBLES"]
 description  = "Energy shift per atom."
 long_description = """
-If multispecies, the number of values must match the number of species. 
+If there are multiple species, the number of values must match the number of species.
 The shift is added to the energy of each atom.
 """
-examples     = ["0.5", "0.5 0.1"]
+examples     = ["0.5", "0.5 -0.1"]
 cli_long_flag  = "--eshift"
 cli_short_flag = ""
 cli_required     = false
