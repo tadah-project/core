@@ -1247,9 +1247,9 @@ examples         = ["tadah data balance -d db.tadah --rescale --eshift 0.5 --num
 [TASKS.data.balance.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.rescale", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.index"]
 [TASKS.data.balance.keys.force]
-description = "Apply energy shift and/or rescaling to forces."
+description = "Apply rescaling to forces."
 [TASKS.data.balance.keys.stress]
-description = "Apply energy shift and/or rescaling to stresses."
+description = "Apply rescaling to stresses."
 [TASKS.data.balance.keys.threshold]
 INHERIT = ["TYPES.DOUBLES"]
 description = "Floating point thresholds for energy, force, and stress."

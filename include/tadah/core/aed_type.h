@@ -221,6 +221,11 @@ public:
 
   void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(),
               double lower = -1e4, double upper = 1e4);
+
+  inline double* begin() { return data_; }
+  inline double* end() { return data_ + size_; }
+  inline const double* begin() const { return data_; }
+  inline const double* end() const { return data_ + size_; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const aed_type& v) {
