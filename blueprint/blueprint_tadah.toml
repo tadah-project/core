@@ -653,7 +653,6 @@ description  = "Floating point comparision threshold."
 examples     = ["1e-4"]
 cli_long_flag  = "--threshold"
 cli_short_flag = ""
-default_value      = ["1e-6"]
 cli_required     = false
 
 [ALLOWED_KEYS.merge]
@@ -1258,7 +1257,7 @@ If energy or the sum of force norms or the stress matrix norm exceeds the
 corresponding threshold, the relevant quantity will be rescaled using an
 inverse weighting..
 """
-default_value = ["1e-1", "2e-2", "3e-3"]
+default_value = ["1e-4", "1e-5", "1e-6"]
 value_N = [-3]
 [TASKS.data.balance.keys.rescale]
 description = "Rescale structure weights."
