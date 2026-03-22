@@ -55,6 +55,8 @@ if(NOT TARGET tadah::compile_options)
   FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
 endif()
 
+option(TADAH_ENABLE_ASAN "Enable AddressSanitizer (-fsanitize=address -fno-omit-frame-pointer)" OFF)
+
 # 3. Git branch information, for informational purposes
 tadah_get_git_branch(GIT_BRANCH)
 message(STATUS "${PROJECT_NAME} module is using GIT_BRANCH:  ${GIT_BRANCH}")
@@ -98,6 +100,11 @@ target_include_directories(tadah.core
   PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${PROJECT_SOURCE_DIR}/external/boost/include)
+
+if(TADAH_ENABLE_ASAN)
+  target_compile_options(tadah.core PUBLIC -fsanitize=address -fno-omit-frame-pointer -g)
+  target_link_libraries(tadah.core PUBLIC -fsanitize=address)
+endif()
 
 if(TADAH_ENABLE_OPENMP)
   find_package(OpenMP REQUIRED)
