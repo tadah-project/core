@@ -6,6 +6,15 @@
 
 using namespace tadah::core;
 
+  auto split_lines = [](const std::string& str) {
+    std::vector<std::string> lines;
+    std::istringstream iss(str);
+    std::string line;
+    while (std::getline(iss, line)) {
+      lines.push_back(line);
+    }
+    return lines;
+  };
 
 TEST_CASE( "Testing Empty Context", "[empty]" ) {
   Context c1;
@@ -186,13 +195,14 @@ TEST_CASE( "Testing Context <<", "[config]" ) {
 
   std::stringstream ss;
   ss<<c;
-  std::string space ="     "; // must mathc config.h value
-  REQUIRE_THAT(ss.str(), Catch::Matchers::
-               Contains("DBFILE"+space+s1));
-  REQUIRE_THAT(ss.str(), Catch::Matchers::
-               Contains("DBFILE"+space+s2));
-  REQUIRE_THAT(ss.str(), Catch::Matchers::
-               Contains("DBFILE"+space+s3));
+  // Check that the keys and their first values are aligned
+  auto lines = split_lines(ss.str());
+  REQUIRE(lines.size() >= 3);
+  auto pos1 = lines[0].find(s1);
+  auto pos2 = lines[1].find(s2);
+  auto pos3 = lines[2].find(s3);
+  REQUIRE(pos1 == pos2);
+  REQUIRE(pos2 == pos3);
 
 }
 

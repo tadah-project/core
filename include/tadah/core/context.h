@@ -335,7 +335,8 @@ public:
     // Lock the mutex for thread-safe iteration over storage_.
     std::lock_guard<std::mutex> lock(ctx.mtx_);
 
-    const std::string space = "     ";
+    size_t max_key_len = 15;
+    const std::string space = "   ";
 
     // Iterate over all stored key-value pairs.
     for (auto const &pair : ctx.storage_) {
@@ -359,14 +360,14 @@ public:
         // KEY     val2
         // ...
         for (auto const &v : vals) {
-          os << key << space << v << "\n";
+          os << std::left << std::setw(max_key_len) << key << space << v << "\n";
         }
       } else if (valN < 0) {
         // Print all values on a single line, preceded by key.
         // Example:
         // KEY     val1     val2     val3
         // Format accordingly to the blueprint.
-        os << key;
+        os << std::left << std::setw(max_key_len) << key;
         bool doFormatting = false;
         for (auto const &v : vals) {
           bool formatingAvail = false;
@@ -375,7 +376,7 @@ public:
           }
 
           if (formatingAvail && doFormatting) {
-            os << bi->formatting[1] << key << space << v;
+            os << bi->formatting[1] << std::left << std::setw(max_key_len) << key << space << v;
           } else {
             os << space << v;
             doFormatting = true;
