@@ -217,10 +217,21 @@ examples     = ["RCUT2B 3.0", "RCUT2B 3.0 7.5"]
 INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies the cutoff distance(s) for many-body descriptor(s)."
 long_description = """
-Provide a single value for a standalone descriptor or multiple values 
+Provide a single value for a standalone descriptor or multiple values
 corresponding to each descriptor when using the DM_mJoin meta descriptor.
 """
 examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
+
+[ALLOWED_KEYS.RCUTENV]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Envelope cutoff distance used by F_mEnv (DM_mBlipEnv)."
+long_description = """
+Width of the inverse-cutoff envelope (Cut_SinInv) wrapped around the F_Blip
+embedding by the DM_mBlipEnv descriptor: the envelope ramps from 0 at rho=0
+to 1 at rho=RCUTENV, suppressing the embedding contribution where the
+underlying Gaussian basis is largest.
+"""
+examples     = ["RCUTENV 1.5"]
 
 [ALLOWED_KEYS.TYPE2B]
 value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}", "STRING"]
