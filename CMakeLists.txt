@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
+# Initial project() call; VERSION is set below after the version reader
+# from cmake-tools is available (single-source-of-truth: blueprint TOML).
 project(Tadah.CORE LANGUAGES CXX)
 
 # 0. Guard against in-source builds
@@ -54,6 +56,19 @@ if(NOT TARGET tadah::compile_options)
   )
   FetchContent_MakeAvailable(tadah_cmake)   # defines tadah::compile_options
 endif()
+
+# Read version from CORE's local blueprint and re-state project() with VERSION.
+# Guarded so an older cmake-tools (without TadahVersion.cmake) still configures.
+if(COMMAND tadah_read_version_from_blueprint)
+  tadah_read_version_from_blueprint(TADAH_VERSION
+    BLUEPRINT_FILE ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml
+    REQUIRED)
+else()
+  set(TADAH_VERSION "0.0.0")
+  message(WARNING "tadah_read_version_from_blueprint not available; defaulting VERSION to 0.0.0")
+endif()
+project(Tadah.CORE VERSION ${TADAH_VERSION} LANGUAGES CXX)
+message(STATUS "Tadah.CORE version: ${TADAH_VERSION}")
 
 option(TADAH_ENABLE_ASAN "Enable AddressSanitizer (-fsanitize=address -fno-omit-frame-pointer)" OFF)
 
