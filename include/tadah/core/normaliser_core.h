@@ -8,13 +8,12 @@
 namespace tadah {
 namespace core {
 
-// We do calculate and store st. dev. and mean
-// for the first column of Phi matrix
-// for linear kernel, first column are 1s
-// so we have to deal with them here
+// First `bias` columns of Phi are intercept columns (1.0 for the atom's
+// species, 0 elsewhere). They must be excluded from mean/std-dev normalisation
+// because their statistics are uninformative (constant per species).
 class Normaliser_Core {
     public:
-        bool bias;
+        size_t bias;
 
         v_type std_dev;
         v_type mean;
