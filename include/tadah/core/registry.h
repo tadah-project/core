@@ -19,7 +19,14 @@ template<typename Base, typename... Args>
   struct Registry
   {
     using Map = std::map<std::string, Factory<Base, Args...>>;
-    static Map registry;
+    static Map& instance()
+    {
+      // Construct on first use to avoid cross-translation-unit static init order bugs.
+      static Map instance;
+      return instance;
+    }
+
+    static Map& registry;
 
     template<typename Derived>
       struct Register
@@ -29,7 +36,7 @@ template<typename Base, typename... Args>
           /* 2.  Perfect-forward the arguments – works for l-values,
            *     const l-values and r-values equally well.
            */
-          registry[name] = [](Args... args) -> Derived*
+          instance()[name] = [](Args... args) -> Derived*
           {
             return new Derived(std::forward<Args>(args)...);
           };
