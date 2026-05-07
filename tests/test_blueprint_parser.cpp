@@ -70,7 +70,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(biasKey.value_type == std::vector<std::string>{"BOOL"});
     REQUIRE(biasKey.value_format == std::vector<std::string>{"<boolean>"});
     REQUIRE(biasKey.value_N == std::vector<int>{1});
-    REQUIRE(biasKey.description == "Bias");
+    REQUIRE(biasKey.description.find("Per-species intercept") != std::string::npos);
     REQUIRE(biasKey.examples == std::vector<std::string>{"true", "false"});
 
     // Validate that the default value (if defined) is as expected.

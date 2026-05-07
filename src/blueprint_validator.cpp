@@ -20,6 +20,12 @@
 namespace tadah {
 namespace core {
 
+enum class LongLineValidationResult {
+  kNotApplicable,
+  kValid,
+  kInvalid,
+};
+
 // ──────────────────────────────────────────────────────────────
 // Primitive fragments
 // ──────────────────────────────────────────────────────────────
@@ -114,6 +120,46 @@ static bool looksLikeLongNumericLine(const std::string& text)
   return sawAtLeastOne;
 }
 
+static LongLineValidationResult validateLongStringLine(const std::string& text)
+{
+  if (text.size() < 2048)
+      return LongLineValidationResult::kNotApplicable;
+
+  bool sawAtLeastOne = false;
+  std::size_t pos = 0;
+
+  while (pos < text.size()) {
+    while (pos < text.size() &&
+           (std::isspace(static_cast<unsigned char>(text[pos])) || text[pos] == ',')) {
+      ++pos;
+    }
+
+    if (pos == text.size()) {
+      break;
+    }
+
+    bool sawAlphaOrStar = false;
+    const std::size_t start = pos;
+    while (pos < text.size() &&
+           !std::isspace(static_cast<unsigned char>(text[pos])) && text[pos] != ',') {
+      const unsigned char ch = static_cast<unsigned char>(text[pos]);
+      if (std::isalpha(ch) || ch == '*') {
+        sawAlphaOrStar = true;
+      }
+      ++pos;
+    }
+
+    if (start == pos || !sawAlphaOrStar) {
+      return LongLineValidationResult::kInvalid;
+    }
+
+    sawAtLeastOne = true;
+  }
+
+  return sawAtLeastOne ? LongLineValidationResult::kValid
+                       : LongLineValidationResult::kInvalid;
+}
+
 // ──────────────────────────────────────────────────────────────
 // Token-level regex helpers
 // ──────────────────────────────────────────────────────────────
@@ -196,7 +242,11 @@ static std::string buildRegexFromBlueprint(const std::string& bp,bool cap)
 // ──────────────────────────────────────────────────────────────
 class BlueprintValidator::Impl {
 public:
-  explicit Impl(const std::vector<std::string>& pats){
+  explicit Impl(const std::vector<std::string>& pats,
+                const std::vector<std::string>& blueprints)
+    : onlyRepeatedStringBlueprint(
+        std::all_of(blueprints.begin(), blueprints.end(),
+                    [](const std::string& bp) { return trim(bp) == "{STRING}"; })) {
     validateRegex.reserve(pats.size());
     for(auto& p:pats)
       validateRegex.emplace_back(p,
@@ -206,6 +256,7 @@ public:
     for(auto&r:validateRegex) std::regex{}.swap(r);
     std::vector<std::regex>().swap(validateRegex);
   }
+  bool onlyRepeatedStringBlueprint;
   std::vector<std::regex> validateRegex;
 };
 
@@ -216,7 +267,7 @@ BlueprintValidator::BlueprintValidator(const std::string& bp)
 {
   m_patterns = buildRegexFromBlueprint(bp,true);
   std::vector<std::string> nc { buildRegexFromBlueprint(bp,false) };
-  m_impl = new Impl(nc);
+  m_impl = new Impl(nc, {bp});
 }
 
 BlueprintValidator::BlueprintValidator(const std::vector<std::string>& bps)
@@ -229,7 +280,7 @@ BlueprintValidator::BlueprintValidator(const std::vector<std::string>& bps)
     m_patterns+=cap; first=false;
     nonCap.push_back(buildRegexFromBlueprint(bp,false));
   }
-  m_impl = new Impl(nonCap);
+  m_impl = new Impl(nonCap, bps);
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -239,6 +290,14 @@ bool BlueprintValidator::validate(const std::string& text) const
 {
   if (looksLikeLongNumericLine(text))
       return true;                        // skip regex, avoid recursion
+
+  if (m_impl && m_impl->onlyRepeatedStringBlueprint) {
+    const auto longStringResult = validateLongStringLine(text);
+    if (longStringResult == LongLineValidationResult::kValid)
+      return true;
+    if (longStringResult == LongLineValidationResult::kInvalid)
+      return false;
+  }
 
   if(!m_impl) return false;
   for(auto& r:m_impl->validateRegex)

@@ -1,4 +1,5 @@
 ALPHA      1.0
+ATOM       Al
 BETA      1.0
 BIAS      true
 CGRID2B     LIN     4     1.0     5.3

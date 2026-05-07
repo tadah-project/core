@@ -168,6 +168,36 @@ TEST_CASE("TYPES.STRINGS: value_type = [\"{STRING}\"]", "[blueprint]") {
   }
 }
 
+TEST_CASE("TYPES.STRINGS handles long path lists", "[blueprint][long]") {
+  tadah::core::BlueprintValidator validator("{STRING}");
+
+  auto join = [](const std::vector<std::string> &tokens) {
+    std::string out;
+    for (std::size_t i = 0; i < tokens.size(); ++i) {
+      if (i > 0) {
+        out += ' ';
+      }
+      out += tokens[i];
+    }
+    return out;
+  };
+
+  std::vector<std::string> validTokens;
+  validTokens.reserve(90);
+  for (int i = 0; i < 90; ++i) {
+    validTokens.push_back("/tmp/HS_MD_GAMMA_ONLY_" + std::to_string(i) + "/OUTCAR");
+  }
+
+  const std::string validLongLine = join(validTokens);
+  REQUIRE(validLongLine.size() > 2048);
+  REQUIRE(validator.validate(validLongLine));
+
+  validTokens[45] = "123456";
+  const std::string invalidLongLine = join(validTokens);
+  REQUIRE(invalidLongLine.size() > 2048);
+  REQUIRE_FALSE(validator.validate(invalidLongLine));
+}
+
 /**
  * @brief Test the more complicated pattern:
  *        "STRING {[INT | DOUBLE]} {STRING STRING}"
@@ -557,4 +587,3 @@ TEST_CASE("Additional edge coverage for partial matches", "[blueprint][extra]") 
 }
 
 // More corner cases can go here if needed, especially focusing on invalid user input.
-

@@ -132,7 +132,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.bias]
 INHERIT = ["TYPES.BOOL"]
-description  = "Bias"
+description  = "Per-species intercept. When true, adds N=size(ATOM) one-hot intercept columns to the design matrix; the regression learns one constant energy per species and LAMMPS adds it back per atom. Required when NORM=true with MODEL=BF_Linear."
 
 [ALLOWED_KEYS.force]
 INHERIT = ["TYPES.BOOL"]
@@ -692,15 +692,53 @@ cli_required     = false
 
 [ALLOWED_KEYS.eshift]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Energy shift per atom."
+description  = "Per-atom reference energy to subtract from each configuration."
 long_description = """
-If there are multiple species, the number of values must match the number of species.
-The shift is added to the energy of each atom.
+Per-element reference energies. If there are multiple species, the number of
+values must match the number of species (sorted by Z). At load time the total
+energy of each configuration is reduced by sum_Z N_Z * ESHIFT[Z], so an
+isolated-atom config with energy E_atom and ESHIFT[Z]=E_atom yields a
+post-shift energy of zero. Used by `tadah train`, `tadah predict`, `tadah hpo`,
+and `tadah data balance`. Persisted into pot.tadah for prediction round-trip.
 """
 examples     = ["0.5", "0.5 -0.1"]
 cli_long_flag  = "--eshift"
 cli_short_flag = ""
 cli_required     = false
+
+[ALLOWED_KEYS.eshift_atom]
+INHERIT = ["TYPES.BOOL"]
+description = "Derive ESHIFT from isolated-atom configurations in the dataset (mean per Z)."
+long_description = """
+Scans the loaded dataset for single-atom configurations (natoms == 1), groups
+them by atomic number, and sets ESHIFT[Z] to the mean per-Z energy. If a
+species has no isolated-atom config in the dataset, ESHIFT[Z] = 0 for that
+species and a WARNING is logged. If multiple isolated-atom configs of the same
+Z disagree by more than 1e-3 eV, an INFO line records the spread.
+Mutually exclusive with explicit ESHIFT and ESHIFT_DBATOM.
+"""
+default_value = ["false"]
+examples     = ["true"]
+cli_long_flag = "--eshift-atom"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.eshift_dbatom]
+INHERIT = ["TYPES.BOOL"]
+description = "Derive ESHIFT by least-squares atomic-energy fit over the database."
+long_description = """
+Fits per-element reference energies by least squares: minimise
+||y - M beta||^2 where y[i] is the total energy of configuration i and
+M[i, k] is the count of species k in configuration i. The fitted beta_k
+becomes ESHIFT[Z(k)]. More robust than ESHIFT_ATOM when the dataset has no
+isolated-atom configs but does have compositional diversity.
+Mutually exclusive with explicit ESHIFT and ESHIFT_ATOM.
+"""
+default_value = ["false"]
+examples     = ["true"]
+cli_long_flag = "--eshift-dbatom"
+cli_short_flag = ""
+cli_required   = false
 
 [ALLOWED_KEYS.rescale]
 INHERIT = ["TYPES.BOOL"]
@@ -708,6 +746,142 @@ description  = "Enable rescaling of training weights."
 cli_long_flag    = "--rescale"
 cli_short_flag   = ""
 cli_required     = false
+
+[ALLOWED_KEYS.lscale]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Uniform length rescale factor applied to atomic positions, cell, and reference forces at load time."
+long_description = """
+Multiplies atomic positions and cell vectors by this factor at the moment a
+dataset is loaded for training, prediction, or HPO. Reference forces are
+divided by the factor (chain rule on E(r)); stresses (stored as virial in
+energy units) are invariant under uniform length rescaling. The chosen factor
+is persisted into pot.tadah so future `tadah predict` and `tadah hpo` runs
+apply the same transformation. Use --no-lscale at predict time to override.
+
+LSCALE is a training-side concept: the LAMMPS pair_style does NOT re-apply
+LSCALE. The user is expected to provide LAMMPS positions at the scale that
+matches the trained model (e.g. experimental lattice).
+"""
+default_value  = ["1.0"]
+examples       = ["1.0030"]
+cli_long_flag  = "--lscale"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.efilter]
+value_type   = ["DOUBLE DOUBLE"]
+value_format = ["<E_min_per_atom> <E_max_per_atom>"]
+value_N      = [-2, -2]
+description  = "Drop configurations whose per-atom energy is outside [E_min, E_max] (eV)."
+long_description = """
+Outlier filter applied at load time before any energy-shift derivation or
+training-weight assignment, so outliers do not poison ESHIFT_ATOM /
+ESHIFT_DBATOM / EWEIGHT_TEMP. The threshold is compared against E/N_atoms
+(per-atom energy). Both bounds must be supplied. To disable, omit the key.
+"""
+examples       = ["-12.0 -2.0"]
+cli_long_flag  = "--efilter"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.ffilter]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Drop configurations where any atomic force magnitude exceeds this value (eV/Å)."
+long_description = """
+Outlier filter applied at load time. A configuration is dropped if any single
+atom has |F| > FFILTER. Useful for catching unconverged SCF or otherwise
+broken DFT runs.
+"""
+examples       = ["20.0"]
+cli_long_flag  = "--ffilter"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.wdbfile]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Per-dataset weight multipliers, one per DBFILE entry."
+long_description = """
+Multiplies eweight, fweight, and sweight of every configuration in the
+corresponding DBFILE by the given factor. Use to bias training toward or away
+from particular datasets. Composes multiplicatively with WDBFILE_AUTO.
+"""
+examples       = ["1.0 0.5 0.1"]
+cli_long_flag  = "--wdbfile"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.wdbfile_auto]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Auto size-balance datasets: per-config weight multiplied by 1/N_i^alpha."
+long_description = """
+Rebalances per-dataset contributions to the training loss by multiplying each
+configuration's weight by N_i^(-alpha), where N_i is the number of (post-
+filter) configurations in dataset i. alpha=0 disables (default). alpha=0.5
+is the recommended starting point (sqrt-inverse, soft balance). alpha=1
+fully equalises aggregate dataset contribution. Composes multiplicatively
+with user-given WDBFILE.
+"""
+default_value  = ["0.0"]
+examples       = ["0.5", "1.0"]
+cli_long_flag  = "--wdbfile-auto"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.eweight_temp]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Boltzmann reweighting temperature in Kelvin (multiplies eweight)."
+long_description = """
+After ESHIFT is applied, multiplies each configuration's eweight by
+exp(-(E/N - E_min)/(kB * T)) where E_min is the minimum per-atom energy in
+the dataset and kB = 8.617333262e-5 eV/K. Emphasises low-energy
+configurations. Composes multiplicatively with the per-structure eweight
+already in the dataset file. Omit the key to disable.
+"""
+examples       = ["300", "1000"]
+cli_long_flag  = "--eweight-temp"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.zero_com_force]
+INHERIT = ["TYPES.BOOL"]
+description  = "Subtract per-config mean force so each configuration has zero net force."
+long_description = """
+Per configuration, subtracts the mean force from each atom so that the sum of
+forces over the configuration is exactly zero. Standard DFT post-processing
+trick to remove residual translational forces from incomplete relaxation/SCF.
+"""
+default_value  = ["false"]
+examples       = ["true"]
+cli_long_flag  = "--zero-com-force"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.no_eshift]
+INHERIT = ["TYPES.BOOL"]
+description  = "(predict) Ignore any ESHIFT recorded in the loaded potential file."
+long_description = """
+At predict time, override the ESHIFT values stored in pot.tadah. Use when
+the dataset you are predicting on is already at the shifted baseline (or you
+just want raw model output without any reference energy subtraction).
+"""
+default_value  = ["false"]
+examples       = ["true"]
+cli_long_flag  = "--no-eshift"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.no_lscale]
+INHERIT = ["TYPES.BOOL"]
+description  = "(predict) Ignore any LSCALE recorded in the loaded potential file."
+long_description = """
+At predict time, override the LSCALE value stored in pot.tadah. Use when
+the dataset you are predicting on is already at the trained-model scale.
+"""
+default_value  = ["false"]
+examples       = ["true"]
+cli_long_flag  = "--no-lscale"
+cli_short_flag = ""
+cli_required   = false
 
 [ALLOWED_KEYS.range]
 value_type   = ["DOUBLE DOUBLE INT"]
@@ -1012,7 +1186,7 @@ dynamics simulations in LAMMPS via pair_style tadah.
 """
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 [TASKS.train.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.eshift_atom", "ALLOWED_KEYS.eshift_dbatom", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.wdbfile", "ALLOWED_KEYS.wdbfile_auto", "ALLOWED_KEYS.eweight_temp", "ALLOWED_KEYS.zero_com_force"]
 [TASKS.train.keys.outfile]
 default_value = ["pot.tadah"]
 value_N = [1]
@@ -1044,7 +1218,7 @@ the command line.
 """
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
 [TASKS.predict.keys]
-INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile"]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.zero_com_force", "ALLOWED_KEYS.no_lscale", "ALLOWED_KEYS.no_eshift"]
 [TASKS.predict.keys.analytics]
 cli_excludes = ["structure"]
 [TASKS.predict.keys.outfile]
@@ -1081,7 +1255,7 @@ applications.
 """
 examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
 [TASKS.hpo.keys]
-INHERIT          = ["ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose"]
+INHERIT          = ["ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.eshift_atom", "ALLOWED_KEYS.eshift_dbatom", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.wdbfile", "ALLOWED_KEYS.wdbfile_auto", "ALLOWED_KEYS.eweight_temp", "ALLOWED_KEYS.zero_com_force"]
 [TASKS.hpo.groups.input]
 description      = "Input sources for hpo. Select from the following options:"
 cli_required = true
