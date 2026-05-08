@@ -393,6 +393,24 @@ examples     = [
     "MODEL M_KRR Kern_Linear"
 ]
 
+[ALLOWED_KEYS.AUDIT]
+INHERIT = ["TYPES.STRING"]
+description = "Pre-flight audit mode. 'off' (default) skips the audit. 'warn' emits diagnostics but proceeds. 'error' makes any FAIL-level finding fatal. The audit's data scan is sampled by default (see AUDIT_SAMPLE)."
+default_value = ["off"]
+examples = ["off", "warn", "error"]
+
+[ALLOWED_KEYS.AUDIT_SAMPLE]
+INHERIT = ["TYPES.INT"]
+description = "Number of training structures sampled (deterministic random) for the pre-flight audit's dataset stats. 0 means use the entire StructureDB. Has no effect when AUDIT is 'off'."
+default_value = ["256"]
+examples = ["256", "1024", "0"]
+
+[ALLOWED_KEYS.HEALTH_LOG]
+INHERIT = ["TYPES.STRING"]
+description = "HPO per-iter health monitor verbosity. 'summary' (default) rate-limits warnings to ~1 per 100 evals per (block, kind). 'full' emits every offending iter. 'off' disables the monitor."
+default_value = ["summary"]
+examples = ["summary", "full", "off"]
+
 [ALLOWED_KEYS.OALGO]
 value_type   = ["INT", "INT DOUBLE"]
 value_format = ["<option>", "<option> <value>"]
@@ -1570,6 +1588,82 @@ cli_needs = ["outfile", "potential"]
 [TASKS.analysis.descriptor.groups.input.keys.structure]
 cli_excludes   = ["task", "index"]
 cli_needs = ["outfile", "potential"]
+
+[TASKS.analysis.dataset_stats]
+description      = "Compute dataset statistics (per-pair r_ij, neighbour counts, energy/force scales) for HPO bound validation."
+long_description = """
+Computes per-element-pair distance percentiles + KDE peaks, neighbour-count
+percentiles per element, energy-per-atom percentiles, force-norm percentiles,
+and a material-class label over the supplied DBFILEs / STRUCTUREs. Writes
+the result to a text file (default 'dataset_stats.tadah') consumed by
+`tadah hpo --suggest-bounds` and the pre-flight design-matrix audit.
+"""
+examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats.tadah"]
+[TASKS.analysis.dataset_stats.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
+[TASKS.analysis.dataset_stats.groups.input]
+description      = "Structure source or a task file. Select from the following options:"
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.dataset_stats.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+[TASKS.analysis.dataset_stats.groups.input.keys.config]
+cli_excludes   = ["task", "dbfile", "structure"]
+cli_needs = ["outfile"]
+[TASKS.analysis.dataset_stats.groups.input.keys.dbfile]
+cli_excludes   = ["task", "config"]
+cli_needs = ["outfile"]
+[TASKS.analysis.dataset_stats.groups.input.keys.structure]
+cli_excludes   = ["task", "config"]
+cli_needs = ["outfile"]
+
+[TASKS.analysis.suggest_bounds]
+description      = "Suggest data-driven OPTIM bounds for the configured descriptors."
+long_description = """
+Reads the user's training config (DBFILEs + TYPE2B / TYPEMB), computes
+dataset statistics (per-pair r_ij percentiles + KDE peaks), then walks
+each configured descriptor's `meta()` and proposes one OPTIM bound per
+parameter. Writes a compilable OPTIM block (or to stdout if --outfile
+is omitted). Phase 4 of the HPO bound-validation pipeline.
+"""
+examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
+[TASKS.analysis.suggest_bounds.keys]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
+[TASKS.analysis.suggest_bounds.groups.input]
+description      = "Source: a training config or a task file."
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.suggest_bounds.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+[TASKS.analysis.suggest_bounds.groups.input.keys.config]
+cli_excludes   = ["task"]
+
+[TASKS.analysis.check_bounds]
+description      = "Validate HPO bounds: at every corner of the OPTIM box, run the pre-flight audit. Returns non-zero if any corner trips a FAIL finding. CI-friendly."
+long_description = """
+Phase 7 of the HPO bound-validation pipeline. Reads the HPOTARGET file
+referenced by the seed config, parses every `OPTIM <KEY> (range) <lo> <hi>`
+line into a Bound, samples corners (full 2^k for k <= 12, otherwise a
+Latin-hypercube subsample of `min(2^k, ceil(k log2(k)))`), and runs the
+Phase 5 pre-flight audit (`run_preflight_from_db`) at each corner with
+the corner's parameter values substituted into the seed Context.
+Returns exit code 0 if all corners pass and 1 if any corner produces a
+FAIL finding.
+"""
+examples         = ["tadah analysis check_bounds -c train.tadah --hpo-target config.hpo"]
+[TASKS.analysis.check_bounds.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.hpotarget"]
+[TASKS.analysis.check_bounds.groups.input]
+description      = "Provide a training config and an HPOTARGET file."
+cli_required = true
+required_min = 1
+required_max = 1
+[TASKS.analysis.check_bounds.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+[TASKS.analysis.check_bounds.groups.input.keys.config]
+cli_excludes   = ["task"]
 
 [TASKS.analysis.bfunc]
 description      = "Evaluate and plot basis functions."
