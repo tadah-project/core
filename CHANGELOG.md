@@ -20,6 +20,7 @@ First public beta of the Tadah! framework. CORE consolidates the blueprint, conf
 - Container-style `begin()` / `end()` iteration on `Config`.
 - `TADAH_ENABLE_ASAN` CMake option for AddressSanitizer builds.
 - Single-source-of-truth versioning: `project(... VERSION ...)` is now wired from `blueprint/blueprint_tadah.toml` via the `tadah_read_version_from_blueprint()` helper in `cmake-tools`.
+- **Bound-validation primitives**: blueprint adds `AUDIT` (off / warn / error; default off), `AUDIT_SAMPLE` (NN-sweep cap, default 256; `0` = full DB), `HEALTH_LOG` (per-iter monitor verbosity), and the analysis subcommands `TASKS.analysis.{dataset_stats, suggest_bounds, check_bounds}`. `Registry` exposes `view()` and `names()` so the audit can enumerate registered descriptors without instantiating them.
 
 ### Changed
 - C++ standard upgraded from C++14 to **C++17**. A C++17 compiler is now required.
