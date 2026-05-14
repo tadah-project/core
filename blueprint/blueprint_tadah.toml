@@ -1762,7 +1762,7 @@ logo = '''
 description = ""  # not
 long_description = ""
 website = "https://tadah.readthedocs.io"
-version = "1.2.0"
+version = "1.3.0-beta.1"
 examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.rescale"]
 [TADAH.keys]
 INHERIT = ["ALLOWED_KEYS.task"]
