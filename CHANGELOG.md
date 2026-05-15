@@ -37,6 +37,7 @@ First public beta of the Tadah! framework. CORE consolidates the blueprint, conf
 - Substantive README rewrite (Session B).
 - Community / governance pointer files (CONTRIBUTING / CITATION / SECURITY / CoC).
 - CI/CD: lint stage (codespell) and tag-gated release-tarball stage added; `.gitignore` extended.
+- Test build routed through `cmake-tools/cmake/TadahTesting.cmake` helpers (`tadah_declare_testing` / `tadah_add_tests`); replaces the hand-rolled `BUILD_TESTING` setup. Fixes a silent test-suite-disable on a bare reconfigure where the previous code captured `BUILD_TESTING` before the cache entry existed and FORCE-restored an empty value.
 
 ## [1.2.0] and earlier (condensed)
 
