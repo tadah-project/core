@@ -8,7 +8,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 Nothing yet.
 
-## [1.3.0-beta.1] — TBD
+## [1.3.0-beta.1] — 2026-05-20
 
 First public beta of the Tadah! framework. CORE consolidates the blueprint, configuration, and registry layers and introduces the long-running-job infrastructure (checkpoint + signal handlers) used by HPO.
 
