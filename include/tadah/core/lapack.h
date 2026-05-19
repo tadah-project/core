@@ -10,7 +10,7 @@ extern "C" {
 #ifndef TADAH_USE_DLIB
   // this is to avoid conflicts with dlib lapack declarations
 
-    /** LU decomoposition of a general matrix */
+    /** LU decomposition of a general matrix */
     void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv, int *info);
 
     /**
@@ -212,7 +212,7 @@ extern "C" {
 }
 
 
-// Some usefull operations on vectors and matrices
+// Some useful operations on vectors and matrices
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans='N');
 aed_type T_MDMT_diag(const Matrix &M, const Matrix &D);
 double norm_X(Matrix &A, char norm='1');

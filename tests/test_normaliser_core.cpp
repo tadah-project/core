@@ -131,7 +131,7 @@ TEST_CASE( "Testing Normaliser_Core::normalise(fd,k) nobias", "[method]" ) {
 TEST_CASE( "Testing Normaliser_Core normaliser value", "[method]" ) {
     Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config6");
     Normaliser_Core norm;
-    norm.bias = false;
+    norm.bias = 0;
     size_t n = 2;
     norm.mean = {0.1, 0.2};
     norm.std_dev = {0.3, 0.4};
@@ -143,9 +143,16 @@ TEST_CASE( "Testing Normaliser_Core normaliser value", "[method]" ) {
     norm.normalise(a);
     REQUIRE_THAT( a.mean(), Catch::Matchers::WithinAbs(3.75, 1e-12) );
 
-    norm.bias = true;
+    norm.bias = 1;
     a[0] = 1.0;
     a[1] = 2.0;
     norm.normalise(a);
     REQUIRE_THAT( a.mean(), Catch::Matchers::WithinAbs(2.75, 1e-12) );
+
+    // Per-species (N>=2) intercept block: skip first 2 columns entirely.
+    norm.bias = 2;
+    a[0] = 1.0;
+    a[1] = 2.0;
+    norm.normalise(a);
+    REQUIRE_THAT( a.mean(), Catch::Matchers::WithinAbs(1.5, 1e-12) );
 }

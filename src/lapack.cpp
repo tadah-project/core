@@ -3,7 +3,7 @@
 namespace tadah {
 namespace core {
 
-// Some usefull operations on vectors and matrices
+// Some useful operations on vectors and matrices
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
   int m = mat.rows();
   int n = mat.cols();

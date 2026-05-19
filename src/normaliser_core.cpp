@@ -1,11 +1,12 @@
 #include <tadah/core/normaliser_core.h>
+#include <tadah/core/intercept_layout.h>
 
 namespace tadah {
 namespace core {
 
-Normaliser_Core::Normaliser_Core() {}
+Normaliser_Core::Normaliser_Core() : bias(0) {}
 Normaliser_Core::Normaliser_Core(const Context &c)
-    : bias(c.get<bool>("BIAS")) {
+    : bias(n_intercept_columns(c)) {
   if (c.contains("NORM") && c.get<bool>("NORM")) {
     if (c.contains("NSTDEV")) {
       std_dev.resize(c.size("NSTDEV"));
@@ -16,49 +17,27 @@ Normaliser_Core::Normaliser_Core(const Context &c)
   }
 }
 
-/** Normalise AED */
+/** Normalise AED — skips the first `bias` columns (intercepts). */
 void Normaliser_Core::normalise(aed_type &aed) {
-  size_t n = aed.size();
-  if (bias) {
-    for (size_t i = 1; i < n; ++i) {
-      aed[i] = (aed[i] - mean[i]) / std_dev[i];
-    }
-  } else {
-    for (size_t i = 0; i < n; ++i) {
-      aed[i] = (aed[i] - mean[i]) / std_dev[i];
-    }
+  const size_t n = aed.size();
+  for (size_t i = bias; i < n; ++i) {
+    aed[i] = (aed[i] - mean[i]) / std_dev[i];
   }
 }
 
-/** Normalise FD */
+/** Normalise FD — skips the first `bias` rows (intercepts have zero gradient). */
 void Normaliser_Core::normalise(fd_type &fd) {
-  // fd is nx3
-  size_t n = fd.rows();
-  if (bias) {
-    for (size_t k = 0; k < 3; ++k) {
-      for (size_t i = 1; i < n; ++i) {
-        fd(i, k) = fd(i, k) / std_dev[i];
-      }
-    }
-  } else {
-    for (size_t k = 0; k < 3; ++k) {
-      for (size_t i = 0; i < n; ++i) {
-        fd(i, k) = fd(i, k) / std_dev[i];
-      }
+  const size_t n = fd.rows();
+  for (size_t k = 0; k < 3; ++k) {
+    for (size_t i = bias; i < n; ++i) {
+      fd(i, k) = fd(i, k) / std_dev[i];
     }
   }
 }
 void Normaliser_Core::normalise(fd_type &fd, size_t k) {
-  // fd is nx3
-  size_t n = fd.rows();
-  if (bias) {
-    for (size_t i = 1; i < n; ++i) {
-      fd(i, k) = fd(i, k) / std_dev[i];
-    }
-  } else {
-    for (size_t i = 0; i < n; ++i) {
-      fd(i, k) = fd(i, k) / std_dev[i];
-    }
+  const size_t n = fd.rows();
+  for (size_t i = bias; i < n; ++i) {
+    fd(i, k) = fd(i, k) / std_dev[i];
   }
 }
 
