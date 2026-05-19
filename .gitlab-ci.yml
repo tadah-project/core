@@ -88,8 +88,9 @@ lint_codespell:
       fi
       export PATH="$HOME/.local/bin:$PATH"
       codespell \
-        --skip='./build*,./external,./_deps,./*.toml,./tests/data,./blueprint/blueprint_tadah.toml' \
-        --ignore-words=.codespell-ignore || true
+        --skip='./build*,./external,./_deps,./*.toml,./tests/data,./tests/catch2,./blueprint/blueprint_tadah.toml' \
+        --ignore-words-list='Te,CONFING,re-use,re-uses,re-used,re-using,nd,SEH,ReflectIn,accessS' \
+        || true
   allow_failure: true
 
 # ---- Source-tarball release (tag-gated) --------------------------------
