@@ -230,7 +230,7 @@ Context::findBlueprintKey(const std::string &upKey,
       return nullptr;
     }
   }
-  // Uknown keyMap
+  // Unknown keyMap
   return nullptr;
 }
 

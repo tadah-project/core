@@ -6,7 +6,7 @@
 # The tasks can inherit from ALLOWED_KEYS and add/override with own specific details.
 # Each key has a set of properties that define its expected type, format, and constraints.
 # The blueprint is used to validate the configuration file and to generate help messages.
-# The blueprint is also used to generate the CLI and documenation.
+# The blueprint is also used to generate the CLI and documentation.
 
 # Fields:
 # - value_type: Ordered list of expected types (one-to-one corresponding to value_format).
@@ -20,7 +20,7 @@
 # CLI-specific fields:
 # - cli_long_flag: Long option name.
 # - cli_short_flag: Short option name.
-# - long_description: Long description for the task used by the CLI and documenation
+# - long_description: Long description for the task used by the CLI and documentation
 # - cli_excludes: List of CLI only keys (flags/options) that are mutually exclusive.
 # - cli_required: Whether the key is required for the task.
 #
@@ -678,7 +678,7 @@ cli_required     = false
 
 [ALLOWED_KEYS.threshold]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Floating point comparision threshold."
+description  = "Floating point comparison threshold."
 examples     = ["1e-4"]
 cli_long_flag  = "--threshold"
 cli_short_flag = ""
