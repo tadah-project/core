@@ -807,7 +807,7 @@ INHERIT = ["TYPES.DOUBLE"]
 description  = "Drop configurations where any atomic force magnitude exceeds this value (eV/Å)."
 long_description = """
 Outlier filter applied at load time. A configuration is dropped if any single
-atom has |F| > FFILTER. Useful for catching unconverged SCF or otherwise
+atom has ‖F‖ > FFILTER. Useful for catching unconverged SCF or otherwise
 broken DFT runs.
 """
 examples       = ["20.0"]
