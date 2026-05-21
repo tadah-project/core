@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![version](https://img.shields.io/badge/version-1.3.0--beta.1-blue.svg)](https://git.ecdf.ed.ac.uk/tadah/core/-/tags)
 
-# Tadah!CORE
+# CORE
 
 Foundation library of the [Tadah!](https://tadah.readthedocs.io/) MLIP
 toolchain. Provides the substrate every other Tadah! module is built
@@ -22,7 +22,7 @@ on:
 
 ## You don't need to use this directly
 
-Tadah!CORE is an internal module of the Tadah! MLIP toolchain. It is
+CORE is an internal module of the Tadah! MLIP toolchain. It is
 fetched automatically (via CMake `FetchContent`) by every Tadah!
 consumer (MODELS, MLIP, MD, HPO, Tadah.LAMMPS, Tadah.MLIP). End users
 install the umbrella project
@@ -42,6 +42,6 @@ GPL-3.0; see [LICENSE](LICENSE).
 ## Reporting issues
 
 Bugs and feature requests:
-[Tadah!CORE issues](https://git.ecdf.ed.ac.uk/tadah/core/-/issues).
+[CORE issues](https://git.ecdf.ed.ac.uk/tadah/core/-/issues).
 For end-user questions please use the umbrella project
 [Tadah!MLIP](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip).

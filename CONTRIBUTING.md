@@ -1,17 +1,17 @@
-# Contributing to Tadah!CORE
+# Contributing to CORE
 
 The full multi-repo contributor guide for the Tadah! project lives on
 the umbrella repository:
 <https://git.ecdf.ed.ac.uk/tadah/tadah.mlip/-/blob/develop/CONTRIBUTING.md>
 
-This file covers what is specific to Tadah!CORE. Bug reports and
+This file covers what is specific to CORE. Bug reports and
 feature requests on this module use the GitLab issue tracker on this
 project; cross-cutting changes (work that touches more than one
 Tadah! module) should be discussed on the umbrella project first.
 
 ## Build & test in isolation
 
-Tadah!CORE depends only on the
+CORE depends only on the
 [cmake-tools](https://git.ecdf.ed.ac.uk/tadah/cmake-tools) helper repo
 (fetched automatically) and a C++17 compiler.
 
