@@ -5,7 +5,7 @@
 
 # CORE
 
-Foundation library of the [Tadah!](https://tadah.readthedocs.io/) MLIP
+Foundation library of the [Tadah!](https://tadah.readthedocs.io/develop/) MLIP
 toolchain. Provides the substrate every other Tadah! module is built
 on:
 
@@ -27,7 +27,7 @@ fetched automatically (via CMake `FetchContent`) by every Tadah!
 consumer (MODELS, MLIP, MD, HPO, Tadah.LAMMPS, Tadah.MLIP). End users
 install the umbrella project
 [Tadah!MLIP](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip) — see the
-[installation guide](https://tadah.readthedocs.io/en/latest/installation.html).
+[installation guide](https://tadah.readthedocs.io/develop/installation.html).
 
 ## Contributing
 
