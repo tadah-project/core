@@ -15,8 +15,8 @@ on:
   surface and the documented configuration grammar.
 - **Periodic table & element metadata** — atomic numbers, masses, and
   symbol look-ups.
-- **Checkpoint manager & signal handler** — resumable runs (used by
-  `tadah hpo`'s `BASINS` strategy and any long-running engine).
+- **Checkpoint manager & signal handler** — resumable runs for any
+  long-running engine.
 - **Logger, math helpers, LAPACK shim, normaliser** — utilities every
   module re-uses.
 
