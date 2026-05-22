@@ -932,12 +932,17 @@ cli_short_flag = "-a"
 cli_required     = false
 
 [ALLOWED_KEYS.WATOM]
-INHERIT = ["TYPES.DOUBLES"]
+value_type   = ["{STRING STRING DOUBLE} ", "{DOUBLE}"]
+value_format = ["{<element> <element> <weight>}>", "{<weight>}"]
 value_N = [-118]
 description = """
-Weights sorted by atomic number, from lowest Z to highest. WATOMS.size() must 
-match ATOMS.size().
+Atom-pair weights. Two formats accepted:
+  Per-species (parallel to ATOM): WATOM w1 w2 ...
+    Pair weights are computed as geometric mean: w(Zi,Zj) = sqrt(wi*wj).
+  Explicit pair triples: WATOM sym1 sym2 val  sym1 sym2 val  ...
+    Directly sets symmetric pair weights: w(sym1,sym2) = w(sym2,sym1) = val.
 """
+examples = ['WATOM 1.0 1.5', 'WATOM Kr Kr 0.5', 'WATOM Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
 [ALLOWED_KEYS.error]
 INHERIT = ["TYPES.BOOL"]
