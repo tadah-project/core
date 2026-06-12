@@ -254,7 +254,7 @@ examples     = [
 ]
 
 [ALLOWED_KEYS.TYPEMB]
-value_type   = ["STRING UINT UINT {STRING STRING}", "STRING UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT {STRING STRING}", "STRING"]
+value_type   = ["STRING UINT {STRING STRING}", "STRING UINT UINT {STRING STRING}", "STRING UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT {STRING STRING}", "STRING"]
 value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
 formatting = ["DM_", "\n"]
 value_N      = [-2147483647]
@@ -366,6 +366,87 @@ Used by certain many-body descriptors (e.g., F_RLR). When using DM_mJoin,
 supply one or more lists of parameters matching those in SEMBFUNC.
 """
 examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
+
+[ALLOWED_KEYS.CGRIDRHOMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "DM_REAM density-basis centres (r-space)."
+long_description = """
+Centres r_s of the radial basis functions expanding the EAM electron density
+rho(r) in the DM_REAM many-body descriptor. Paired with SGRIDRHOMB and AGRIDMB
+(all same length). Written by 'tadah refit'.
+"""
+examples = ["CGRIDRHOMB 0.0 1.0 2.0 3.0"]
+
+[ALLOWED_KEYS.SGRIDRHOMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "DM_REAM density-basis inverse widths (r-space)."
+long_description = """
+Inverse widths eta of the radial basis functions expanding the EAM electron
+density rho(r) in the DM_REAM descriptor. Same length as CGRIDRHOMB.
+"""
+examples = ["SGRIDRHOMB 1.5 1.5 1.5 1.5"]
+
+[ALLOWED_KEYS.AGRIDMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "DM_REAM baked density-expansion coefficients a_n."
+long_description = """
+Fixed coefficients a_n of the density expansion rho(r) = sum_n a_n psi_n(r) in
+the DM_REAM descriptor. These are found by a 1-D least-squares pre-fit of the
+tabulated density (not linear model weights) and baked into the potential.
+Same length as CGRIDRHOMB / SGRIDRHOMB.
+"""
+examples = ["AGRIDMB 0.21 0.05 -0.01 0.0"]
+
+[ALLOWED_KEYS.DGRID2B]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Per-atom degree (3|5) of the D2_Knot5 knot functions (optional; absent = all quintic)."
+long_description = """
+Optional per-basis-function degree array for the D2_Knot5 two-body descriptor:
+5 = quintic knot atom (t-r)_+^5 (C^4), 3 = cubic knot atom (t-r)_+^3 (C^2 —
+an exact f''' corner, the Mendelev/Ackland atom). Same length as CGRID2B.
+Absent = all atoms quintic (back-compatible). Written by 'tadah refit' for
+REFIT_BASIS Knot3/KnotMix.
+"""
+examples = ["DGRID2B 5 5 3 5"]
+
+[ALLOWED_KEYS.DGRIDRHOMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Per-atom degree (3|5) of the DM_REAM density knot functions (optional; absent = all quintic)."
+long_description = """
+Optional per-basis-function degree array for the DM_REAM density expansion
+under basis code 2 (knot functions). Same length as CGRIDRHOMB; absent = all
+quintic. Written by 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
+"""
+examples = ["DGRIDRHOMB 5 3 5"]
+
+[ALLOWED_KEYS.DGRIDFMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "Per-atom degree (3|5) of the DM_REAM embedding knot functions (optional; absent = all quintic)."
+long_description = """
+Optional per-basis-function degree array for the DM_REAM embedding expansion
+under basis code 2 (knot functions). Same length as CGRIDFMB; absent = all
+quintic. Written by 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
+"""
+examples = ["DGRIDFMB 5 5 3"]
+
+[ALLOWED_KEYS.CGRIDFMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "DM_REAM embedding-basis centres (rho-space)."
+long_description = """
+Centres of the basis functions expanding the EAM embedding function F(rho) in
+the DM_REAM descriptor. Each centre corresponds to one descriptor output and
+one M_BLR linear weight. Paired with SGRIDFMB (same length).
+"""
+examples = ["CGRIDFMB 0.0 0.5 1.0 1.5 2.0"]
+
+[ALLOWED_KEYS.SGRIDFMB]
+INHERIT = ["TYPES.DOUBLES"]
+description  = "DM_REAM embedding-basis inverse widths (rho-space)."
+long_description = """
+Inverse widths of the basis functions expanding the EAM embedding function
+F(rho) in the DM_REAM descriptor. Same length as CGRIDFMB.
+"""
+examples = ["SGRIDFMB 1.0 1.0 1.0 1.0 1.0"]
 
 [ALLOWED_KEYS.MPARAMS]
 INHERIT = ["TYPES.DOUBLES"]
@@ -603,6 +684,248 @@ produces more than one output.
 examples     = ["output.tadah"]
 cli_long_flag  = "--outfile"
 cli_short_flag = "-o"
+cli_required   = false
+
+[ALLOWED_KEYS.eam]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "Input tabulated EAM potential (setfl: eam/alloy or eam/fs) for `tadah refit`."
+examples     = ["Ta2_Ravelo_2013.eam.alloy", "Fe_2.eam.fs"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.setfl_out]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "Output setfl file written from the native fitted functions (`tadah refit`)."
+examples     = ["refit.eam.alloy"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_basis]
+INHERIT = ["TYPES.STRING"]
+description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (and as the automatic fallback when the compact fitter is unavailable, i.e. non-Ceres builds; an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always verify with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localized C2 sawtooth degrades elastic constants vs pure Knot5 — prefer Knot5 unless E-V is your only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; hard-cutoff truncation leaves a value discontinuity at rcut; dense mode only — prefer any other family). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID* width entries are a pure gauge for the Knot* families (pinned 1.0) — do not add OPTIM blocks on them."
+examples     = ["Blip", "Blip5", "Knot3", "Knot5", "KnotMix"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_level]
+INHERIT = ["TYPES.STRING"]
+description  = "Grid-accuracy preset for `tadah refit`: coarse | balanced | fine | accurate."
+examples     = ["balanced", "fine"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.n2b]
+INHERIT = ["TYPES.UINT"]
+description  = "Override: number of two-body basis functions in `tadah refit`."
+examples     = ["50"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.nrho_basis]
+INHERIT = ["TYPES.UINT"]
+description  = "Override: number of density basis functions in `tadah refit`."
+examples     = ["40"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.nf_basis]
+INHERIT = ["TYPES.UINT"]
+description  = "Override: number of embedding basis functions in `tadah refit`."
+examples     = ["30"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.optim_pct]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Default +-percent half-width for the OPTIM bounds emitted by `tadah refit`."
+examples     = ["5.0"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.output_grid_scale]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "Scale factor for the output setfl grid density (1.0 = same as input)."
+examples     = ["1.0", "2.0"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_tol_ambient]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit` faithfulness tolerance (meV/atom) for the ambient crystal self-test (E-V, a/a0 0.95-1.10). The basis auto-escalates until met. Default 0.1."
+examples     = ["0.5"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_tol_compressed]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit` faithfulness tolerance (meV/atom) for the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42). The basis auto-escalates until met. Default 1.0."
+examples     = ["5.0"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_max_escalations]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` maximum automatic basis-escalation rounds when the self-test is above tolerance (0 disables escalation). Default 4."
+examples     = ["4", "0"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_placement]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` basis placement: 'window' (default; basis concentrated on the physically reachable pair-distance/density window, small uniform tail allocation) or 'uniform' (legacy single uniform grid over the full tabulated range)."
+examples     = ["window", "uniform"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_reach_smin]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit` reachability probe: smallest linear compression a/a0 the fit must stay faithful at (0.75 ~ V/V0=0.42, multi-hundred-GPa regime). Sets the reachable pair-distance/density window and the self-test span. Default 0.75."
+examples     = ["0.75", "0.65"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_reach_margin]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit` safety margin multiplying the maximum reachable embedding density when choosing the F(rho) fit window. Default 1.25."
+examples     = ["1.25"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_constrain_f0]
+INHERIT = ["TYPES.BOOL"]
+description  = "`tadah refit`: pin the embedding to the table's F(0) (isolated-atom reference) with a constraint row. Default true."
+examples     = ["true", "false"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_mode]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` fitting mode: 'compact' (DEFAULT; optimised blip centres/widths via ladder + analytic-gradient Ceres polish, ~30-120 params — the HPO-friendly search space; requires the Ceres-enabled HPO build, else falls back to dense with a warning) or 'dense' (region-uniform grids + auto-escalation, ~300-450 params, fastest fit)."
+examples     = ["dense", "compact"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_opt_every]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode, Knot5 family: run the full per-rung optimisation (explore + polish) only every K-th ladder rung; intermediate rungs grow by energy-aware insertion + linear solve, with one final full optimisation of the best fit. Default 1 (optimise every rung — matrix-measured most consistent). 999 = insertion-only growth + final optimisation: best results when no ladder stalls (measured Ta: Cij <= 0.09 GPa), but can underfit if a ladder stalls during growth."
+examples     = ["1", "3"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_stall]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode: stop the ladder after this many consecutive rungs without energy-metric improvement. Default 6 (Blip) / 12 (Knot5)."
+examples     = ["6", "12"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_insert_topk]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode, Knot5 family: energy-aware insertion — evaluate the top-k separated curve-residual peaks and insert at the one that most improves the crystal energy metric. Default 3 for Knot5, 1 (curve peak only) for Blip."
+examples     = ["1", "3"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_log]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` optimisation-log file (default refit_opt.log): one timestamped, immediately-flushed line per ladder event (seed, rung, coalescence merge, final optimisation), plus the joint-refinement summary and crystal self-test — inspectable DURING the fit."
+examples     = ["refit_opt.log"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_nmax]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode: per-function blip ceiling for the ladder. Default 40."
+examples     = ["40"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_share]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit` compact mode: fraction of the REFIT_TOL_* budget each function must reach alone during its ladder (the joint refinement then handles cross-function coupling). Default 0.5."
+examples     = ["0.5"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_seed]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode: RNG seed for the jittered ladder restarts (deterministic reruns). Default 12345."
+examples     = ["12345"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_budget]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode: SBPLX evaluation budget per ladder candidate. Default 20000."
+examples     = ["20000"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_seed_algo]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` compact mode, GLOBAL seed at the smallest blip count: MLSL (default; NLopt MLSL_LDS multistart+SBPLX) | DIRECT (NLopt DIRECT-L) | CRS2 (NLopt controlled random search) | DLIB_GLOBAL (dlib MaxLIPO+TR model-based search) | UNIFORM (no global step)."
+examples     = ["MLSL", "DLIB_GLOBAL"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_explore_algo]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` compact mode, per-rung EXPLORE stage over blip centres/widths (inner coefficients closed-form): SBPLX (default) | NELDERMEAD | BOBYQA | PRAXIS (NLopt derivative-free) | NLOPT_LBFGS | DLIB_LBFGS (exact VARPRO reduced gradient) | NONE."
+examples     = ["SBPLX", "NLOPT_LBFGS"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_polish_algo]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` compact mode, high-precision POLISH stage: CERES_LM (default; joint (c,mu,eta) analytic-Jacobian Levenberg-Marquardt) | CERES_DOGLEG | NLOPT_LBFGS | DLIB_LBFGS (VARPRO reduced gradient) | NONE."
+examples     = ["CERES_LM", "DLIB_LBFGS"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_joint_algo]
+INHERIT = ["TYPES.STRING"]
+description  = "`tadah refit` compact mode, JOINT all-function refinement against curve + multi-lattice E-V residuals: CERES_DOGLEG (default; measured most reliable across the reference EAMs) | CERES_LM | NONE (skip)."
+examples     = ["CERES_LM", "NONE"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_r_lo_frac]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit` inner radial fit bound as a fraction of rcut (default 0.20). Below it the round-trip setfl tabulates a smooth C2-matched repulsive continuation and the native pot.tadah is outside its validity domain."
+examples     = ["0.20", "0.15"]
+cli_long_flag  = ""
+cli_short_flag = ""
 cli_required   = false
 
 [ALLOWED_KEYS.index]
@@ -1226,6 +1549,31 @@ required_min = 1
 required_max = 1
 [TASKS.train.groups.input.keys]
 INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+
+[TASKS.refit]
+description      = "Refit a tabulated EAM potential into a native Tadah model."
+long_description = """
+Read a tabulated EAM potential (setfl: eam/alloy or eam/fs, single element),
+re-express its three functions — pair phi(r), density rho(r) and embedding
+F(rho) — as flexible Tadah basis-function expansions, fit them by least
+squares, and write a standard pot.tadah (D2_Blip + DM_REAM) usable by
+`tadah predict` and the HPO module. Also writes the round-trip setfl file
+built from the native fitted functions and an HPO-ready target file with
+OPTIM bounds. ALL fit controls live in the config file (EAM, REFIT_* keys,
+SETFL_OUT, ...); the command line carries only the config path, verbosity and
+generic output options. A compression-aware crystal self-test judges the fit
+and the basis auto-escalates until the REFIT_TOL_* tolerances are met.
+"""
+examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2"]
+[TASKS.refit.keys]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_budget", "ALLOWED_KEYS.refit_compact_seed_algo", "ALLOWED_KEYS.refit_compact_explore_algo", "ALLOWED_KEYS.refit_compact_polish_algo", "ALLOWED_KEYS.refit_compact_joint_algo"]
+[TASKS.refit.groups.input]
+description      = "Provide the EAM potential to refit (or a config file declaring it)."
+cli_required     = true
+required_min     = 1
+required_max     = 2
+[TASKS.refit.groups.input.keys]
+INHERIT          = ["ALLOWED_KEYS.eam", "ALLOWED_KEYS.config"]
 
 [TASKS.predict]
 description = "Predict properties using a trained model."
