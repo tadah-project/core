@@ -254,7 +254,7 @@ examples     = [
 ]
 
 [ALLOWED_KEYS.TYPEMB]
-value_type   = ["STRING UINT {STRING STRING}", "STRING UINT UINT {STRING STRING}", "STRING UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT {STRING STRING}", "STRING"]
+value_type   = ["STRING UINT {STRING STRING}", "STRING UINT UINT {STRING STRING}", "STRING UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT UINT UINT UINT {STRING STRING}", "STRING"]
 value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
 formatting = ["DM_", "\n"]
 value_N      = [-2147483647]
@@ -367,86 +367,54 @@ supply one or more lists of parameters matching those in SEMBFUNC.
 """
 examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
 
-[ALLOWED_KEYS.CGRIDRHOMB]
+[ALLOWED_KEYS.AMPGRIDMB]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "DM_REAM density-basis centres (r-space)."
+description  = "DM_REAM density-expansion amplitudes a_n (rho(r) = sum_n a_n psi_n(r)). Optimizable nonlinear HPO parameters (OPTIM AMPGRIDMB)."
 long_description = """
-Centres r_s of the radial basis functions expanding the EAM electron density
-rho(r) in the DM_REAM many-body descriptor. Paired with SGRIDRHOMB and AGRIDMB
-(all same length). Written by 'tadah refit'.
+Amplitudes a_n of the density expansion rho(r) = sum_n a_n psi_n(r) in the
+DM_REAM descriptor. They are excluded from the LINEAR weight solve by the
+EAM bilinearity (the linear weights live on the embedding side), but they
+are first-class NONLINEAR HPO parameters: `OPTIM AMPGRIDMB (i) lo hi`
+searches them like any other shape parameter. Same length as CGRIDMB.
+Written by 'tadah refit'.
 """
-examples = ["CGRIDRHOMB 0.0 1.0 2.0 3.0"]
-
-[ALLOWED_KEYS.SGRIDRHOMB]
+examples = ["AMPGRIDMB 0.21 0.05 -0.01 0.0"]
+[ALLOWED_KEYS.KDEG2B]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "DM_REAM density-basis inverse widths (r-space)."
+description  = "Per-atom knot degree DATA (3|5) for D2_Knot5 (optional; absent = all quintic). NOT optimizable."
 long_description = """
-Inverse widths eta of the radial basis functions expanding the EAM electron
-density rho(r) in the DM_REAM descriptor. Same length as CGRIDRHOMB.
+Optional per-basis-function degree list for the D2_Knot5 two-body
+descriptor: 5 = quintic knot atom (t-r)_+^5 (C^4), 3 = cubic knot atom
+(t-r)_+^3 (C^2 - an exact f''' corner, the Mendelev/Ackland atom). Same
+length as CGRID2B; absent = all quintic. A data_keys entry: split by the
+mJoin meta-descriptors but NOT an optimisation dimension - values outside
+{3,5} are rejected at construction, so an OPTIM block on it fails loudly.
+Written by 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
 """
-examples = ["SGRIDRHOMB 1.5 1.5 1.5 1.5"]
+examples = ["KDEG2B 5 5 3 5"]
 
-[ALLOWED_KEYS.AGRIDMB]
+[ALLOWED_KEYS.KDEGMB]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "DM_REAM baked density-expansion coefficients a_n."
+description  = "Per-atom knot degree DATA (3|5) for the DM_REAM density expansion (optional; absent = all quintic). NOT optimizable."
 long_description = """
-Fixed coefficients a_n of the density expansion rho(r) = sum_n a_n psi_n(r) in
-the DM_REAM descriptor. These are found by a 1-D least-squares pre-fit of the
-tabulated density (not linear model weights) and baked into the potential.
-Same length as CGRIDRHOMB / SGRIDRHOMB.
-"""
-examples = ["AGRIDMB 0.21 0.05 -0.01 0.0"]
-
-[ALLOWED_KEYS.DGRID2B]
-INHERIT = ["TYPES.DOUBLES"]
-description  = "Per-atom degree (3|5) of the D2_Knot5 knot functions (optional; absent = all quintic)."
-long_description = """
-Optional per-basis-function degree array for the D2_Knot5 two-body descriptor:
-5 = quintic knot atom (t-r)_+^5 (C^4), 3 = cubic knot atom (t-r)_+^3 (C^2 —
-an exact f''' corner, the Mendelev/Ackland atom). Same length as CGRID2B.
-Absent = all atoms quintic (back-compatible). Written by 'tadah refit' for
+Optional per-basis-function degree list for the DM_REAM density expansion
+under basis code 2 (knot functions). Same length as CGRIDMB; absent = all
+quintic. A data_keys entry: mJoin-splittable, never OPTIM (values outside
+{3,5} are rejected at construction). Written by 'tadah refit' for
 REFIT_BASIS Knot3/KnotMix.
 """
-examples = ["DGRID2B 5 5 3 5"]
+examples = ["KDEGMB 5 3 5"]
 
-[ALLOWED_KEYS.DGRIDRHOMB]
+[ALLOWED_KEYS.KDEGEMB]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Per-atom degree (3|5) of the DM_REAM density knot functions (optional; absent = all quintic)."
+description  = "Per-atom knot degree DATA (3|5) for the DM_REAM embedding expansion (optional; absent = all quintic). NOT optimizable."
 long_description = """
-Optional per-basis-function degree array for the DM_REAM density expansion
-under basis code 2 (knot functions). Same length as CGRIDRHOMB; absent = all
-quintic. Written by 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
+Optional per-basis-function degree list for the DM_REAM embedding expansion
+under basis code 2 (knot functions). Same length as CEMBFUNC; absent = all
+quintic. A data_keys entry: mJoin-splittable, never OPTIM. Written by
+'tadah refit' for REFIT_BASIS Knot3/KnotMix.
 """
-examples = ["DGRIDRHOMB 5 3 5"]
-
-[ALLOWED_KEYS.DGRIDFMB]
-INHERIT = ["TYPES.DOUBLES"]
-description  = "Per-atom degree (3|5) of the DM_REAM embedding knot functions (optional; absent = all quintic)."
-long_description = """
-Optional per-basis-function degree array for the DM_REAM embedding expansion
-under basis code 2 (knot functions). Same length as CGRIDFMB; absent = all
-quintic. Written by 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
-"""
-examples = ["DGRIDFMB 5 5 3"]
-
-[ALLOWED_KEYS.CGRIDFMB]
-INHERIT = ["TYPES.DOUBLES"]
-description  = "DM_REAM embedding-basis centres (rho-space)."
-long_description = """
-Centres of the basis functions expanding the EAM embedding function F(rho) in
-the DM_REAM descriptor. Each centre corresponds to one descriptor output and
-one M_BLR linear weight. Paired with SGRIDFMB (same length).
-"""
-examples = ["CGRIDFMB 0.0 0.5 1.0 1.5 2.0"]
-
-[ALLOWED_KEYS.SGRIDFMB]
-INHERIT = ["TYPES.DOUBLES"]
-description  = "DM_REAM embedding-basis inverse widths (rho-space)."
-long_description = """
-Inverse widths of the basis functions expanding the EAM embedding function
-F(rho) in the DM_REAM descriptor. Same length as CGRIDFMB.
-"""
-examples = ["SGRIDFMB 1.0 1.0 1.0 1.0 1.0"]
+examples = ["KDEGEMB 5 5 3"]
 
 [ALLOWED_KEYS.MPARAMS]
 INHERIT = ["TYPES.DOUBLES"]
