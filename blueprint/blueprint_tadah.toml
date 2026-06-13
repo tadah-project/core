@@ -818,7 +818,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_log]
 INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` optimisation-log file (default refit_opt.log): one timestamped, immediately-flushed line per ladder event (seed, rung, coalescence merge, final optimisation), plus the joint-refinement summary and crystal self-test — inspectable DURING the fit."
+description  = "`tadah refit` optimisation-log file (default refit_opt.log): one timestamped, immediately-flushed line per ladder event (global, rung, coalescence merge, final optimisation) — each stage reports which convergence criterion it hit — plus the joint-refinement summary and crystal self-test, inspectable DURING the fit."
 examples     = ["refit_opt.log"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -848,50 +848,24 @@ cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
 
-[ALLOWED_KEYS.refit_compact_budget]
-INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: SBPLX evaluation budget per ladder candidate. Default 20000."
-examples     = ["20000"]
-cli_long_flag  = ""
-cli_short_flag = ""
-cli_required   = false
-
-[ALLOWED_KEYS.refit_compact_seed_algo]
-INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` compact mode, GLOBAL seed at the smallest blip count: MLSL (default; NLopt MLSL_LDS multistart+SBPLX) | DIRECT (NLopt DIRECT-L) | CRS2 (NLopt controlled random search) | DLIB_GLOBAL (dlib MaxLIPO+TR model-based search) | UNIFORM (no global step)."
-examples     = ["MLSL", "DLIB_GLOBAL"]
-cli_long_flag  = ""
-cli_short_flag = ""
-cli_required   = false
-
-[ALLOWED_KEYS.refit_compact_explore_algo]
-INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` compact mode, per-rung EXPLORE stage over blip centres/widths (inner coefficients closed-form): SBPLX (default) | NELDERMEAD | BOBYQA | PRAXIS (NLopt derivative-free) | NLOPT_LBFGS | DLIB_LBFGS (exact VARPRO reduced gradient) | NONE."
-examples     = ["SBPLX", "NLOPT_LBFGS"]
-cli_long_flag  = ""
-cli_short_flag = ""
-cli_required   = false
-
-[ALLOWED_KEYS.refit_compact_polish_algo]
-INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` compact mode, high-precision POLISH stage: CERES_LM (default; joint (c,mu,eta) analytic-Jacobian Levenberg-Marquardt) | CERES_DOGLEG | NLOPT_LBFGS | DLIB_LBFGS (VARPRO reduced gradient) | NONE."
-examples     = ["CERES_LM", "DLIB_LBFGS"]
-cli_long_flag  = ""
-cli_short_flag = ""
-cli_required   = false
-
-[ALLOWED_KEYS.refit_compact_joint_algo]
-INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` compact mode, JOINT all-function refinement against curve + multi-lattice E-V residuals: CERES_DOGLEG (default; measured most reliable across the reference EAMs) | CERES_LM | NONE (skip)."
-examples     = ["CERES_LM", "NONE"]
-cli_long_flag  = ""
-cli_short_flag = ""
-cli_required   = false
+# NOTE: the per-stage optimiser controls (algorithm, evaluation budget and
+# stopping tolerances for the global/explore/polish/joint stages) were flat
+# REFIT_COMPACT_* keys; they now live in the inline OPTIMIZER block (see
+# [ALLOWED_KEYS.optimizer] and the refit docs).
 
 [ALLOWED_KEYS.refit_r_lo_frac]
 INHERIT = ["TYPES.DOUBLE"]
 description  = "`tadah refit` inner radial fit bound as a fraction of rcut (default 0.20). Below it the round-trip setfl tabulates a smooth C2-matched repulsive continuation and the native pot.tadah is outside its validity domain."
 examples     = ["0.20", "0.15"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.optimizer]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [-2147483647]
+description  = "Inline optimiser block for `tadah refit` compact mode. A multi-line block (`OPTIMIZER` and `ENDOPTIMIZER` each on their own line) captured verbatim by the config parser; the engine parses the GLOBAL/EXPLORE/POLISH/JOINT subblocks. Each subblock takes `ALGO <name>` plus optional stopping criteria (GLOBAL/EXPLORE: MAXEVAL, FTOL_REL, XTOL_REL; POLISH/JOINT: MAXITER, FTOL, GTOL). Optional — omit to use the defaults. See the refit docs or demos/example_optimizer.cfg for the full grammar."
+examples     = ["see demos/example_optimizer.cfg (multi-line OPTIMIZER ... ENDOPTIMIZER)"]
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1521,20 +1495,62 @@ INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
 [TASKS.refit]
 description      = "Refit a tabulated EAM potential into a native Tadah model."
 long_description = """
-Read a tabulated EAM potential (setfl: eam/alloy or eam/fs, single element),
-re-express its three functions — pair phi(r), density rho(r) and embedding
-F(rho) — as flexible Tadah basis-function expansions, fit them by least
-squares, and write a standard pot.tadah (D2_Blip + DM_REAM) usable by
-`tadah predict` and the HPO module. Also writes the round-trip setfl file
-built from the native fitted functions and an HPO-ready target file with
-OPTIM bounds. ALL fit controls live in the config file (EAM, REFIT_* keys,
-SETFL_OUT, ...); the command line carries only the config path, verbosity and
-generic output options. A compression-aware crystal self-test judges the fit
-and the basis auto-escalates until the REFIT_TOL_* tolerances are met.
+Convert a tabulated EAM potential (setfl format: eam/alloy or eam/fs, single
+element) into a native Tadah model: the pair, density and embedding functions
+are re-fitted with flexible Tadah basis functions. The result can be used
+directly or tuned further with `tadah hpo`.
+
+Output files (default name, config key):
+- pot.tadah (OUTFILE, -o): the fitted Tadah potential, for `tadah predict`,
+  LAMMPS pair_style tadah, and as the seed for `tadah hpo`.
+- refit.eam (SETFL_OUT): setfl table rebuilt from the fitted functions, for
+  side-by-side comparison with the input potential in LAMMPS.
+- refit.hpotarget (HPOTARGET): ready-to-run `tadah hpo` target file with
+  search bounds around the fitted parameters.
+- refit_opt.log (REFIT_LOG): live fit log, updated during the run.
+- refit_curve_{phi,rho,F}.dat, refit_compare.dat, refit_range_report.dat:
+  diagnostics with fitted vs original curves, residuals, fit windows.
+
+Config-file options (EAM is the only required key):
+- EAM <file>: input setfl potential to refit (required).
+- REFIT_MODE: compact (default; small optimised basis) | dense (fast
+  fixed grids).
+- REFIT_BASIS: basis family. Knot5 (compact default) | Blip (dense
+  default) | Blip5 | Knot3 | KnotMix.
+- REFIT_TOL_AMBIENT / REFIT_TOL_COMPRESSED: accuracy targets in meV/atom
+  near equilibrium / under compression (defaults 0.1 / 1.0).
+- REFIT_REACH_SMIN: smallest compression a/a0 the fit must stay accurate
+  at (default 0.75).
+- OPTIM_PCT: +-percent search bounds written to the hpotarget file
+  (default 5).
+- OUTPUT_GRID_SCALE: output setfl grid density relative to the input
+  (default 1.0).
+- Dense mode only: REFIT_LEVEL (coarse|balanced|fine|accurate), N2B,
+  NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS.
+- Compact ladder: REFIT_COMPACT_NMAX, REFIT_COMPACT_STALL,
+  REFIT_COMPACT_SHARE, REFIT_COMPACT_OPT_EVERY, REFIT_COMPACT_INSERT_TOPK,
+  REFIT_COMPACT_SEED.
+- Per-stage optimiser (algorithm + budget + tolerances for the global,
+  explore, polish and joint stages): the optional inline OPTIMIZER block
+  (OPTIMIZER ... ENDOPTIMIZER with GLOBAL/EXPLORE/POLISH/JOINT subblocks).
+- Advanced: REFIT_PLACEMENT, REFIT_REACH_MARGIN, REFIT_R_LO_FRAC,
+  REFIT_CONSTRAIN_F0.
+
+Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) for
+the full description of any key.
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2"]
 [TASKS.refit.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.validation", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_budget", "ALLOWED_KEYS.refit_compact_seed_algo", "ALLOWED_KEYS.refit_compact_explore_algo", "ALLOWED_KEYS.refit_compact_polish_algo", "ALLOWED_KEYS.refit_compact_joint_algo"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.optimizer"]
+[TASKS.refit.keys.outfile]
+default_value = ["pot.tadah"]
+value_N = [1]
+value_type   = ["STRING"]
+value_format = ["<file>"]
+description = "Output file name for the fitted native Tadah potential."
+[TASKS.refit.keys.hpotarget]
+default_value = ["refit.hpotarget"]
+description = "Output file name for the generated `tadah hpo` starter target file."
 [TASKS.refit.groups.input]
 description      = "Provide the EAM potential to refit (or a config file declaring it)."
 cli_required     = true

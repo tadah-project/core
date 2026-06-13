@@ -59,6 +59,42 @@ namespace {
       // first token is the key
       const std::string &key = tokens[0];
       std::string uKey = to_upper(key);
+
+      // OPTIMIZER is a verbatim multi-line block, not a flat key. Slurp every
+      // token between `OPTIMIZER` and the matching `ENDOPTIMIZER` into the
+      // single (unbounded) Context key OPTIMIZER; the consuming engine (e.g.
+      // `tadah refit` compact mode) parses that token stream itself. Mirrors
+      // the CONFIG special-case below.
+      if (uKey == "OPTIMIZER") {
+        std::string body;
+        bool closed = false;
+        size_t k = i + 1;
+        for (; k < lines.size(); ++k) {
+          std::string bl = trim(lines[k]);
+          if (bl.empty() || bl[0] == '#') {
+            continue;
+          }
+          bl = trim(bl.substr(0, bl.find('#')));
+          if (bl.empty()) {
+            continue;
+          }
+          if (to_upper(bl) == "ENDOPTIMIZER") {
+            closed = true;
+            break;
+          }
+          body += bl + " ";
+        }
+        if (!closed) {
+          throw std::runtime_error(
+              "OPTIMIZER block is not closed with ENDOPTIMIZER");
+        }
+        i = k;  // resume after ENDOPTIMIZER
+        if (!body.empty()) {
+          ctx.add("OPTIMIZER", body);  // STRINGS key: add() splits on whitespace
+        }
+        continue;
+      }
+
       if (keyMap.find(uKey) == keyMap.end()) {
         std::string suggested = BlueprintParser::findClosestKey(key, keyMap);
         Logger::instance().log(
