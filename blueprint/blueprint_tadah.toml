@@ -621,6 +621,15 @@ cli_long_flag  = "--hpotarget"
 cli_short_flag = ""
 cli_required     = false
 
+[ALLOWED_KEYS.hpofileout]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "Output file for the `tadah hpo` starter target written by `tadah refit`."
+examples     = ["refit.hpotarget"]
+cli_long_flag  = "--hpofileout"
+cli_short_flag = ""
+cli_required     = false
+
 [ALLOWED_KEYS.validation]
 INHERIT = ["TYPES.STRINGS"]
 description  = "Validation dataset file(s)."
@@ -778,6 +787,12 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_constrain_f0]
 INHERIT = ["TYPES.BOOL"]
+# Explicit default_value true OVERRIDES the inherited TYPES.BOOL default (false):
+# the Context injects this on first query, so the dense-refit engine's
+# `if (contains && size>0) constrain_F0 = get<bool>()` reads true unless the user
+# sets the key. Without it the documented "Default true" was silently false at
+# runtime (contains() materialises the inherited false). See refit_compact_merge.
+default_value = ["true"]
 description  = "`tadah refit`: pin the embedding to the table's F(0) (isolated-atom reference) with a constraint row. Default true."
 examples     = ["true", "false"]
 cli_long_flag  = ""
@@ -818,16 +833,16 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_log]
 INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` optimisation-log file (default refit_opt.log): one timestamped, immediately-flushed line per ladder event (global, rung, coalescence merge, final optimisation) — each stage reports which convergence criterion it hit — plus the joint-refinement summary and crystal self-test, inspectable DURING the fit."
+description  = "`tadah refit` optimisation-log file (default refit_opt.log): one timestamped, immediately-flushed line per ladder rung (the rung reports its winning candidate's metric/rmse/d1/d2 progression across the insert->explore->refine->merge checkpoints, any coalescence-guard merge count, and each stage's stop reason + work done) plus the global seed, joint-refinement (FUSE) summary and crystal self-test, inspectable DURING the fit."
 examples     = ["refit_opt.log"]
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_nmax]
-INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: per-function blip ceiling for the ladder. Default 40."
-examples     = ["40"]
+INHERIT = ["TYPES.UINTS"]
+description  = "`tadah refit` compact mode: per-function basis (blip/knot) ceiling for the EXPLORE ladder. Give ONE value (applies to all three functions) or THREE values 'phi rho F' (separate per-function ceilings, e.g. 39 5 27). Default 40. Only EXPLORE grows the basis; REFINE/FUSE only refine the existing basis."
+examples     = ["40", "39 5 27"]
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -848,6 +863,71 @@ cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
 
+[ALLOWED_KEYS.refit_compact_samples]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode: number of uniform sample points per function across its fit window. The VALUE RMSE and the 1st/2nd-derivative (d1/d2) RMSEs — and the curve objective (REFIT_OBJECTIVE curve) — are all evaluated on THIS shared grid: at each point the EAM cubic-spline value and its analytic 1st/2nd derivatives are the targets. More points = finer RMSE estimate and finer curve fit but slower (each closed-form VARPRO solve is O(samples * basis)); fewer = faster, coarser. Default 800. Clamped up to max(50, 4 x REFIT_COMPACT_NMAX). Independent of the energy E-V scan and the OUTPUT_GRID_SCALE setfl output grid."
+examples     = ["800", "400", "1600"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_jitters]
+INHERIT = ["TYPES.UINT"]
+description  = "`tadah refit` compact mode: number of randomised warm restarts per ladder rung. Each rung runs jitters+1 candidates (1 warm start + this many perturbed restarts) through the full EXPLORE -> REFINE pipeline and keeps the energy-metric-best — exploration that stops the local search locking into a bad basin. This is why the coalescence guard can fire several times within one rung (once per candidate). Default 2 (3 candidates/rung). 0 = warm start only (cheaper, less robust)."
+examples     = ["2", "0", "4"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_objective]
+INHERIT = ["TYPES.STRING"]
+default_value = ["energy"]
+description  = "`tadah refit` compact mode: what the WHOLE fitting chain (seed, EXPLORE, REFINE, FUSE, and the rung selection / stall / stop decisions) optimises toward. 'energy' (default) = the crystal energy metric (current behaviour). 'curve' = a normalised combined RMSE of the fitted VALUE + 1st-derivative + 2nd-derivative against the tabulated function (each term divided by the table's own RMS over the window, then RMS-combined). In curve mode the coefficients are solved from a stacked value+d1+d2 least-squares, the knot positions are searched with the configured EXPLORE optimiser on that objective, FUSE is a per-function curve refine that drops the energy term, and the energy metric is unused end-to-end. The target 1st/2nd derivatives are the EXACT analytic derivatives of the setfl cubic spline (no finite differencing). OPTIMISER POLICY: curve mode HONOURS the configured optimiser at every stage (EXPLORE inner, REFINE, FUSE; ENABLED false or ALGO NONE skips a stage); the per-stage legal set is enforced at parse time and the actual stack is logged. The pressure-relaxed weighting (REFIT_CURVE_WEIGHTING, ON by default) concentrates the fit where the crystal actually probes (ambient r/rho) so an aggressive least-squares optimiser does not over-fit the unprobed high-magnitude regions and wreck the crystal. FUSE keeps NO crystal E-V coupling (curve mode is independent of energy mode). Note the ladder grows until stall / n_max (the curve score has no tolerance threshold)."
+examples     = ["energy", "curve"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_curve_deriv_weight]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0.0"]
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: weight of EACH derivative block (1st and 2nd) RELATIVE to the value block in the curve objective (both the stacked coefficient solve and the rung-selection score). 0 (DEFAULT) = pure VALUE fit, which is crystal-faithful: LAMMPS computes the crystal energy from the curve VALUES, so a value-only fit reproduces the crystal as well as energy mode (measured Ti: cohesive +3.8 meV/atom, E-V 5-6 meV). ANY nonzero weight degrades the crystal sharply (measured: 0.01 -> -15, 0.1 -> -69, 1.0 -> +37 meV/atom cohesive) because the relative normalisation lets even a 1% derivative term trade away the large ABSOLUTE value error of a high-magnitude function like F. Raise it ONLY to capture the 1st/2nd-derivative SHAPE at the EXPENSE of crystal energy. 1.0 = value/d1/d2 equal (the original, crystal-wrecking curve mode). Ignored unless REFIT_OBJECTIVE=curve."
+examples     = ["0.0", "0.1", "1.0"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_curve_weighting]
+INHERIT = ["TYPES.BOOL"]
+# Explicit default_value true OVERRIDES the inherited TYPES.BOOL default (false):
+# the Context injects this default whenever the key is queried, so the engine's
+# bget() sees `true` unless the user sets the key. Without it weighting would
+# silently default OFF (the inherited false would be injected).
+default_value = ["true"]
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve weighting (ON by default). Concentrates the fit where the crystal actually probes and relaxes it toward the high-pressure extremes, so a fixed knot budget spends its accuracy where it matters: phi(r) and rho(r) are weighted 1 between the ambient nearest-neighbour distance r_amb and the cutoff, ramping smoothly down to REFIT_CURVE_RELAX toward smaller r (compression); F(rho) is weighted 1 from rho=0 up to the ambient density rho_amb, ramping down to the floor for higher rho (compression). r_amb and rho_amb are derived self-contained from the lattice geometry and the EAM tables (no crystal energy-volume scan dependency). The weights apply to BOTH the stacked value+d1+d2 coefficient solve AND the rung-selection metrics, so fit and selection agree. false = uniform weighting (legacy curve mode). This key is rejected in energy mode. Multiplies with REFIT_CURVE_DERIV_WEIGHT (orthogonal: deriv_weight scales d1/d2 vs value; this scales per-region)."
+examples     = ["true", "false"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_curve_relax]
+INHERIT = ["TYPES.DOUBLE"]
+default_value = ["0.05"]
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve with REFIT_CURVE_WEIGHTING on: the floor weight (a fraction greater than 0 and at most 1) that the pressure-relaxed profile ramps DOWN to in the compressed / high-pressure regions (phi/rho below r_amb, F above rho_amb). 1.0 reproduces uniform weighting, smaller values relax the fit harder away from ambient (default 0.05). The ramp is a C1 smoothstep between the ambient band (weight 1) and the window edge (weight equal to this floor). Rejected in energy mode."
+examples     = ["0.05", "0.1", "0.02"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refit_compact_merge]
+INHERIT = ["TYPES.STRING"]
+default_value = ["auto"]
+description  = "`tadah refit` compact mode, Knot families: coalescence guard. 'true' applies a soft anti-coalescence penalty during EXPLORE plus a post-REFINE merge of near-coincident knot pairs that re-inserts a fresh knot at the worst residual. 'auto' (default) sets it OFF for REFIT_OBJECTIVE curve and ON for REFIT_OBJECTIVE energy. 'false' keeps it off. Knot families only."
+examples     = ["auto", "true", "false"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
 # NOTE: the per-stage optimiser controls (algorithm, evaluation budget and
 # stopping tolerances for the global/explore/polish/joint stages) were flat
 # REFIT_COMPACT_* keys; they now live in the inline OPTIMIZER block (see
@@ -864,8 +944,44 @@ cli_required   = false
 [ALLOWED_KEYS.optimizer]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
-description  = "Inline optimiser block for `tadah refit` compact mode. A multi-line block (`OPTIMIZER` and `ENDOPTIMIZER` each on their own line) captured verbatim by the config parser; the engine parses the GLOBAL/EXPLORE/POLISH/JOINT subblocks. Each subblock takes `ALGO <name>` plus optional stopping criteria (GLOBAL/EXPLORE: MAXEVAL, FTOL_REL, XTOL_REL; POLISH/JOINT: MAXITER, FTOL, GTOL). Optional — omit to use the defaults. See the refit docs or demos/example_optimizer.cfg for the full grammar."
-examples     = ["see demos/example_optimizer.cfg (multi-line OPTIMIZER ... ENDOPTIMIZER)"]
+description  = "Optimiser sub-block for a `tadah refit` stage (EXPLORE/REFINE/FUSE). A multi-line `OPTIMIZER ... ENDOPTIMIZER` block nested INSIDE a stage block; takes `LIB <name>` / `ALGO <name>` plus stopping criteria (MAXEVAL, FTOL_REL/FTOL_ABS, XTOL_REL/XTOL_ABS, GTOL, ...) in the same syntax as the `tadah hpo --hpotarget` OPTIMIZER block, and an optional nested `INNER ... ENDINNER` for the per-rung local search. A top-level OPTIMIZER block is rejected (it must be nested in a stage)."
+examples     = ["see HPO_REFIT_2B_EAM/REDESIGN/configs (OPTIMIZER nested in EXPLORE/REFINE/FUSE)"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.init]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [-2147483647]
+description  = "`tadah refit` INIT stage block (`INIT ... ENDINIT`, no optimisation). Declares manual / anchored knots or blips per channel: `<PHI|RHO|F> <MANUAL <mu> [<eta>] | XMIN | XMAX | YMIN | YMAX | SMAX | CMAX> [PIN]`. PIN freezes that position in EXPLORE/REFINE/FUSE (the linear coefficient is still solved). Captured verbatim; parsed by the refit engine."
+examples     = ["INIT / PHI XMIN PIN / ENDINIT"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.explore]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [-2147483647]
+description  = "`tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): structure search + basis growth (absorbs the old GLOBAL stage at rung 0). Takes `MAX_ADD <n>` (max basis added per function) and a nested OPTIMIZER block (default global MLSL with an INNER local SBPLX). Captured verbatim; parsed by the refit engine."
+examples     = ["EXPLORE / MAX_ADD 38 / OPTIMIZER ... ENDOPTIMIZER / ENDEXPLORE"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.refine]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [-2147483647]
+description  = "`tadah refit` REFINE stage block (`REFINE ... ENDREFINE`): per-rung high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local). Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine."
+examples     = ["REFINE / OPTIMIZER ... ENDOPTIMIZER / ENDREFINE"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.fuse]
+INHERIT = ["TYPES.STRINGS"]
+value_N      = [-2147483647]
+description  = "`tadah refit` FUSE stage block (`FUSE ... ENDFUSE`): final joint refinement of all three functions against curve + crystal energy-volume residuals (least-squares only: Ceres LM/DOGLEG or NONE). Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine."
+examples     = ["FUSE / OPTIMIZER ... ENDOPTIMIZER / ENDFUSE"]
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1505,8 +1621,8 @@ Output files (default name, config key):
   LAMMPS pair_style tadah, and as the seed for `tadah hpo`.
 - refit.eam (SETFL_OUT): setfl table rebuilt from the fitted functions, for
   side-by-side comparison with the input potential in LAMMPS.
-- refit.hpotarget (HPOTARGET): ready-to-run `tadah hpo` target file with
-  search bounds around the fitted parameters.
+- refit.hpotarget (HPOFILEOUT, --hpofileout): ready-to-run `tadah hpo` target
+  file with search bounds around the fitted parameters.
 - refit_opt.log (REFIT_LOG): live fit log, updated during the run.
 - refit_curve_{phi,rho,F}.dat, refit_compare.dat, refit_range_report.dat:
   diagnostics with fitted vs original curves, residuals, fit windows.
@@ -1530,9 +1646,12 @@ Config-file options (EAM is the only required key):
 - Compact ladder: REFIT_COMPACT_NMAX, REFIT_COMPACT_STALL,
   REFIT_COMPACT_SHARE, REFIT_COMPACT_OPT_EVERY, REFIT_COMPACT_INSERT_TOPK,
   REFIT_COMPACT_SEED.
-- Per-stage optimiser (algorithm + budget + tolerances for the global,
-  explore, polish and joint stages): the optional inline OPTIMIZER block
-  (OPTIMIZER ... ENDOPTIMIZER with GLOBAL/EXPLORE/POLISH/JOINT subblocks).
+- Stage pipeline (compact mode): INIT -> EXPLORE -> REFINE -> FUSE, each its
+  own multi-line block. INIT (no optimisation) declares manual/anchored,
+  optionally PINned knots/blips. EXPLORE/REFINE/FUSE each take a nested
+  OPTIMIZER block (LIB/ALGO + stop criteria, same syntax as `tadah hpo`).
+  Omit any block to use its defaults (default EXPLORE = global MLSL + inner
+  SBPLX). See HPO_REFIT_2B_EAM/REDESIGN/configs for examples.
 - Advanced: REFIT_PLACEMENT, REFIT_REACH_MARGIN, REFIT_R_LO_FRAC,
   REFIT_CONSTRAIN_F0.
 
@@ -1541,14 +1660,14 @@ the full description of any key.
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2"]
 [TASKS.refit.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.optimizer"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse"]
 [TASKS.refit.keys.outfile]
 default_value = ["pot.tadah"]
 value_N = [1]
 value_type   = ["STRING"]
 value_format = ["<file>"]
 description = "Output file name for the fitted native Tadah potential."
-[TASKS.refit.keys.hpotarget]
+[TASKS.refit.keys.hpofileout]
 default_value = ["refit.hpotarget"]
 description = "Output file name for the generated `tadah hpo` starter target file."
 [TASKS.refit.groups.input]

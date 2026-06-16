@@ -60,12 +60,20 @@ namespace {
       const std::string &key = tokens[0];
       std::string uKey = to_upper(key);
 
-      // OPTIMIZER is a verbatim multi-line block, not a flat key. Slurp every
-      // token between `OPTIMIZER` and the matching `ENDOPTIMIZER` into the
-      // single (unbounded) Context key OPTIMIZER; the consuming engine (e.g.
-      // `tadah refit` compact mode) parses that token stream itself. Mirrors
-      // the CONFIG special-case below.
-      if (uKey == "OPTIMIZER") {
+      // Verbatim multi-line blocks (not flat keys). Slurp every token between
+      // `<BLOCK>` and the matching `END<BLOCK>` into the single (unbounded)
+      // Context STRINGS key <BLOCK>; the consuming engine (e.g. `tadah refit`)
+      // parses that token stream itself. Mirrors the CONFIG special-case below.
+      //   OPTIMIZER  - legacy refit optimiser block (now nested; flagged by
+      //                the refit parser if it appears at top level)
+      //   INIT/EXPLORE/REFINE/FUSE - the refit stage blocks. A stage's nested
+      //                OPTIMIZER...ENDOPTIMIZER is captured as body tokens
+      //                because each opener closes ONLY on its own END<opener>
+      //                (distinct end tokens => no depth counter needed).
+      static const std::unordered_set<std::string> kVerbatimBlocks = {
+          "OPTIMIZER", "INIT", "EXPLORE", "REFINE", "FUSE"};
+      if (kVerbatimBlocks.find(uKey) != kVerbatimBlocks.end()) {
+        const std::string endTok = "END" + uKey;
         std::string body;
         bool closed = false;
         size_t k = i + 1;
@@ -78,19 +86,19 @@ namespace {
           if (bl.empty()) {
             continue;
           }
-          if (to_upper(bl) == "ENDOPTIMIZER") {
+          if (to_upper(bl) == endTok) {
             closed = true;
             break;
           }
           body += bl + " ";
         }
         if (!closed) {
-          throw std::runtime_error(
-              "OPTIMIZER block is not closed with ENDOPTIMIZER");
+          throw std::runtime_error(uKey + " block is not closed with " +
+                                   endTok);
         }
-        i = k;  // resume after ENDOPTIMIZER
+        i = k;  // resume after END<block>
         if (!body.empty()) {
-          ctx.add("OPTIMIZER", body);  // STRINGS key: add() splits on whitespace
+          ctx.add(uKey, body);  // STRINGS key: add() splits on whitespace
         }
         continue;
       }
