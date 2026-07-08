@@ -177,3 +177,26 @@ TEST_CASE("aed_type operator<<(std::ostream&)", "[aed_type][new]") {
     REQUIRE(ss.str().find("6.6") != std::string::npos);
     REQUIRE(ss.str().find("7.7") != std::string::npos);
 }
+
+TEST_CASE("aed_type::resize shrink then grow", "[aed_type][resize]") {
+    // Regression: shrinking used to call std::fill with first > last
+    // (fill range computed from the OLD size on the reallocated,
+    // smaller block), writing zeros past the end of the heap buffer.
+    // Exercised by the FIXWEIGHT partial-fix path, where the model
+    // weight vector shrinks from K to K - |FIXINDEX| between trainings.
+    aed_type v(14);
+    for (size_t i = 0; i < v.size(); ++i) v[i] = 1.0 + double(i);
+
+    v.resize(12);  // shrink: must not write beyond the new block
+    REQUIRE(v.size() == 12);
+    for (size_t i = 0; i < 12; ++i) REQUIRE(v[i] == 1.0 + double(i));
+
+    v.resize(14);  // grow again: new tail must be zero-initialised
+    REQUIRE(v.size() == 14);
+    for (size_t i = 0; i < 12; ++i) REQUIRE(v[i] == 1.0 + double(i));
+    REQUIRE(v[12] == 0.0);
+    REQUIRE(v[13] == 0.0);
+
+    v.resize(14);  // no-op resize keeps contents
+    REQUIRE(v[5] == 6.0);
+}

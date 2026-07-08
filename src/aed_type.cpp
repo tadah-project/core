@@ -54,7 +54,12 @@ void aed_type::resize(const size_t n) {
     }
     size_ = n;
   }
-  std::fill(data_+stride_*size_orig, data_ + stride_ * n, 0.0);
+  // Zero-fill only when growing. On a shrink the old fill range
+  // (data_+size_orig, data_+n) has first > last, and std::fill would run
+  // off the end of the reallocated block (heap-buffer-overflow).
+  if (n > size_orig) {
+    std::fill(data_+stride_*size_orig, data_ + stride_ * n, 0.0);
+  }
 }
 
 aed_type aed_type::copy(size_t nelements, size_t start) const {
