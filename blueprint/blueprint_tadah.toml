@@ -1389,8 +1389,13 @@ examples = ["SWEIGHT 1e-1"]
 INHERIT = ["TYPES.DOUBLES"]
 description = "Machine-learned coefficients for the model."
 long_description = """
-These are species-dependent weights, obtained during optimization. Defaults 
+These are species-dependent weights, obtained during optimization. Defaults
 to atomic numbers if unspecified.
+
+`OPTIM WEIGHTS` is rejected by `tadah hpo`: the least-squares solve
+re-fits WEIGHTS on every evaluation, so optimising them directly would be
+a silent no-op. To search linear coefficients, pin them with
+FIXINDEX/FIXWEIGHT and use `OPTIM FIXWEIGHT`.
 """
 examples = ["WEIGHTS 0.12 1.2 0.3"]
 
@@ -1447,8 +1452,21 @@ description = """ScalaPACK column block size NB."""
 INHERIT = ["TYPES.DOUBLES"]
 description = "Values for weights to be fixed in optimization."
 long_description = """
-Must be used with FIXINDEX. dim(FIXINDEX) = dim(FIXWEIGHT).
-The i-th value in FIXWEIGHT corresponds to the i-th index in FIXINDEX.
+Must be used with FIXINDEX; a lone FIXWEIGHT (or lone FIXINDEX) is a hard
+error, and there is no auto-seeding from WEIGHTS. dim(FIXINDEX) =
+dim(FIXWEIGHT). The i-th value in FIXWEIGHT pins the model weight named by
+the i-th index in FIXINDEX (declaration order defines the pairing). Pinned
+weights are excluded from the least-squares solve; the remaining weights
+are fitted against the residual target. Incompatible with NORM=true (the
+values would be interpreted in the normalized feature space).
+
+In `tadah hpo`, `OPTIM FIXWEIGHT (<weight-index>) <low> <high>` lets the
+nonlinear optimiser search a pinned weight: the (indices) name MODEL
+WEIGHTS (values of FIXINDEX), not positions in this list. When FIXINDEX
+covers every model weight, the LS solve is skipped entirely; in that case
+a training DBFILE becomes optional (the loss must then come from
+validation metrics, PC_OBSERVABLE, or PC_LAMMPS, and the element set must
+be declared via ATOM).
 """
 examples = ["0.12 1.0 2.00"]
 
@@ -1458,10 +1476,14 @@ value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>
 value_N      = [-2147483647]
 description = "Indices of weights to be fixed in optimization."
 long_description = """
-Must be used with FIXWEIGHT. dim(FIXINDEX) = dim(FIXWEIGHT).
-Allows flexible selection of indices. Supports single indices, ranges 
-(e.g., start-stop), lists, or intervals (start-stop:step). Indices are 1-based. 
-Repeated indices are removed automatically.
+Must be used with FIXWEIGHT; a lone FIXINDEX (or lone FIXWEIGHT) is a hard
+error. dim(FIXINDEX) = dim(FIXWEIGHT); the i-th index names the model
+weight pinned by the i-th FIXWEIGHT value (declaration order defines the
+pairing). Allows flexible selection of indices. Supports single indices,
+ranges (e.g., start-stop), lists, or intervals (start-stop:step). Indices
+are 1-based. Repeated indices are removed automatically. Without a
+training DBFILE, FIXINDEX must cover every model weight (there is no data
+to fit the rest).
 """
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 
