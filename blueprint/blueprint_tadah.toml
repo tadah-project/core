@@ -1738,7 +1738,11 @@ required_max = 3
 [TASKS.hpo.groups.input.keys]
 INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.validation","ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.task"]
 [TASKS.hpo.groups.input.keys.config]
-cli_needs = ["validation", "hpotarget"]
+# --validation is optional: PC_OBSERVABLE / PC_LAMMPS provide the loss
+# when no validation set is given (validate_hpo_setup enforces that at
+# least one loss source exists and that PC_ERMSE-style metrics have a
+# validation file).
+cli_needs = ["hpotarget"]
 cli_excludes = ["task"]
 
 [TASKS.data]
