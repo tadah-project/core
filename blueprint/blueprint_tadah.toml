@@ -681,6 +681,166 @@ cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
 
+[ALLOWED_KEYS.edit]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "Edit mode for `tadah refit`: path to an existing refit potential (pot.tadah) to add/remove one basis function (use with --func and --add or --remove)."
+long_description = """
+Switches `tadah refit` into potential-editing mode: instead of refitting a
+tabulated EAM file, load an existing refit potential (a pot.tadah written by
+`tadah refit` — D2_Knot5/D2_Blip/D2_Blip5 two-body + DM_REAM many-body) and
+add or remove ONE basis function per invocation.
+
+Use with:
+- --func {phi|rho|F}: which curve to edit (pair / density / embedding).
+- --add <centre>: insert a basis function at this position with coefficient
+  0 — the potential's predictions are BIT-IDENTICAL to the input (value, all
+  derivatives, extrapolation); the new coefficient becomes an extra search
+  dimension in the regenerated hpotarget file.
+- --remove <centre>: delete the basis function whose centre is nearest to
+  <centre>; the two neighbouring coefficients are least-squares adjusted to
+  track the original curve's value, first and second derivative over the
+  affected region. Removal is lossy by design — expect small changes.
+
+Outputs: an edited potential (-o; defaults to pot_edited.tadah so the input
+is never silently overwritten) and a regenerated hpotarget (--hpofileout;
+defaults to refit_edited.hpotarget). For knot-family channels RCUT2B/RCUTMB
+are recomputed from the basis (effective cutoff = largest knot).
+"""
+examples     = ["pot.tadah"]
+cli_long_flag  = "--edit"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.retarget]
+INHERIT = ["TYPES.STRING"]
+value_format = ["<file>"]
+description  = "Retarget mode for `tadah refit`: rewrite the OPTIM search bounds of an existing hpotarget file (use with --pct, --set, -o or --in-place)."
+long_description = """
+Switches `tadah refit` into hpotarget-retargeting mode: read an existing
+hpotarget file (as written by `tadah refit` or a previous --retarget run) and
+rewrite the bounds of every OPTIM line — active AND commented, preserving the
+comment state — around the recovered parameter values.
+
+Bound width control:
+- --pct <N>: global +-percent half-width (default: OPTIM_PCT, else 5).
+- --pct KEY=N: per-key override, e.g. --pct FIXWEIGHT=2 (repeatable; mix
+  with the global value: --pct 10 CGRID2B=2).
+- --set 'KEY(i)=lo,hi': absolute bounds for one parameter (repeatable,
+  applied last).
+
+Everything that is not an OPTIM line is preserved byte-for-byte. The output
+goes to -o (default: <input>_edited.hpotarget) or back into the input with
+--in-place. For knot-family potentials the commented RCUT2B/RCUTMB lines are
+recomputed from the largest knot position (the true effective cutoff).
+"""
+examples     = ["refit.hpotarget"]
+cli_long_flag  = "--retarget"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.func]
+INHERIT = ["TYPES.STRING"]
+value_format = ["{phi|rho|F}"]
+description  = "Curve selector for `tadah refit --edit`: phi (pair, CGRID2B), rho (density, CGRIDMB/AMPGRIDMB) or F (embedding, CEMBFUNC)."
+examples     = ["phi", "rho", "F"]
+cli_long_flag  = "--func"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.add]
+INHERIT = ["TYPES.DOUBLE"]
+value_format = ["<centre>"]
+description  = "`tadah refit --edit`: insert a basis function at this centre (r in Angstrom for phi/rho, electron density for F) with coefficient 0 — the potential is unchanged until HPO varies the new coefficient."
+long_description = """
+Insert one basis function into the curve selected by --func, centred at the
+given position. The new coefficient (weight for phi/F, density amplitude for
+rho) is 0, so the edited potential predicts EXACTLY like the input — the new
+basis function only adds capacity for a subsequent `tadah hpo` run (its
+OPTIM line is emitted in the regenerated hpotarget).
+
+Knot families (Knot5/Knot3): the knot position is the only shape parameter
+(--eta is rejected; widths are a pure gauge). --deg 3|5 selects the knot
+degree (default 5). Adding a radial knot beyond the current largest knot
+EXTENDS the effective cutoff — RCUT2B/RCUTMB are updated accordingly.
+
+Blip families (Blip/Blip5): the inverse width defaults to the mean of the
+two nearest neighbours' widths (--eta overrides). A blip whose support lies
+entirely beyond RCUT is rejected; one whose support crosses RCUT is truncated
+there (warning) — RCUT is never changed for blip potentials.
+"""
+examples     = ["2.75"]
+cli_long_flag  = "--add"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.remove]
+INHERIT = ["TYPES.DOUBLE"]
+value_format = ["<centre>"]
+description  = "`tadah refit --edit`: remove the basis function nearest this centre; the two neighbouring coefficients are least-squares adjusted to track the original curve (value + 1st + 2nd derivative)."
+long_description = """
+Remove the basis function of the --func curve whose centre is nearest to the
+given position (the chosen centre is reported). Unless the removed
+coefficient is exactly 0, the two remaining basis functions nearest in centre
+are least-squares adjusted against the original curve's value, first and
+second derivative, sampled densely over the region the removed function
+controlled. Removal is inherently lossy — the report prints the residual
+before/after compensation; expect model performance to change and re-validate.
+
+Removing the OUTERMOST radial knot of a knot-family potential shrinks the
+effective cutoff (RCUT2B/RCUTMB follow the largest remaining knot); the tail
+between the new and old cutoff cannot be compensated (warning).
+"""
+examples     = ["2.75"]
+cli_long_flag  = "--remove"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.eta]
+INHERIT = ["TYPES.DOUBLE"]
+value_format = ["<inverse width>"]
+description  = "`tadah refit --edit --add`, blip families only: inverse width of the inserted basis function (default: mean of the neighbouring widths). Rejected for knot families (width is a pure gauge)."
+examples     = ["1.8"]
+cli_long_flag  = "--eta"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.deg]
+INHERIT = ["TYPES.UINT"]
+value_format = ["{3|5}"]
+description  = "`tadah refit --edit --add`, knot families only: degree of the inserted knot — 5 (quintic, C4, default) or 3 (cubic, C2; materialises the per-knot KDEG* degree array). Rejected for blip families."
+examples     = ["3", "5"]
+cli_long_flag  = "--deg"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.pct]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["<pct> and/or <KEY>=<pct> [...]"]
+description  = "`tadah refit --retarget`: +-percent half-width for the rewritten OPTIM bounds. A bare number sets the global default; KEY=N overrides one key group, e.g. --pct 10 FIXWEIGHT=2."
+examples     = ["10", "FIXWEIGHT=2", "10 CGRID2B=2"]
+cli_long_flag  = "--pct"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.set]
+INHERIT = ["TYPES.STRINGS"]
+value_format = ["'<KEY>(<i>)=<lo>,<hi>' [...]"]
+description  = "`tadah refit --retarget`: absolute bounds for one OPTIM parameter, e.g. --set 'CGRID2B(3)=2.1,2.4' (repeatable; applied after --pct; comment state preserved)."
+examples     = ["'CGRID2B(3)=2.1,2.4'", "'FIXWEIGHT(7)=-50,-10'"]
+cli_long_flag  = "--set"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.in_place]
+INHERIT = ["TYPES.BOOL"]
+default_value = ["false"]
+description  = "`tadah refit --retarget`: overwrite the input hpotarget file (atomic temp-write + rename) instead of writing a new file. Mutually exclusive with -o."
+examples     = ["--in-place"]
+cli_long_flag  = "--in-place"
+cli_short_flag = ""
+cli_required   = false
+
 [ALLOWED_KEYS.refit_basis]
 INHERIT = ["TYPES.STRING"]
 description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (and as the automatic fallback when the compact fitter is unavailable, i.e. non-Ceres builds; an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always verify with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localized C2 sawtooth degrades elastic constants vs pure Knot5 — prefer Knot5 unless E-V is your only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; hard-cutoff truncation leaves a value discontinuity at rcut; dense mode only — prefer any other family). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID* width entries are a pure gauge for the Knot* families (pinned 1.0) — do not add OPTIM blocks on them."
@@ -1677,12 +1837,25 @@ Config-file options (EAM is the only required key):
 - Advanced: REFIT_PLACEMENT, REFIT_REACH_MARGIN, REFIT_R_LO_FRAC,
   REFIT_CONSTRAIN_F0.
 
+Two additional modes operate on EXISTING refit outputs instead of a
+tabulated EAM file:
+- --edit <pot.tadah>: add or remove one basis function of one curve
+  (--func {phi|rho|F} with --add <centre> or --remove <centre>). Adding
+  uses a zero coefficient, so the potential is unchanged until `tadah hpo`
+  varies the new dimension; removing compensates via the neighbouring
+  coefficients. Writes an edited potential and a regenerated hpotarget.
+- --retarget <file.hpotarget>: rewrite the OPTIM search bounds of an
+  existing hpotarget (--pct global or KEY=N per-key percentages,
+  --set 'KEY(i)=lo,hi' absolute overrides, --in-place).
+For knot-family potentials both modes keep RCUT2B/RCUTMB consistent with
+the largest knot position (the true effective cutoff).
+
 Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) for
 the full description of any key.
 """
-examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2"]
+examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse", "ALLOWED_KEYS.func", "ALLOWED_KEYS.add", "ALLOWED_KEYS.remove", "ALLOWED_KEYS.eta", "ALLOWED_KEYS.deg", "ALLOWED_KEYS.pct", "ALLOWED_KEYS.set", "ALLOWED_KEYS.in_place"]
 [TASKS.refit.keys.outfile]
 default_value = ["pot.tadah"]
 value_N = [1]
@@ -1692,13 +1865,36 @@ description = "Output file name for the fitted native Tadah potential."
 [TASKS.refit.keys.hpofileout]
 default_value = ["refit.hpotarget"]
 description = "Output file name for the generated `tadah hpo` starter target file."
+[TASKS.refit.keys.func]
+cli_needs    = ["edit"]
+[TASKS.refit.keys.add]
+cli_needs    = ["edit"]
+cli_excludes = ["remove"]
+[TASKS.refit.keys.remove]
+cli_needs    = ["edit"]
+cli_excludes = ["add"]
+[TASKS.refit.keys.eta]
+cli_needs    = ["add"]
+[TASKS.refit.keys.deg]
+cli_needs    = ["add"]
+[TASKS.refit.keys.pct]
+cli_needs    = ["retarget"]
+[TASKS.refit.keys.set]
+cli_needs    = ["retarget"]
+[TASKS.refit.keys.in_place]
+cli_needs    = ["retarget"]
+cli_excludes = ["outfile"]
 [TASKS.refit.groups.input]
-description      = "Provide the EAM potential to refit (or a config file declaring it)."
+description      = "Provide the EAM potential to refit (or a config file declaring it), or select an editing mode on existing refit outputs (--edit/--retarget)."
 cli_required     = true
 required_min     = 1
 required_max     = 2
 [TASKS.refit.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.eam", "ALLOWED_KEYS.config"]
+INHERIT          = ["ALLOWED_KEYS.eam", "ALLOWED_KEYS.config", "ALLOWED_KEYS.edit", "ALLOWED_KEYS.retarget"]
+[TASKS.refit.groups.input.keys.edit]
+cli_excludes = ["retarget"]
+[TASKS.refit.groups.input.keys.retarget]
+cli_excludes = ["edit"]
 
 [TASKS.predict]
 description = "Predict properties using a trained model."
