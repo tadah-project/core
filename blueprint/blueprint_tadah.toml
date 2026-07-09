@@ -816,6 +816,8 @@ cli_required   = false
 
 [ALLOWED_KEYS.pct]
 INHERIT = ["TYPES.STRINGS"]
+# a bare percentage is a NUMBER token — the plain {STRING} schema rejects it
+value_type   = ["{[DOUBLE | STRING]}"]
 value_format = ["<pct> and/or <KEY>=<pct> [...]"]
 description  = "`tadah refit --retarget`: +-percent half-width for the rewritten OPTIM bounds. A bare number sets the global default; KEY=N overrides one key group, e.g. --pct 10 FIXWEIGHT=2."
 examples     = ["10", "FIXWEIGHT=2", "10 CGRID2B=2"]
