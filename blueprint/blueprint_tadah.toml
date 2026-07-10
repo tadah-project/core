@@ -134,6 +134,18 @@ cli_required   = false
 INHERIT = ["TYPES.BOOL"]
 description  = "Per-species intercept. When true, adds N=size(ATOM) one-hot intercept columns to the design matrix; the regression learns one constant energy per species and LAMMPS adds it back per atom. Required when NORM=true with MODEL=BF_Linear."
 
+[ALLOWED_KEYS.eamfast]
+INHERIT = ["TYPES.BOOL"]
+# Explicit default_value true overrides the inherited TYPES.BOOL default (false);
+# the Context injects it on first query, so pair_tadah reads true unless the
+# user sets EAMFAST false. Same mechanism as refit_constrain_f0 above.
+default_value = ["true"]
+description  = "Collapsed-EAM fast path in the LAMMPS pair style, pair_style tadah. For a linear model whose descriptors are a radial two-body block plus an EAM-form many-body block, single species (the tadah refit family, e.g. D2_Knot5 + DM_REAM), the potential collapses exactly to scalar pair, density and embedding functions. The pair style then evaluates cubic-Hermite pair/density tables sampled from the descriptors themselves plus the analytic embedding, with scalar ghost communication — typically 5-10x faster force calls. Agrees with the generic kernel to about 1e-9 relative accuracy. Set false for bitwise comparison against the generic kernel or for drivers that capture adjoint state. Silently ignored, generic kernel used, for models that do not collapse: nonlinear or normalised models, per-species bias, multi-species, dimers, or many-body descriptors that are not EAM-form."
+examples     = ["true", "false"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
 [ALLOWED_KEYS.force]
 INHERIT = ["TYPES.BOOL"]
 description  = "Include forces."

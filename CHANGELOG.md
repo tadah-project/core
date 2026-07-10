@@ -6,7 +6,8 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+- `EAMFAST` blueprint key (BOOL, explicit `default_value = ["true"]`): toggles the collapsed-EAM fast path in `pair_style tadah` for linear EAM-form models (see Tadah.LAMMPS changelog). `EAMFAST false` restores the bitwise generic kernel.
 
 ## [1.3.0-beta.1] — 2026-05-20
 
