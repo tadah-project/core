@@ -687,12 +687,20 @@ value_format = ["<file>"]
 description  = "Edit mode for `tadah refit`: path to an existing refit potential (pot.tadah) to add/remove one basis function (use with --func and --add or --remove)."
 long_description = """
 Switches `tadah refit` into potential-editing mode: instead of refitting a
-tabulated EAM file, load an existing refit potential (a pot.tadah written by
-`tadah refit` — D2_Knot5/D2_Blip/D2_Blip5 two-body + DM_REAM many-body) and
-add or remove ONE basis function per invocation.
+tabulated EAM file, load an existing knot/blip potential and add or remove
+ONE basis function per invocation.
+
+Supported potentials: the pair descriptor must be a refit family
+(D2_Knot5 / D2_Blip / D2_Blip5), with BIAS false and NORM false. The
+many-body term is optional:
+- none (a pure two-body potential): --func phi edits the pair curve;
+- DM_REAM (a `tadah refit` EAM): all three curves are editable;
+- any other many-body descriptor: only --func phi (the pair channel) —
+  the many-body keys and its WEIGHTS block are preserved untouched.
 
 Use with:
-- --func {phi|rho|F}: which curve to edit (pair / density / embedding).
+- --func {phi|rho|F}: which curve to edit (pair / density / embedding;
+  rho and F require a DM_REAM many-body term).
 - --add <centre>: insert a basis function at this position with coefficient
   0 — the potential's predictions are BIT-IDENTICAL to the input (value, all
   derivatives, extrapolation); the new coefficient becomes an extra search
@@ -705,7 +713,8 @@ Use with:
 Outputs: an edited potential (-o; defaults to pot_edited.tadah so the input
 is never silently overwritten) and a regenerated hpotarget (--hpofileout;
 defaults to refit_edited.hpotarget). For knot-family channels RCUT2B/RCUTMB
-are recomputed from the basis (effective cutoff = largest knot).
+are recomputed from the basis (effective cutoff = largest knot), so adding
+a knot beyond the current largest one widens the effective cutoff.
 """
 examples     = ["pot.tadah"]
 cli_long_flag  = "--edit"
