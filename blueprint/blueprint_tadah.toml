@@ -749,6 +749,11 @@ Bound width control:
   with the global value: --pct 10 CGRID2B=2).
 - --set 'KEY(i)=lo,hi': absolute bounds for one parameter (repeatable,
   applied last).
+- --rcut2b <r> / --rcutmb <r>: declare a bump channel's fixed cutoff in the
+  same run — recentre the file's OPTIM RCUT reference on r and truncate the
+  rewritten CGRID/SGRID boxes to the bump-support rule c + w/eta <= r
+  (active OPTIM RCUT lines are commented out with a warning; set the same
+  RCUT in the training config).
 
 Everything that is not an OPTIM line is preserved byte-for-byte. The output
 goes to -o (default: <input>_edited.hpotarget) or back into the input with
@@ -843,6 +848,22 @@ value_format = ["<pct> and/or <KEY>=<pct> [...]"]
 description  = "`tadah refit --retarget`: +-percent half-width for the rewritten OPTIM bounds. A bare number sets the global default; KEY=N overrides one key group, e.g. --pct 10 FIXWEIGHT=2."
 examples     = ["10", "FIXWEIGHT=2", "10 CGRID2B=2"]
 cli_long_flag  = "--pct"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.retarget_rcut2b]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit --retarget`: declare the pair channel's fixed cutoff in ONE step — recentre the file's OPTIM RCUT2B reference line on this value and bind the bump-support cap against it, so the rewritten CGRID2B/SGRID2B boxes are truncated to c + w/eta <= this value. Any ACTIVE OPTIM RCUT2B line is commented out with a warning: on a bump channel the support gate keeps every bump inside the cutoff's LOW bound, so searching the cutoff cannot affect the model. Remember to set the same RCUT2B in the training config. Ignored with a warning on knot channels, where RCUT2B is derived from the largest knot."
+examples     = ["6.0"]
+cli_long_flag  = "--rcut2b"
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.retarget_rcutmb]
+INHERIT = ["TYPES.DOUBLE"]
+description  = "`tadah refit --retarget`: the density channel's twin of --rcut2b — recentre the OPTIM RCUTMB reference and truncate the CGRIDMB/SGRIDMB boxes to the declared cutoff."
+examples     = ["6.0"]
+cli_long_flag  = "--rcutmb"
 cli_short_flag = ""
 cli_required   = false
 
@@ -1876,9 +1897,9 @@ the largest knot position (the true effective cutoff).
 Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) for
 the full description of any key.
 """
-examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
+examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --pct 10 --rcut2b 6.0 --rcutmb 6.0 -o wide.hpotarget", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse", "ALLOWED_KEYS.func", "ALLOWED_KEYS.add", "ALLOWED_KEYS.remove", "ALLOWED_KEYS.eta", "ALLOWED_KEYS.deg", "ALLOWED_KEYS.pct", "ALLOWED_KEYS.set", "ALLOWED_KEYS.in_place"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse", "ALLOWED_KEYS.func", "ALLOWED_KEYS.add", "ALLOWED_KEYS.remove", "ALLOWED_KEYS.eta", "ALLOWED_KEYS.deg", "ALLOWED_KEYS.pct", "ALLOWED_KEYS.set", "ALLOWED_KEYS.retarget_rcut2b", "ALLOWED_KEYS.retarget_rcutmb", "ALLOWED_KEYS.in_place"]
 [TASKS.refit.keys.outfile]
 default_value = ["pot.tadah"]
 value_N = [1]
