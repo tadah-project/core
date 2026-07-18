@@ -318,10 +318,38 @@ public:
    */
   bool operator==(const Context &) const;
 
+  /* getMapRef() was removed: it returned an unsynchronized reference to
+   * storage_ (mutated under mtx_ even by const getters via lazy default
+   * insertion), so any caller was an unguarded data race. Its only user was
+   * operator==, which now locks both contexts and compares storage_ directly.
+   * storage_snapshot() below is the safe replacement: a COPY taken under the
+   * lock (used e.g. by the PC_ISOLATION delta-pot transport to diff two
+   * potential contexts key-by-key). */
+
   /**
-   * Return a const reference to the storage map.
+   * @brief Returns a copy of the key -> values storage map, taken under the
+   * internal mutex. Safe to call concurrently with any other member.
    */
-  const std::map<std::string, std::vector<std::string>> &getMapRef() const;
+  std::map<std::string, std::vector<std::string>> storage_snapshot() const {
+    std::lock_guard<std::mutex> lock(mtx_);
+    return storage_;
+  }
+
+  /**
+   * @brief Replaces (or erases) ONE key's raw value tokens -- the keyed
+   * counterpart of deserialize(): key uppercased, tokens stored verbatim,
+   * NO blueprint validation, no capacity checks (deserialize() has none
+   * either). Empty `values` erases the key. Used by the PC_ISOLATION
+   * delta-pot transport to apply per-key updates without re-parsing the
+   * whole serialized context.
+   */
+  void storage_update(const std::string &key,
+                      const std::vector<std::string> &values) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    const std::string upKey = to_upper(key);
+    if (values.empty()) storage_.erase(upKey);
+    else                storage_[upKey] = values;
+  }
 
   /**
    * @brief Streams the Context to an output stream.
@@ -401,11 +429,22 @@ public:
    */
   static Context merge(const Context &ctx1,
                        const Context &ctx2, bool allowOverwrite = true) {
+    /* `merged = ctx1` copies under ctx1.mtx_ (copy ctor). ctx2's storage is
+     * snapshotted under ctx2.mtx_ and iterated WITHOUT any lock held, so the
+     * merged.contains()/remove()/add() calls below (which take merged.mtx_
+     * internally) can never deadlock or order against ctx2's lock.
+     *
+     * The previous implementation constructed lock_guards with std::adopt_lock
+     * WITHOUT ever locking the mutexes -- undefined behaviour (unlocking
+     * unowned mutexes; flagged by ThreadSanitizer) and no mutual exclusion. */
     Context merged = ctx1;
-    std::lock_guard<std::mutex> lock1(ctx1.mtx_, std::adopt_lock);
-    std::lock_guard<std::mutex> lock2(ctx2.mtx_, std::adopt_lock);
+    std::map<std::string, std::vector<std::string>> ctx2_snapshot;
+    {
+      std::lock_guard<std::mutex> lock2(ctx2.mtx_);
+      ctx2_snapshot = ctx2.storage_;
+    }
 
-    for (const auto &pair : ctx2.storage_) {
+    for (const auto &pair : ctx2_snapshot) {
       const std::string &key = pair.first;
       // only copy allowed keys
       if (ctx1.allowedKeys_.find(key) == ctx1.allowedKeys_.end()) {

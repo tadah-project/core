@@ -1,8 +1,13 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/context.h>
+#include <tadah/core/core_user_config_parser.h>
 
 #include <sys/types.h>
+#include <dirent.h>
 #include <sstream>
+#include <atomic>
+#include <thread>
+#include <vector>
 
 using namespace tadah::core;
 
@@ -487,4 +492,126 @@ TEST_CASE("Context: tesing multiple values for a key", "[context_multiple_values
   REQUIRE_THROWS(c.addInternal("SSTDEV", "1 2 3 4 5 6 7")); // max 6 values
 
   REQUIRE(c.size("DIMER")==3);
+}
+
+/* ---- Context::merge semantics + thread-safety hygiene ---------------------
+ * merge() previously constructed lock_guards with std::adopt_lock without
+ * ever locking (UB, flagged by TSan) and operator== read storage_ through an
+ * unsynchronized reference (getMapRef, now removed). These tests pin the
+ * merge semantics and give TSan a concurrent workload over merge/==/get. */
+
+TEST_CASE("Testing Context merge()", "[config][merge]") {
+  Context base, over;
+  base.remove("ALPHA"); over.remove("ALPHA");
+
+  base.add("DBFILE", "base_db");
+  base.add("RCUT2B", 4.5);
+  over.add("RCUT2B", 6.0);
+  over.add("RCUTMB", 3.25);
+
+  SECTION("override wins when allowed (default)") {
+    Context m = Context::merge(base, over);
+    REQUIRE(m.get<double>("RCUT2B") == 6.0);          // overridden
+    REQUIRE(m.get<double>("RCUTMB") == 3.25);         // brought in from over
+    REQUIRE(m.get<std::string>("DBFILE") == "base_db");   // preserved
+    REQUIRE(base.get<double>("RCUT2B") == 4.5);       // inputs untouched
+    REQUIRE(over.get<double>("RCUT2B") == 6.0);
+  }
+  SECTION("allowOverwrite=false keeps a merged value present") {
+    Context m = Context::merge(base, over, false);
+    REQUIRE(m.size("RCUT2B") >= 1);
+    REQUIRE(m.get<double>("RCUTMB") == 3.25);
+  }
+  SECTION("merge with self-copy is stable") {
+    Context m = Context::merge(base, base);
+    REQUIRE(m.get<std::string>("DBFILE") == "base_db");
+  }
+}
+
+TEST_CASE("Testing Context concurrent merge/==/get (TSan workload)",
+          "[config][merge][threads]") {
+  /* Meaningful under -fsanitize=thread: concurrent const-getters mutate
+   * storage_ (lazy defaults) while merge() snapshots it and operator==
+   * compares it. With correct locking this is race-free; the old adopt_lock
+   * merge and unlocked operator== both fail this test under TSan. */
+  Context a, b;
+  a.add("DBFILE", "conc_db");
+  b.add("RCUT2B", 5.0);
+
+  std::atomic<bool> go{false};
+  std::atomic<int> mismatches{0};
+  auto worker = [&](int id) {
+    while (!go.load()) {}
+    for (int i = 0; i < 200; ++i) {
+      switch ((i + id) % 3) {
+        case 0: { Context m = Context::merge(a, b); (void)m; break; }
+        case 1: { if (a == b) mismatches.fetch_add(1); break; }
+        case 2: { (void)a.contains("INIT2B"); (void)b.contains("INITMB"); break; }
+      }
+    }
+  };
+  std::vector<std::thread> ts;
+  for (int t = 0; t < 4; ++t) ts.emplace_back(worker, t);
+  go.store(true);
+  for (auto& t : ts) t.join();
+  REQUIRE(mismatches.load() == 0);  // a and b differ throughout
+}
+
+TEST_CASE("Testing Context storage_update (delta-pot keyed raw writes)",
+          "[config][wire]") {
+  /* storage_update must be deserialize()-exact per key: raw tokens, key
+   * uppercased, no validation; empty values erases. Equivalence proof:
+   * a context assembled via keyed updates == one from a full deserialize. */
+  Context a;
+  a.storage_update("rcut2b", {"5.5"});
+  a.storage_update("DBFILE", {"db_1", "db_2"});
+  a.storage_update("WEIGHTS", {"1.0", "-2.0", "3.5"});
+
+  const std::string text = "RCUT2B 5.5\nDBFILE db_1 db_2\nWEIGHTS 1.0 -2.0 3.5\n";
+  Context b;
+  b.deserialize(std::vector<char>(text.begin(), text.end()));
+  REQUIRE(a == b);
+
+  /* replace + erase */
+  a.storage_update("WEIGHTS", {"9.9"});
+  REQUIRE(a.get<double>("WEIGHTS") == 9.9);
+  a.storage_update("DBFILE", {});
+  REQUIRE_FALSE(a == b);
+  const std::string text2 = "RCUT2B 5.5\nWEIGHTS 9.9\n";
+  Context c2;
+  c2.deserialize(std::vector<char>(text2.begin(), text2.end()));
+  REQUIRE(a == c2);
+
+  /* snapshot mirrors the raw map (delta diffing relies on this) */
+  const auto snap = a.storage_snapshot();
+  REQUIRE(snap.size() == 2);
+  REQUIRE(snap.at("WEIGHTS") == std::vector<std::string>{"9.9"});
+}
+
+TEST_CASE("Testing Context serialize round-trip on real config fixtures",
+          "[config][serialize][wire]") {
+  /* Wire-format proof for shipping a Context across a process boundary
+   * (PC_ISOLATION worker pool): every parseable fixture must survive
+   * serialize -> deserialize with full equality. */
+  std::string path = "tests_data/valid_configs";
+  DIR* dir = opendir(path.c_str());
+  REQUIRE(dir != nullptr);
+  struct dirent* entry;
+  int checked = 0;
+  while ((entry = readdir(dir)) != nullptr) {
+    std::string filename(entry->d_name);
+    if (filename == "." || filename == "..") continue;
+    Context c1;
+    try {
+      c1 = CoreUserConfigParser().parse(path + "/" + filename);
+    } catch (...) { continue; /* invalid-for-other-reasons files: not in scope */ }
+    std::vector<char> buffer = c1.serialize();
+    Context c2;
+    c2.deserialize(buffer);
+    INFO("fixture: " << filename);
+    REQUIRE(c1 == c2);
+    ++checked;
+  }
+  closedir(dir);
+  REQUIRE(checked > 0);
 }

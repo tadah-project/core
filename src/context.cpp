@@ -198,11 +198,15 @@ void Context::attemptDefaultInsertion_NoLock(const std::string &upKey) const {
   return;
 }
 bool Context::operator==(const Context &other) const {
-  return storage_ == other.getMapRef();
-}
-const std::map<std::string, std::vector<std::string>> &
-Context::getMapRef() const {
-  return storage_;
+  /* Lock BOTH contexts for the comparison: storage_ is mutated under mtx_
+   * even by const getters (lazy blueprint-default insertion), so an unlocked
+   * read here raced against concurrent get()/contains() calls. scoped_lock
+   * acquires both mutexes deadlock-free; comparing an object with itself
+   * must not lock the same mutex twice. (This replaced getMapRef(), whose
+   * unsynchronized reference return had exactly this race — removed.) */
+  if (this == &other) return true;
+  std::scoped_lock lock(mtx_, other.mtx_);
+  return storage_ == other.storage_;
 }
 
 //-------------------------------------------------------------
