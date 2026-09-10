@@ -6,6 +6,11 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-09-10
+
+### Changed
+- Framework version bumped to `1.5.0` (`blueprint/blueprint_tadah.toml`), the single source every module's CMake `project(VERSION)` reads. The release is HPO-led; see the Tadah.HPO changelog for the three breaking changes it carries.
+
 ## [1.4.0] — 2026-07-14
 
 ### Added
