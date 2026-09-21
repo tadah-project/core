@@ -271,6 +271,11 @@ std::string join(const std::vector<std::string>& vec);
  */
 std::vector<size_t> parse_indices(const std::string& input);
 
+/** Strict list/range/stride parser. Rejects malformed segments, duplicates,
+ * descending ranges, zero strides and integer overflow. Zero is a valid
+ * value here; one-based callers must reject it at their boundary. */
+std::vector<size_t> parse_indices_strict(const std::string& input);
+
 
 /**
  * @brief Parses a vector of strings containing raw indices from user configuration, handling ranges and steps.

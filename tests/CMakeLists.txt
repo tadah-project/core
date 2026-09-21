@@ -12,3 +12,8 @@ target_include_directories(test_core PUBLIC ${Tadah.CORE_SOURCE_DIR}/external/to
 
 include(Catch.cmake)
 catch_discover_tests(test_core)
+
+# The vendored Catch discovery script folds some existing bracket-containing
+# names into a single nonmatching filter. Register this regression group
+# explicitly as well, so the registered suite actually executes its cases.
+add_test(NAME core_pc_dataset_indices COMMAND test_core "[pc_dataset]")

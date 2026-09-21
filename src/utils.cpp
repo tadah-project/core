@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cmath>
 #include <limits>
+#include <charconv>
 
 namespace tadah {
 namespace core {
@@ -195,6 +196,60 @@ std::string join(const std::vector<std::string>& vec) {
     return oss.str();
 }
 
+namespace {
+// Shared expansion: subtract before incrementing so a range ending at
+// SIZE_MAX cannot wrap, and a zero stride cannot hang either parser.
+void append_index_range(size_t start, size_t end, size_t step,
+                        std::vector<size_t>& result, std::set<size_t>& seen,
+                        bool& duplicates) {
+  if (step == 0) throw std::runtime_error("Index stride must be positive");
+  if (start > end) return;
+  for (size_t i = start;;) {
+    if (seen.insert(i).second) result.push_back(i);
+    else duplicates = true;
+    if (step > end - i) break;
+    i += step;
+  }
+}
+}
+
+std::vector<size_t> parse_indices_strict(const std::string& input) {
+  std::vector<size_t> result;
+  std::set<size_t> seen;
+  bool duplicates = false;
+  auto number = [](const std::string& text) {
+    const std::string s = trim(text);
+    size_t value = 0;
+    const auto parsed = std::from_chars(s.data(), s.data() + s.size(), value);
+    if (s.empty() || parsed.ec != std::errc{} || parsed.ptr != s.data() + s.size())
+      throw std::runtime_error("Invalid index number '" + s + "'");
+    return value;
+  };
+  size_t pos = 0;
+  do {
+    const auto comma = input.find(',', pos);
+    const auto segment = trim(input.substr(pos, comma == std::string::npos
+                                                  ? comma : comma - pos));
+    const auto dash = segment.find('-');
+    const auto colon = segment.find(':');
+    size_t start, end, step = 1;
+    if (dash == std::string::npos) {
+      start = end = number(segment);
+    } else {
+      start = number(segment.substr(0, dash));
+      end = number(segment.substr(dash + 1, colon == std::string::npos
+                                               ? colon : colon - dash - 1));
+      if (colon != std::string::npos) step = number(segment.substr(colon + 1));
+      if (start > end) throw std::runtime_error("Descending index range '" + segment + "'");
+    }
+    append_index_range(start, end, step, result, seen, duplicates);
+    if (duplicates) throw std::runtime_error("Duplicate index in '" + input + "'");
+    if (comma == std::string::npos) break;
+    pos = comma + 1;
+  } while (true);
+  return result;
+}
+
 std::vector<size_t> parse_indices(const std::string& input) {
   std::vector<size_t> result;
   std::set<size_t> uniqueNumbers;
@@ -256,13 +311,7 @@ std::vector<size_t> parse_indices(const std::string& input) {
       }
 
       // Generate numbers in range [start, end] with given step
-      for (size_t i = start; i <= end; i += step) {
-        if (!uniqueNumbers.insert(i).second) {
-          hasDuplicates = true;
-        } else {
-          result.push_back(i);
-        }
-      }
+      append_index_range(start, end, step, result, uniqueNumbers, hasDuplicates);
     }
   }
 
@@ -517,4 +566,3 @@ std::string wrapText(const std::string &text,
 }
 } // namespace core
 } // namespace tadah
-
