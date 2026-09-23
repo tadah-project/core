@@ -6,6 +6,16 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-09-23
+
+### Changed
+- Framework version bumped to `1.5.1` (`blueprint/blueprint_tadah.toml`).
+- The blueprint is a CMake configure dependency: editing it (e.g. a version bump) re-runs the configure step, so the embedded blueprint and `tadah --version` can no longer go stale.
+- The `0.0.0` fallback for a missing version reader is gone: an out-of-date cmake-tools is a configure error.
+
+### Added
+- Strict index parsing for indexed configuration keys.
+
 ## [1.5.0] — 2026-09-10
 
 ### Changed

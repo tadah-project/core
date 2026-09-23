@@ -1077,7 +1077,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_jitters]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: number of randomised warm restarts per ladder rung. Each rung runs jitters+1 candidates (1 warm start + this many perturbed restarts) through the full EXPLORE -> REFINE pipeline and keeps the energy-metric-best — exploration that stops the local search locking into a bad basin. This is why the coalescence guard can fire several times within one rung (once per candidate). Default 2 (3 candidates/rung). 0 = warm start only (cheaper, less robust)."
+description  = "`tadah refit` compact mode: number of randomised warm restarts per ladder rung. Each rung runs jitters+1 candidates (1 warm start + this many perturbed restarts) through the full EXPLORE -> REFINE pipeline and keeps the energy-metric-best — exploration that stops the local search locking into a poor local minimum. This is why the coalescence guard can fire several times within one rung (once per candidate). Default 2 (3 candidates/rung). 0 = warm start only (cheaper, less robust)."
 examples     = ["2", "0", "4"]
 cli_long_flag  = ""
 cli_short_flag = ""

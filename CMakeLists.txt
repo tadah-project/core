@@ -81,15 +81,12 @@ endif()
 tadah_declare_testing()
 
 # Read version from CORE's local blueprint and re-state project() with VERSION.
-# Guarded so an older cmake-tools (without TadahVersion.cmake) still configures.
-if(COMMAND tadah_read_version_from_blueprint)
-  tadah_read_version_from_blueprint(TADAH_VERSION
-    BLUEPRINT_FILE ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml
-    REQUIRED)
-else()
-  set(TADAH_VERSION "0.0.0")
-  message(WARNING "tadah_read_version_from_blueprint not available; defaulting VERSION to 0.0.0")
+if(NOT COMMAND tadah_read_version_from_blueprint)
+  message(FATAL_ERROR "cmake-tools is too old: tadah_read_version_from_blueprint() is missing")
 endif()
+tadah_read_version_from_blueprint(TADAH_VERSION
+  BLUEPRINT_FILE ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml
+  REQUIRED)
 project(Tadah.CORE VERSION ${TADAH_VERSION} LANGUAGES CXX)
 message(STATUS "Tadah.CORE version: ${TADAH_VERSION}")
 
@@ -100,6 +97,10 @@ tadah_get_git_branch(GIT_BRANCH)
 message(STATUS "${PROJECT_NAME} module is using GIT_BRANCH:  ${GIT_BRANCH}")
 
 #4. Generate blueprint files
+# The blueprint is embedded verbatim (it also carries the version printed by
+# `tadah --version`), so editing it must re-run the configure step.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml)
 file(READ ${PROJECT_SOURCE_DIR}/blueprint/blueprint_tadah.toml
      BLUEPRINT_CONTENT)
 
