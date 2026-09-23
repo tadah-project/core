@@ -15,10 +15,10 @@
  *      [META]
  *      schema_version = 1
  *
- *      [BASIN_POOL]
- *      n_basins = 5
- *      basin_0_loss = 1.23e-2
- *      basin_0_params = 1.0 2.5 3e-3
+ *      [OPTIMIZER_STATE]
+ *      n_evals = 120
+ *      best_loss = 1.23e-2
+ *      best_params = 1.0 2.5 3e-3
  *      ...
  *
  *  Sections are delimited by [TAG] lines. Keys and values are separated
@@ -41,8 +41,8 @@ namespace tadah {
 namespace core {
 
 /* Thrown by long-running loops when SignalHandler::stop_requested() turns
- * true. The HPO harness catches this in hpo_run() to drive a clean
- * checkpoint flush + log.finish() before exiting. */
+ * true. The HPO harness catches this in hpo_run() to flush its result
+ * files and close the journal (log.finish()) before exiting. */
 struct ShutdownRequested : public std::exception {
     const char* what() const noexcept override {
         return "shutdown requested (SIGINT/SIGTERM/SIGUSR2)";

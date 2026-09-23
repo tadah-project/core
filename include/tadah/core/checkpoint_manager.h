@@ -4,18 +4,21 @@
 /*
  *  CheckpointManager — singleton coordinator for checkpoint participants.
  *
- *  Lifecycle in HPO:
+ *  No Tadah module registers participants at present: HPO's checkpoint
+ *  resume was removed in 1.5.1 together with the BASINS strategies that
+ *  used it. The intended lifecycle for a host program:
  *    1. main() calls SignalHandler::install().
- *    2. main() calls instance().set_path("checkpoint.tadah") and
+ *    2. main() calls instance().set_path(<file>) and
  *       set_period_seconds(...) / set_period_evals(...) from the parsed
  *       config.
  *    3. Each long-running subsystem registers itself via register_(this).
  *       Order matters only insofar as load() is replayed in registration
- *       order — register lower-level state first (HPOLog, BasinPool)
- *       before higher-level (BasinsPolicy round/stage cursor).
+ *       order — register lower-level state first (e.g. a journal's
+ *       counters) before higher-level state (e.g. an optimiser's round
+ *       cursor).
  *    4. main() calls try_load() exactly once. If a file existed, it
  *       parses it and replays load() on every registered participant.
- *    5. The HPO eval loop calls tick_eval(global_eval) after every
+ *    5. The evaluation loop calls tick_eval(global_eval) after every
  *       evaluation. The manager fires save_now() on schedule.
  *    6. SignalHandler-driven shutdown calls request_flush(); the next
  *       safe point (tick_eval / explicit save_now) writes the final

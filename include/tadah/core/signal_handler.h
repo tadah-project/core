@@ -33,7 +33,7 @@ public:
     static void install();
 
     /* True once any of the watched signals has been delivered. Polled
-     * by the HPO per-eval loop and BasinsPolicy stage boundaries. */
+     * by the HPO per-eval loop (HPO_Host::operator()). */
     static bool stop_requested();
 
     /* Numeric signal that triggered the stop (0 if none yet). */
