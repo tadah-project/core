@@ -12,9 +12,14 @@ versioning follows the umbrella project (Tadah.MLIP).
 - Framework version bumped to `1.5.1` (`blueprint/blueprint_tadah.toml`).
 - The blueprint is a CMake configure dependency: editing it (e.g. a version bump) re-runs the configure step, so the embedded blueprint and `tadah --version` can no longer go stale.
 - The `0.0.0` fallback for a missing version reader is gone: an out-of-date cmake-tools is a configure error.
+- Tests take Catch2 and its test discovery from cmake-tools (`tadah_setup_tests()`, `include(Catch)`). The vendored `tests/catch2/catch.hpp`, `tests/Catch.cmake` and `tests/CatchAddTests.cmake` are removed, and so is the test-local `Catch2` target, whose include directory did not exist.
+- cmake-tools is fetched at `v1-dev` instead of `main`.
 
 ### Added
 - Strict index parsing for indexed configuration keys.
+
+### Fixed
+- **199 of the 249 unit tests never ran under CTest.** The test name `histogram fixed-bin counts samples in [low, high)` has an unbalanced `[`, and the vendored Catch discovery script split the test listing through a CMake list, so that name and the 198 listed after it became one CTest entry. It matched no test case and still passed. With cmake-tools' discovery every test case is registered exactly once and an entry that matches nothing fails (`--warn NoTests`); all 249 run and pass. The explicit `core_pc_dataset_indices` entry, a workaround for this defect, is removed (its two cases are discovered).
 
 ## [1.5.0] — 2026-09-10
 
