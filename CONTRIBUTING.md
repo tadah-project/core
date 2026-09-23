@@ -16,7 +16,7 @@ CORE depends only on the
 (fetched automatically) and a C++17 compiler.
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
 cmake --build build -j
 ctest --test-dir build/tests --output-on-failure
 ```
