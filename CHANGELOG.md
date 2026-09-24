@@ -14,6 +14,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 - The `0.0.0` fallback for a missing version reader is gone: an out-of-date cmake-tools is a configure error.
 - Tests take Catch2 and its test discovery from cmake-tools (`tadah_setup_tests()`, `include(Catch)`). The vendored `tests/catch2/catch.hpp`, `tests/Catch.cmake` and `tests/CatchAddTests.cmake` are removed, and so is the test-local `Catch2` target, whose include directory did not exist.
 - cmake-tools is fetched at `v1-dev` instead of `main`.
+- The `EAMFAST` description says that each collapse table is certified when the potential is loaded (relative tolerance 1e-9 for the value and the derivative, the error of each table segment bounded from 31 check points), that the fast path evaluates the analytic function below the certified range, that a single failing segment (a basis knot, a switching-cutoff junction) ends that range, and what the LAMMPS log line reports. It claimed about 1e-9 relative accuracy at every distance and "typically 5-10x faster force calls"; it now gives measured speed-ups (1.6x to 4.5x in 250-atom MD runs, growing with the cost of the descriptors).
 - The blueprint text of the `tadah refit` `OPTIMIZER` block (the `OPTIMIZER` key on the configuration-keys page and the stage-pipeline paragraph of `tadah refit --help`) lists the keys each stage reads and says that `ALGO` is required and any other key is an error, as `tadah refit` now enforces. It said the block took the stopping criteria of the `tadah hpo` `OPTIMIZER` block, `FTOL_ABS` and `XTOL_ABS` included.
 
 ### Added
