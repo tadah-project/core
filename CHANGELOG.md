@@ -14,6 +14,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 - The `0.0.0` fallback for a missing version reader is gone: an out-of-date cmake-tools is a configure error.
 - Tests take Catch2 and its test discovery from cmake-tools (`tadah_setup_tests()`, `include(Catch)`). The vendored `tests/catch2/catch.hpp`, `tests/Catch.cmake` and `tests/CatchAddTests.cmake` are removed, and so is the test-local `Catch2` target, whose include directory did not exist.
 - cmake-tools is fetched at `v1-dev` instead of `main`.
+- The blueprint text of the `tadah refit` `OPTIMIZER` block (the `OPTIMIZER` key on the configuration-keys page and the stage-pipeline paragraph of `tadah refit --help`) lists the keys each stage reads and says that `ALGO` is required and any other key is an error, as `tadah refit` now enforces. It said the block took the stopping criteria of the `tadah hpo` `OPTIMIZER` block, `FTOL_ABS` and `XTOL_ABS` included.
 
 ### Added
 - Strict index parsing for indexed configuration keys.
