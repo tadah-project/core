@@ -31,8 +31,21 @@ struct BlueprintKey {
   std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
   std::vector<std::string> cli_needs;             ///< List of CLI keys/options that are required for this CLI option
   bool cli_required;                              ///< Indicates if required in a cli context
+  /**
+   * Non-empty for a deprecated key: why it is deprecated and what replaces
+   * it (blueprint field `deprecated`). A configuration or potential file may
+   * still contain the key; its value is checked against the key's format,
+   * then CoreUserConfigParser writes a notice to standard error once per
+   * parse and does not store it.
+   * A deprecated key has no default_value (Context::contains() would insert
+   * it), no CLI flag and no examples.
+   */
+  std::string deprecated;
 
   BlueprintKey() : cli_required(false) {}
+
+  /// True if the blueprint marks this key as deprecated.
+  bool isDeprecated() const { return !deprecated.empty(); }
 };
 struct BlueprintKeyGroup {
   std::string groupName;                          ///< Name of the group 
@@ -152,15 +165,34 @@ public:
   static std::unordered_map<std::string, BlueprintKey> getInternalKeysMap();
 
   /**
+   * @brief Builds one BlueprintKey from its (inheritance-expanded) TOML table.
+   *
+   * This is the constructor used for every key of the embedded blueprint;
+   * it is public so that the per-key rules can be checked directly.
+   * value_type, value_format and value_N are mandatory. A `deprecated`
+   * field must be a non-empty string, and a deprecated key must define
+   * neither `default_value`, a CLI flag nor examples (after inheritance:
+   * `examples = []` overrides those of a TYPES table).
+   *
+   * @param fullKey Fully qualified key name (used in error messages).
+   * @param table TOML table of the key.
+   * @throws std::runtime_error If a mandatory field is missing or a rule is
+   *         violated.
+   */
+  static BlueprintKey buildKey(const std::string &fullKey,
+                               const toml::value &table);
+
+  /**
  * @brief Computes the closest matching key name by measuring the edit distance to each valid blueprint key.
  *
  * The method calculates the Levenshtein distance between the provided key and each key in the map, returning
- * the one with the smallest distance. This behavior helps guide users toward valid keys when typos or
+ * the one with the smallest distance. Deprecated keys are skipped. This behavior helps guide users toward valid keys when typos or
  * similar mistakes are made in configuration files or command-line input.
  *
  * @param key The user-provided (potentially erroneous) key.
  * @param map The map of valid key names associated with BlueprintKey objects.
- * @return The key name with the smallest edit distance or an empty string if the map is empty.
+ * @return The key name with the smallest edit distance, or an empty string if the map holds no
+ *         key that is not deprecated.
  *
  * Example usage:
  * @code

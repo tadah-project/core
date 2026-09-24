@@ -15,6 +15,12 @@
 # - description: Short explanation. (used by cli for a brief description)
 # - examples: Array of valid example usage strings.
 # - default_value: Default value (optional).
+# - deprecated: Reason and replacement, for a key that is only still accepted
+#   (optional). A configuration or potential file may contain the key; its value
+#   is validated, a warning is written to standard error once per parse and the
+#   key is not stored.
+#   A deprecated key must not have a default_value, a CLI flag or examples
+#   (`examples = []` overrides those of an inherited TYPES table).
 
 # Some ALLOWED_KEYS keys can be set via CLI flags or options. These keys have additional fields:
 # CLI-specific fields:
@@ -1638,19 +1644,21 @@ higher-dimensional feature space.
 
 [ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
-default_value = ["50"]
-description = """The number of structures in a single MPI work package."""
+description = """Number of structures in one MPI work package of the removed MPI training build."""
+deprecated = """Removed in 1.5.1 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
+examples = []
 
 [ALLOWED_KEYS.MBLOCK]
 INHERIT = ["TYPES.UINT"]
-default_value = ["64"]
-description = """ScalaPACK row block size MB."""
-is_internal = [false]
+description = """ScaLAPACK row block size MB of the removed MPI training build."""
+deprecated = """Removed in 1.5.1 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
+examples = []
 
 [ALLOWED_KEYS.NBLOCK]
 INHERIT = ["TYPES.UINT"]
-default_value = ["64"]
-description = """ScalaPACK column block size NB."""
+description = """ScaLAPACK column block size NB of the removed MPI training build."""
+deprecated = """Removed in 1.5.1 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
+examples = []
 
 [ALLOWED_KEYS.FIXWEIGHT]
 INHERIT = ["TYPES.DOUBLES"]

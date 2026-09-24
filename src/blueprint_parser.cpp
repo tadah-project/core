@@ -242,6 +242,37 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     item.cli_required = false;
   }
 
+  // Deprecated keys: still accepted in files, warned about and ignored by
+  // CoreUserConfigParser. A default would be inserted by Context::contains()
+  // and so reappear in every potential written afterwards, and a CLI flag
+  // would offer the key to new users.
+  if (table.contains("deprecated")) {
+    const toml::value &node = table.at("deprecated");
+    const std::string reason =
+        node.is_string() ? toml::get<std::string>(node) : std::string();
+    if (reason.find_first_not_of(" \t\r\n") == std::string::npos) {
+      throw std::runtime_error(
+          "'deprecated' must be a non-empty string (the reason and what "
+          "replaces the key) in key: " + fullKey);
+    }
+    item.deprecated = reason;
+    if (!item.default_value.empty()) {
+      throw std::runtime_error("Deprecated key " + fullKey +
+                               " must not define default_value");
+    }
+    if (!item.cli_long_flag.empty() || !item.cli_short_flag.empty()) {
+      throw std::runtime_error("Deprecated key " + fullKey +
+                               " must not define a CLI flag");
+    }
+    // Examples (the config-keys page, the invalid-value error) would show
+    // how to use a key that files should drop. `examples = []` also
+    // overrides the examples of an inherited TYPES table.
+    if (!item.examples.empty()) {
+      throw std::runtime_error("Deprecated key " + fullKey +
+                               " must not define examples (set examples = [])");
+    }
+  }
+
   return item;
 }
 
@@ -793,6 +824,11 @@ BlueprintParser::getTasksMapRef() {
   return blueprintTasksMap;
 }
 
+BlueprintKey BlueprintParser::buildKey(const std::string &fullKey,
+                                       const toml::value &table) {
+  return buildBlueprintKey(fullKey, table);
+}
+
 std::string BlueprintParser::findClosestKey(
     const std::string &key,
     const std::unordered_map<std::string, BlueprintKey> &map) {
@@ -840,8 +876,11 @@ std::string BlueprintParser::findClosestKey(
   std::string bestKey;
 
   // Loop over all keys in the map, computing the edit distance and tracking the
-  // minimal result
+  // minimal result. Deprecated keys are never suggested.
   for (const auto &pair : map) {
+    if (pair.second.isDeprecated()) {
+      continue;
+    }
     int dist = computeLevenshteinDistance(key, pair.first);
     if (dist < bestDistance) {
       bestDistance = dist;

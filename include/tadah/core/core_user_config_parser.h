@@ -12,6 +12,14 @@ namespace core {
  * This implementation assumes that the configuration file contains one key/value pair per line
  * (ignoring blank lines and comments). It validates every key against the allowed keywords
  * provided by the blueprint (via Context). No structural grouping (global vs. task) is performed.
+ *
+ * A key the blueprint marks as deprecated (BlueprintKey::deprecated) is accepted so that older
+ * configuration and potential files still load: its value is validated like any other, a
+ * notice naming the key and the reason (`WARNING: Deprecated key MBLOCK is ignored: ...`) is
+ * written to standard error once per parse (a CONFIG include chain is one parse), and the key
+ * is not stored in the returned Context. The notice bypasses the Logger, so neither the Logger
+ * level nor VERBOSE suppresses it: pair_style tadah in LAMMPS, which leaves the Logger at
+ * ERROR, shows it too.
  */
 class CoreUserConfigParser : public IUserConfigParser {
 public:

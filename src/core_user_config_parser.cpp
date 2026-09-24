@@ -4,6 +4,7 @@
 #include "tadah/core/logger.h"
 #include "tadah/core/utils.h"
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
@@ -27,6 +28,59 @@ namespace {
    * finishes, it is popped. If parseDepth resets to zero, the chain is cleared.
    */
   static thread_local std::vector<std::string> configChain;
+
+  /**
+   * @brief Deprecated keys already reported during the current top-level
+   *        parse (nested CONFIG files included).
+   *
+   * A deprecated key is reported once per parse, however many lines or
+   * CONFIG files repeat it. Cleared with configChain.
+   */
+  static thread_local std::unordered_set<std::string> reportedDeprecated;
+
+  /**
+   * @brief Writes the notice for a deprecated key to standard error.
+   *
+   * Deliberately not a Logger message: the notice must reach every user of
+   * the file whatever the Logger level, including pair_style tadah in
+   * LAMMPS (which leaves the Logger at ERROR) and a file whose VERBOSE 0
+   * line lowered the level before the key. The line is composed first and
+   * written with one insertion; std::cerr is unit-buffered, so it is
+   * flushed at once.
+   */
+  void reportDeprecatedKey(const std::string &key, const std::string &reason) {
+    std::cerr << ("WARNING: Deprecated key " + key + " is ignored: " + reason +
+                  "\n");
+  }
+
+  /**
+   * @brief One parse() call: tracks the recursion depth and resets the
+   *        per-parse state at the start and at the end of a top-level parse.
+   *
+   * RAII, so that a parse that throws (a malformed line, a missing CONFIG
+   * file) cannot leave the depth raised: the next parse on this thread is
+   * then a top-level parse again, with a fresh CONFIG chain and fresh
+   * deprecation reports.
+   */
+  class ParseScope {
+  public:
+    ParseScope() {
+      if (parseDepth == 0) reset();
+      ++parseDepth;
+    }
+    ~ParseScope() {
+      --parseDepth;
+      if (parseDepth == 0) reset();
+    }
+    ParseScope(const ParseScope &) = delete;
+    ParseScope &operator=(const ParseScope &) = delete;
+
+  private:
+    static void reset() {
+      configChain.clear();
+      reportedDeprecated.clear();
+    }
+  };
 
   /**
    * @brief Parse lines into an existing Context object.
@@ -114,9 +168,18 @@ namespace {
       }
       // validate entry against blueprint schema
       std::string val = removeFirstWord(rawLine, key);
-      bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyMap.at(uKey));
+      const BlueprintKey &keyInfo = keyMap.at(uKey);
+      bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyInfo);
       if (!valid_schema) {
         throw std::runtime_error("Invalid schema for key: " + key);
+      }
+      if (keyInfo.isDeprecated()) {
+        // Accepted so that older files still load, but never stored: the
+        // key has no effect and must not be written back to a potential.
+        if (reportedDeprecated.insert(uKey).second) {
+          reportDeprecatedKey(uKey, keyInfo.deprecated);
+        }
+        continue;
       }
       if (uKey == "CONFIG") {
         // CONFIG is a special case; check for circular dependency
@@ -158,19 +221,13 @@ namespace {
 } // end anonymous namespace
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
-  // Check if this is a top-level parse
-  if (parseDepth == 0) {
-    // Clear the chain before starting a fresh top-level parse
-    configChain.clear();
-  }
-  ++parseDepth; // Increase recursion depth
+  ParseScope scope;
 
   std::ifstream infile(filename.c_str());
   if (!infile.is_open()) {
     Logger::instance().log(
         LogLevel::ERROR,
         "CoreUserConfigParser::parse -> Failed to open file: ", filename);
-    --parseDepth; 
     throw std::runtime_error("Failed to open config file: " + filename);
   }
 
@@ -185,22 +242,11 @@ Context CoreUserConfigParser::parse(const std::string &filename) const {
 
   Context ctx;
   parseLines(lines, ctx);
-
-  --parseDepth; // Decrease recursion depth
-  // If returning to top-level, reset chain
-  if (parseDepth == 0) {
-    configChain.clear();
-  }
-
   return ctx;
 }
 
 Context CoreUserConfigParser::parse(std::istream &in) const {
-  // Check if this is a top-level parse
-  if (parseDepth == 0) {
-    configChain.clear();
-  }
-  ++parseDepth;
+  ParseScope scope;
 
   std::vector<std::string> lines;
   {
@@ -212,30 +258,15 @@ Context CoreUserConfigParser::parse(std::istream &in) const {
 
   Context ctx;
   parseLines(lines, ctx);
-
-  --parseDepth;
-  if (parseDepth == 0) {
-    configChain.clear();
-  }
-
   return ctx;
 }
 
 Context
 CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
-  if (parseDepth == 0) {
-    configChain.clear();
-  }
-  ++parseDepth;
+  ParseScope scope;
 
   Context ctx;
   parseLines(lines, ctx);
-
-  --parseDepth;
-  if (parseDepth == 0) {
-    configChain.clear();
-  }
-
   return ctx;
 }
 
