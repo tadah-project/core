@@ -27,8 +27,8 @@ namespace stats {
  *  [6] p90, [7] p95, [8] p99, [9] mean, [10] std
  *
  *  These indices match the comments in `summary_percentiles` (see
- *  CORE/include/tadah/core/stats/percentiles.h) and the metadata
- *  examples in the merry-peacock plan. They are referenced by index in
+ *  CORE/include/tadah/core/stats/percentiles.h). The descriptors'
+ *  metadata (MODELS, `DescriptorMeta`) refer to them by index in their
  *  `BoundSuggester` closures, so DO NOT renumber.
  */
 constexpr std::size_t IDX_P1   = 0;

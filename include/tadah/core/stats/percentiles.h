@@ -92,8 +92,8 @@ multi_percentile(const std::vector<double>& v,
  *  pipeline (DataStats etc.): {p1, p5, p10, p25, p50, p75, p90, p95, p99,
  *  mean, std}.
  *
- *  Indices match the comments in DataStats / DescriptorMeta examples in
- *  the merry-peacock plan: e.g. p10 is index 2.
+ *  Indices match the IDX_* constants of DataStats (data_stats.h), which
+ *  the descriptors' metadata use: e.g. p10 is index 2 (IDX_P10).
  */
 inline std::array<double, 11>
 summary_percentiles(const double* data, std::size_t n) {
