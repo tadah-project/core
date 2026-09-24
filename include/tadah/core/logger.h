@@ -15,10 +15,6 @@
 
 #include <tadah/core/utils.h>
 
-#ifdef TADAH_BUILD_MPI
-  #include <mpi.h>
-#endif
-
 namespace tadah {
 namespace core {
 
@@ -136,11 +132,6 @@ private:
     std::lock_guard<std::mutex> lock(mutex_);
     std::ostringstream oss;
     oss << "[" << getCurrentTime() << "] ";
-#ifdef TADAH_BUILD_MPI
-    int worldRank = -1;
-    MPI_Comm_rank(MPI_COMM_WORLD, &worldRank);
-    oss << "Rank " << worldRank << " ";
-#endif
     if (!task.empty())
       oss << "[" << taskNorm << "] ";
     oss << logLevelToString(messageLevel) << ": ";
