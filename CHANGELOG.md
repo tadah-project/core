@@ -17,9 +17,17 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ### Added
 - Strict index parsing for indexed configuration keys.
+- Deprecated configuration keys: the blueprint field `deprecated` holds the reason and the replacement. `CoreUserConfigParser` accepts a deprecated key, checks its value against the key's format, writes one notice per key and parse to standard error (`WARNING: Deprecated key MBLOCK is ignored: …`; a `CONFIG` include chain is one parse) and does not store it. The notice bypasses the `Logger`, so neither the log level nor a `VERBOSE` line suppresses it, and `pair_style tadah` in LAMMPS (which leaves the `Logger` at `ERROR`) shows it too. `BlueprintParser::buildKey` rejects a deprecated key with a `default_value` (`Context::contains()` would insert it, and it would reappear in every written potential), a CLI flag or examples (the configuration-keys page and the invalid-value error would show how to use it; `examples = []` overrides those of an inherited `TYPES` table), and `findClosestKey` never suggests one.
+
+### Deprecated
+- `MPIWPCKG`, `MBLOCK` and `NBLOCK`, the keys of the legacy MPI training build removed in 1.5.1. Configuration and potential files that contain them still load, with a warning on standard error, and the values are ignored. The keys lost their default values, so a Context never holds them and a newly written potential never contains them.
+
+### Removed
+- The `TADAH_BUILD_MPI` branch of `Logger::log` (an `MPI_Comm_rank` prefix). The flag was defined for MLIP and HPO but not for CORE and MODELS, so the two sides compiled different `Logger::log` bodies (an ODR violation).
 
 ### Fixed
 - **199 of the 249 unit tests never ran under CTest.** The test name `histogram fixed-bin counts samples in [low, high)` has an unbalanced `[`, and the vendored Catch discovery script split the test listing through a CMake list, so that name and the 198 listed after it became one CTest entry. It matched no test case and still passed. With cmake-tools' discovery every test case is registered exactly once and an entry that matches nothing fails (`--warn NoTests`); all 249 run and pass. The explicit `core_pc_dataset_indices` entry, a workaround for this defect, is removed (its two cases are discovered).
+- A `CoreUserConfigParser::parse` that threw (an invalid key or value, a missing `CONFIG` file) left the parser's recursion depth raised, so the next parse on that thread was treated as nested and did not reset its `CONFIG` chain. An RAII scope restores the depth on every exit.
 
 ## [1.5.0] — 2026-09-10
 
