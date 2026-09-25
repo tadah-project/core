@@ -1,0 +1,198 @@
+// The blueprint field `allowed_values` (BlueprintKey::allowed_values): the
+// only values a STRING key takes. BlueprintParser checks the field;
+// CoreUserConfigParser rejects any other value at the line that sets it --
+// the line of the file, and the file, also for a block of it such as a
+// TASK section -- and so does the CLI path (validateWithBlueprint). EMBF0 (ZERO|FREE,
+// the DM_REAM embedding reference) is the first key that uses it: a
+// misspelt value used to reach the model and fail only when a DM_REAM
+// descriptor was built -- or, in a potential without one, be dropped with
+// a warning.
+
+#include "catch2/catch.hpp"
+
+#include <tadah/core/blueprint_parser.h>
+#include <tadah/core/context.h>
+#include <tadah/core/core_user_config_parser.h>
+#include <tadah/core/logger.h>
+
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <toml.hpp>
+#include <unistd.h>
+#include <vector>
+
+using namespace tadah::core;
+using Catch::Matchers::Contains;
+
+namespace {
+
+/* One STRING key table after INHERIT expansion, plus `extra_fields`. */
+toml::value string_key(const std::string &extra_fields,
+                       const std::string &examples =
+                           "examples = [\"ZERO\", \"FREE\"]\n",
+                       const std::string &value_type = "[\"STRING\"]") {
+  const std::string text = "[KEY]\n"
+                           "value_type = " + value_type + "\n"
+                           "value_format = [\"<string>\"]\n"
+                           "value_N = [1]\n"
+                           "description = \"A key.\"\n" +
+                           examples + extra_fields;
+  std::istringstream in(text);
+  return toml::find(toml::parse(in), "KEY");
+}
+
+/* Silences the Logger's ERROR lines of a rejected value (they go to
+ * std::cout); restores stream and level afterwards. */
+class Quiet {
+public:
+  Quiet()
+      : level_(Logger::instance().getLogLevel()),
+        old_(std::cout.rdbuf(out_.rdbuf())) {}
+  ~Quiet() {
+    std::cout.rdbuf(old_);
+    Logger::instance().setLogLevel(level_);
+  }
+  std::string out() const { return out_.str(); }
+
+private:
+  LogLevel level_;
+  std::ostringstream out_;
+  std::streambuf *old_;
+};
+
+} // namespace
+
+TEST_CASE("Blueprint: EMBF0 takes ZERO or FREE, default ZERO",
+          "[BlueprintParser][allowed_values][embf0]") {
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("EMBF0");
+  CHECK(k.allowed_values == std::vector<std::string>{"ZERO", "FREE"});
+  CHECK(k.default_value == std::vector<std::string>{"ZERO"});
+  CHECK(k.value_format == std::vector<std::string>{"ZERO|FREE"});
+  /* An ordinary key has no list. */
+  CHECK(BlueprintParser::getKeysMapRef().at("DBFILE").allowed_values.empty());
+}
+
+TEST_CASE("BlueprintParser::buildKey reads `allowed_values`",
+          "[BlueprintParser][allowed_values]") {
+  CHECK(BlueprintParser::buildKey("KEY", string_key("")).allowed_values.empty());
+  const BlueprintKey k = BlueprintParser::buildKey(
+      "KEY", string_key("allowed_values = [\"ZERO\", \"FREE\"]\n"
+                        "default_value = [\"zero\"]\n"));
+  CHECK(k.allowed_values == std::vector<std::string>{"ZERO", "FREE"});
+}
+
+TEST_CASE("BlueprintParser::buildKey rejects an inconsistent allowed_values",
+          "[BlueprintParser][allowed_values]") {
+  SECTION("an empty list or one that is not a list of strings") {
+    for (const std::string bad :
+         {"allowed_values = []\n", "allowed_values = \"ZERO\"\n",
+          "allowed_values = [1, 2]\n", "allowed_values = [\"\"]\n"}) {
+      INFO(bad);
+      REQUIRE_THROWS_WITH(BlueprintParser::buildKey("KEY", string_key(bad)),
+                          Contains("'allowed_values' must be a non-empty "
+                                   "list of non-empty strings") &&
+                              Contains("KEY"));
+    }
+  }
+  SECTION("a key that does not hold one string") {
+    REQUIRE_THROWS_WITH(
+        BlueprintParser::buildKey(
+            "KEY", string_key("allowed_values = [\"1\", \"2\"]\n",
+                              "examples = [\"1\"]\n", "[\"INT\"]")),
+        Contains("allowed_values") && Contains("KEY") &&
+            Contains("value_type STRING"));
+  }
+  SECTION("a default outside the list") {
+    REQUIRE_THROWS_WITH(
+        BlueprintParser::buildKey(
+            "KEY", string_key("allowed_values = [\"ZERO\", \"FREE\"]\n"
+                              "default_value = [\"NONE\"]\n")),
+        Contains("default_value") && Contains("NONE") && Contains("KEY"));
+  }
+  SECTION("an example outside the list") {
+    REQUIRE_THROWS_WITH(
+        BlueprintParser::buildKey(
+            "KEY", string_key("allowed_values = [\"ZERO\", \"FREE\"]\n",
+                              "examples = [\"ZERO\", \"OTHER\"]\n")),
+        Contains("examples") && Contains("OTHER") && Contains("KEY"));
+  }
+}
+
+TEST_CASE("Config parser: EMBF0 takes ZERO or FREE, any case, and nothing "
+          "else", "[config][allowed_values][embf0]") {
+  SECTION("the two values, in any case, are stored as written") {
+    for (const std::string v : {"ZERO", "FREE", "zero", "Free"}) {
+      INFO(v);
+      Context c;
+      REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(
+                          std::vector<std::string>{"ATOM Ta", "EMBF0 " + v}));
+      REQUIRE(c.stored_value("EMBF0").has_value());
+      CHECK(*c.stored_value("EMBF0") == v);
+    }
+  }
+  SECTION("any other value is an error that names the line, the value and "
+          "the allowed values") {
+    Quiet q;
+    for (const std::string v : {"ZEROO", "NONE", "ZERO,"}) {
+      INFO(v);
+      REQUIRE_THROWS_WITH(
+          CoreUserConfigParser().parse(std::vector<std::string>{
+              "# a comment", "ATOM Ta", "EMBF0 " + v}),
+          Contains("Invalid value for key EMBF0 on line 3: '" + v + "'") &&
+              Contains("allowed: ZERO, FREE"));
+    }
+  }
+  SECTION("a file's error names the file and its line") {
+    Quiet q;
+    const std::string path =
+        "allowed_values_" + std::to_string(::getpid()) + ".tadah";
+    {
+      std::ofstream os(path);
+      os << "# potential\nATOM Ta\n\nEMBF0 frei\n";
+    }
+    struct Remove {
+      std::string p;
+      ~Remove() { std::remove(p.c_str()); }
+    } remove{path};
+    REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(path),
+                        Contains("Invalid value for key EMBF0 on line 4 of " +
+                                 path + ": 'frei'"));
+  }
+  SECTION("a block of a file (a TASK section) names the file's line, not "
+          "the block's") {
+    Quiet q;
+    /* The block starts at line 4 of run.task; its fourth line is line 7. */
+    REQUIRE_THROWS_WITH(
+        CoreUserConfigParser().parse(
+            std::vector<std::string>{"POTENTIAL pot.tadah", "",
+                                     "# the reference", "EMBF0 frei"},
+            4, "run.task"),
+        Contains("Invalid value for key EMBF0 on line 7 of run.task: "
+                 "'frei'"));
+    /* A block with no source names its line only. */
+    REQUIRE_THROWS_WITH(
+        CoreUserConfigParser().parse(
+            std::vector<std::string>{"EMBF0 frei"}, 12, ""),
+        Contains("Invalid value for key EMBF0 on line 12: 'frei'"));
+  }
+  SECTION("a second value is an error (one value)") {
+    Quiet q;
+    REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
+                            "EMBF0 ZERO FREE"}),
+                        Contains("Invalid schema for key: EMBF0"));
+  }
+}
+
+TEST_CASE("validateWithBlueprint (the CLI and task path) applies "
+          "allowed_values", "[config][allowed_values][embf0]") {
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("EMBF0");
+  Quiet q;
+  CHECK(CoreUserConfigParser::validateWithBlueprint("EMBF0", "FREE", k));
+  CHECK(CoreUserConfigParser::validateWithBlueprint("EMBF0", "zero", k));
+  CHECK_FALSE(CoreUserConfigParser::validateWithBlueprint("EMBF0", "ZEROO", k));
+  CHECK_THAT(q.out(), Contains("Allowed values") && Contains("ZERO") &&
+                          Contains("FREE"));
+}
