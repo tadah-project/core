@@ -1662,19 +1662,19 @@ higher-dimensional feature space.
 [ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
 description = """Number of structures in one MPI work package of the removed MPI training build."""
-deprecated = """Removed in 1.5.1 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
+deprecated = """Removed in 1.6.0 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
 examples = []
 
 [ALLOWED_KEYS.MBLOCK]
 INHERIT = ["TYPES.UINT"]
 description = """ScaLAPACK row block size MB of the removed MPI training build."""
-deprecated = """Removed in 1.5.1 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
+deprecated = """Removed in 1.6.0 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
 examples = []
 
 [ALLOWED_KEYS.NBLOCK]
 INHERIT = ["TYPES.UINT"]
 description = """ScaLAPACK column block size NB of the removed MPI training build."""
-deprecated = """Removed in 1.5.1 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
+deprecated = """Removed in 1.6.0 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. Delete the line."""
 examples = []
 
 [ALLOWED_KEYS.FIXWEIGHT]
