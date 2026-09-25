@@ -6,6 +6,21 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+### Added
+- `number_format.h`: lossless number text. `format_roundtrip()` gives the shortest text that reads back as the identical double (`std::to_chars`); `format_sig()` / `format_sig_chars()` give locale-independent `%.{N}g` (a finite value never renders to text that overflows); `reformat_double_token()` re-renders one token; `to_double()` / `parse_number()` parse like `std::stod`, except that an underflowing literal is a value (the subnormal or ±0) rather than an error; `resolve_pot_digits()` / `pot_digits_warning()` implement the potential-file precision rule below.
+- `to_string_lossless()` (`utils.h`) for scalars, strings and ranges. `to_string(x, n)` is for human-facing text only.
+- `Context::has_stored()` / `Context::stored_value()` look a key up without inserting its blueprint default.
+- `Context::write_potential(os, sig_digits)`, the potential-file writer: the `operator<<` layout, never a NUMERIC line, and every non-integer number of a key with a DOUBLE position rendered with `sig_digits` significant digits; integers, strings, `LIN`/`GEOM`, bools, index patterns and inf/nan are written verbatim.
+
+### Changed
+- **`Context` stores values losslessly.** `add()`, `addInternal()` and the derived `RCUT2BMAX`/`RCUTMBMAX`/`RCUTMAX` keys used 18 fixed decimals: values below 5e-19 became 0 and small values lost digits on every add. `get<double>()` now returns the bit-identical value. The `Context` layout changed: rebuild LAMMPS (ML-TADAH embeds CORE) together with `tadah`.
+- **`NUMERIC` defaults to 18 (was 12), and in potential and dataset files it means significant digits (`%.{N}g`).** 18 reads back bit-identically. An explicit NUMERIC below 17 is honoured with a WARNING that names the fix (delete the NUMERIC line), and NUMERIC is never written into a potential. Loaded values are never limited by NUMERIC. Other outputs (predictions, analysis tables) keep their meaning but are wider by default.
+- Floating-point `std::to_chars` is required (libstdc++ >= 11, libc++ >= 14).
+
+### Fixed
+- `is_number()`, `Checkpoint::get_dbl()` and the blueprint validator's long-line fast path accept subnormal values, which the lossless writers produce (`1e-310`). `is_number()` rejected them, so the HPO WARM reader shifted every later dimension of the key; a checkpointed subnormal read back as missing; and the validator fell back to its slow regex path. Overflow is still rejected.
+- A potential written with a low explicit NUMERIC (1–5, 10, 11, 15 or 16) rendered the `DBL_MAX` `NSTDEV` sentinel of a constant descriptor column as text that overflows (`1.8e+308`), and the file could not be loaded again. Such a value is now truncated toward zero (`1.79e+308`).
+
 ## [1.5.0] — 2026-09-10
 
 ### Changed

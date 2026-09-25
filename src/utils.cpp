@@ -1,4 +1,5 @@
 #include <tadah/core/utils.h>
+#include <tadah/core/number_format.h>
 #include <stdexcept>
 #include <set>
 #include <sstream>
@@ -150,17 +151,11 @@ bool is_integer(const std::string& s) {
     return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
 }
 bool is_number(const std::string& str) {
-    if (str.empty()) return false;
-
-    try {
-        size_t pos;
-        std::stod(str, &pos);
-        return pos == str.size();
-    } catch (std::invalid_argument& e) {
-        return false;
-    } catch (std::out_of_range& e) {
-        return false;
-    }
+    // std::stod semantics over the whole token, but an underflowing literal
+    // (a subnormal such as "1e-310", which the lossless writers produce) is
+    // a number; overflow is not.
+    double v = 0.0;
+    return parse_number(str, v);
 }
 
 std::string trim(const std::string& str) {

@@ -1,7 +1,9 @@
 #include <tadah/core/context.h>
 #include <tadah/core/logger.h>
+#include <tadah/core/number_format.h>
 
 #include <cmath>
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 
@@ -114,6 +116,119 @@ bool Context::contains(const std::string &key) const {
     it = storage_.find(upKey);
   }
   return (it != storage_.end() && !it->second.empty());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// has_stored(key) / stored_value(key, n): no default insertion
+///////////////////////////////////////////////////////////////////////////////
+bool Context::has_stored(const std::string &key) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto it = storage_.find(to_upper(key));
+  return it != storage_.end() && !it->second.empty();
+}
+
+std::optional<std::string> Context::stored_value(const std::string &key,
+                                                 size_t n) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto it = storage_.find(to_upper(key));
+  if (it == storage_.end() || n >= it->second.size()) return std::nullopt;
+  return it->second[n];
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// write_potential(os, sig_digits) / print_NoLock(...)
+///////////////////////////////////////////////////////////////////////////////
+void Context::write_potential(std::ostream &os, int sig_digits) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  print_NoLock(os, true, sig_digits);
+}
+
+namespace {
+// True iff any value_type alternative of the key has a DOUBLE position.
+// Every other position type (INT, UINT, STRING, BOOL, INDEX_PATTERN)
+// either cannot hold a non-integer decimal literal (INT/UINT hold integer
+// literals, which reformat_double_token() leaves verbatim) or never does
+// in practice (STRING positions of DOUBLE-mixed keys are descriptor,
+// element and grid-generator names), so a per-key test is exact for
+// potential files.
+bool has_double_position(const BlueprintKey &bk) {
+  for (const auto &vt : bk.value_type)
+    if (vt.find("DOUBLE") != std::string::npos) return true;
+  return false;
+}
+} // namespace
+
+void Context::print_NoLock(std::ostream &os, bool potential,
+                           int sig_digits) const {
+  const size_t max_key_len = 15;
+  const std::string space = "   ";
+  char buf[kReformatBufferSize];
+
+  // Iterate over all stored key-value pairs.
+  for (auto const &pair : storage_) {
+    const std::string &key = pair.first;
+    const std::vector<std::string> &vals = pair.second;
+
+    // NUMERIC is a writer setting, never part of a potential file.
+    if (potential && key == "NUMERIC") continue;
+
+    // Check the blueprint so we can interpret value_N.
+    const auto bi = findBlueprintKey(key, "ALLOWED_KEYS");
+    if (bi == nullptr || bi->value_N.empty()) {
+      // Key not in blueprint => skip.
+      continue;
+    }
+    // Take the first element of value_N for printing logic.
+    int valN = bi->value_N[0];
+
+    const bool reformat = potential && has_double_position(*bi);
+    auto put = [&](const std::string &v) {
+      if (reformat) {
+        const size_t n = reformat_double_token(v, sig_digits, buf, sizeof buf);
+        if (n) {
+          os.write(buf, static_cast<std::streamsize>(n));
+          return;
+        }
+      }
+      os << v;
+    };
+
+    if (valN > 0) {
+      // Print each value on its own line preceded by key.
+      // Example:
+      // KEY     val1
+      // KEY     val2
+      // ...
+      for (auto const &v : vals) {
+        os << std::left << std::setw(max_key_len) << key << space;
+        put(v);
+        os << "\n";
+      }
+    } else if (valN < 0) {
+      // Print all values on a single line, preceded by key.
+      // Example:
+      // KEY     val1     val2     val3
+      // Format accordingly to the blueprint.
+      os << std::left << std::setw(max_key_len) << key;
+      bool doFormatting = false;
+      for (auto const &v : vals) {
+        bool formatingAvail = false;
+        if (bi->formatting.size() && v.find(bi->formatting[0]) != std::string::npos) {
+          formatingAvail = true;
+        }
+
+        if (formatingAvail && doFormatting) {
+          os << bi->formatting[1] << std::left << std::setw(max_key_len) << key << space;
+        } else {
+          os << space;
+          doFormatting = true;
+        }
+        put(v);
+      }
+      os << "\n";
+    }
+    // valN == 0 => skip printing entirely.
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

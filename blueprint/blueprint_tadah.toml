@@ -777,13 +777,17 @@ cli_required   = false
 [ALLOWED_KEYS.add]
 INHERIT = ["TYPES.DOUBLE"]
 value_format = ["<centre>"]
-description  = "`tadah refit --edit`: insert a basis function at this centre (r in Angstrom for phi/rho, electron density for F) with coefficient 0 — the potential is unchanged until HPO varies the new coefficient."
+description  = "`tadah refit --edit`: insert a basis function at this centre (r in Angstrom for phi/rho, electron density for F) with coefficient 0 — the potential is unchanged until HPO varies the new coefficient (exact unless NUMERIC < 17 applies)."
 long_description = """
 Insert one basis function into the curve selected by --func, centred at the
 given position. The new coefficient (weight for phi/F, density amplitude for
 rho) is 0, so the edited potential predicts EXACTLY like the input — the new
 basis function only adds capacity for a subsequent `tadah hpo` run (its
-OPTIM line is emitted in the regenerated hpotarget).
+OPTIM line is emitted in the regenerated hpotarget). Exact unless the input
+potential carries NUMERIC < 17 (every 1.5.0 `tadah hpo` pot has an
+auto-inserted NUMERIC 12) or one is set for the run: the edited file is then
+written with that many significant digits, with a WARNING; delete the line
+for an exact edit.
 
 Knot families (Knot5/Knot3): the knot position is the only shape parameter
 (--eta is rejected; widths are a pure gauge). --deg 3|5 selects the knot
@@ -1218,10 +1222,34 @@ cli_required     = false
 INHERIT = ["TYPES.UINT"]
 description  = "Numeric output precision."
 long_description = """
-Sets the number of decimal places for output. 
+Sets the precision of numbers in written output files.
+
+Potential files (pot.tadah written by train, refit, refit --edit and hpo) and
+dataset files (written by tadah data convert, merge, split, sample, dedup and
+balance): NUMERIC is the number of SIGNIFICANT digits (printf %.{N}g) of every
+non-integer number of the potential's key/value lines, and of every number of
+a dataset. The default 18 is exact: every double reads back bit-identically
+(17 significant digits always suffice). An explicit NUMERIC below 17 is
+honoured but warned about, because the written file then differs from the
+values in memory. Integers in a potential are always written exactly.
+NUMERIC itself is never written into a potential file; a NUMERIC line found in
+a potential used as a configuration (or edited with refit --edit) is treated
+as an explicit setting. The '#' comment headers of a potential (e.g. the
+header tadah hpo writes) are annotations not governed by NUMERIC; its
+machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact.
+
+The structure exports of tadah data write use significant digits too for
+LAMMPS data files and VASP POSCAR (both read E-notation); the CASTEP cell
+export keeps NUMERIC decimal places.
+
+Values loaded into memory are never limited by NUMERIC, and calculations
+always use full precision.
+
+Other outputs (predictions, analysis tables) keep their established meaning
+of the number of digits written.
 """
-examples     = ["12"]
-default_value = ["12"]
+examples     = ["18"]
+default_value = ["18"]
 cli_long_flag  = "--numeric"
 cli_short_flag = ""
 cli_required   = false
@@ -1886,8 +1914,10 @@ tabulated EAM file:
 - --edit <pot.tadah>: add or remove one basis function of one curve
   (--func {phi|rho|F} with --add <centre> or --remove <centre>). Adding
   uses a zero coefficient, so the potential is unchanged until `tadah hpo`
-  varies the new dimension; removing compensates via the neighbouring
-  coefficients. Writes an edited potential and a regenerated hpotarget.
+  varies the new dimension (exact unless the input potential carries
+  NUMERIC < 17, e.g. the NUMERIC 12 of 1.5.0 hpo pots); removing compensates
+  via the neighbouring coefficients. Writes an edited potential and a
+  regenerated hpotarget.
 - --retarget <file.hpotarget>: rewrite the OPTIM search bounds of an
   existing hpotarget (--pct global or KEY=N per-key percentages,
   --set 'KEY(i)=lo,hi' absolute overrides, --in-place).

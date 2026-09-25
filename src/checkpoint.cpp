@@ -1,4 +1,5 @@
 #include <tadah/core/checkpoint.h>
+#include <tadah/core/number_format.h>
 
 #include <cerrno>
 #include <chrono>
@@ -119,8 +120,8 @@ void Checkpoint::put_vec_int(const std::string& key, const std::vector<long long
 
 std::string Checkpoint::fmt_dbl_(double v)
 {
-    /* 17 significant digits round-trips IEEE 754 double; readers accept
-     * anything std::stod handles. */
+    /* 17 significant digits round-trips IEEE 754 double; get_dbl accepts
+     * anything std::stod handles, plus subnormals (core::to_double). */
     std::ostringstream oss;
     oss << std::setprecision(17) << v;
     return oss.str();
@@ -249,7 +250,9 @@ Checkpoint::get_dbl(const std::string& section, const std::string& key) const
 {
     auto s = get(section, key);
     if (!s) return std::nullopt;
-    try { return std::stod(*s); } catch (...) { return std::nullopt; }
+    // to_double: std::stod that also accepts an underflowing (subnormal)
+    // value, which fmt_dbl_ writes for one.
+    try { return tadah::core::to_double(*s); } catch (...) { return std::nullopt; }
 }
 
 std::optional<bool>

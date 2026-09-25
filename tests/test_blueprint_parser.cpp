@@ -111,11 +111,15 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(numericKey.value_N == std::vector<int>{1});
     REQUIRE(numericKey.description ==
             "Numeric output precision.");
-    REQUIRE(numericKey.examples == std::vector<std::string>{"12"});
+    REQUIRE(numericKey.examples == std::vector<std::string>{"18"});
     
     // Validate CLI-specific fields.
     REQUIRE(numericKey.cli_long_flag == "--numeric");
-    REQUIRE(numericKey.default_value[0] == "12");
+    REQUIRE(numericKey.default_value[0] == "18");
+    // A default-inserted NUMERIC must never lower potential-file precision
+    // below round-trip (resolve_pot_digits treats any stored value as
+    // explicit, so the default has to be lossless on its own).
+    REQUIRE(std::stoi(numericKey.default_value[0]) >= 17);
   }
 
   SECTION("The blueprint map contains only ALLOWED_KEYS entries")
