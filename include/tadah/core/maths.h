@@ -301,16 +301,18 @@ public:
   Matrix3d_T(T &d, size_t r, size_t c):
     Matrix_Base<T>(d,r,c)
   {}
-  inline Vec3d row(size_t r) const
+  /** A copy of row r. The copy is const, so `m.row(r) = v` (which would
+   *  assign to the copy and leave m unchanged) does not compile; write
+   *  elements through operator()(i, j). */
+  inline const Vec3d row(size_t r) const
   {
-    Vec3d temp((*this)[r], (*this)[r+3], (*this)[r+6]);
-    return temp;
+    return Vec3d((*this)[r], (*this)[r+3], (*this)[r+6]);
   }
-  inline Vec3d col(size_t c) const
+  /** A copy of column c; const for the same reason as row(). */
+  inline const Vec3d col(size_t c) const
   {
     size_t s=3*c;
-    Vec3d temp((*this)[s], (*this)[s+1], (*this)[s+2]);
-    return temp;
+    return Vec3d((*this)[s], (*this)[s+1], (*this)[s+2]);
   }
   inline Matrix3d_T<T> transpose() const {
     Matrix3d_T<T> temp;
@@ -500,8 +502,19 @@ public:
     return m[i * cols + j];
   }
 
-  inline Vec3d row(const size_t r) const {
+  /** A copy of row r. The copy is const, so `m.row(r) = v` does not
+   *  compile: it would assign to the copy and leave m unchanged (the MLIP
+   *  DIMER descriptors were once computed from a zero matrix that way).
+   *  Write a row with set_row(). */
+  inline const Vec3d row(const size_t r) const {
     return Vec3d(m[r * cols], m[r * cols + 1], m[r * cols + 2]);
+  }
+
+  /** Set row r to v. */
+  inline void set_row(const size_t r, const Vec3d &v) {
+    m[r * cols]     = v[0];
+    m[r * cols + 1] = v[1];
+    m[r * cols + 2] = v[2];
   }
 
 };
