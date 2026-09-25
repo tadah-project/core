@@ -6,10 +6,10 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
-## [1.5.1] — 2026-09-23
+## [1.6.0] — 2026-09-25
 
 ### Changed
-- Framework version bumped to `1.5.1` (`blueprint/blueprint_tadah.toml`).
+- Framework version bumped to `1.6.0` (`blueprint/blueprint_tadah.toml`).
 - The blueprint is a CMake configure dependency: editing it (e.g. a version bump) re-runs the configure step, so the embedded blueprint and `tadah --version` can no longer go stale.
 - The `0.0.0` fallback for a missing version reader is gone: an out-of-date cmake-tools is a configure error.
 - Tests take Catch2 and its test discovery from cmake-tools (`tadah_setup_tests()`, `include(Catch)`). The vendored `tests/catch2/catch.hpp`, `tests/Catch.cmake` and `tests/CatchAddTests.cmake` are removed, and so is the test-local `Catch2` target, whose include directory did not exist.
@@ -18,15 +18,16 @@ versioning follows the umbrella project (Tadah.MLIP).
 - The blueprint text of the `tadah refit` `OPTIMIZER` block (the `OPTIMIZER` key on the configuration-keys page and the stage-pipeline paragraph of `tadah refit --help`) lists the keys each stage reads and says that `ALGO` is required and any other key is an error, as `tadah refit` now enforces. It said the block took the stopping criteria of the `tadah hpo` `OPTIMIZER` block, `FTOL_ABS` and `XTOL_ABS` included.
 - The same text says that `LIB` is required wherever the block runs an optimiser, naming the library of its `ALGO` (`NLOPT`, `DLIB` or `CERES`), that `LIB` with `ALGO NONE` is an error, and that `MAXEVAL` and `MAXITER` are integers from 1 to 2147483647, as `tadah refit` now enforces. It said `LIB` was needed only where the `ALGO` did not name the library.
 - The same text says that `LIB` with `ALGO UNIFORM` is an error, as with `NONE`, and so is a stopping criterion in a block with `ALGO NONE` or `UNIFORM` unless another stage reads it, and that `MAXEVAL`/`MAXITER` counts the objective evaluations of the NLopt and dlib algorithms exactly and the iterations of Ceres' `LM` and `DOGLEG`, as `tadah refit` now does. It said `UNIFORM` did not check `LIB`.
-- `Mat6R3C::row()` and `Matrix3d::row()`/`col()` return const copies. Assigning to one (`m.row(n) = v`, `m.row(n) += v`, `m.row(n)[k] = x`) compiled and changed the temporary copy instead of the matrix; it is now a compile error. `Mat6R3C::set_row()` writes a row. The MLIP `DIMER` descriptors were computed from a zero displacement matrix this way (fixed in MLIP 1.5.1). Test: compile-time checks in `test_maths.cpp`.
-- The `DIMER` key's description says that a `DIMER` potential is evaluated with every atom as Z=1 (`tadah train`, `tadah predict` and `pair_style tadah`): every pair gets the weight of the Z=1 (H-H) pair, which is 1 unless `WATOM` sets one for H, not the `WATOM` weight of the potential's element. Its `TYPE2B`/`TYPEMB` descriptors must therefore be declared for `* *` element pairs, and a potential naming specific element pairs is refused when it is loaded (MODELS, MLIP and Tadah.LAMMPS 1.5.1).
+- `Mat6R3C::row()` and `Matrix3d::row()`/`col()` return const copies. Assigning to one (`m.row(n) = v`, `m.row(n) += v`, `m.row(n)[k] = x`) compiled and changed the temporary copy instead of the matrix; it is now a compile error. `Mat6R3C::set_row()` writes a row. The MLIP `DIMER` descriptors were computed from a zero displacement matrix this way (fixed in MLIP 1.6.0). Test: compile-time checks in `test_maths.cpp`.
+- The `DIMER` key's description says that a `DIMER` potential is evaluated with every atom as Z=1 (`tadah train`, `tadah predict` and `pair_style tadah`): every pair gets the weight of the Z=1 (H-H) pair, which is 1 unless `WATOM` sets one for H, not the `WATOM` weight of the potential's element. Its `TYPE2B`/`TYPEMB` descriptors must therefore be declared for `* *` element pairs, and a potential naming specific element pairs is refused when it is loaded (MODELS, MLIP and Tadah.LAMMPS 1.6.0).
+- The README badges and links and the pointers to the umbrella's community files (`CITATION.md`, `CONTRIBUTING.md`, …) point to the `v1-dev` line: GitLab `v1-dev`, `https://tadah.readthedocs.io/v1-dev/`. They pointed to `develop`.
 
 ### Added
 - Strict index parsing for indexed configuration keys.
 - Deprecated configuration keys: the blueprint field `deprecated` holds the reason and the replacement. `CoreUserConfigParser` accepts a deprecated key, checks its value against the key's format, writes one notice per key and parse to standard error (`WARNING: Deprecated key MBLOCK is ignored: …`; a `CONFIG` include chain is one parse) and does not store it. The notice bypasses the `Logger`, so neither the log level nor a `VERBOSE` line suppresses it, and `pair_style tadah` in LAMMPS (which leaves the `Logger` at `ERROR`) shows it too. `BlueprintParser::buildKey` rejects a deprecated key with a `default_value` (`Context::contains()` would insert it, and it would reappear in every written potential), a CLI flag or examples (the configuration-keys page and the invalid-value error would show how to use it; `examples = []` overrides those of an inherited `TYPES` table), and `findClosestKey` never suggests one.
 
 ### Deprecated
-- `MPIWPCKG`, `MBLOCK` and `NBLOCK`, the keys of the legacy MPI training build removed in 1.5.1. Configuration and potential files that contain them still load, with a warning on standard error, and the values are ignored. The keys lost their default values, so a Context never holds them and a newly written potential never contains them.
+- `MPIWPCKG`, `MBLOCK` and `NBLOCK`, the keys of the legacy MPI training build removed in 1.6.0. Configuration and potential files that contain them still load, with a warning on standard error, and the values are ignored. The keys lost their default values, so a Context never holds them and a newly written potential never contains them.
 
 ### Removed
 - The `TADAH_BUILD_MPI` branch of `Logger::log` (an `MPI_Comm_rank` prefix). The flag was defined for MLIP and HPO but not for CORE and MODELS, so the two sides compiled different `Logger::log` bodies (an ODR violation).
