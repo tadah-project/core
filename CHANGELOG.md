@@ -6,6 +6,8 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-09-25
+
 ### Added
 - `EMBF0` key (`ZERO` | `FREE`, default `ZERO`): the DM_REAM embedding reference (see Tadah.MODELS). STRING key with an explicit blueprint default, so the DM_REAM constructor materialises it into the model Context and every DM_REAM potential is written with an explicit `EMBF0` line. `refit_constrain_f0` description: effective under `EMBF0 FREE` only.
 - `number_format.h`: lossless number text. `format_roundtrip()` gives the shortest text that reads back as the identical double (`std::to_chars`); `format_sig()` / `format_sig_chars()` give locale-independent `%.{N}g` (a finite value never renders to text that overflows); `reformat_double_token()` re-renders one token; `to_double()` / `parse_number()` parse like `std::stod`, except that an underflowing literal is a value (the subnormal or ±0) rather than an error; `resolve_pot_digits()` / `pot_digits_warning()` implement the potential-file precision rule below.
@@ -14,6 +16,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 - `Context::write_potential(os, sig_digits)`, the potential-file writer: the `operator<<` layout, never a NUMERIC line, and every non-integer number of a key with a DOUBLE position rendered with `sig_digits` significant digits; integers, strings, `LIN`/`GEOM`, bools, index patterns and inf/nan are written verbatim.
 
 ### Changed
+- Framework version bumped to `1.5.1` (`blueprint/blueprint_tadah.toml`), the single source every module's CMake `project(VERSION)` reads. The release carries exact number handling in potential and dataset files, a non-zero exit when the best potential cannot be saved, and the DM_REAM zero-referenced embedding (`EMBF0 ZERO`) as the new default (**BREAKING**: add `EMBF0 FREE` to a 1.5.0 DM_REAM potential to reproduce its energies); see the module changelogs.
 - **`Context` stores values losslessly.** `add()`, `addInternal()` and the derived `RCUT2BMAX`/`RCUTMBMAX`/`RCUTMAX` keys used 18 fixed decimals: values below 5e-19 became 0 and small values lost digits on every add. `get<double>()` now returns the bit-identical value. The `Context` layout changed: rebuild LAMMPS (ML-TADAH embeds CORE) together with `tadah`.
 - **`NUMERIC` defaults to 18 (was 12), and in potential and dataset files it means significant digits (`%.{N}g`).** 18 reads back bit-identically. An explicit NUMERIC below 17 is honoured with a WARNING that names the fix (delete the NUMERIC line), and NUMERIC is never written into a potential. Loaded values are never limited by NUMERIC. Other outputs (predictions, analysis tables) keep their meaning but are wider by default.
 - Floating-point `std::to_chars` is required (libstdc++ >= 11, libc++ >= 14).
