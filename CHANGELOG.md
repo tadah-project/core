@@ -7,6 +7,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 ## [Unreleased]
 
 ### Added
+- `EMBF0` key (`ZERO` | `FREE`, default `ZERO`): the DM_REAM embedding reference (see Tadah.MODELS). STRING key with an explicit blueprint default, so the DM_REAM constructor materialises it into the model Context and every DM_REAM potential is written with an explicit `EMBF0` line. `refit_constrain_f0` description: effective under `EMBF0 FREE` only.
 - `number_format.h`: lossless number text. `format_roundtrip()` gives the shortest text that reads back as the identical double (`std::to_chars`); `format_sig()` / `format_sig_chars()` give locale-independent `%.{N}g` (a finite value never renders to text that overflows); `reformat_double_token()` re-renders one token; `to_double()` / `parse_number()` parse like `std::stod`, except that an underflowing literal is a value (the subnormal or ±0) rather than an error; `resolve_pot_digits()` / `pot_digits_warning()` implement the potential-file precision rule below.
 - `to_string_lossless()` (`utils.h`) for scalars, strings and ranges. `to_string(x, n)` is for human-facing text only.
 - `Context::has_stored()` / `Context::stored_value()` look a key up without inserting its blueprint default.

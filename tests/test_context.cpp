@@ -757,6 +757,27 @@ TEST_CASE("Context has_stored/stored_value never insert defaults",
   CHECK_FALSE(c.stored_value("WEIGHTS", 2).has_value());
 }
 
+TEST_CASE("EMBF0: blueprint default ZERO materialises only on get/contains",
+          "[context][has_stored][embf0]") {
+  // DM_REAM relies on this: its get() materialises "EMBF0 ZERO" into the
+  // model Context (so every DM_REAM potential is written with the key),
+  // while every other reader probes with has_stored()/stored_value().
+  Context c;
+  CHECK_FALSE(c.has_stored("EMBF0"));
+  CHECK_FALSE(c.stored_value("EMBF0").has_value());
+  CHECK(c.size() == 0);
+  CHECK(c.get<std::string>("EMBF0") == "ZERO");
+  CHECK(c.stored_value("EMBF0") == std::optional<std::string>("ZERO"));
+
+  Context d;
+  d.add("EMBF0", std::string("FREE"));
+  CHECK(d.get<std::string>("EMBF0") == "FREE");
+
+  std::ostringstream os;
+  os << c;
+  CHECK(os.str().find("EMBF0") != std::string::npos);
+}
+
 namespace {
 // Fixture covering every position type a potential file carries.
 Context make_pot_fixture() {
