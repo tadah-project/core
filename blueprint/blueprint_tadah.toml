@@ -434,6 +434,53 @@ quintic. A data_keys entry: mJoin-splittable, never OPTIM. Written by
 """
 examples = ["KDEGEMB 5 5 3"]
 
+[ALLOWED_KEYS.EMBF0]
+INHERIT = ["TYPES.STRING"]
+# Explicit default "ZERO": DM_REAM reads the key in its constructor and in
+# reinit(), which materialises the default into the model Context. Every
+# DM_REAM potential tadah writes therefore carries an explicit EMBF0 line, and
+# binaries whose blueprint predates the key refuse such files ("Invalid key:
+# EMBF0") instead of silently evaluating the raw embedding. Only DM_REAM reads
+# the key through Context::get; every other reader uses stored_value(), and the
+# potential writers strip it from potentials without a DM_REAM block.
+default_value = ["ZERO"]
+description  = "DM_REAM embedding reference: ZERO (default) or FREE. ZERO evaluates the zero-referenced embedding basis g~_m(rho) = g_m(rho) - g_m(0), so F(0) = 0 exactly for any weights and any CEMBFUNC/SEMBFUNC/KDEGEMB: an isolated atom has zero embedding energy by construction. FREE is the raw basis of tadah 1.5.0 and earlier, where F(0) = sum_m w_m g_m(0). A property of the potential, written into every DM_REAM pot.tadah; a potential without the key is read as ZERO. Not an OPTIM target."
+long_description = """
+EMBF0 selects the reference of the DM_REAM embedding function
+F(rho) = sum_m w_m g_m(rho).
+
+ZERO (default): every embedding basis function is replaced by
+g~_m(rho) = g_m(rho) - g_m(0), with g_m(0) computed from the CEMBFUNC,
+SEMBFUNC and KDEGEMB values actually evaluated (per HPO candidate as well).
+F(0) = 0 exactly, so with a linear model and BIAS false an isolated atom has
+energy 0 exactly, on every path (tadah predict/train/hpo and the LAMMPS pair
+style, EAMFAST, generic and dimer kernels).
+
+FREE: the raw basis g_m of tadah 1.5.0 and earlier; F(0) = sum_m w_m g_m(0) is
+whatever the weights make it.
+
+Differences between the two modes:
+- Linear models (M_BLR with BF_Linear, M_KRR with Kern_Linear): the embedding
+  derivatives g'_m are identical, so forces and stresses are identical; every
+  atomic energy moves by the same constant, -F(0) of the stored WEIGHTS
+  (with or without NORM: a linear model stores raw-descriptor weights).
+- Non-linear models (BF_Polynomial2, non-linear KRR kernels): the descriptor
+  values change, so energies AND forces change.
+- DM_mJoin: EMBF0 is one global setting for every DM_REAM block; only the
+  DM_REAM block vanishes at rho = 0, other many-body blocks keep their value.
+
+Migration: add `EMBF0 FREE` to a potential written by tadah 1.5.0 or earlier
+to reproduce its energies. Training a DM_REAM model on absolute reference
+energies (e.g. DFT totals) under ZERO needs a per-atom reference energy from
+ESHIFT, ESHIFT_ATOM or ESHIFT_DBATOM (compatible with EAMFAST), or BIAS true
+(disables EAMFAST; its intercept column precedes the descriptor weights, so
+FIXINDEX/FIXWEIGHT indices shift). External setfl converters must tabulate F(rho) - F(0) unless EMBF0 is FREE.
+"""
+examples     = ["ZERO", "FREE"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
 [ALLOWED_KEYS.MPARAMS]
 INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies additional numeric parameters for certain models."
@@ -783,13 +830,17 @@ cli_required   = false
 [ALLOWED_KEYS.add]
 INHERIT = ["TYPES.DOUBLE"]
 value_format = ["<centre>"]
-description  = "`tadah refit --edit`: insert a basis function at this centre (r in Angstrom for phi/rho, electron density for F) with coefficient 0 — the potential is unchanged until HPO varies the new coefficient."
+description  = "`tadah refit --edit`: insert a basis function at this centre (r in Angstrom for phi/rho, electron density for F) with coefficient 0 — the potential is unchanged until HPO varies the new coefficient (exact unless NUMERIC < 17 applies)."
 long_description = """
 Insert one basis function into the curve selected by --func, centred at the
 given position. The new coefficient (weight for phi/F, density amplitude for
 rho) is 0, so the edited potential predicts EXACTLY like the input — the new
 basis function only adds capacity for a subsequent `tadah hpo` run (its
-OPTIM line is emitted in the regenerated hpotarget).
+OPTIM line is emitted in the regenerated hpotarget). Exact unless the input
+potential carries NUMERIC < 17 (every 1.5.0 `tadah hpo` pot has an
+auto-inserted NUMERIC 12) or one is set for the run: the edited file is then
+written with that many significant digits, with a WARNING; delete the line
+for an exact edit.
 
 Knot families (Knot5/Knot3): the knot position is the only shape parameter
 (--eta is rejected; widths are a pure gauge). --deg 3|5 selects the knot
@@ -1003,7 +1054,7 @@ INHERIT = ["TYPES.BOOL"]
 # sets the key. Without it the documented "Default true" was silently false at
 # runtime (contains() materialises the inherited false). See refit_compact_merge.
 default_value = ["true"]
-description  = "`tadah refit`: pin the embedding to the table's F(0) (isolated-atom reference) with a constraint row. Default true."
+description  = "`tadah refit` (dense mode) under EMBF0 FREE: pin the raw embedding to the table's F(0) (isolated-atom reference) with a soft constraint row. Default true. Under the default EMBF0 ZERO the fit uses the zero-referenced embedding, so F(0) = 0 exactly by construction and this key has no effect."
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1224,10 +1275,34 @@ cli_required     = false
 INHERIT = ["TYPES.UINT"]
 description  = "Numeric output precision."
 long_description = """
-Sets the number of decimal places for output. 
+Sets the precision of numbers in written output files.
+
+Potential files (pot.tadah written by train, refit, refit --edit and hpo) and
+dataset files (written by tadah data convert, merge, split, sample, dedup and
+balance): NUMERIC is the number of SIGNIFICANT digits (printf %.{N}g) of every
+non-integer number of the potential's key/value lines, and of every number of
+a dataset. The default 18 is exact: every double reads back bit-identically
+(17 significant digits always suffice). An explicit NUMERIC below 17 is
+honoured but warned about, because the written file then differs from the
+values in memory. Integers in a potential are always written exactly.
+NUMERIC itself is never written into a potential file; a NUMERIC line found in
+a potential used as a configuration (or edited with refit --edit) is treated
+as an explicit setting. The '#' comment headers of a potential (e.g. the
+header tadah hpo writes) are annotations not governed by NUMERIC; its
+machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact.
+
+The structure exports of tadah data write use significant digits too for
+LAMMPS data files and VASP POSCAR (both read E-notation); the CASTEP cell
+export keeps NUMERIC decimal places.
+
+Values loaded into memory are never limited by NUMERIC, and calculations
+always use full precision.
+
+Other outputs (predictions, analysis tables) keep their established meaning
+of the number of digits written.
 """
-examples     = ["12"]
-default_value = ["12"]
+examples     = ["18"]
+default_value = ["18"]
 cli_long_flag  = "--numeric"
 cli_short_flag = ""
 cli_required   = false
@@ -1905,16 +1980,23 @@ Config-file options (EAM is the only required key):
   written as in `tadah hpo`; a key the stage does not read is an error.
   Omit any block to use its defaults (default EXPLORE = global MLSL + inner
   SBPLX). See HPO_REFIT_2B_EAM/REDESIGN/configs for examples.
+- Embedding reference: EMBF0 ZERO|FREE (default ZERO) — the written
+  potential's DM_REAM embedding reference. ZERO fits the zero-referenced
+  embedding F(rho) - F(0) against F_tab(rho) - F_tab(0) (refit.eam F[0] = 0);
+  FREE fits the raw embedding of tadah 1.5.0. `--edit` edits F in the
+  input potential's reference and writes it.
 - Advanced: REFIT_PLACEMENT, REFIT_REACH_MARGIN, REFIT_R_LO_FRAC,
-  REFIT_CONSTRAIN_F0.
+  REFIT_CONSTRAIN_F0 (dense mode, EMBF0 FREE only).
 
 Two additional modes operate on EXISTING refit outputs instead of a
 tabulated EAM file:
 - --edit <pot.tadah>: add or remove one basis function of one curve
   (--func {phi|rho|F} with --add <centre> or --remove <centre>). Adding
   uses a zero coefficient, so the potential is unchanged until `tadah hpo`
-  varies the new dimension; removing compensates via the neighbouring
-  coefficients. Writes an edited potential and a regenerated hpotarget.
+  varies the new dimension (exact unless the input potential carries
+  NUMERIC < 17, e.g. the NUMERIC 12 of 1.5.0 hpo pots); removing compensates
+  via the neighbouring coefficients. Writes an edited potential and a
+  regenerated hpotarget.
 - --retarget <file.hpotarget>: rewrite the OPTIM search bounds of an
   existing hpotarget (--pct global or KEY=N per-key percentages,
   --set 'KEY(i)=lo,hi' absolute overrides, --in-place).

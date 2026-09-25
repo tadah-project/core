@@ -21,6 +21,8 @@
 #include <cmath>
 #include <map>
 #include <mutex>
+#include <optional>
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -28,6 +30,7 @@
 
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/logger.h>
+#include <tadah/core/number_format.h>
 #include <tadah/core/utils.h>
 
 namespace tadah {
@@ -200,7 +203,11 @@ public:
    * If the key is not allowed by blueprint, or if capacity is reached, throws
    * std::runtime_error.
    *
-   * @tparam T Type convertible to string with operator<<.
+   * Values are stored as lossless text (to_string_lossless()): a floating
+   * value, or each element of a range, comes back bit-identical from
+   * get<double>(). Strings are split on whitespace and stored verbatim.
+   *
+   * @tparam T Scalar, string or range type (see to_string_lossless()).
    * @param key Key name.
    * @param val Value to append.
    */
@@ -225,7 +232,8 @@ public:
 
     std::lock_guard<std::mutex> lock(mtx_);
     std::vector<std::string> &bucket = storage_[upKey];
-    std::string valStr = to_string(val, fmt18);
+    // Lossless text: a double read back with get<double>() is bit-identical.
+    std::string valStr = to_string_lossless(val);
     std::istringstream iss(valStr);
     std::string value;
 
@@ -246,7 +254,7 @@ public:
               "Context::add -> capacity exceeded for: ", upKey);
           throw std::runtime_error("Exceeded capacity for key: " + upKey);
         }
-        bucket.push_back(to_string(value, fmt18));
+        bucket.push_back(value);
       }
     }
     updateInternalKeys();
@@ -293,6 +301,39 @@ public:
    * @return True if eventually found or default inserted, false otherwise.
    */
   bool contains(const std::string &key) const;
+
+  /**
+   * @brief True iff the key currently STORES at least one value.
+   *
+   * Unlike contains(), never inserts a blueprint default: use it to tell a
+   * value the user (or a loaded file) supplied from an absent one.
+   */
+  bool has_stored(const std::string &key) const;
+
+  /**
+   * @brief The n-th stored token of a key, without default insertion.
+   *
+   * @return std::nullopt if the key is not stored or has fewer than n+1
+   * values.
+   */
+  std::optional<std::string> stored_value(const std::string &key,
+                                          size_t n = 0) const;
+
+  /**
+   * @brief Writes the Context as a potential file body.
+   *
+   * Same layout as operator<<, except that NUMERIC is never written and
+   * every non-integer decimal literal of a key whose blueprint value_type
+   * contains DOUBLE is re-rendered with @p sig_digits significant digits
+   * ("%.{N}g"; 17 or more round-trip every double exactly). Integer
+   * literals, strings, grid generator names (LIN/GEOM), bools, index
+   * patterns and inf/nan are written verbatim.
+   *
+   * @param os Output stream.
+   * @param sig_digits Significant digits, clamped to [1, kMaxSigDigits];
+   *        normally resolve_pot_digits(ctx).digits.
+   */
+  void write_potential(std::ostream &os, int sig_digits) const;
 
   /**
    * @brief Serializes all data into a vector of chars (plaintext).
@@ -362,61 +403,7 @@ public:
   friend std::ostream &operator<<(std::ostream &os, const Context &ctx) {
     // Lock the mutex for thread-safe iteration over storage_.
     std::lock_guard<std::mutex> lock(ctx.mtx_);
-
-    size_t max_key_len = 15;
-    const std::string space = "   ";
-
-    // Iterate over all stored key-value pairs.
-    for (auto const &pair : ctx.storage_) {
-      const std::string &key = pair.first;
-      const std::vector<std::string> &vals = pair.second;
-
-      // Check the blueprint so we can interpret value_N.
-      const auto bi = ctx.findBlueprintKey(key, "ALLOWED_KEYS");
-      if (bi == nullptr) {
-        // Key not in blueprint => skip.
-        continue;
-      }
-      // Take the first element of value_N for printing logic.
-      int valN = bi->value_N[0];
-
-
-      if (valN > 0) {
-        // Print each value on its own line preceded by key.
-        // Example:
-        // KEY     val1
-        // KEY     val2
-        // ...
-        for (auto const &v : vals) {
-          os << std::left << std::setw(max_key_len) << key << space << v << "\n";
-        }
-      } else if (valN < 0) {
-        // Print all values on a single line, preceded by key.
-        // Example:
-        // KEY     val1     val2     val3
-        // Format accordingly to the blueprint.
-        os << std::left << std::setw(max_key_len) << key;
-        bool doFormatting = false;
-        for (auto const &v : vals) {
-          bool formatingAvail = false;
-          if (bi->formatting.size() && v.find(bi->formatting[0]) != std::string::npos) {
-            formatingAvail = true;
-          }
-
-          if (formatingAvail && doFormatting) {
-            os << bi->formatting[1] << std::left << std::setw(max_key_len) << key << space << v;
-          } else {
-            os << space << v;
-            doFormatting = true;
-          }
-        }
-        os << "\n";
-      } else {
-        // valN == 0 => skip printing entirely, or handle differently if
-        // desired.
-        continue;
-      }
-    }
+    ctx.print_NoLock(os, false, 0);
     return os;
   }
 
@@ -500,8 +487,8 @@ public:
 
     std::lock_guard<std::mutex> lock(mtx_);
     std::vector<std::string> &bucket = storage_[upKey];
-    // convert val to string
-    std::string valStr = to_string(val, fmt18);
+    // convert val to string (lossless, see add())
+    std::string valStr = to_string_lossless(val);
     std::istringstream iss(valStr);
     std::string value;
     if (bucket.size() == maxVals) {
@@ -516,7 +503,7 @@ public:
             LogLevel::ERROR, "Context::add -> capacity exceeded for: ", upKey);
         throw std::runtime_error("Exceeded capacity for key: " + upKey);
       }
-      bucket.push_back(to_string(value, fmt18));
+      bucket.push_back(value);
     }
     updateInternalKeys();
   }
@@ -532,6 +519,16 @@ private:
    * @param upKey The uppercase key to attempt default insertion for.
    */
   void attemptDefaultInsertion_NoLock(const std::string &upKey) const;
+
+  /**
+   * @brief Shared body of operator<< and write_potential(); mtx_ must be
+   * locked.
+   *
+   * With @p potential false every token is written verbatim (operator<<).
+   * With @p potential true NUMERIC is skipped and DOUBLE-typed decimal
+   * literals are re-rendered with @p sig_digits significant digits.
+   */
+  void print_NoLock(std::ostream &os, bool potential, int sig_digits) const;
 
   /**
    * @brief Converts a string to type T using std::istringstream with
@@ -557,9 +554,6 @@ private:
     }
     return value;
   }
-
-  // Formatting for floating point numbers string conversion.
-  size_t fmt18 = 18;
 
   /**
    * @brief Internal map of uppercase key -> list of string values.
@@ -643,9 +637,9 @@ private:
     }
     double maxVal2B = findMaxValue("RCUT2B");
     double maxValMB = findMaxValue("RCUTMB");
-    storage_["RCUT2BMAX"] = {to_string(maxVal2B, fmt18)};
-    storage_["RCUTMBMAX"] = {to_string(maxValMB, fmt18)};
-    storage_["RCUTMAX"] = {to_string(std::max(maxVal2B, maxValMB), fmt18)};
+    storage_["RCUT2BMAX"] = {format_roundtrip(maxVal2B)};
+    storage_["RCUTMBMAX"] = {format_roundtrip(maxValMB)};
+    storage_["RCUTMAX"] = {format_roundtrip(std::max(maxVal2B, maxValMB))};
   }
 
   bool isInternalKey(const std::string &key) const {

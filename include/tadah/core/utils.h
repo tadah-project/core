@@ -2,15 +2,20 @@
 #define TADAH_CORE_UTILS_H
 
 #include <tadah/core/core_types.h>
+#include <tadah/core/number_format.h>
 
 #include <iterator>
 #include <algorithm>
 #include <vector>
 #include <cmath>
+#include <charconv>
 #include <sstream>
 #include <iomanip>
 #include <random>
+#include <string>
+#include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <cstddef>
 #include <utility>
 
@@ -103,6 +108,10 @@ inline std::string to_string(const T& value)
 /**
  * @brief Convert a value to string with given precision (for numeric types).
  *
+ * Fixed notation with @p n decimals: for human-facing text only (logs,
+ * messages). Text that is parsed back into a calculation must use
+ * to_string_lossless().
+ *
  * @tparam T Any type supporting operator<< to std::ostream.
  * @param value The value to convert.
  * @param n   Decimal precision (for floating types).
@@ -136,6 +145,83 @@ template <>
 inline std::string to_string<bool>(const bool& value, int /*n*/)
 {
     return value ? "true" : "false";
+}
+
+namespace detail {
+template <typename T, typename = void>
+struct has_index_access : std::false_type {};
+template <typename T>
+struct has_index_access<T, std::void_t<
+    decltype(std::declval<const T&>().size()),
+    decltype(std::declval<const T&>()[std::size_t{0}])>> : std::true_type {};
+
+template <typename T, typename = void>
+struct has_begin_end : std::false_type {};
+template <typename T>
+struct has_begin_end<T, std::void_t<
+    decltype(std::begin(std::declval<const T&>())),
+    decltype(std::end(std::declval<const T&>()))>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_narrow_char_v = std::is_same_v<T, char> ||
+    std::is_same_v<T, signed char> || std::is_same_v<T, unsigned char>;
+} // namespace detail
+
+/**
+ * @brief Lossless text for a value that will be parsed back into a
+ * calculation (Context storage).
+ *
+ * Floating-point values use the shortest round-trip form
+ * (format_roundtrip(); a float is widened to double exactly, a long double
+ * uses its own shortest form), so parsing the text gives the identical
+ * value. Integers use std::to_string, bool "true"/"false", characters and
+ * strings are copied verbatim. Ranges (anything with size() and
+ * operator[], e.g. std::vector or aed_type, or with begin()/end()) are
+ * converted element-wise and joined with single spaces. Any other type is
+ * streamed with 17 significant digits.
+ *
+ * Unlike to_string(value, n) this never limits precision; use to_string()
+ * only for human-facing text (logs, messages).
+ */
+template <typename T>
+std::string to_string_lossless(const T& value)
+{
+    using U = std::remove_cv_t<std::remove_reference_t<T>>;
+    if constexpr (std::is_same_v<U, bool>) {
+        return value ? "true" : "false";
+    } else if constexpr (std::is_same_v<U, long double>) {
+        char buf[64];
+        const std::to_chars_result r = std::to_chars(buf, buf + sizeof buf, value);
+        return std::string(buf, r.ptr);
+    } else if constexpr (std::is_floating_point_v<U>) {
+        return format_roundtrip(static_cast<double>(value));
+    } else if constexpr (detail::is_narrow_char_v<U>) {
+        return std::string(1, static_cast<char>(value));
+    } else if constexpr (std::is_integral_v<U>) {
+        return std::to_string(value);
+    } else if constexpr (std::is_convertible_v<const U&, std::string_view>) {
+        return std::string(std::string_view(value));
+    } else if constexpr (detail::has_index_access<U>::value) {
+        std::string out;
+        for (std::size_t i = 0; i < value.size(); ++i) {
+            if (i) out += ' ';
+            out += to_string_lossless(value[i]);
+        }
+        return out;
+    } else if constexpr (detail::has_begin_end<U>::value) {
+        std::string out;
+        bool first = true;
+        for (const auto& v : value) {
+            if (!first) out += ' ';
+            out += to_string_lossless(v);
+            first = false;
+        }
+        return out;
+    } else {
+        std::ostringstream ss;
+        ss << std::setprecision(kRoundTripDigits) << value;
+        return ss.str();
+    }
 }
 
 
@@ -234,7 +320,11 @@ bool is_integer(const std::string& s);
 
 /**
  * @brief Checks if a string represents a number.
- * 
+ *
+ * True iff the whole string converts as std::stod would (leading
+ * whitespace, decimal/hex, inf/nan) without overflowing; an underflowing
+ * literal (subnormal) counts as a number. See parse_number().
+ *
  * @param s The string to check.
  * @return true if the string is numeric, false otherwise.
  */

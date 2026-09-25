@@ -587,3 +587,38 @@ TEST_CASE("Additional edge coverage for partial matches", "[blueprint][extra]") 
 }
 
 // More corner cases can go here if needed, especially focusing on invalid user input.
+
+TEST_CASE("Long numeric lines: fast path accepts underflow, rejects overflow",
+          "[blueprint][long]") {
+  // A potential written losslessly can carry subnormal values (strtod reports
+  // them with ERANGE). The >= 2048-char numeric fast path must accept them
+  // instead of falling back to std::regex; overflow is still rejected.
+  auto long_line = [](const std::string &first) {
+    std::string out = first;
+    while (out.size() < 4096) out += " 0.123456789012345677";
+    return out;
+  };
+
+  SECTION("{DOUBLE} line with subnormal and underflowing values") {
+    tadah::core::BlueprintValidator validator("{DOUBLE}");
+    for (const char *t : {"4.94065645841246544e-324", "1e-310", "-2.5e-320",
+                          "1e-400"}) {
+      INFO("first token: " << t);
+      const std::string line = long_line(t);
+      REQUIRE(line.size() > 2048);
+      REQUIRE(validator.validate(line));
+    }
+  }
+  SECTION("fast path taken: blueprint-independent, so a {INT} blueprint "
+          "accepts a subnormal-bearing numeric line") {
+    // The regex would reject the non-integer tokens outright; only the fast
+    // path accepts this line, which proves the subnormal did not reject it.
+    tadah::core::BlueprintValidator validator("{INT}");
+    REQUIRE(validator.validate(long_line("1e-310")));
+  }
+  SECTION("overflow is not a valid number") {
+    tadah::core::BlueprintValidator validator("{INT}");
+    REQUIRE_FALSE(validator.validate(long_line("1e400")));
+    REQUIRE_FALSE(validator.validate(long_line("-1e400")));
+  }
+}

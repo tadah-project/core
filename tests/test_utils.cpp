@@ -119,6 +119,16 @@ TEST_CASE("Testing is_number(const std::string&)", "[utils][new]") {
     REQUIRE(is_number("3.14e-2") == true);
     REQUIRE(is_number("abc") == false);
     REQUIRE(is_number("") == false);
+    // std::stod acceptance is kept (leading whitespace, inf/nan, hex) ...
+    REQUIRE(is_number(" 1.5") == true);
+    REQUIRE(is_number("inf") == true);
+    REQUIRE(is_number("nan") == true);
+    REQUIRE(is_number("0x1p3") == true);
+    REQUIRE(is_number("1.5 ") == false);    // whole token
+    REQUIRE(is_number("1e400") == false);   // overflow
+    // ... but a subnormal is a number (the lossless writers emit them).
+    REQUIRE(is_number("1e-310") == true);
+    REQUIRE(is_number("-4.9406564584124654e-324") == true);
 }
 
 TEST_CASE("Testing trim(const std::string&)", "[utils][new]") {

@@ -38,6 +38,19 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(configKey.cli_short_flag == "-c");
   }
 
+  SECTION("The EMBF0 key: STRING, default ZERO, no CLI flag")
+  {
+    auto it = blueprintMap.find("EMBF0");
+    REQUIRE(it != blueprintMap.end());
+    const BlueprintKey &k = it->second;
+    REQUIRE(k.value_type == std::vector<std::string>{"STRING"});
+    REQUIRE(k.value_N == std::vector<int>{1});
+    REQUIRE(k.default_value == std::vector<std::string>{"ZERO"});
+    REQUIRE(k.examples == std::vector<std::string>{"ZERO", "FREE"});
+    REQUIRE(k.cli_long_flag.empty());
+    REQUIRE(k.cli_short_flag.empty());
+  }
+
   SECTION("The VERBOSE key is parsed correctly")
   {
     // The VERBOSE key should be present (converted to uppercase).
@@ -111,11 +124,15 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(numericKey.value_N == std::vector<int>{1});
     REQUIRE(numericKey.description ==
             "Numeric output precision.");
-    REQUIRE(numericKey.examples == std::vector<std::string>{"12"});
+    REQUIRE(numericKey.examples == std::vector<std::string>{"18"});
     
     // Validate CLI-specific fields.
     REQUIRE(numericKey.cli_long_flag == "--numeric");
-    REQUIRE(numericKey.default_value[0] == "12");
+    REQUIRE(numericKey.default_value[0] == "18");
+    // A default-inserted NUMERIC must never lower potential-file precision
+    // below round-trip (resolve_pot_digits treats any stored value as
+    // explicit, so the default has to be lossless on its own).
+    REQUIRE(std::stoi(numericKey.default_value[0]) >= 17);
   }
 
   SECTION("The blueprint map contains only ALLOWED_KEYS entries")

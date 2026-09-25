@@ -1,9 +1,17 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
+#include <tadah/core/number_format.h>
 
 #include <sys/types.h>
 #include <dirent.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <limits>
+#include <map>
+#include <optional>
 #include <sstream>
 #include <atomic>
 #include <thread>
@@ -614,4 +622,317 @@ TEST_CASE("Testing Context serialize round-trip on real config fixtures",
   }
   closedir(dir);
   REQUIRE(checked > 0);
+}
+
+// ---------------------------------------------------------------------------
+// Lossless storage: Context text must never limit the precision of
+// a value that is parsed back into a calculation.
+// ---------------------------------------------------------------------------
+namespace {
+std::uint64_t ctx_bits(double v) {
+  std::uint64_t u;
+  std::memcpy(&u, &v, sizeof u);
+  return u;
+}
+} // namespace
+
+TEST_CASE("Context add/addInternal are lossless for every value type",
+          "[context][lossless]") {
+  const std::vector<double> vals = {
+      0.1, 1e-20, 3e-13, -0.0, 5.3, 1.0 / 3, DBL_MIN, DBL_MAX,
+      std::numeric_limits<double>::denorm_min(), 0.962983118529000759,
+      0.962983118528700777, 12345.678901234567};
+
+  SECTION("double scalars") {
+    Context c;
+    for (double v : vals) c.add("WEIGHTS", v);
+    REQUIRE(c.size("WEIGHTS") == vals.size());
+    for (size_t i = 0; i < vals.size(); ++i) {
+      INFO("stored: " << c("WEIGHTS")[i]);
+      CHECK(ctx_bits(c.get<double>("WEIGHTS", i)) == ctx_bits(vals[i]));
+    }
+    // The old fixed-18-decimal text flushed this to zero and merged these two.
+    CHECK(c.get<double>("WEIGHTS", 1) != 0.0);
+    CHECK(c.get<double>("WEIGHTS", 9) != c.get<double>("WEIGHTS", 10));
+    CHECK(std::signbit(c.get<double>("WEIGHTS", 3)));
+  }
+  SECTION("ranges: std::vector<double>, aed_type, strided aed_type") {
+    Context c;
+    c.add("WEIGHTS", vals);
+    t_type t(vals.size());
+    for (size_t i = 0; i < vals.size(); ++i) t[i] = vals[i];
+    c.add("NSTDEV", t);
+    REQUIRE(c.size("WEIGHTS") == vals.size());
+    REQUIRE(c.size("NSTDEV") == vals.size());
+    for (size_t i = 0; i < vals.size(); ++i) {
+      CHECK(ctx_bits(c.get<double>("WEIGHTS", i)) == ctx_bits(vals[i]));
+      CHECK(ctx_bits(c.get<double>("NSTDEV", i)) == ctx_bits(vals[i]));
+    }
+    std::vector<double> raw = {0.1, 99.0, 1e-20, 99.0, 2.0 / 3, 99.0};
+    aed_type strided(raw.data(), 3, 2);  // view: elements 0, 2, 4
+    c.add("MPARAMS", strided);
+    REQUIRE(c.size("MPARAMS") == 3);
+    CHECK(ctx_bits(c.get<double>("MPARAMS", 0)) == ctx_bits(0.1));
+    CHECK(ctx_bits(c.get<double>("MPARAMS", 1)) == ctx_bits(1e-20));
+    CHECK(ctx_bits(c.get<double>("MPARAMS", 2)) == ctx_bits(2.0 / 3));
+  }
+  SECTION("float and long double") {
+    Context c;
+    c.add("MPARAMS", 0.1f);
+    CHECK(c.get<float>("MPARAMS", 0) == 0.1f);
+    CHECK(c.get<double>("MPARAMS", 0) == static_cast<double>(0.1f));
+    const long double ld = 1.0L / 3;
+    c.add("MPARAMS", ld);
+    CHECK(c.get<long double>("MPARAMS", 1) == ld);
+  }
+  SECTION("integers, bools, strings verbatim") {
+    Context c;
+    c.add("SBASIS", static_cast<size_t>(123456789012ULL));
+    CHECK(c("SBASIS")[0] == "123456789012");
+    c.add("LAMBDA", -7);
+    CHECK(c("LAMBDA")[0] == "-7");
+    c.add("NORM", true);
+    CHECK(c("NORM")[0] == "true");
+    c.add("BIAS", false);
+    CHECK(c("BIAS")[0] == "false");
+    c.add("MODEL", "M_BLR BF_Linear");  // split on whitespace, verbatim
+    CHECK(c("MODEL") == std::vector<std::string>{"M_BLR", "BF_Linear"});
+    c.add("DBFILE", std::vector<std::string>{"a.tadah", "b 1.0000000000000000001"});
+    CHECK(c("DBFILE") ==
+          std::vector<std::string>{"a.tadah", "b", "1.0000000000000000001"});
+    c.add("TYPE2B", std::vector<int>{20, -3});
+    CHECK(c("TYPE2B") == std::vector<std::string>{"20", "-3"});
+  }
+  SECTION("integral doubles stay readable as integers") {
+    Context c;
+    c.addInternal("DSIZE", 100000.0);
+    CHECK(c("DSIZE")[0] == "100000");
+    CHECK(c.get<size_t>("DSIZE") == 100000u);
+    c.add("KDEG2B", 5.0);
+    CHECK(c("KDEG2B")[0] == "5");
+  }
+  SECTION("addInternal ranges and derived RCUT*MAX keys") {
+    Context c;
+    const std::vector<double> six(vals.begin(), vals.begin() + 6);  // SSTDEV holds 6
+    c.addInternal("SSTDEV", six);
+    for (size_t i = 0; i < six.size(); ++i)
+      CHECK(ctx_bits(c.get<double>("SSTDEV", i)) == ctx_bits(six[i]));
+    const double r2 = 5.123456789012345, rmb = 6.000000000000001;
+    c.add("RCUT2B", r2);
+    c.add("RCUTMB", rmb);
+    CHECK(ctx_bits(c.get<double>("RCUT2BMAX")) == ctx_bits(r2));
+    CHECK(ctx_bits(c.get<double>("RCUTMBMAX")) == ctx_bits(rmb));
+    CHECK(ctx_bits(c.get<double>("RCUTMAX")) == ctx_bits(rmb));
+  }
+  SECTION("serialize/deserialize and merge keep the exact text") {
+    Context c;
+    c.add("WEIGHTS", vals);
+    Context d;
+    d.deserialize(c.serialize());
+    for (size_t i = 0; i < vals.size(); ++i)
+      CHECK(ctx_bits(d.get<double>("WEIGHTS", i)) == ctx_bits(vals[i]));
+    Context m = Context::merge(Context(), c);
+    for (size_t i = 0; i < vals.size(); ++i)
+      CHECK(ctx_bits(m.get<double>("WEIGHTS", i)) == ctx_bits(vals[i]));
+  }
+}
+
+TEST_CASE("Context has_stored/stored_value never insert defaults",
+          "[context][has_stored]") {
+  Context c;
+  REQUIRE(c.size() == 0);
+  CHECK_FALSE(c.has_stored("NUMERIC"));
+  CHECK_FALSE(c.has_stored("numeric"));
+  CHECK_FALSE(c.stored_value("NUMERIC").has_value());
+  CHECK_FALSE(c.has_stored("NOT_A_KEY"));
+  CHECK(c.size() == 0);  // nothing inserted
+
+  // contains() inserts the blueprint default; has_stored() then sees it.
+  REQUIRE(c.contains("NUMERIC"));
+  CHECK(c.has_stored("NUMERIC"));
+  CHECK(c.stored_value("NUMERIC") == std::optional<std::string>("18"));
+
+  c.add("WEIGHTS", std::vector<double>{0.5, 1e-20});
+  CHECK(c.stored_value("weights", 1) == std::optional<std::string>("1e-20"));
+  CHECK_FALSE(c.stored_value("WEIGHTS", 2).has_value());
+}
+
+TEST_CASE("EMBF0: blueprint default ZERO materialises only on get/contains",
+          "[context][has_stored][embf0]") {
+  // DM_REAM relies on this: its get() materialises "EMBF0 ZERO" into the
+  // model Context (so every DM_REAM potential is written with the key),
+  // while every other reader probes with has_stored()/stored_value().
+  Context c;
+  CHECK_FALSE(c.has_stored("EMBF0"));
+  CHECK_FALSE(c.stored_value("EMBF0").has_value());
+  CHECK(c.size() == 0);
+  CHECK(c.get<std::string>("EMBF0") == "ZERO");
+  CHECK(c.stored_value("EMBF0") == std::optional<std::string>("ZERO"));
+
+  Context d;
+  d.add("EMBF0", std::string("FREE"));
+  CHECK(d.get<std::string>("EMBF0") == "FREE");
+
+  std::ostringstream os;
+  os << c;
+  CHECK(os.str().find("EMBF0") != std::string::npos);
+}
+
+namespace {
+// Fixture covering every position type a potential file carries.
+Context make_pot_fixture() {
+  Context c;
+  c.add("TYPE2B", "D2_Blip5 20 20 Ta Ta");
+  c.add("RCTYPE2B", "Cut_Cos");
+  c.add("RCUT2B", 5.3);
+  c.add("CGRID2B", "LIN 7 0.1 3.0");
+  c.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
+  c.add("CGRIDMB", "GEOM 4 0.3 2.7");
+  c.add("SGRID2B", std::vector<double>{0.123456789012345678, 2.5, 7.0});
+  c.add("WEIGHTS", std::vector<double>{0.1, 1e-20, -0.0, 3.0,
+                                        0.123456789012345678, -2.0 / 3});
+  c.add("SIGMA", "2 0.1 0.2 0.3 0.4");
+  c.remove("OALGO");
+  c.add("OALGO", "1 1e-13");
+  c.add("FIXINDEX", "1-58");
+  c.add("FIXWEIGHT", std::vector<double>{0.7, 1e-300});
+  c.add("BIAS", true);
+  c.add("MODEL", "M_BLR BF_Linear");
+  c.add("ATOM", "Ta");
+  c.add("NUMERIC", 12);
+  return c;
+}
+
+std::vector<std::string> ctx_tokens(const std::string &line) {
+  std::istringstream iss(line);
+  std::vector<std::string> t;
+  std::string s;
+  while (iss >> s) t.push_back(s);
+  return t;
+}
+} // namespace
+
+TEST_CASE("Context write_potential: per-type rendering", "[context][pot]") {
+  const Context c = make_pot_fixture();
+  std::ostringstream os;
+  c.write_potential(os, 18);
+  const std::string pot = os.str();
+  INFO(pot);
+
+  std::map<std::string, std::vector<std::string>> lines;
+  for (const auto &l : split_lines(pot)) {
+    auto t = ctx_tokens(l);
+    if (t.empty()) continue;
+    const std::string k = t[0];
+    t.erase(t.begin());
+    lines[k] = t;
+  }
+  CHECK(lines.count("NUMERIC") == 0);  // never written into a potential
+  CHECK(lines["TYPE2B"] ==
+        std::vector<std::string>{"D2_Blip5", "20", "20", "Ta", "Ta"});
+  CHECK(lines["RCTYPE2B"] == std::vector<std::string>{"Cut_Cos"});
+  CHECK(lines["RCUT2B"] == std::vector<std::string>{"5.29999999999999982"});
+  CHECK(lines["CGRID2B"] ==
+        std::vector<std::string>{"LIN", "7", "0.100000000000000006", "3"});
+  CHECK(lines["TYPEMB"] ==
+        std::vector<std::string>{"DM_Blip", "0", "4", "4", "Ta", "Ta"});
+  CHECK(lines["CGRIDMB"] ==
+        std::vector<std::string>{"GEOM", "4", "0.299999999999999989",
+                                 "2.70000000000000018"});
+  CHECK(lines["SGRID2B"] ==
+        std::vector<std::string>{"0.123456789012345677", "2.5", "7"});
+  CHECK(lines["WEIGHTS"] ==
+        std::vector<std::string>{"0.100000000000000006",
+                                 "9.99999999999999945e-21", "-0", "3",
+                                 "0.123456789012345677",
+                                 "-0.66666666666666663"});
+  CHECK(lines["SIGMA"] ==
+        std::vector<std::string>{"2", "0.100000000000000006",
+                                 "0.200000000000000011", "0.299999999999999989",
+                                 "0.400000000000000022"});
+  CHECK(lines["OALGO"] ==
+        std::vector<std::string>{"1", "1.00000000000000003e-13"});
+  CHECK(lines["FIXINDEX"] == std::vector<std::string>{"1-58"});
+  CHECK(lines["BIAS"] == std::vector<std::string>{"true"});
+  CHECK(lines["MODEL"] == std::vector<std::string>{"M_BLR", "BF_Linear"});
+  CHECK(lines["ATOM"] == std::vector<std::string>{"Ta"});
+
+  // The in-memory text is untouched by writing.
+  CHECK(c("WEIGHTS")[0] == "0.1");
+  CHECK(c.has_stored("NUMERIC"));
+}
+
+TEST_CASE("Context write_potential: same layout as operator<<",
+          "[context][pot]") {
+  const Context c = make_pot_fixture();
+  std::ostringstream plain, pot;
+  plain << c;
+  c.write_potential(pot, 18);
+  std::vector<std::string> a;
+  for (const auto &l : split_lines(plain.str()))
+    if (ctx_tokens(l).empty() || ctx_tokens(l)[0] != "NUMERIC") a.push_back(l);
+  const std::vector<std::string> b = split_lines(pot.str());
+  REQUIRE(a.size() == b.size());
+  for (size_t i = 0; i < a.size(); ++i) {
+    INFO(a[i] << "\n" << b[i]);
+    const auto ta = ctx_tokens(a[i]);
+    const auto tb = ctx_tokens(b[i]);
+    REQUIRE(ta.size() == tb.size());
+    REQUIRE(ta.size() > 1);
+    CHECK(ta[0] == tb[0]);
+    // key column and first value start at the same offset
+    CHECK(a[i].find(ta[1]) == b[i].find(tb[1]));
+    for (size_t j = 1; j < ta.size(); ++j) {
+      if (ta[j] == tb[j]) continue;
+      double x = 0, y = 0;
+      REQUIRE(parse_decimal_finite(ta[j], x));
+      REQUIRE(parse_decimal_finite(tb[j], y));
+      CHECK(ctx_bits(x) == ctx_bits(y));
+    }
+  }
+}
+
+TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
+  const Context c = make_pot_fixture();
+  for (int digits : {17, 18, 12}) {
+    std::ostringstream os;
+    c.write_potential(os, digits);
+    std::istringstream is(os.str());
+    const Context back = CoreUserConfigParser().parse(is);
+    INFO("digits " << digits << "\n" << os.str());
+    CHECK_FALSE(back.has_stored("NUMERIC"));
+    for (const auto &kv : c.storage_snapshot()) {
+      const std::string &key = kv.first;
+      if (key == "NUMERIC" || key.find("MAX") != std::string::npos) continue;
+      REQUIRE(back.has_stored(key));
+      const auto &orig = kv.second;
+      REQUIRE(back.size(key) == orig.size());
+      for (size_t j = 0; j < orig.size(); ++j) {
+        const std::string &t = back(key)[j];
+        double x = 0, y = 0;
+        if (is_integer_literal(orig[j]) || !parse_decimal_finite(orig[j], x)) {
+          CHECK(t == orig[j]);  // verbatim token
+          continue;
+        }
+        REQUIRE(parse_decimal_finite(t, y));
+        if (digits >= kRoundTripDigits) {
+          CHECK(ctx_bits(y) == ctx_bits(x));  // bit-exact at 17/18
+        } else {
+          // NUMERIC < 17: exactly the %.{N}g rounding, nothing else.
+          double z = 0;
+          REQUIRE(parse_decimal_finite(format_sig(x, digits), z));
+          CHECK(ctx_bits(y) == ctx_bits(z));
+        }
+      }
+    }
+  }
+  // A value that needs more than 12 digits really is rounded at 12.
+  std::ostringstream os12;
+  c.write_potential(os12, 12);
+  const Context back12 = [&] {
+    std::istringstream is(os12.str());
+    return CoreUserConfigParser().parse(is);
+  }();
+  CHECK(back12("WEIGHTS")[4] == "0.123456789012");
+  CHECK(back12.get<double>("WEIGHTS", 4) != c.get<double>("WEIGHTS", 4));
 }

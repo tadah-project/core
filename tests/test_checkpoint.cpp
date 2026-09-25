@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -92,6 +93,30 @@ TEST_CASE("Checkpoint round-trip primitives", "[checkpoint]")
     REQUIRE_FALSE(cp.get("META", "missing").has_value());
     REQUIRE_FALSE(cp.get_dbl("OTHER", "pi").has_value());
 
+    std::filesystem::remove(path);
+}
+
+TEST_CASE("Checkpoint get_dbl reads back a subnormal", "[checkpoint][lossless]")
+{
+    /* put_dbl writes %.17g, i.e. a subnormal token; get_dbl used std::stod,
+     * which throws out_of_range on underflow, so the value came back as
+     * missing. */
+    const auto path = scratch_path("subnormal");
+    const double sub = 1e-310;
+    {
+        Checkpoint cp(path);
+        cp.section("META");
+        cp.put_dbl("sub", sub);
+        cp.put_dbl("dmin", -std::numeric_limits<double>::denorm_min());
+        cp.commit();
+    }
+    Checkpoint cp(path);
+    REQUIRE(cp.load_from_disk());
+    REQUIRE(cp.get_dbl("META", "sub").has_value());
+    CHECK(*cp.get_dbl("META", "sub") == sub);
+    REQUIRE(cp.get_dbl("META", "dmin").has_value());
+    CHECK(*cp.get_dbl("META", "dmin") ==
+          -std::numeric_limits<double>::denorm_min());
     std::filesystem::remove(path);
 }
 

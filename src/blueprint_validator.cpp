@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <sstream>
 #include <cerrno>
+#include <cmath>
 #include <cstdlib>
 #include <cctype>
 #include <toml.hpp>
@@ -110,8 +111,12 @@ static bool looksLikeLongNumericLine(const std::string& text)
     if (*p == '\0') break;
 
     errno = 0;
-    std::strtod(p, &end);
-    if (end == p || errno == ERANGE)  // not a valid double
+    const double v = std::strtod(p, &end);
+    if (end == p)                     // not a valid double
+        return false;
+    // ERANGE: underflow (subnormal or flushed to 0, |v| < 1) is a valid
+    // number; overflow (+-HUGE_VAL) is not.
+    if (errno == ERANGE && !(std::fabs(v) < 1.0))
         return false;
 
     sawAtLeastOne = true;
