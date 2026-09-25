@@ -9,6 +9,16 @@
 #include <stdexcept>
 #include <unordered_set>
 
+namespace {
+/* "A, B, C": the allowed values of a key, for its error messages. */
+std::string joinAllowed(const std::vector<std::string> &values) {
+  std::string out;
+  for (std::size_t i = 0; i < values.size(); ++i)
+    out += (i ? ", " : "") + values[i];
+  return out;
+}
+} // namespace
+
 namespace tadah {
 namespace core {
 
@@ -83,13 +93,26 @@ namespace {
   };
 
   /**
+   * @brief "line N" or "line N of <source>": where an error is.
+   */
+  std::string lineOf(std::size_t line, const std::string &source) {
+    std::string out = "line " + std::to_string(line);
+    if (!source.empty()) out += " of " + source;
+    return out;
+  }
+
+  /**
    * @brief Parse lines into an existing Context object.
+   *
+   * lines[i] is line first_line + i of source (empty: no name), which the
+   * errors that name a line report.
    *
    * Circular dependency detection is handled by tracking CONFIG filenames
    * in configChain. When a CONFIG line is encountered, the file is pushed
    * into configChain, parsed, then popped after the nested parse.
    */
-  void parseLines(const std::vector<std::string> &lines, Context &ctx) {
+  void parseLines(const std::vector<std::string> &lines, Context &ctx,
+                  std::size_t first_line, const std::string &source) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
     for (size_t i = 0; i < lines.size(); ++i) {
       std::string rawLine = trim(lines[i]);
@@ -171,6 +194,14 @@ namespace {
       const BlueprintKey &keyInfo = keyMap.at(uKey);
       bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyInfo);
       if (!valid_schema) {
+        // A value outside the key's allowed_values: name the line.
+        if (!keyInfo.allowed_values.empty() &&
+            CoreUserConfigParser::validateSchemaOnly(val, keyInfo)) {
+          throw std::runtime_error(
+              "Invalid value for key " + uKey + " on " +
+              lineOf(first_line + i, source) + ": '" + trim(val) +
+              "' (allowed: " + joinAllowed(keyInfo.allowed_values) + ")");
+        }
         throw std::runtime_error("Invalid schema for key: " + key);
       }
       if (keyInfo.isDeprecated()) {
@@ -241,7 +272,7 @@ Context CoreUserConfigParser::parse(const std::string &filename) const {
   infile.close();
 
   Context ctx;
-  parseLines(lines, ctx);
+  parseLines(lines, ctx, 1, filename);
   return ctx;
 }
 
@@ -257,7 +288,7 @@ Context CoreUserConfigParser::parse(std::istream &in) const {
   }
 
   Context ctx;
-  parseLines(lines, ctx);
+  parseLines(lines, ctx, 1, "");
   return ctx;
 }
 
@@ -266,7 +297,17 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   ParseScope scope;
 
   Context ctx;
-  parseLines(lines, ctx);
+  parseLines(lines, ctx, 1, "");
+  return ctx;
+}
+
+Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
+                                    std::size_t first_line,
+                                    const std::string &source) const {
+  ParseScope scope;
+
+  Context ctx;
+  parseLines(lines, ctx, first_line, source);
   return ctx;
 }
 
@@ -292,12 +333,19 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
     const std::string &text,
     const BlueprintKey &keyInfo)
 {
-  // 1. Build validator from keyInfo schemas
-  BlueprintValidator validator(keyInfo.value_type);
-  
-  // 2. Attempt validation
-  if (validator.validate(text)) {
-    return true;
+  // 1. Validate against the key's schema, then its allowed values
+  //    (blueprint field `allowed_values`, matched without regard to case).
+  if (validateSchemaOnly(text, keyInfo)) {
+    if (keyInfo.isAllowedValue(trim(text))) {
+      return true;
+    }
+    Logger::instance().log(
+        LogLevel::ERROR,
+        "CoreUserConfigParser::parse -> Invalid value for key: ", key, ": ",
+        text);
+    Logger::instance().log(LogLevel::ERROR, "  Allowed values: ",
+                           joinAllowed(keyInfo.allowed_values));
+    return false;
   }
 
   // 3. If validation fails, log details once:
@@ -328,6 +376,13 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
 
   // 4. Indicate failure
   return false;
+}
+
+bool CoreUserConfigParser::validateSchemaOnly(const std::string &text,
+                                              const BlueprintKey &keyInfo)
+{
+  BlueprintValidator validator(keyInfo.value_type);
+  return validator.validate(text);
 }
 
 } // namespace core

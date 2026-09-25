@@ -1,5 +1,6 @@
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/logger.h>
+#include <tadah/core/utils.h>
 #include <algorithm>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
@@ -270,6 +271,49 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     if (!item.examples.empty()) {
       throw std::runtime_error("Deprecated key " + fullKey +
                                " must not define examples (set examples = [])");
+    }
+  }
+
+  // Allowed values: the only values of a single-string key. The default
+  // and the examples are values users copy, so they must be allowed ones.
+  if (table.contains("allowed_values")) {
+    const toml::value &node = table.at("allowed_values");
+    std::vector<std::string> values;
+    bool ok = node.is_array() && !node.as_array().empty();
+    if (ok) {
+      for (const auto &e : node.as_array()) {
+        if (!e.is_string() ||
+            toml::get<std::string>(e).find_first_not_of(" \t\r\n") ==
+                std::string::npos) {
+          ok = false;
+          break;
+        }
+        values.push_back(toml::get<std::string>(e));
+      }
+    }
+    if (!ok) {
+      throw std::runtime_error(
+          "'allowed_values' must be a non-empty list of non-empty strings "
+          "in key: " + fullKey);
+    }
+    if (item.value_type != std::vector<std::string>{"STRING"} ||
+        item.value_N != std::vector<int>{1}) {
+      throw std::runtime_error(
+          "'allowed_values' needs a key of value_type STRING with one value "
+          "(value_N = [1]): " + fullKey);
+    }
+    item.allowed_values = values;
+    for (const auto &v : item.default_value) {
+      if (!item.isAllowedValue(v)) {
+        throw std::runtime_error("default_value '" + v + "' of key " +
+                                 fullKey + " is not in its allowed_values");
+      }
+    }
+    for (const auto &v : item.examples) {
+      if (!item.isAllowedValue(v)) {
+        throw std::runtime_error("examples entry '" + v + "' of key " +
+                                 fullKey + " is not in its allowed_values");
+      }
     }
   }
 
@@ -643,6 +687,15 @@ buildBlueprintTasksMap(const std::string &rootTable) {
 }
 
 } // end anonymous namespace
+
+bool BlueprintKey::isAllowedValue(const std::string &value) const {
+  if (allowed_values.empty()) return true;
+  const std::string u = to_upper(value);
+  for (const auto &a : allowed_values)
+    if (to_upper(a) == u) return true;
+  return false;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Retrieves a copy of the statically cached blueprint map.

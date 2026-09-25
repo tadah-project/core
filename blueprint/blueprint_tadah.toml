@@ -443,7 +443,11 @@ INHERIT = ["TYPES.STRING"]
 # EMBF0") instead of silently evaluating the raw embedding. Only DM_REAM reads
 # the key through Context::get; every other reader uses stored_value(), and the
 # potential writers strip it from potentials without a DM_REAM block.
+# allowed_values: any other value is an error at its line when a
+# configuration or potential file is read (matched without regard to case).
 default_value = ["ZERO"]
+allowed_values = ["ZERO", "FREE"]
+value_format = ["ZERO|FREE"]
 description  = "DM_REAM embedding reference: ZERO (default) or FREE. ZERO evaluates the zero-referenced embedding basis g~_m(rho) = g_m(rho) - g_m(0), so F(0) = 0 exactly for any weights and any CEMBFUNC/SEMBFUNC/KDEGEMB: an isolated atom has zero embedding energy by construction. FREE is the raw basis of tadah 1.5.0 and earlier, where F(0) = sum_m w_m g_m(0). A property of the potential, written into every DM_REAM pot.tadah; a potential without the key is read as ZERO. Not an OPTIM target."
 long_description = """
 EMBF0 selects the reference of the DM_REAM embedding function

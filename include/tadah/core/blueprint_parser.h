@@ -41,8 +41,22 @@ struct BlueprintKey {
    * it), no CLI flag and no examples.
    */
   std::string deprecated;
+  /**
+   * The only values a STRING key takes (blueprint field `allowed_values`),
+   * matched without regard to case; empty for any value of its type.
+   * CoreUserConfigParser rejects any other value at the line that sets it
+   * ("Invalid value for key K on line N of <file>: 'v' (allowed: A, B)";
+   * without "of <file>" for lines that come from no file), and
+   * validateWithBlueprint -- the CLI and task path -- refuses it too. The
+   * key's default_value and examples must be allowed values.
+   */
+  std::vector<std::string> allowed_values;
 
   BlueprintKey() : cli_required(false) {}
+
+  /// Whether `value` is one of allowed_values (without regard to case), or
+  /// the key has no list.
+  bool isAllowedValue(const std::string &value) const;
 
   /// True if the blueprint marks this key as deprecated.
   bool isDeprecated() const { return !deprecated.empty(); }

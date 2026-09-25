@@ -51,6 +51,17 @@ public:
   Context parse(const std::vector<std::string>& lines) const override;
 
   /**
+   * @brief Parses configuration lines that start at line @p first_line of
+   *        @p source (a block of a file, such as a TASK section).
+   *
+   * An error that names a line names the line of @p source ("on line 6 of
+   * run.task"), not its index in @p lines.
+   * @throws std::runtime_error if any key is not allowed or a parsing error occurs.
+   */
+  Context parse(const std::vector<std::string>& lines, std::size_t first_line,
+                const std::string& source) const override;
+
+  /**
    * @brief Validate a (key, value) pair against Blueprint schema.
    *
    * Logs any errors if the value does not comply with the schema for this key
@@ -77,6 +88,13 @@ public:
       const std::vector<std::string> &vals,
       const BlueprintKey &keyInfo);
 
+  /**
+   * @brief Whether @p text matches the key's value_type schema (the
+   *        BlueprintValidator), without the allowed_values check; no log.
+   */
+  static bool validateSchemaOnly(const std::string &text,
+                                 const BlueprintKey &keyInfo);
+
 private:
   /**
    * @brief Internal helper that actually calls the BlueprintValidator and logs on failure.
@@ -85,6 +103,7 @@ private:
    * @param text       The concatenated or original text to validate
    * @param keyInfo    The blueprint specification (schema, format, examples, etc.)
    * @return           true if validation passes, false otherwise (and logs).
+   *                   A value outside the key's allowed_values fails too.
    */
   static bool validateWithBlueprintImpl(
       const std::string &key,
