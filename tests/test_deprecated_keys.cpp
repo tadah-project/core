@@ -1,7 +1,7 @@
 // Deprecated configuration keys (blueprint field `deprecated`).
 //
 // MPIWPCKG, MBLOCK and NBLOCK belonged to the legacy MPI training build,
-// removed in 1.5.1. Files that contain them must still parse; the parser
+// removed in 1.6.0. Files that contain them must still parse; the parser
 // writes one notice per key and parse to standard error (a CONFIG include
 // chain is one parse), whatever the Logger level or VERBOSE, keeps the
 // value check, and never stores the key, so it cannot reappear in a
@@ -159,7 +159,7 @@ TEST_CASE("Config parser: the legacy MPI keys parse, warn once each on "
     const auto warned = cap.err_lines_with(deprecation_line(key));
     REQUIRE(warned.size() == 1);
     CHECK_THAT(warned[0], Catch::Matchers::StartsWith("WARNING: ") &&
-                              Catch::Matchers::Contains("1.5.1") &&
+                              Catch::Matchers::Contains("1.6.0") &&
                               Catch::Matchers::Contains("TADAH_BUILD_MPI"));
     CHECK(cap.out_lines_with(deprecation_line(key)).empty());
     CHECK_FALSE(c.contains(key));
