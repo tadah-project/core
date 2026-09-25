@@ -473,6 +473,12 @@ Differences between the two modes:
 - DM_mJoin: EMBF0 is one global setting for every DM_REAM block; only the
   DM_REAM block vanishes at rho = 0, other many-body blocks keep their value.
 
+Values: ZERO or FREE, in any case; any other value is an error at its line
+when the configuration or potential is read. The key has no effect on a
+potential without a DM_REAM block: tadah train and tadah refit do not write it
+into such a potential (a WARNING, once per process), and tadah predict ignores
+a task value for it with a WARNING.
+
 Migration: add `EMBF0 FREE` to a potential written by tadah 1.5.0 or earlier
 to reproduce its energies. Training a DM_REAM model on absolute reference
 energies (e.g. DFT totals) under ZERO needs a per-atom reference energy from
