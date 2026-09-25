@@ -1563,6 +1563,23 @@ value_format = ['<boolean> <double> <boolean>']
 default_value = ["false", "0", "false"]
 value_N = [-3]
 description = """Control for DIMER models. Users should not modify this key."""
+long_description = """
+A DIMER model describes pairs of rigid diatomic molecules, each
+configuration four atoms: one molecule is atoms 1 and 2, the other atoms 3
+and 4. The values: DIMER on or off, the bond length (Angstrom), and whether
+the distance between the two atoms of a molecule enters the descriptors.
+
+A DIMER potential is evaluated with every atom as Z=1, whatever its element
+(tadah train, tadah predict and pair_style tadah alike). Every pair
+therefore gets the weight of the Z=1 (H-H) pair, which is 1 unless WATOM
+sets a weight for H; the WATOM weight of the potential's own element is
+not applied. Its TYPE2B and TYPEMB descriptors must be declared for the
+element pairs * * (TYPE2B D2_Blip 4 4 * * in the published Tadah!N2
+potential, for example). A DIMER potential whose TYPE2B or TYPEMB
+names specific element pairs (such as N N) is refused when it is loaded:
+"DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * element
+pairs".
+"""
 examples = ['DIMER true 1.104 true']
 
 [ALLOWED_KEYS.EWEIGHT]
