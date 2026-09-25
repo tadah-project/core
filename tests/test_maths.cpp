@@ -2,6 +2,8 @@
 #include <tadah/core/core_types.h>
 #include <tadah/core/maths.h>
 #include <iomanip>
+#include <type_traits>
+#include <utility>
 
 using namespace tadah::core;
 
@@ -520,4 +522,78 @@ TEST_CASE("Mat6R3C row()", "[mat6r3c][new]") {
         REQUIRE(r5[1] == Approx(17.0));
         REQUIRE(r5[2] == Approx(18.0));
     }
+}
+
+namespace {
+/* True when `lhs += rhs` compiles for an lhs of type T. */
+template <typename T, typename = void>
+struct plus_assignable : std::false_type {};
+template <typename T>
+struct plus_assignable<T, std::void_t<decltype(std::declval<T>() +=
+                                               std::declval<const Vec3d&>())>>
+    : std::true_type {};
+}  // namespace
+
+TEST_CASE("Mat6R3C row() is a read-only copy; set_row() writes a row",
+          "[mat6r3c]") {
+    /* row() returns a copy of the row. When the copy was a plain Vec3d,
+     * `delM.row(n) = v` compiled and assigned to the temporary, leaving delM
+     * unchanged: the MLIP DIMER descriptors were computed from a zero
+     * matrix that way. The copy is const, so neither the row nor one of its
+     * elements can be assigned to; set_row() is the way to write a row. */
+    using Row = decltype(std::declval<Mat6R3C&>().row(0));
+    STATIC_REQUIRE_FALSE(std::is_assignable<Row, const Vec3d&>::value);
+    STATIC_REQUIRE_FALSE(std::is_assignable<Row, Vec3d&&>::value);
+    STATIC_REQUIRE_FALSE(plus_assignable<Row>::value);
+    STATIC_REQUIRE_FALSE(
+        std::is_assignable<decltype(std::declval<Mat6R3C&>().row(0)[0]),
+                           double>::value);
+    /* Reading a row is unaffected. */
+    STATIC_REQUIRE(std::is_constructible<Vec3d, Row>::value);
+
+    Mat6R3C m;
+    m.set_row(4, Vec3d(1.5, -2.0, 3.25));
+    for (size_t i = 0; i < 6; ++i) {
+        for (size_t j = 0; j < 3; ++j) {
+            INFO("element (" << i << ", " << j << ")");
+            const double want =
+                i != 4 ? 0.0 : (j == 0 ? 1.5 : (j == 1 ? -2.0 : 3.25));
+            CHECK(m(i, j) == want);
+        }
+    }
+    const Vec3d r4 = m.row(4);
+    CHECK(r4[0] == 1.5);
+    CHECK(r4[1] == -2.0);
+    CHECK(r4[2] == 3.25);
+    CHECK(m.row(4) * m.row(4) == Approx(1.5 * 1.5 + 2.0 * 2.0 + 3.25 * 3.25));
+
+    m.set_row(4, -m.row(4));
+    CHECK(m(4, 0) == -1.5);
+    CHECK(m(4, 1) == 2.0);
+    CHECK(m(4, 2) == -3.25);
+}
+
+TEST_CASE("Matrix3d row() and col() are read-only copies", "[matrix3d]") {
+    /* Same hazard as Mat6R3C::row(): a cell vector assigned through row()
+     * or col() would be lost without a word. */
+    using Row = decltype(std::declval<Matrix3d&>().row(0));
+    using Col = decltype(std::declval<Matrix3d&>().col(0));
+    STATIC_REQUIRE_FALSE(std::is_assignable<Row, const Vec3d&>::value);
+    STATIC_REQUIRE_FALSE(std::is_assignable<Col, const Vec3d&>::value);
+    STATIC_REQUIRE_FALSE(plus_assignable<Row>::value);
+    STATIC_REQUIRE_FALSE(plus_assignable<Col>::value);
+    STATIC_REQUIRE_FALSE(
+        std::is_assignable<decltype(std::declval<Matrix3d&>().row(0)[0]),
+                           double>::value);
+
+    Matrix3d m;
+    m.load(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    const Vec3d r = m.row(1);
+    const Vec3d c = m.col(1);
+    CHECK(r[0] == m(1, 0));
+    CHECK(r[1] == m(1, 1));
+    CHECK(r[2] == m(1, 2));
+    CHECK(c[0] == m(0, 1));
+    CHECK(c[1] == m(1, 1));
+    CHECK(c[2] == m(2, 1));
 }
