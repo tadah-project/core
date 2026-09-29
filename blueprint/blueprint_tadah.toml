@@ -17,8 +17,8 @@
 # - default_value: Default value (optional).
 # - deprecated: Reason and replacement, for a key that is only still accepted
 #   (optional). A configuration or potential file may contain the key; its value
-#   is validated, a warning is written to standard error once per parse and the
-#   key is not stored.
+#   is validated, a warning is written to standard error once per key and
+#   process and the key is not stored.
 #   A deprecated key must not have a default_value, a CLI flag or examples
 #   (`examples = []` overrides those of an inherited TYPES table).
 

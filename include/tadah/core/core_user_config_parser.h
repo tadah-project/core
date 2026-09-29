@@ -16,8 +16,9 @@ namespace core {
  * A key the blueprint marks as deprecated (BlueprintKey::deprecated) is accepted so that older
  * configuration and potential files still load: its value is validated like any other, a
  * notice naming the key and the reason (`WARNING: Deprecated key MBLOCK is ignored: ...`) is
- * written to standard error once per parse (a CONFIG include chain is one parse), and the key
- * is not stored in the returned Context. The notice bypasses the Logger, so neither the Logger
+ * written to standard error once per key and process (report_ignored_key_once(), key_notice.h:
+ * however many lines, CONFIG files or parses read it), and the key is not stored in the
+ * returned Context. The notice bypasses the Logger, so neither the Logger
  * level nor VERBOSE suppresses it: pair_style tadah in LAMMPS, which leaves the Logger at
  * ERROR, shows it too.
  */

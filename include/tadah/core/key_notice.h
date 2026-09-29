@@ -11,10 +11,11 @@ namespace core {
  *        `WARNING: <subject> is ignored: <reason>` and a newline, to
  *        standard error.
  *
- * The notice every such key gets: a deprecated key (CoreUserConfigParser,
- * subject `Deprecated key MBLOCK`, once per parse) and a key that has no
- * effect on the potential that carries it (EMBF0 or RHOFORM without a
- * DM_REAM block, report_ignored_key_once(), once per process).
+ * The notice every such key gets, once per key and process through
+ * report_ignored_key_once(): a deprecated key (CoreUserConfigParser,
+ * subject `Deprecated key MBLOCK`) and a key that has no effect on the
+ * potential that carries it (EMBF0 or RHOFORM without a DM_REAM block,
+ * subject `Key EMBF0`).
  *
  * Deliberately not a Logger message: the notice must reach every user of
  * the file whatever the Logger level, including pair_style tadah in LAMMPS

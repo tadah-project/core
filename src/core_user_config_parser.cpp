@@ -40,31 +40,24 @@ namespace {
   static thread_local std::vector<std::string> configChain;
 
   /**
-   * @brief Deprecated keys already reported during the current top-level
-   *        parse (nested CONFIG files included).
-   *
-   * A deprecated key is reported once per parse, however many lines or
-   * CONFIG files repeat it. Cleared with configChain.
-   */
-  static thread_local std::unordered_set<std::string> reportedDeprecated;
-
-  /**
-   * @brief Writes the notice for a deprecated key to standard error
-   *        (report_ignored_key(): not a Logger message, so neither the
-   *        Logger level nor a VERBOSE line hides it, in LAMMPS either).
+   * @brief Writes the notice for a deprecated key to standard error, once
+   *        per key and process (report_ignored_key_once(), the rule of
+   *        every ignored key: however many lines, CONFIG files or parses
+   *        read it). Not a Logger message, so neither the Logger level nor
+   *        a VERBOSE line hides it, in LAMMPS either.
    */
   void reportDeprecatedKey(const std::string &key, const std::string &reason) {
-    report_ignored_key("Deprecated key " + key, reason);
+    report_ignored_key_once(key, "Deprecated key " + key, reason);
   }
 
   /**
    * @brief One parse() call: tracks the recursion depth and resets the
-   *        per-parse state at the start and at the end of a top-level parse.
+   *        per-parse state (the CONFIG chain) at the start and at the end
+   *        of a top-level parse.
    *
    * RAII, so that a parse that throws (a malformed line, a missing CONFIG
    * file) cannot leave the depth raised: the next parse on this thread is
-   * then a top-level parse again, with a fresh CONFIG chain and fresh
-   * deprecation reports.
+   * then a top-level parse again, with a fresh CONFIG chain.
    */
   class ParseScope {
   public:
@@ -82,7 +75,6 @@ namespace {
   private:
     static void reset() {
       configChain.clear();
-      reportedDeprecated.clear();
     }
   };
 
@@ -201,9 +193,7 @@ namespace {
       if (keyInfo.isDeprecated()) {
         // Accepted so that older files still load, but never stored: the
         // key has no effect and must not be written back to a potential.
-        if (reportedDeprecated.insert(uKey).second) {
-          reportDeprecatedKey(uKey, keyInfo.deprecated);
-        }
+        reportDeprecatedKey(uKey, keyInfo.deprecated);
         continue;
       }
       if (uKey == "CONFIG") {
