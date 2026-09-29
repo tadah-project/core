@@ -6,6 +6,9 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+### Added
+- **BREAKING — `RHOFORM` key (`SIGNED` | `NONNEG` | `MONOTONE`): the DM_REAM density form (see Tadah.MODELS), mandatory and without a default.** A STRING key deliberately given no `default_value`: every DM_REAM potential and configuration must declare it, and nothing supplies it implicitly. Readers go through `Context::has_stored()` / `stored_value()` only (a `Context::get` on the absent key would log a spurious ERROR before throwing). The `AMPGRIDMB` description says what the amplitudes multiply under each form, and the `refit` task text lists `RHOFORM` as a required refit key. **Migration:** add `RHOFORM SIGNED` to a DM_REAM potential or configuration written by tadah 1.5.1 or earlier to use it unchanged. Binaries older than the key refuse a potential that carries it (`Invalid key: RHOFORM`).
+
 ## [1.5.1] — 2026-09-25
 
 ### Added
