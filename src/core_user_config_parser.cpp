@@ -1,10 +1,10 @@
 #include "tadah/core/blueprint_parser.h"
 #include "tadah/core/blueprint_validator.h"
 #include "tadah/core/core_user_config_parser.h"
+#include "tadah/core/key_notice.h"
 #include "tadah/core/logger.h"
 #include "tadah/core/utils.h"
 #include <fstream>
-#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
@@ -49,18 +49,12 @@ namespace {
   static thread_local std::unordered_set<std::string> reportedDeprecated;
 
   /**
-   * @brief Writes the notice for a deprecated key to standard error.
-   *
-   * Deliberately not a Logger message: the notice must reach every user of
-   * the file whatever the Logger level, including pair_style tadah in
-   * LAMMPS (which leaves the Logger at ERROR) and a file whose VERBOSE 0
-   * line lowered the level before the key. The line is composed first and
-   * written with one insertion; std::cerr is unit-buffered, so it is
-   * flushed at once.
+   * @brief Writes the notice for a deprecated key to standard error
+   *        (report_ignored_key(): not a Logger message, so neither the
+   *        Logger level nor a VERBOSE line hides it, in LAMMPS either).
    */
   void reportDeprecatedKey(const std::string &key, const std::string &reason) {
-    std::cerr << ("WARNING: Deprecated key " + key + " is ignored: " + reason +
-                  "\n");
+    report_ignored_key("Deprecated key " + key, reason);
   }
 
   /**
