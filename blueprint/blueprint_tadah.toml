@@ -502,7 +502,12 @@ INHERIT = ["TYPES.STRING"]
 # error with the migration text below. Only DM_REAM evaluates the key; the
 # potential writers canonicalise it to upper case and strip it from
 # potentials without a DM_REAM block.
-description  = "DM_REAM density form, mandatory for every DM_REAM potential and configuration: SIGNED, NONNEG or MONOTONE. SIGNED is the density of tadah 1.5.1 and earlier (add 'RHOFORM SIGNED' to use an existing potential unchanged); NONNEG requires every AMPGRIDMB entry >= 0, so rho >= 0 by construction; MONOTONE uses integrated-bump step functions with AMPGRIDMB >= 0, so rho >= 0 and non-increasing by construction. A property of the potential, written into every DM_REAM pot.tadah. Not an OPTIM target."
+# allowed_values: any other value is an error at its line when a
+# configuration or potential file is read (matched without regard to case),
+# as for EMBF0; DM_REAM refuses it too in a Context built in code.
+allowed_values = ["SIGNED", "NONNEG", "MONOTONE"]
+value_format = ["SIGNED|NONNEG|MONOTONE"]
+description  = "DM_REAM density form, mandatory for every DM_REAM potential and configuration: SIGNED, NONNEG or MONOTONE. SIGNED is the density of every tadah before 1.6.0 (add 'RHOFORM SIGNED' to use an existing potential unchanged); NONNEG requires every AMPGRIDMB entry >= 0, so rho >= 0 by construction; MONOTONE uses integrated-bump step functions with AMPGRIDMB >= 0, so rho >= 0 and non-increasing by construction. A property of the potential, written into every DM_REAM pot.tadah. Not an OPTIM target."
 long_description = """
 RHOFORM selects how the DM_REAM pair density rho(r) is built from the
 density grids CGRIDMB, SGRIDMB and AMPGRIDMB (W = the WATOM pair weight,
@@ -510,7 +515,7 @@ f_c = the many-body cutoff RCTYPEMB, psi_n = the density basis function of
 the TYPEMB basis code):
 
 SIGNED: rho(r) = W f_c(r) sum_n a_n psi_n(r) with amplitudes of any sign.
-This is the density of tadah 1.5.1 and earlier, bit for bit. It carries no
+This is the density of every tadah before 1.6.0, bit for bit. It carries no
 guarantee: rho can go negative, for instance in the tail.
 
 NONNEG: the SIGNED expression with every a_n >= 0 and every density pair
@@ -532,11 +537,14 @@ cutoff). The cutoff must be one of Cut_Dummy, Cut_Cos, Cut_CosS, Cut_Tanh,
 Cut_PT, Cut_Poly and Cut_PolyS.
 
 The key is global: every DM_REAM block, including the DM_mJoin children,
-uses the same form. Values are case-insensitive and written in upper case.
+uses the same form. Values: SIGNED, NONNEG or MONOTONE, in any case (written
+in upper case); any other value is an error at its line when the
+configuration or potential is read.
 
-Migration: a DM_REAM potential or configuration without RHOFORM is an error.
-Add `RHOFORM SIGNED` to a potential written by tadah 1.5.1 or earlier to use
-it unchanged. Older binaries refuse a potential carrying RHOFORM (Invalid key).
+Migration: the key is new in tadah 1.6.0, and a DM_REAM potential or
+configuration without RHOFORM is an error. Add `RHOFORM SIGNED` to a
+potential written before tadah 1.6.0 to use it unchanged. Older binaries
+refuse a potential carrying RHOFORM (Invalid key).
 """
 examples     = ["SIGNED", "NONNEG", "MONOTONE"]
 cli_long_flag  = ""
@@ -2018,8 +2026,8 @@ Output files (default name, config key):
 Config-file options (EAM and RHOFORM are required):
 - EAM <file>: input setfl potential to refit (required).
 - RHOFORM SIGNED|NONNEG|MONOTONE (required): the density form of the
-  written DM_REAM potential. SIGNED is the density of tadah 1.5.1 and
-  earlier; NONNEG fits non-negative amplitudes (rho >= 0); MONOTONE fits
+  written DM_REAM potential. SIGNED is the density of every tadah before
+  1.6.0; NONNEG fits non-negative amplitudes (rho >= 0); MONOTONE fits
   integrated-bump steps with non-negative amplitudes (rho >= 0 and
   non-increasing). Every form fits in both REFIT_MODEs. MONOTONE needs a
   bump basis: set REFIT_BASIS Blip or Blip5, since the compact default is
