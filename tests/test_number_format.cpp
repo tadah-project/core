@@ -197,6 +197,35 @@ TEST_CASE("parse_decimal_finite", "[number_format]") {
   CHECK(v == 42.0); // untouched on failure
 }
 
+TEST_CASE("parse_decimal_normal: the hpotarget number grammar",
+          "[number_format]") {
+  // parse_decimal_finite, and the value must be zero or a normal double:
+  // the grammar of tadah hpo's hpotarget numbers (HPO's parse_number), so
+  // the numbers of tadah refit --retarget, which it writes into an
+  // hpotarget, are the numbers tadah hpo reads back.
+  double v = -1.0;
+  for (const auto &ok : std::vector<std::pair<const char *, double>>{
+           {"10", 10.0},       {"+7.5", 7.5},     {"-0.25", -0.25},
+           {"5.", 5.0},        {".5", 0.5},       {"2.5E+07", 2.5e7},
+           {"0", 0.0},         {"-0.0", -0.0},    {"0e-400", 0.0},
+           {"2.2250738585072014e-308", DBL_MIN},
+           {"1.7976931348623157e308", DBL_MAX}}) {
+    INFO("token: '" << ok.first << "'");
+    CHECK(parse_decimal_normal(ok.first, v));
+    CHECK(v == ok.second);
+  }
+  v = 42.0;
+  for (const char *t :
+       {"", "+", ".", "5x", "0x10", "0x1p-1", "inf", "-inf", "nan", "NaN",
+        " 1", "1 ", "1,5", "1e400", "-1e400",
+        // below the smallest normal double: a subnormal, or an underflow to 0
+        "1e-310", "4.9e-324", "-2.2e-308", "1e-400", "-1e-400"}) {
+    INFO("token: '" << t << "'");
+    CHECK_FALSE(parse_decimal_normal(t, v));
+  }
+  CHECK(v == 42.0);  // untouched on failure
+}
+
 TEST_CASE("reformat_double_token", "[number_format]") {
   CHECK(reformat_double_token("0.1", 18) == "0.100000000000000006");
   CHECK(reformat_double_token("0.1", 17) == "0.10000000000000001");
