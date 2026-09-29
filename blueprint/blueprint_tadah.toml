@@ -2595,10 +2595,12 @@ Latin-hypercube subsample of `min(2^k, ceil(k log2(k)))`), and runs the
 Phase 5 pre-flight audit (`run_preflight_from_db`) at each corner in the
 context tadah hpo evaluates: the seed with each bound's value in its own
 entry of the key (OPTIM KEY (i) sets entry i; the other entries keep the
-seed's values). For a DM_REAM seed, which must declare RHOFORM, a corner
-below the low bound its density form allows (under NONNEG and MONOTONE:
-AMPGRIDMB >= 0, WATOM > 0, and SGRIDMB > 0 under MONOTONE and for a
-Gaussian density under NONNEG) is a FAIL finding as well.
+seed's values). A corner below the low bound tadah hpo refuses a box by
+is a FAIL finding as well: for a DM_REAM seed, which must declare RHOFORM,
+the density form's (under NONNEG and MONOTONE: AMPGRIDMB >= 0, WATOM > 0,
+and SGRIDMB > 0 under MONOTONE and for a Gaussian density under NONNEG),
+and in every form a radial bump width > 0 (SGRIDMB of a Blip or Blip5
+density, SGRID2B of a D2_Blip or D2_Blip5 pair term).
 Returns exit code 0 if all corners pass and 1 if any corner produces a
 FAIL finding.
 """
