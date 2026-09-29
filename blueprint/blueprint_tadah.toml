@@ -877,9 +877,15 @@ comment state — around the recovered parameter values.
 Bound width control:
 - --pct <N>: global +-percent half-width (default: OPTIM_PCT, else 5).
 - --pct KEY=N: per-key override, e.g. --pct FIXWEIGHT=2 (repeatable; mix
-  with the global value: --pct 10 CGRID2B=2).
+  with the global value: --pct 10 CGRID2B=2). KEY needs an OPTIM line in
+  the file (active or commented).
 - --set 'KEY(i)=lo,hi': absolute bounds for one parameter (repeatable,
-  applied last).
+  applied last): finite, lo < hi, and lo within the rule of the file's
+  density form (AMPGRIDMB lo >= 0 under a RHOFORM NONNEG/MONOTONE header).
+- --rhoform SIGNED|NONNEG|MONOTONE: the density form of the potential the
+  file searches around (see retarget_rhoform).
+The numbers of --pct and --set take the hpotarget number grammar (decimal,
+finite, zero or a normal double: 5x, 0x10, inf, nan and 1e-320 are errors).
 - --rcut2b <r> / --rcutmb <r>: declare a bump channel's fixed cutoff in the
   same run — recentre the file's OPTIM RCUT reference on r and truncate the
   rewritten CGRID/SGRID boxes to the bump-support rule c + w/eta <= r
@@ -2100,7 +2106,12 @@ tabulated EAM file:
   hpotarget.
 - --retarget <file.hpotarget>: rewrite the OPTIM search bounds of an
   existing hpotarget (--pct global or KEY=N per-key percentages,
-  --set 'KEY(i)=lo,hi' absolute overrides, --in-place).
+  --set 'KEY(i)=lo,hi' absolute overrides, --in-place, and --rhoform
+  SIGNED|NONNEG|MONOTONE for the density form of the potential the file
+  searches around: non-negative AMPGRIDMB boxes and the RHOFORM header line
+  under NONNEG/MONOTONE). A configuration may not set RHOFORM or EMBF0 for
+  --retarget (no effect on an hpotarget); for --edit it may set them only to
+  the potential's own values.
 For knot-family potentials both modes keep RCUT2B/RCUTMB consistent with
 the largest knot position (the true effective cutoff).
 
@@ -2581,8 +2592,13 @@ Phase 7 of the HPO bound-validation pipeline. Reads the HPOTARGET file
 referenced by the seed config, parses every `OPTIM <KEY> (range) <lo> <hi>`
 line into a Bound, samples corners (full 2^k for k <= 12, otherwise a
 Latin-hypercube subsample of `min(2^k, ceil(k log2(k)))`), and runs the
-Phase 5 pre-flight audit (`run_preflight_from_db`) at each corner with
-the corner's parameter values substituted into the seed Context.
+Phase 5 pre-flight audit (`run_preflight_from_db`) at each corner in the
+context tadah hpo evaluates: the seed with each bound's value in its own
+entry of the key (OPTIM KEY (i) sets entry i; the other entries keep the
+seed's values). For a DM_REAM seed, which must declare RHOFORM, a corner
+below the low bound its density form allows (under NONNEG and MONOTONE:
+AMPGRIDMB >= 0, WATOM > 0, and SGRIDMB > 0 under MONOTONE and for a
+Gaussian density under NONNEG) is a FAIL finding as well.
 Returns exit code 0 if all corners pass and 1 if any corner produces a
 FAIL finding.
 """
