@@ -394,7 +394,9 @@ DM_REAM descriptor. They are excluded from the LINEAR weight solve by the
 EAM bilinearity (the linear weights live on the embedding side), but they
 are first-class NONLINEAR HPO parameters: `OPTIM AMPGRIDMB (i) lo hi`
 searches them like any other shape parameter. Same length as CGRIDMB.
-Written by 'tadah refit'.
+Written by 'tadah refit'. The density form RHOFORM decides what they
+multiply: psi_n under SIGNED and NONNEG, the integrated bump S_n under
+MONOTONE. Under NONNEG and MONOTONE every entry must be >= 0.
 """
 examples = ["AMPGRIDMB 0.21 0.05 -0.01 0.0"]
 [ALLOWED_KEYS.KDEG2B]
@@ -487,6 +489,56 @@ ESHIFT, ESHIFT_ATOM or ESHIFT_DBATOM (compatible with EAMFAST), or BIAS true
 FIXINDEX/FIXWEIGHT indices shift). External setfl converters must tabulate F(rho) - F(0) unless EMBF0 is FREE.
 """
 examples     = ["ZERO", "FREE"]
+cli_long_flag  = ""
+cli_short_flag = ""
+cli_required   = false
+
+[ALLOWED_KEYS.RHOFORM]
+INHERIT = ["TYPES.STRING"]
+# Deliberately NO default_value: the key is mandatory for every DM_REAM
+# potential and configuration, and nothing may supply it implicitly. Readers
+# use only Context::has_stored()/stored_value() (a Context::get on the absent
+# key would log a spurious ERROR before throwing); an absent key is a load
+# error with the migration text below. Only DM_REAM evaluates the key; the
+# potential writers canonicalise it to upper case and strip it from
+# potentials without a DM_REAM block.
+description  = "DM_REAM density form, mandatory for every DM_REAM potential and configuration: SIGNED, NONNEG or MONOTONE. SIGNED is the density of tadah 1.5.1 and earlier (add 'RHOFORM SIGNED' to use an existing potential unchanged); NONNEG requires every AMPGRIDMB entry >= 0, so rho >= 0 by construction; MONOTONE uses integrated-bump step functions with AMPGRIDMB >= 0, so rho >= 0 and non-increasing by construction. A property of the potential, written into every DM_REAM pot.tadah. Not an OPTIM target."
+long_description = """
+RHOFORM selects how the DM_REAM pair density rho(r) is built from the
+density grids CGRIDMB, SGRIDMB and AMPGRIDMB (W = the WATOM pair weight,
+f_c = the many-body cutoff RCTYPEMB, psi_n = the density basis function of
+the TYPEMB basis code):
+
+SIGNED: rho(r) = W f_c(r) sum_n a_n psi_n(r) with amplitudes of any sign.
+This is the density of tadah 1.5.1 and earlier, bit for bit. It carries no
+guarantee: rho can go negative, for instance in the tail.
+
+NONNEG: the SIGNED expression with every a_n >= 0 and every density pair
+weight W > 0, and the cutoff clamped at max(f_c, 0); the Gaussian basis also
+needs every SGRIDMB entry > 0. rho >= 0 exactly. With
+the knot family (basis code 2), knots <= RCUTMB and a non-increasing cutoff
+(any cutoff except Cut_SinInv) rho is also non-increasing and convex.
+
+MONOTONE: rho(r) = W max(f_c(r), 0) sum_n a_n S_n(r), with S_n the
+integrated bump: the integral of psi_n from r outwards divided by its
+integral over the whole support, so S_n = 1 inside the bump's inner support
+edge, 1/2 at its centre and 0 beyond its outer edge. Every a_n >= 0, every
+SGRIDMB entry > 0 and W > 0.
+rho >= 0 exactly and rho is non-increasing (to rounding), so the lattice
+density rhobar(a) is non-increasing on every lattice. Bump families only
+(Blip, Blip5, Gaussian); the knot family is refused (use NONNEG: a
+non-negative knot density is already non-increasing with a non-increasing
+cutoff). The cutoff must be one of Cut_Dummy, Cut_Cos, Cut_CosS, Cut_Tanh,
+Cut_PT, Cut_Poly and Cut_PolyS.
+
+The key is global: every DM_REAM block, including the DM_mJoin children,
+uses the same form. Values are case-insensitive and written in upper case.
+
+Migration: a DM_REAM potential or configuration without RHOFORM is an error.
+Add `RHOFORM SIGNED` to a potential written by tadah 1.5.1 or earlier to use
+it unchanged. Older binaries refuse a potential carrying RHOFORM (Invalid key).
+"""
+examples     = ["SIGNED", "NONNEG", "MONOTONE"]
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1963,8 +2015,19 @@ Output files (default name, config key):
 - refit_curve_{phi,rho,F}.dat, refit_compare.dat, refit_range_report.dat:
   diagnostics with fitted vs original curves, residuals, fit windows.
 
-Config-file options (EAM is the only required key):
+Config-file options (EAM and RHOFORM are required):
 - EAM <file>: input setfl potential to refit (required).
+- RHOFORM SIGNED|NONNEG|MONOTONE (required): the density form of the
+  written DM_REAM potential. SIGNED is the density of tadah 1.5.1 and
+  earlier; NONNEG fits non-negative amplitudes (rho >= 0); MONOTONE fits
+  integrated-bump steps with non-negative amplitudes (rho >= 0 and
+  non-increasing). Every form fits in both REFIT_MODEs. MONOTONE needs a
+  bump basis: set REFIT_BASIS Blip or Blip5, since the compact default is
+  Knot5 (Gaussian works with REFIT_MODE dense only). NONNEG with a knot
+  basis fits only non-increasing convex densities; REFIT_BASIS Blip5 lifts
+  that lock.
+  A table the form cannot follow (NONNEG: rho < 0 in the fit window;
+  MONOTONE: a rising rho) is refused before fitting.
 - REFIT_MODE: compact (default; small optimised basis) | dense (fast
   fixed grids).
 - REFIT_BASIS: basis family. Knot5 (compact default) | Blip (dense
@@ -2005,8 +2068,10 @@ tabulated EAM file:
   uses a zero coefficient, so the potential is unchanged until `tadah hpo`
   varies the new dimension (exact unless the input potential carries
   NUMERIC < 17, e.g. the NUMERIC 12 of 1.5.0 hpo pots); removing compensates
-  via the neighbouring coefficients. Writes an edited potential and a
-  regenerated hpotarget.
+  via the neighbouring coefficients (under RHOFORM NONNEG or MONOTONE
+  they stay >= 0). The input potential must declare RHOFORM, which the
+  edited potential keeps. Writes an edited potential and a regenerated
+  hpotarget.
 - --retarget <file.hpotarget>: rewrite the OPTIM search bounds of an
   existing hpotarget (--pct global or KEY=N per-key percentages,
   --set 'KEY(i)=lo,hi' absolute overrides, --in-place).
