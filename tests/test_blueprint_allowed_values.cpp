@@ -258,3 +258,19 @@ TEST_CASE("Config parser: RHOFORM takes SIGNED, NONNEG or MONOTONE, any "
                             Contains("NONNEG") && Contains("MONOTONE"));
   }
 }
+
+TEST_CASE("Blueprint: RETARGET_RHOFORM (tadah refit --rhoform) takes SIGNED, "
+          "NONNEG or MONOTONE",
+          "[BlueprintParser][allowed_values][rhoform]") {
+  const BlueprintKey &k =
+      BlueprintParser::getKeysMapRef().at("RETARGET_RHOFORM");
+  CHECK(k.allowed_values ==
+        std::vector<std::string>{"SIGNED", "NONNEG", "MONOTONE"});
+  CHECK(k.default_value.empty());
+  CHECK(k.cli_long_flag == "--rhoform");
+  Quiet q;
+  CHECK(CoreUserConfigParser::validateWithBlueprint("RETARGET_RHOFORM",
+                                                    "nonneg", k));
+  CHECK_FALSE(CoreUserConfigParser::validateWithBlueprint("RETARGET_RHOFORM",
+                                                          "SQUARE", k));
+}
