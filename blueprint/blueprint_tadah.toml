@@ -1002,6 +1002,16 @@ cli_long_flag  = "--rcutmb"
 cli_short_flag = ""
 cli_required   = false
 
+[ALLOWED_KEYS.retarget_rhoform]
+INHERIT = ["TYPES.STRING"]
+allowed_values = ["SIGNED", "NONNEG", "MONOTONE"]
+value_format = ["SIGNED|NONNEG|MONOTONE"]
+description  = "`tadah refit --retarget`: the DM_REAM density form (RHOFORM) of the potential the hpotarget searches around. Under NONNEG or MONOTONE the rewritten AMPGRIDMB boxes are non-negative (lo = max(0, v - d), the rule of the refit hpotarget writer) and the file gets the parsed header line '# RHOFORM <form>: AMPGRIDMB bounds are non-negative (lo = max(0, v - d))', which later retargets read; SIGNED adds no header. A header that names another form is an error. For an hpotarget written before its potential declared a positive form. RHOFORM itself is not accepted with --retarget (an hpotarget carries no potential)."
+examples     = ["NONNEG", "MONOTONE", "SIGNED"]
+cli_long_flag  = "--rhoform"
+cli_short_flag = ""
+cli_required   = false
+
 [ALLOWED_KEYS.set]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["'<KEY>(<i>)=<lo>,<hi>' [...]"]
@@ -2099,7 +2109,7 @@ the full description of any key.
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --pct 10 --rcut2b 6.0 --rcutmb 6.0 -o wide.hpotarget", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse", "ALLOWED_KEYS.func", "ALLOWED_KEYS.add", "ALLOWED_KEYS.remove", "ALLOWED_KEYS.eta", "ALLOWED_KEYS.deg", "ALLOWED_KEYS.pct", "ALLOWED_KEYS.set", "ALLOWED_KEYS.retarget_rcut2b", "ALLOWED_KEYS.retarget_rcutmb", "ALLOWED_KEYS.in_place"]
+INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.setfl_out", "ALLOWED_KEYS.refit_basis", "ALLOWED_KEYS.refit_level", "ALLOWED_KEYS.n2b", "ALLOWED_KEYS.nrho_basis", "ALLOWED_KEYS.nf_basis", "ALLOWED_KEYS.optim_pct", "ALLOWED_KEYS.output_grid_scale", "ALLOWED_KEYS.hpofileout", "ALLOWED_KEYS.refit_tol_ambient", "ALLOWED_KEYS.refit_tol_compressed", "ALLOWED_KEYS.refit_max_escalations", "ALLOWED_KEYS.refit_placement", "ALLOWED_KEYS.refit_reach_smin", "ALLOWED_KEYS.refit_reach_margin", "ALLOWED_KEYS.refit_constrain_f0", "ALLOWED_KEYS.refit_r_lo_frac", "ALLOWED_KEYS.refit_mode", "ALLOWED_KEYS.refit_log", "ALLOWED_KEYS.refit_compact_nmax", "ALLOWED_KEYS.refit_compact_opt_every", "ALLOWED_KEYS.refit_compact_stall", "ALLOWED_KEYS.refit_compact_insert_topk", "ALLOWED_KEYS.refit_compact_share", "ALLOWED_KEYS.refit_compact_seed", "ALLOWED_KEYS.refit_compact_samples", "ALLOWED_KEYS.refit_compact_jitters", "ALLOWED_KEYS.refit_compact_merge", "ALLOWED_KEYS.refit_objective", "ALLOWED_KEYS.refit_curve_deriv_weight", "ALLOWED_KEYS.refit_curve_weighting", "ALLOWED_KEYS.refit_curve_relax", "ALLOWED_KEYS.optimizer", "ALLOWED_KEYS.init", "ALLOWED_KEYS.explore", "ALLOWED_KEYS.refine", "ALLOWED_KEYS.fuse", "ALLOWED_KEYS.func", "ALLOWED_KEYS.add", "ALLOWED_KEYS.remove", "ALLOWED_KEYS.eta", "ALLOWED_KEYS.deg", "ALLOWED_KEYS.pct", "ALLOWED_KEYS.set", "ALLOWED_KEYS.retarget_rcut2b", "ALLOWED_KEYS.retarget_rcutmb", "ALLOWED_KEYS.retarget_rhoform", "ALLOWED_KEYS.in_place"]
 [TASKS.refit.keys.outfile]
 default_value = ["pot.tadah"]
 value_N = [1]
@@ -2124,6 +2134,8 @@ cli_needs    = ["add"]
 [TASKS.refit.keys.pct]
 cli_needs    = ["retarget"]
 [TASKS.refit.keys.set]
+cli_needs    = ["retarget"]
+[TASKS.refit.keys.retarget_rhoform]
 cli_needs    = ["retarget"]
 [TASKS.refit.keys.in_place]
 cli_needs    = ["retarget"]
