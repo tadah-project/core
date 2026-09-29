@@ -2,16 +2,23 @@
 //
 // MPIWPCKG, MBLOCK and NBLOCK belonged to the legacy MPI training build,
 // removed in 1.6.0. Files that contain them must still parse; the parser
-// writes one notice per key and parse to standard error (a CONFIG include
-// chain is one parse), whatever the Logger level or VERBOSE, keeps the
-// value check, and never stores the key, so it cannot reappear in a
-// potential written from the parsed Context.
+// writes one notice per key and process to standard error
+// (core::report_ignored_key_once, the rule of every ignored key), whatever
+// the Logger level or VERBOSE, keeps the value check, and never stores the
+// key, so it cannot reappear in a potential written from the parsed
+// Context.
+//
+// ctest runs every test case in a process of its own, where no deprecated
+// key has been reported yet. A case that expects a notice counts it only
+// when core::ignored_key_reported() says the key was not reported before
+// the case (a run of the whole binary in one process).
 
 #include "catch2/catch.hpp"
 
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
+#include <tadah/core/key_notice.h>
 #include <tadah/core/logger.h>
 
 #include <filesystem>
@@ -79,6 +86,13 @@ std::string deprecation_line(const std::string &key) {
   return "Deprecated key " + key + " is ignored";
 }
 
+/* The notices a case expects for @p key: 1 when the process has not
+ * reported it yet (every ctest run), 0 when an earlier case of the same
+ * process did. */
+std::size_t expected_notices(const std::string &key) {
+  return ignored_key_reported(key) ? 0 : 1;
+}
+
 /* A scratch directory unique to this process (ctest runs every test case
  * in its own process, possibly concurrently), removed with its files when
  * the object goes out of scope. */
@@ -129,11 +143,13 @@ bool has_key_line(const std::string &text, const std::string &key) {
  * NBLOCK and WATOM: one notice per key, and the ordinary keys of both
  * files are kept. */
 void check_include_chain(const std::filesystem::path &top) {
+  const std::size_t mblock = expected_notices("MBLOCK");
+  const std::size_t nblock = expected_notices("NBLOCK");
   StreamCapture cap(LogLevel::WARNING);
   Context c;
   REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(top.string()));
-  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == 1);
-  CHECK(cap.err_lines_with(deprecation_line("NBLOCK")).size() == 1);
+  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == mblock);
+  CHECK(cap.err_lines_with(deprecation_line("NBLOCK")).size() == nblock);
   CHECK_FALSE(c.contains("MBLOCK"));
   CHECK_FALSE(c.contains("NBLOCK"));
   CHECK(c.get<std::string>("ATOM") == "Ta");
@@ -147,6 +163,8 @@ TEST_CASE("Config parser: the legacy MPI keys parse, warn once each on "
           "[config][deprecated]") {
   /* The Logger is at WARNING, so a notice sent through it would reach
    * standard output: it must appear on standard error only. */
+  std::vector<std::size_t> expected;
+  for (const auto &key : kMpiKeys) expected.push_back(expected_notices(key));
   StreamCapture cap(LogLevel::WARNING);
   Context c;
   REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
@@ -154,13 +172,16 @@ TEST_CASE("Config parser: the legacy MPI keys parse, warn once each on "
                       "MBLOCK 32   # a second line for the same key"}));
 
   CHECK(c.get<std::string>("ATOM") == "Ta");
-  for (const auto &key : kMpiKeys) {
+  for (std::size_t k = 0; k < kMpiKeys.size(); ++k) {
+    const std::string &key = kMpiKeys[k];
     INFO(key);
     const auto warned = cap.err_lines_with(deprecation_line(key));
-    REQUIRE(warned.size() == 1);
-    CHECK_THAT(warned[0], Catch::Matchers::StartsWith("WARNING: ") &&
-                              Catch::Matchers::Contains("1.6.0") &&
-                              Catch::Matchers::Contains("TADAH_BUILD_MPI"));
+    REQUIRE(warned.size() == expected[k]);
+    CHECK(ignored_key_reported(key));
+    if (!warned.empty())
+      CHECK_THAT(warned[0], Catch::Matchers::StartsWith("WARNING: ") &&
+                                Catch::Matchers::Contains("1.6.0") &&
+                                Catch::Matchers::Contains("TADAH_BUILD_MPI"));
     CHECK(cap.out_lines_with(deprecation_line(key)).empty());
     CHECK_FALSE(c.contains(key));
   }
@@ -171,18 +192,24 @@ TEST_CASE("Config parser: the deprecation notice ignores the Logger level and "
           "[config][deprecated]") {
   /* pair_style tadah leaves the Logger at ERROR, and a VERBOSE 0 line
    * lowers it while the file is parsed: neither may hide the notice. */
+  /* Catch runs the case once per section, in one process: the sections
+   * read different keys, so under ctest each is reported there for the
+   * first time. */
   SECTION("Logger at ERROR, as in LAMMPS") {
+    const std::size_t n = expected_notices("MBLOCK");
     StreamCapture cap(LogLevel::ERROR);
     REQUIRE_NOTHROW(CoreUserConfigParser().parse(
         std::vector<std::string>{"ATOM Ta", "MBLOCK 64"}));
-    CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == 1);
+    CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == n);
   }
   SECTION("VERBOSE 0 on an earlier line") {
+    const std::size_t mpiwpckg = expected_notices("MPIWPCKG");
+    const std::size_t nblock = expected_notices("NBLOCK");
     StreamCapture cap(LogLevel::WARNING);
     REQUIRE_NOTHROW(CoreUserConfigParser().parse(std::vector<std::string>{
         "VERBOSE 0", "ATOM Ta", "MPIWPCKG 50", "NBLOCK 64"}));
-    CHECK(cap.err_lines_with(deprecation_line("MPIWPCKG")).size() == 1);
-    CHECK(cap.err_lines_with(deprecation_line("NBLOCK")).size() == 1);
+    CHECK(cap.err_lines_with(deprecation_line("MPIWPCKG")).size() == mpiwpckg);
+    CHECK(cap.err_lines_with(deprecation_line("NBLOCK")).size() == nblock);
   }
 }
 
@@ -238,24 +265,31 @@ TEST_CASE("Config parser: a CONFIG include chain reports a deprecated key once",
   CHECK_FALSE(std::filesystem::exists(scratch));
 }
 
-TEST_CASE("Config parser: every parse reports its deprecated keys, also after "
-          "a parse that failed",
+TEST_CASE("Config parser: a deprecated key is reported once per process, "
+          "however many parses read it, a failed one included",
           "[config][deprecated]") {
+  /* Owner decision (2026-09-29): one rule for every ignored key, deprecated
+   * or without effect: one stderr notice per key and process. */
   const std::vector<std::string> ok = {"ATOM Ta", "MBLOCK 64"};
+  const std::size_t first = expected_notices("MBLOCK");
   StreamCapture cap(LogLevel::WARNING);
 
   REQUIRE_NOTHROW(CoreUserConfigParser().parse(ok));
-  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == 1);
+  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == first);
+  CHECK(ignored_key_reported("MBLOCK"));
 
-  // A failing parse (unknown key after a deprecated one) must not leave
-  // the parser believing it is still inside that parse.
+  // A failing parse (unknown key after a deprecated one) reads the key
+  // again: no second notice, and the parser is left at the top level.
   REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
                           "MBLOCK 64", "NOT_A_TADAH_KEY 1"}),
                       Catch::Matchers::Contains("NOT_A_TADAH_KEY"));
-  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == 2);
+  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == first);
 
-  REQUIRE_NOTHROW(CoreUserConfigParser().parse(ok));
-  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == 3);
+  Context c;
+  REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(ok));
+  CHECK(cap.err_lines_with(deprecation_line("MBLOCK")).size() == first);
+  CHECK(c.get<std::string>("ATOM") == "Ta");
+  CHECK_FALSE(c.contains("MBLOCK"));
 }
 
 TEST_CASE("Config parser: a deprecated key's value is still checked",
