@@ -97,6 +97,20 @@ bool is_integer_literal(std::string_view tok);
 bool parse_decimal_finite(std::string_view tok, double &out);
 
 /**
+ * @brief parse_decimal_finite() whose value is also zero or a normal
+ * double: the number grammar of the hpotarget file (tadah hpo's
+ * parse_number, the syntax LAMMPS' utils::is_double accepts).
+ *
+ * A literal whose magnitude is below the smallest normal double is refused
+ * (false, @p out untouched): a subnormal ("1e-310") and a nonzero literal
+ * that underflows to 0 ("1e-400"). An exact zero ("0", "-0.0", "0e-400")
+ * is a value. The tests are on the bits, which neither -ffast-math nor a
+ * denormals-are-zero mode can defeat. For numbers that end up in an
+ * hpotarget, such as those of `tadah refit --retarget` (--pct, --set).
+ */
+bool parse_decimal_normal(std::string_view tok, double &out);
+
+/**
  * @brief std::stod without the underflow error: the numeric parser of
  * every reader of Context, potential, configuration, checkpoint and
  * dataset tokens.

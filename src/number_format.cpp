@@ -5,6 +5,7 @@
 #include <cerrno>
 #include <charconv>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <optional>
@@ -178,6 +179,25 @@ bool parse_decimal_finite(std::string_view tok, double &out) {
   // value the Context/config parsers (istringstream) read for this token;
   // an overflow (+-HUGE_VAL) is not a number they accept.
   if (errno == ERANGE && !(std::fabs(v) < 1.0)) return false;
+  out = v;
+  return true;
+}
+
+bool parse_decimal_normal(std::string_view tok, double &out) {
+  double v = 0.0;
+  if (!parse_decimal_finite(tok, v)) return false;
+  std::uint64_t bits = 0;
+  std::memcpy(&bits, &v, sizeof bits);
+  const std::uint64_t magnitude = bits & UINT64_C(0x7fffffffffffffff);
+  if (magnitude == 0) {
+    // zero: exact only when every mantissa digit is 0, else an underflow
+    for (const char ch : tok) {
+      if (ch == 'e' || ch == 'E') break;
+      if (ch >= '1' && ch <= '9') return false;
+    }
+  } else if ((magnitude >> 52) == 0) {
+    return false;  // a subnormal
+  }
   out = v;
   return true;
 }
