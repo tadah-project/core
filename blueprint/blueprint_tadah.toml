@@ -477,9 +477,13 @@ Differences between the two modes:
 
 Values: ZERO or FREE, in any case; any other value is an error at its line
 when the configuration or potential is read. The key has no effect on a
-potential without a DM_REAM block: tadah train and tadah refit do not write it
-into such a potential (a WARNING, once per process), and tadah predict ignores
-a task value for it with a WARNING.
+potential without a DM_REAM block: it is accepted, never written into such a
+potential (tadah train, tadah refit, tadah hpo), and reported once per process
+on standard error, "WARNING: Key EMBF0 is ignored: it applies only to a
+DM_REAM many-body block, and the potential has none (...)", like a deprecated
+key (the Logger level and VERBOSE do not hide it, and pair_style tadah shows
+it too). A task value for such a potential (tadah predict) is reported the
+same way.
 
 Migration: add `EMBF0 FREE` to a potential written by tadah 1.5.0 or earlier
 to reproduce its energies. Training a DM_REAM model on absolute reference
@@ -539,7 +543,11 @@ Cut_PT, Cut_Poly and Cut_PolyS.
 The key is global: every DM_REAM block, including the DM_mJoin children,
 uses the same form. Values: SIGNED, NONNEG or MONOTONE, in any case (written
 in upper case); any other value is an error at its line when the
-configuration or potential is read.
+configuration or potential is read, also without a DM_REAM block. A valid
+value has no effect on a potential without a DM_REAM block: it is accepted,
+never written into such a potential, and reported once per process on
+standard error ("WARNING: Key RHOFORM is ignored: ..."), like a deprecated
+key and as EMBF0.
 
 Migration: the key is new in tadah 1.6.0, and a DM_REAM potential or
 configuration without RHOFORM is an error. Add `RHOFORM SIGNED` to a
