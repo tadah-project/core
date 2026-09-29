@@ -6,7 +6,8 @@
 // the DM_REAM embedding reference) is the first key that uses it: a
 // misspelt value used to reach the model and fail only when a DM_REAM
 // descriptor was built -- or, in a potential without one, be dropped with
-// a warning.
+// a warning. RHOFORM (SIGNED|NONNEG|MONOTONE, the DM_REAM density form)
+// uses it too, and has no default.
 
 #include "catch2/catch.hpp"
 
@@ -195,4 +196,65 @@ TEST_CASE("validateWithBlueprint (the CLI and task path) applies "
   CHECK_FALSE(CoreUserConfigParser::validateWithBlueprint("EMBF0", "ZEROO", k));
   CHECK_THAT(q.out(), Contains("Allowed values") && Contains("ZERO") &&
                           Contains("FREE"));
+}
+
+TEST_CASE("Blueprint: RHOFORM takes SIGNED, NONNEG or MONOTONE, no default",
+          "[BlueprintParser][allowed_values][rhoform]") {
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("RHOFORM");
+  CHECK(k.allowed_values ==
+        std::vector<std::string>{"SIGNED", "NONNEG", "MONOTONE"});
+  CHECK(k.default_value.empty());   // mandatory: nothing supplies it
+  CHECK(k.value_format ==
+        std::vector<std::string>{"SIGNED|NONNEG|MONOTONE"});
+}
+
+TEST_CASE("Config parser: RHOFORM takes SIGNED, NONNEG or MONOTONE, any "
+          "case, and nothing else", "[config][allowed_values][rhoform]") {
+  SECTION("the three values, in any case, are stored as written") {
+    for (const std::string v :
+         {"SIGNED", "NONNEG", "MONOTONE", "signed", "NonNeg", "monotone"}) {
+      INFO(v);
+      Context c;
+      REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(
+                          std::vector<std::string>{"ATOM Ta", "RHOFORM " + v}));
+      REQUIRE(c.stored_value("RHOFORM").has_value());
+      CHECK(*c.stored_value("RHOFORM") == v);
+    }
+  }
+  SECTION("any other value is an error at the line of the file") {
+    Quiet q;
+    const std::string path =
+        "allowed_values_rhoform_" + std::to_string(::getpid()) + ".tadah";
+    {
+      std::ofstream os(path);
+      os << "# potential\nATOM Ta\nTYPEMB DM_REAM 0 4 4 4 5 5 0 0 Ta Ta\n"
+            "RHOFORM SQUARE\n";
+    }
+    struct Remove {
+      std::string p;
+      ~Remove() { std::remove(p.c_str()); }
+    } remove{path};
+    REQUIRE_THROWS_WITH(
+        CoreUserConfigParser().parse(path),
+        Contains("Invalid value for key RHOFORM on line 4 of " + path +
+                 ": 'SQUARE'") &&
+            Contains("allowed: SIGNED, NONNEG, MONOTONE"));
+    for (const std::string v : {"SIGN", "NONNEGATIVE", "MONOTONE,"}) {
+      INFO(v);
+      REQUIRE_THROWS_WITH(
+          CoreUserConfigParser().parse(
+              std::vector<std::string>{"ATOM Ta", "RHOFORM " + v}),
+          Contains("Invalid value for key RHOFORM on line 2: '" + v + "'"));
+    }
+  }
+  SECTION("the CLI and task path (validateWithBlueprint)") {
+    const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("RHOFORM");
+    Quiet q;
+    CHECK(CoreUserConfigParser::validateWithBlueprint("RHOFORM", "MONOTONE", k));
+    CHECK(CoreUserConfigParser::validateWithBlueprint("RHOFORM", "nonneg", k));
+    CHECK_FALSE(
+        CoreUserConfigParser::validateWithBlueprint("RHOFORM", "SQUARE", k));
+    CHECK_THAT(q.out(), Contains("Allowed values") && Contains("SIGNED") &&
+                            Contains("NONNEG") && Contains("MONOTONE"));
+  }
 }
