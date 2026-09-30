@@ -19,10 +19,14 @@
 namespace tadah {
 namespace core {
 
+/** A dense matrix. operator()(i, j) is row i, column j; the storage behind
+ *  operator[], data() and ptr() is column-major: element (i, j) is
+ *  m_[i + rows()*j]. load() takes its values in row-major reading order
+ *  (row 0 first), so a Structure::cell is loaded as
+ *  a0x a0y a0z  a1x a1y a1z  a2x a2y a2z and row i is the lattice vector
+ *  a_i. */
 template <typename D>
 class Matrix_Base {
-  // column-major order
-
 public:
   size_t rows_;
   size_t cols_;
@@ -80,13 +84,13 @@ public:
     aed_type temp(&m_[start], rows());
     return temp;
   }
-  /** Provide a copy of the r row of the matrix */
+  /** Provide a copy of the c column of the matrix */
   inline aed_type col(size_t c) const {
     size_t start = rows()*c;
     aed_type temp(&m_[start], rows());
     return temp;
   }
-  /** Provide a copy of the c column of the matrix */
+  /** Provide a copy of the r row of the matrix */
   inline aed_type row(size_t r) const {
     size_t stride = rows();
     aed_type temp(&m_[r], cols(), stride);
@@ -195,6 +199,8 @@ public:
   //          }
   //          return mat;
   //      }
+  /** Set the elements from values in row-major reading order: row 0
+   *  first, i.e. (0,0), (0,1), ..., (0,cols-1), (1,0), ... */
   template <typename... T>
   void load(T... list)
   {
@@ -288,9 +294,14 @@ public:
 
 // typedef Matrix_Base<double*> MatrixView;
 
+/** A 3x3 matrix, stored column-major (see Matrix_Base).
+ *
+ *  As a Structure::cell, row i is the lattice vector a_i, and
+ *  operator*(Vec3d) is the product with a column vector, so the Cartesian
+ *  position of fractional coordinates f is cell.transpose() * f
+ *  (= f0 a0 + f1 a1 + f2 a2) and f = cell.transpose().inverse() * r. */
 template<typename T=std::array<double,9>>
 class Matrix3d_T: public Matrix_Base<T> {
-  // class for 3x3 array
 public:
   Matrix3d_T()
   {
@@ -415,7 +426,7 @@ public:
     }
     return *this;
   }
-  template <typename D>
+  template <typename D, detail::enable_if_arithmetic<D> = 0>
   inline Matrix3d_T<T> &operator*=(const D fac)
   {
     for (size_t i=0;i<9;++i) {
@@ -423,7 +434,7 @@ public:
     }
     return *this;
   }
-  template <typename D>
+  template <typename D, detail::enable_if_arithmetic<D> = 0>
   inline Matrix3d_T<T> &operator/=(const D fac)
   {
     for (size_t i=0;i<9;++i) {
@@ -463,7 +474,7 @@ public:
     }
     return temp;
   }
-  template <typename D>
+  template <typename D, detail::enable_if_arithmetic<D> = 0>
   inline friend Matrix3d_T<T> operator*(const D &fac, const Matrix3d_T<T> &m1)
   {
     Matrix3d_T<T> temp;
@@ -472,7 +483,7 @@ public:
     }
     return temp;
   }
-  template <typename D>
+  template <typename D, detail::enable_if_arithmetic<D> = 0>
   inline friend Matrix3d_T<T> operator/(const Matrix3d_T<T> &m1, const D &fac)
   {
     Matrix3d_T<T> temp;

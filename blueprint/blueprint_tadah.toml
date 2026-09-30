@@ -2542,6 +2542,9 @@ percentiles per element, energy-per-atom percentiles, force-norm percentiles,
 and a material-class label over the supplied DBFILEs / STRUCTUREs. Writes
 the result to a text file (default 'dataset_stats.tadah') consumed by
 `tadah hpo --suggest-bounds` and the pre-flight design-matrix audit.
+It also prints how many structures have a non-symmetric cell and lists
+them by index and label: only in these can a cell stored transposed by an
+older Tadah be told apart (see the data-migration note of Dataset Format).
 """
 examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats.tadah"]
 [TASKS.analysis.dataset_stats.keys]
