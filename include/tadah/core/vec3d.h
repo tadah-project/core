@@ -125,16 +125,43 @@
 #include <sstream>
 #include <string>
 #include <limits>
+#include <type_traits>
+#include <utility>
 
 namespace tadah {
 namespace core {
+
+template <typename D> class Matrix_Base;  // maths.h
+
+namespace detail {
+std::false_type is_matrix_base_ptr(...);
+template <typename D>
+std::true_type is_matrix_base_ptr(const Matrix_Base<D>*);
+/** True for Matrix_Base<D> and every type derived from it (Matrix,
+ *  Matrix3d, MatrixView). */
+template <typename T>
+struct is_matrix : decltype(is_matrix_base_ptr(
+    std::declval<typename std::remove_cv<
+        typename std::remove_reference<T>::type>::type*>())) {};
+/** A type a Vec3d converts from, adds or subtracts element-wise: any type
+ *  indexable as t[0], t[1], t[2], except a matrix. A matrix's operator[]
+ *  indexes its column-major storage, so elements 0..2 are column 0 --
+ *  for a Structure::cell (a0x, a1x, a2x), not a lattice vector. Read a
+ *  row or a column with row() or col(). */
+template <typename T>
+using enable_if_vector_like =
+    typename std::enable_if<!is_matrix<T>::value, int>::type;
+template <typename T>
+using enable_if_arithmetic =
+    typename std::enable_if<std::is_arithmetic<T>::value, int>::type;
+}  // namespace detail
 
 class Vec3d {
 public:
   double v[3] = { };
   Vec3d() {}
 
-  template <typename T>
+  template <typename T, detail::enable_if_vector_like<T> = 0>
   Vec3d(T &v1)
   {
     v[0]=v1[0]; v[1]=v1[1]; v[2]=v1[2];
@@ -164,7 +191,7 @@ public:
   {
     return v[i];
   }
-  template <typename T>
+  template <typename T, detail::enable_if_vector_like<T> = 0>
   inline Vec3d &operator+=(const T &v1)
   {
     v[0]+=v1[0];
@@ -172,7 +199,7 @@ public:
     v[2]+=v1[2];
     return *this;
   }
-  template <typename T>
+  template <typename T, detail::enable_if_vector_like<T> = 0>
   inline Vec3d &operator-=(const T &v1)
   {
     v[0]-=v1[0];
@@ -209,12 +236,12 @@ public:
   inline double dot(const Vec3d &other) const {
     return v[0]*other[0] + v[1]*other[1] + v[2]*other[2];
   }
-  template <typename T>
+  template <typename T, detail::enable_if_arithmetic<T> = 0>
   inline Vec3d operator*(const T s) const
   {
     return Vec3d((*this)[0]*s, (*this)[1]*s, (*this)[2]*s);
   }
-  template <typename T>
+  template <typename T, detail::enable_if_arithmetic<T> = 0>
   inline Vec3d operator/(const T s) const
   {
     return Vec3d((*this)[0]/s, (*this)[1]/s, (*this)[2]/s);
@@ -251,7 +278,7 @@ public:
   {
     return !(*this==v1);
   }
-  template <typename T>
+  template <typename T, detail::enable_if_vector_like<T> = 0>
   inline Vec3d &operator=(const T &v1)
   {
     v[0] = v1[0];
