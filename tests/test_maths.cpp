@@ -607,6 +607,13 @@ template <typename T>
 struct vec3d_minus_assignable<T, std::void_t<decltype(std::declval<Vec3d&>() -=
                                                       std::declval<T>())>>
     : std::true_type {};
+/* True when `lhs += rhs` compiles for a Vec3d lhs and an rhs of type T. */
+template <typename T, typename = void>
+struct vec3d_plus_assignable : std::false_type {};
+template <typename T>
+struct vec3d_plus_assignable<T, std::void_t<decltype(std::declval<Vec3d&>() +=
+                                                     std::declval<T>())>>
+    : std::true_type {};
 /* True when `s * m` compiles for a Matrix3d m and an s of type T. */
 template <typename T, typename = void>
 struct left_scalable : std::false_type {};
@@ -655,10 +662,13 @@ TEST_CASE("A Matrix3d does not convert to a Vec3d", "[matrix3d][vec3d][cell_conv
     CHECK(plus_assignable<Vec3d&>::value);  // Vec3d += Vec3d stays
     CHECK_FALSE(vec3d_minus_assignable<const Matrix3d&>::value);
     CHECK_FALSE(vec3d_minus_assignable<Matrix&>::value);
+    CHECK_FALSE(vec3d_plus_assignable<const Matrix3d&>::value);
+    CHECK_FALSE(vec3d_plus_assignable<Matrix&>::value);
     /* Vectors keep converting. */
     CHECK(std::is_constructible<Vec3d, aed_type&>::value);
     CHECK(std::is_constructible<Vec3d, std::vector<double>&>::value);
     CHECK(vec3d_minus_assignable<const Vec3d&>::value);
+    CHECK(vec3d_plus_assignable<const Vec3d&>::value);
 }
 
 TEST_CASE("Matrix3d scalar operators take arithmetic scalars only", "[matrix3d]") {
