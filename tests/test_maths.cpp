@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 using namespace tadah::core;
 
@@ -596,4 +597,89 @@ TEST_CASE("Matrix3d row() and col() are read-only copies", "[matrix3d]") {
     CHECK(c[0] == m(0, 1));
     CHECK(c[1] == m(1, 1));
     CHECK(c[2] == m(2, 1));
+}
+
+namespace {
+/* True when `lhs -= rhs` compiles for a Vec3d lhs and an rhs of type T. */
+template <typename T, typename = void>
+struct vec3d_minus_assignable : std::false_type {};
+template <typename T>
+struct vec3d_minus_assignable<T, std::void_t<decltype(std::declval<Vec3d&>() -=
+                                                      std::declval<T>())>>
+    : std::true_type {};
+/* True when `s * m` compiles for a Matrix3d m and an s of type T. */
+template <typename T, typename = void>
+struct left_scalable : std::false_type {};
+template <typename T>
+struct left_scalable<T, std::void_t<decltype(std::declval<T>() *
+                                             std::declval<const Matrix3d&>())>>
+    : std::true_type {};
+}  // namespace
+
+TEST_CASE("Matrix3d load() reads row by row; storage is column-major",
+          "[matrix3d][cell_convention]") {
+    /* A cell is loaded as a0x a0y a0z  a1x a1y a1z  a2x a2y a2z, so row i is
+     * the lattice vector a_i. The storage behind operator[] is column-major. */
+    Matrix3d m;
+    m.load(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    for (size_t i = 0; i < 3; ++i)
+        for (size_t j = 0; j < 3; ++j) {
+            INFO("element (" << i << ", " << j << ")");
+            CHECK(m(i, j) == double(3 * i + j + 1));
+            CHECK(m[i + 3 * j] == m(i, j));
+        }
+    CHECK(m.row(1)[0] == 4);
+    CHECK(m.row(1)[1] == 5);
+    CHECK(m.row(1)[2] == 6);
+    CHECK(m.col(1)[0] == 2);
+    CHECK(m.col(1)[1] == 5);
+    CHECK(m.col(1)[2] == 8);
+    /* Matrix3d * Vec3d is the product with a column vector:
+     * cell^T * f = f0 a0 + f1 a1 + f2 a2. */
+    const Vec3d f(0.5, 0.25, 1.0);
+    const Vec3d r = m.transpose() * f;
+    CHECK(r[0] == Approx(0.5 * 1 + 0.25 * 4 + 1.0 * 7));
+    CHECK(r[1] == Approx(0.5 * 2 + 0.25 * 5 + 1.0 * 8));
+    CHECK(r[2] == Approx(0.5 * 3 + 0.25 * 6 + 1.0 * 9));
+}
+
+TEST_CASE("A Matrix3d does not convert to a Vec3d", "[matrix3d][vec3d][cell_convention]") {
+    /* Vec3d's converting constructor and assignment take any indexable
+     * type, so `Vec3d v = st.cell;` once compiled and gave v = storage
+     * elements 0..2, i.e. column 0 = (a0x, a1x, a2x) -- not a lattice
+     * vector. A row or column is read with row() or col(). */
+    CHECK_FALSE(std::is_constructible<Vec3d, Matrix3d&>::value);
+    CHECK_FALSE(std::is_constructible<Vec3d, const Matrix3d&>::value);
+    CHECK_FALSE(std::is_assignable<Vec3d&, const Matrix3d&>::value);
+    CHECK_FALSE(std::is_assignable<Vec3d&, Matrix3d&>::value);
+    CHECK(plus_assignable<Vec3d&>::value);  // Vec3d += Vec3d stays
+    CHECK_FALSE(vec3d_minus_assignable<const Matrix3d&>::value);
+    CHECK_FALSE(vec3d_minus_assignable<Matrix&>::value);
+    /* Vectors keep converting. */
+    CHECK(std::is_constructible<Vec3d, aed_type&>::value);
+    CHECK(std::is_constructible<Vec3d, std::vector<double>&>::value);
+    CHECK(vec3d_minus_assignable<const Vec3d&>::value);
+}
+
+TEST_CASE("Matrix3d scalar operators take arithmetic scalars only", "[matrix3d]") {
+    /* The friend `s * m` and Vec3d's `v * s` accepted any type, so `A * B`
+     * of two matrices, or `v * A`, picked them and failed inside their
+     * bodies with an unrelated error. */
+    CHECK(left_scalable<double>::value);
+    CHECK(left_scalable<int>::value);
+    CHECK_FALSE(left_scalable<const Matrix3d&>::value);
+    CHECK_FALSE(left_scalable<const Vec3d&>::value);
+
+    Matrix3d m;
+    m.load(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    const Matrix3d m2 = 2.0 * m;
+    const Matrix3d mh = m / 2;
+    Matrix3d m3 = m;
+    m3 *= 3;
+    m3 /= 1.5;
+    for (size_t i = 0; i < 9; ++i) {
+        CHECK(m2[i] == 2 * m[i]);
+        CHECK(mh[i] == 0.5 * m[i]);
+        CHECK(m3[i] == Approx(2 * m[i]));
+    }
 }
