@@ -13,8 +13,6 @@
 #include <stdexcept>
 #include <string>
 #include <system_error>
-#include <type_traits>
-#include <utility>
 #include <vector>
 #include <unistd.h>
 
@@ -109,30 +107,13 @@ TEST_CASE("read() with empty lines and comments") {
 // this way: what validation predicts follows PC_FRMSE / PC_SRMSE, and what
 // training fits follows the configuration file and -F/-S.
 //
-// refuse_keys does not exist yet. The cases reach it through a detection
-// trait, so this file compiles today and every refuse_keys case FAILS at run
-// time with "CoreUserConfigParser::refuse_keys does not exist yet".
+// These cases were committed before CoreUserConfigParser::refuse_keys
+// existed. They reached it through a detection trait then, so the file
+// compiled and every refuse_keys case failed at run time; now that the
+// method exists they call it directly. Before it existed, a FORCE or STRESS
+// line in HPO's --validation file was silently ignored.
 // ---------------------------------------------------------------------------
 namespace {
-
-template <class P, class = void>
-struct has_refuse_keys : std::false_type {};
-template <class P>
-struct has_refuse_keys<
-    P, std::void_t<decltype(std::declval<P &>().refuse_keys(
-           std::map<std::string, std::string>{}))>> : std::true_type {};
-
-/* parser.refuse_keys(reasons), or a test failure while it does not exist. */
-template <class P>
-void refuse(P &parser, std::map<std::string, std::string> reasons) {
-  if constexpr (has_refuse_keys<P>::value) {
-    parser.refuse_keys(std::move(reasons));
-  } else {
-    (void)parser;
-    (void)reasons;
-    FAIL("CoreUserConfigParser::refuse_keys does not exist yet");
-  }
-}
 
 /* The reasons a caller gives. Neither contains a refused key in upper case,
  * "not accepted" or "line", so they cannot satisfy those checks for it. */
@@ -222,13 +203,15 @@ void check_refusal(const std::string &msg, const std::string &key,
 // blank lines count), in any letter case, with an inline comment, for the
 // value false as well as true, naming the upper-case key, "not accepted",
 // the file and that key's reason (not another key's).
-// Today: refuse_keys does not exist, so refuse() FAILs before any parse.
+// Before refuse_keys existed this case failed before any parse. Matching
+// the key case-sensitively, or counting only the non-blank, non-comment
+// lines, makes it fail.
 TEST_CASE("Config parser: refuse_keys refuses a key at its line, naming the "
           "key, the line, the file and the reason",
           "[config][refuse_keys]") {
   RefuseScratch dir;
   CoreUserConfigParser parser;
-  refuse(parser, {{"FORCE", kForceReason}, {"STRESS", kStressReason}});
+  parser.refuse_keys({{"FORCE", kForceReason}, {"STRESS", kStressReason}});
 
   SECTION("an upper-case key after a comment line and a blank line") {
     const std::string file = dir.write("val_upper.cfg",
@@ -268,12 +251,13 @@ TEST_CASE("Config parser: refuse_keys refuses a key at its line, naming the "
 // Pins: CONFIG includes inherit the refused keys, at every depth; the error
 // names the included file and the line of that file, and a refused key
 // after an include still names the including file and its own line.
-// Today: refuse_keys does not exist, so refuse() FAILs before any parse.
+// Before refuse_keys existed this case failed before any parse. Dropping
+// the refusal from the parser of a CONFIG include makes it fail.
 TEST_CASE("Config parser: refuse_keys reaches into CONFIG includes",
           "[config][refuse_keys]") {
   RefuseScratch dir;
   CoreUserConfigParser parser;
-  refuse(parser, {{"FORCE", kForceReason}});
+  parser.refuse_keys({{"FORCE", kForceReason}});
 
   SECTION("a refused key inside an included file names that file and line") {
     const std::string inner = dir.write("inner.cfg",
@@ -323,7 +307,8 @@ TEST_CASE("Config parser: refuse_keys reaches into CONFIG includes",
 // whose name contains FORCE (ZERO_COM_FORCE), FWEIGHT, and a DBFILE value
 // FORCE -- parses to exactly the Context a plain parser returns, CONFIG
 // include included.
-// Today: refuse_keys does not exist, so refuse() FAILs before any parse.
+// Before refuse_keys existed this case failed before any parse. Refusing
+// by text (any line that mentions FORCE) instead of by key makes it fail.
 TEST_CASE("Config parser: refuse_keys leaves a file without refused keys "
           "unchanged",
           "[config][refuse_keys]") {
@@ -342,7 +327,7 @@ TEST_CASE("Config parser: refuse_keys leaves a file without refused keys "
                                      "CONFIG " + inner + "\n");
 
   CoreUserConfigParser refusing;
-  refuse(refusing, {{"FORCE", kForceReason}, {"STRESS", kStressReason}});
+  refusing.refuse_keys({{"FORCE", kForceReason}, {"STRESS", kStressReason}});
 
   Context with_refusal;
   REQUIRE_NOTHROW(with_refusal = refusing.parse(file));
@@ -360,7 +345,9 @@ TEST_CASE("Config parser: refuse_keys leaves a file without refused keys "
 // include, which unwinds a nested parse) or parsed a file with an include
 // successfully, a new parser -- plain, or refusing another key -- reads
 // the same files and stores FORCE.
-// Today: refuse_keys does not exist, so refuse() FAILs before any parse.
+// Before refuse_keys existed this case failed before any parse. Keeping
+// the refused keys in a static or thread_local, or in parse state that an
+// exception from inside an include leaves set, makes it fail.
 TEST_CASE("Config parser: refuse_keys does not leak into another parser",
           "[config][refuse_keys]") {
   RefuseScratch dir;
@@ -374,7 +361,7 @@ TEST_CASE("Config parser: refuse_keys does not leak into another parser",
 
   {
     CoreUserConfigParser refusing;
-    refuse(refusing, {{"FORCE", kForceReason}});
+    refusing.refuse_keys({{"FORCE", kForceReason}});
     CHECK_THROWS_AS(refusing.parse(with_force), std::runtime_error);
     CHECK_THROWS_AS(refusing.parse(with_force), std::runtime_error);
     CHECK_NOTHROW(refusing.parse(outer_clean));
@@ -390,7 +377,7 @@ TEST_CASE("Config parser: refuse_keys does not leak into another parser",
   CHECK(included.get<bool>("FORCE") == true);
 
   CoreUserConfigParser stress_only;
-  refuse(stress_only, {{"STRESS", kStressReason}});
+  stress_only.refuse_keys({{"STRESS", kStressReason}});
   Context other;
   REQUIRE_NOTHROW(other = stress_only.parse(outer_force));
   CHECK(other.get<bool>("FORCE") == true);
@@ -399,11 +386,13 @@ TEST_CASE("Config parser: refuse_keys does not leak into another parser",
 // Pins: the refusal is an option of the parser, not of file input: the
 // stream and line overloads refuse too, naming the line (counted from
 // first_line for a block of a file) and, for a block, its source.
-// Today: refuse_keys does not exist, so refuse() FAILs before any parse.
+// Before refuse_keys existed this case failed before any parse. A stream
+// or line overload of parse() that does not pass the refused keys on makes
+// it fail.
 TEST_CASE("Config parser: refuse_keys applies to stream and line input",
           "[config][refuse_keys]") {
   CoreUserConfigParser parser;
-  refuse(parser, {{"FORCE", kForceReason}});
+  parser.refuse_keys({{"FORCE", kForceReason}});
 
   SECTION("a stream") {
     std::istringstream in("ATOM Ta\n\nFORCE true\n");  // FORCE on line 3
