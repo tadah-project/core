@@ -1,5 +1,6 @@
 #ifndef TADAH_CORE_MATHS_H
 #define TADAH_CORE_MATHS_H
+#include <type_traits>
 #include <tadah/core/aed_type.h>
 #include <tadah/core/vec3d.h>
 
@@ -381,36 +382,11 @@ public:
 
     return minv;
   }
-  inline Matrix3d_T<T> &operator+=(const double d)
-  {
-    for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]+=d;
-    }
-    return *this;
-  }
-  inline Matrix3d_T<T> &operator-=(const double d)
-  {
-    for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]-=d;
-    }
-    return *this;
-  }
-  inline Matrix3d_T<T> &operator+=(const int d)
-  {
-    for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]+=d;
-    }
-    return *this;
-  }
-  inline Matrix3d_T<T> &operator-=(const int d)
-  {
-    for (size_t i=0;i<9;++i) {
-      Matrix_Base<T>::m_[i]-=d;
-    }
-    return *this;
-  }
-
-  template <typename D>
+  // Element-wise sum with another 3x3 matrix. There is no scalar +=/-=:
+  // adding a number to all nine entries is never meant for a cell or a
+  // stress (s.stress -= p shifted the shear components too); write
+  // m(k,k) -= p for each k.
+  template <typename D, std::enable_if_t<!std::is_arithmetic<D>::value, int> = 0>
   inline Matrix3d_T<T> &operator+=(const D &m)
   {
     for (size_t i=0;i<9;++i) {
@@ -418,7 +394,7 @@ public:
     }
     return *this;
   }
-  template <typename D>
+  template <typename D, std::enable_if_t<!std::is_arithmetic<D>::value, int> = 0>
   inline Matrix3d_T<T> &operator-=(const D &m)
   {
     for (size_t i=0;i<9;++i) {
@@ -473,6 +449,15 @@ public:
       temp[i] = m1[i] - m2[i];
     }
     return temp;
+  }
+  /* The matrix product, row by column: (A*B)(i,j) = sum_k A(i,k) B(k,j). */
+  inline friend Matrix3d_T<T> operator*(const Matrix3d_T<T> &A, const Matrix3d_T<T> &B)
+  {
+    Matrix3d_T<T> C;
+    for (size_t i=0;i<3;++i)
+      for (size_t j=0;j<3;++j)
+        C(i,j) = A(i,0)*B(0,j) + A(i,1)*B(1,j) + A(i,2)*B(2,j);
+    return C;
   }
   template <typename D, detail::enable_if_arithmetic<D> = 0>
   inline friend Matrix3d_T<T> operator*(const D &fac, const Matrix3d_T<T> &m1)
