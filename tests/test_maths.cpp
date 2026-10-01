@@ -677,8 +677,10 @@ TEST_CASE("Matrix3d scalar operators take arithmetic scalars only", "[matrix3d]"
      * bodies with an unrelated error. */
     CHECK(left_scalable<double>::value);
     CHECK(left_scalable<int>::value);
-    CHECK_FALSE(left_scalable<const Matrix3d&>::value);
     CHECK_FALSE(left_scalable<const Vec3d&>::value);
+    /* `A * B` of two matrices compiles since the matrix product exists; it
+     * is that product, not the scalar friend: see "Matrix3d * Matrix3d is
+     * the row-by-column product". */
 
     Matrix3d m;
     m.load(1, 2, 3, 4, 5, 6, 7, 8, 9);
@@ -692,4 +694,141 @@ TEST_CASE("Matrix3d scalar operators take arithmetic scalars only", "[matrix3d]"
         CHECK(mh[i] == 0.5 * m[i]);
         CHECK(m3[i] == Approx(2 * m[i]));
     }
+}
+
+namespace {
+/* True when `m += s` / `m -= s` compiles for an lvalue m of type M and an s
+ * of type S. */
+template <typename M, typename S, typename = void>
+struct has_plus_assign : std::false_type {};
+template <typename M, typename S>
+struct has_plus_assign<M, S, std::void_t<decltype(std::declval<M&>() +=
+                                                  std::declval<S>())>>
+    : std::true_type {};
+template <typename M, typename S, typename = void>
+struct has_minus_assign : std::false_type {};
+template <typename M, typename S>
+struct has_minus_assign<M, S, std::void_t<decltype(std::declval<M&>() -=
+                                                   std::declval<S>())>>
+    : std::true_type {};
+/* True when `a * b` compiles for two const M. */
+template <typename M, typename = void>
+struct has_matrix_product : std::false_type {};
+template <typename M>
+struct has_matrix_product<M, std::void_t<decltype(std::declval<const M&>() *
+                                                  std::declval<const M&>())>>
+    : std::true_type {};
+
+/* The value checks of the product. A function template, so that `A * B` is
+ * only compiled where the product exists (if constexpr discards it today and
+ * the case fails at run time instead of failing to build). */
+template <typename M>
+void check_matrix_product() {
+    if constexpr (has_matrix_product<M>::value) {
+        CHECK(std::is_same<std::decay_t<decltype(std::declval<const M&>() *
+                                                 std::declval<const M&>())>,
+                           M>::value);
+        M A;
+        A.load(1.0, 2.0, 3.0,
+               0.0, -1.0, 4.0,
+               5.0, 0.5, -2.0);
+        M B;
+        B.load(2.0, -1.0, 0.0,
+               1.0, 3.0, -2.0,
+               0.5, 4.0, 1.0);
+        /* (A B)_ij = sum_k A_ik B_kj, by hand. All entries are dyadic
+         * rationals, so the products and sums are exact. A^T B, A B^T and
+         * B A each differ from A B in at least the (0, 0) entry. */
+        const double AB[3][3] = {{5.5, 17.0, -1.0},
+                                 {1.0, 13.0, 6.0},
+                                 {9.5, -11.5, -3.0}};
+        const double BA[3][3] = {{2.0, 5.0, 2.0},
+                                 {-9.0, -2.0, 19.0},
+                                 {5.5, -2.5, 15.5}};
+        const M C = A * B;
+        const M D = B * A;
+        const M AI = A * M::Identity();
+        const M IA = M::Identity() * A;
+        for (size_t i = 0; i < 3; ++i)
+            for (size_t j = 0; j < 3; ++j) {
+                INFO("element (" << i << ", " << j << ")");
+                CHECK(C(i, j) == AB[i][j]);
+                CHECK(D(i, j) == BA[i][j]);
+                CHECK(AI(i, j) == A(i, j));
+                CHECK(IA(i, j) == A(i, j));
+            }
+        /* The operands are unchanged. */
+        CHECK(A(2, 1) == 0.5);
+        CHECK(B(1, 2) == -2.0);
+    } else {
+        FAIL("Matrix3d * Matrix3d (the matrix product) does not exist");
+    }
+}
+}  // namespace
+
+// Pins the CORE Matrix3d arithmetic of the stress-convention work: the
+// scalar compound assignments `m += s` and `m -= s` (double, int and every
+// other arithmetic type) do not exist, while `Matrix3d += Matrix3d` and
+// `-= Matrix3d` keep adding and subtracting element by element. A scalar
+// added to a stress or cell matrix went into all nine entries, off-diagonals
+// included (the CASTEP .md reader's `stress -= N kB T / V` removed the
+// kinetic term from the shear components too), which is never the intent.
+// Before the fix: Matrix3d had operator+=/-=(double) and (int), which added
+// the scalar to all nine entries, so has_plus_assign<Matrix3d, double> and
+// <Matrix3d, int> were true (and the unconstrained template operator+= made
+// the float, long and size_t forms compile as well).
+TEST_CASE("Matrix3d has no scalar += and -=; Matrix3d += Matrix3d stays",
+          "[matrix3d][stress_convention]") {
+    CHECK_FALSE(has_plus_assign<Matrix3d, double>::value);
+    CHECK_FALSE(has_minus_assign<Matrix3d, double>::value);
+    CHECK_FALSE(has_plus_assign<Matrix3d, int>::value);
+    CHECK_FALSE(has_minus_assign<Matrix3d, int>::value);
+    CHECK_FALSE(has_plus_assign<Matrix3d, float>::value);
+    CHECK_FALSE(has_minus_assign<Matrix3d, float>::value);
+    CHECK_FALSE(has_plus_assign<Matrix3d, long>::value);
+    CHECK_FALSE(has_minus_assign<Matrix3d, long>::value);
+    CHECK_FALSE(has_plus_assign<Matrix3d, std::size_t>::value);
+    CHECK_FALSE(has_minus_assign<Matrix3d, std::size_t>::value);
+
+    CHECK(has_plus_assign<Matrix3d, const Matrix3d&>::value);
+    CHECK(has_minus_assign<Matrix3d, const Matrix3d&>::value);
+
+    Matrix3d a;
+    a.load(1.0, 2.0, 3.0,
+           0.0, -1.0, 4.0,
+           5.0, 0.5, -2.0);
+    Matrix3d b;
+    b.load(2.0, -1.0, 0.0,
+           1.0, 3.0, -2.0,
+           0.5, 4.0, 1.0);
+    const double sum[3][3] = {{3.0, 1.0, 3.0},
+                              {1.0, 2.0, 2.0},
+                              {5.5, 4.5, -1.0}};
+    const double diff[3][3] = {{-1.0, 3.0, 3.0},
+                               {-1.0, -4.0, 6.0},
+                               {4.5, -3.5, -3.0}};
+    Matrix3d s = a;
+    s += b;
+    Matrix3d d = a;
+    d -= b;
+    for (size_t i = 0; i < 3; ++i)
+        for (size_t j = 0; j < 3; ++j) {
+            INFO("element (" << i << ", " << j << ")");
+            CHECK(s(i, j) == sum[i][j]);
+            CHECK(d(i, j) == diff[i][j]);
+        }
+}
+
+// Pins Matrix3d * Matrix3d: the product exists, is a Matrix3d, and is the
+// row-by-column product (A B)_ij = sum_k A_ik B_kj for two non-symmetric
+// matrices (so that B A, A^T B or A B^T cannot pass), with the identity as
+// its unit. It replaces MLIP's local matMul.
+// Before the fix: `A * B` of two matrices did not compile (no operator*
+// takes two Matrix3d), so has_matrix_product<Matrix3d> was false and the
+// case failed with "Matrix3d * Matrix3d (the matrix product) does not
+// exist".
+TEST_CASE("Matrix3d * Matrix3d is the row-by-column product",
+          "[matrix3d][stress_convention]") {
+    CHECK(has_matrix_product<Matrix3d>::value);
+    check_matrix_product<Matrix3d>();
 }
