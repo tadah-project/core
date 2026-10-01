@@ -3,6 +3,9 @@
 
 #include <tadah/core/iuser_config_parser.h>
 
+#include <map>
+#include <string>
+
 namespace tadah {
 namespace core {
 
@@ -63,6 +66,22 @@ public:
                 const std::string& source) const override;
 
   /**
+   * @brief Refuses the keys of @p reasons (key -> why) in everything this
+   *        parser reads.
+   *
+   * A line that sets one of them, in any letter case, is an error at that
+   * line: "Key FORCE on line 2 of val.tadah is not accepted here: <reason>".
+   * A file included with CONFIG is read under the same refusal, so its
+   * error names the included file and its line. A later call replaces the
+   * set; an empty map refuses nothing (the default).
+   *
+   * For a file whose role leaves no meaning to a key that is valid
+   * elsewhere: HPO's --validation file refuses FORCE and STRESS, since what
+   * validation predicts follows PC_FRMSE and PC_SRMSE.
+   */
+  void refuse_keys(std::map<std::string, std::string> reasons);
+
+  /**
    * @brief Validate a (key, value) pair against Blueprint schema.
    *
    * Logs any errors if the value does not comply with the schema for this key
@@ -111,6 +130,8 @@ private:
       const std::string &text,
       const BlueprintKey &keyInfo);
 
+  /// Upper-case key -> the reason it is refused (refuse_keys()).
+  std::map<std::string, std::string> refused_;
 };
 } // namespace core
 } // namespace tadah

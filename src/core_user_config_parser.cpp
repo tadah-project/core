@@ -98,7 +98,8 @@ namespace {
    * into configChain, parsed, then popped after the nested parse.
    */
   void parseLines(const std::vector<std::string> &lines, Context &ctx,
-                  std::size_t first_line, const std::string &source) {
+                  std::size_t first_line, const std::string &source,
+                  const std::map<std::string, std::string> &refused) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
     for (size_t i = 0; i < lines.size(); ++i) {
       std::string rawLine = trim(lines[i]);
@@ -122,6 +123,13 @@ namespace {
       // first token is the key
       const std::string &key = tokens[0];
       std::string uKey = to_upper(key);
+
+      // A key the caller refuses for this input (refuse_keys()).
+      if (const auto r = refused.find(uKey); r != refused.end()) {
+        throw std::runtime_error("Key " + uKey + " on " +
+                                 lineOf(first_line + i, source) +
+                                 " is not accepted here: " + r->second);
+      }
 
       // Verbatim multi-line blocks (not flat keys). Slurp every token between
       // `<BLOCK>` and the matching `END<BLOCK>` into the single (unbounded)
@@ -209,8 +217,9 @@ namespace {
         // Push config name before nested parse
         configChain.push_back(val);
 
-        // Perform nested parse
+        // Perform nested parse, under the same refusal
         tadah::core::CoreUserConfigParser parser;
+        parser.refuse_keys(refused);
         Context configCtx;
         try {
           configCtx = parser.parse(val);
@@ -256,7 +265,7 @@ Context CoreUserConfigParser::parse(const std::string &filename) const {
   infile.close();
 
   Context ctx;
-  parseLines(lines, ctx, 1, filename);
+  parseLines(lines, ctx, 1, filename, refused_);
   return ctx;
 }
 
@@ -272,7 +281,7 @@ Context CoreUserConfigParser::parse(std::istream &in) const {
   }
 
   Context ctx;
-  parseLines(lines, ctx, 1, "");
+  parseLines(lines, ctx, 1, "", refused_);
   return ctx;
 }
 
@@ -281,7 +290,7 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   ParseScope scope;
 
   Context ctx;
-  parseLines(lines, ctx, 1, "");
+  parseLines(lines, ctx, 1, "", refused_);
   return ctx;
 }
 
@@ -291,8 +300,15 @@ Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
   ParseScope scope;
 
   Context ctx;
-  parseLines(lines, ctx, first_line, source);
+  parseLines(lines, ctx, first_line, source, refused_);
   return ctx;
+}
+
+void CoreUserConfigParser::refuse_keys(
+    std::map<std::string, std::string> reasons) {
+  refused_.clear();
+  for (auto &kv : reasons)
+    refused_[to_upper(kv.first)] = std::move(kv.second);
 }
 
 bool CoreUserConfigParser::validateWithBlueprint(
