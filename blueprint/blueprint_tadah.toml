@@ -2340,7 +2340,7 @@ INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
 
 [TASKS.data.dedup]
 description      = "Remove duplicate structures from a dataset."
-long_description = "Remove duplicate structures from Tadah! dataset(s). Two structures are the same when their cells agree and each atom matches a distinct atom of the same element, in any order and through the periodic cell, within --threshold (Angstrom, each Cartesian component; required). The first of each set of equal structures is kept, in the order of the files. Comparing a structure with a singular cell (zero or coplanar lattice vectors) is an error, and so is a threshold at which two periodic images of one position could both match (not below 0.29 of the shortest lattice vector). The merge option combines output into single file."
+long_description = "Remove duplicate structures from Tadah! dataset(s). Two structures are the same when their cells agree and each atom matches a distinct atom of the same element, in any order and through the periodic cell, within --threshold (Angstrom, each Cartesian component; required). The first of each set of equal structures is kept, in the order of the files. Comparing a structure with a singular cell (zero or coplanar lattice vectors) is an error, and so is a threshold at which two periodic images of one position could both match (from 1/(2 sqrt 3), about 0.2887, of the shortest lattice vector). The merge option combines output into single file."
 examples         = ["tadah data dedup -d db1.tadah db2.tadah -o dedup1.tadah dedup2.tadah --threshold 1e-6", "tadah data dedup -d db1.tadah db2.tadah -o db_merged.tadah --merge --threshold 1e-6"]
 [TASKS.data.dedup.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.append"]
@@ -2417,7 +2417,9 @@ magnitudes. Specifically:
   • Total force: 1 / Σ‖ force_i ‖
   • Stress: 1 / ‖stress‖
 This ensures smaller magnitudes keep their weights, while large values are
-downweighted to mitigate numerical instability.
+downweighted to mitigate numerical instability. A weight of 0 is kept: it
+marks a quantity the structure has no data for (tadah data convert writes
+it for a structure without forces or stress) or that is excluded.
 """
 [TASKS.data.balance.groups.input]
 description      = "Select from the following options:"
