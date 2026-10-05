@@ -1455,6 +1455,10 @@ cli_required     = false
 [ALLOWED_KEYS.uniform]
 INHERIT = ["TYPES.UINT"]
 description  = "Sample uniformly every N-th entry."
+long_description = """
+Keeps every N-th structure, starting with the first: structures 1, 1+N,
+1+2N, ... N must be at least 1 and at most the number of structures.
+"""
 examples     = ["10"]
 cli_long_flag  = "--uniform"
 cli_short_flag = ""
@@ -1463,6 +1467,11 @@ cli_required     = false
 [ALLOWED_KEYS.random]
 INHERIT = ["TYPES.UINT"]
 description  = "Randomly sample N entries."
+long_description = """
+Draws N distinct structures from the whole dataset, each with the same
+chance, and writes them in their dataset order. N must be at most the number
+of structures. Each run draws anew (the generator is seeded at random).
+"""
 examples     = ["5"]
 cli_long_flag  = "--random"
 cli_short_flag = ""
@@ -2359,10 +2368,13 @@ cli_needs = ["outfile"]
 description = "Sample configurations from a dataset."
 long_description = """
 Sample a subset of configurations from an existing dataset to create a new,
-single output dataset. For the --index option, ensure requested sample size
-does not exceed the number of available configurations.
+single output dataset. Give exactly one selection: every N-th structure
+(--uniform), N structures drawn at random (--random), or the structures at
+the given 1-based indices (--index), each between 1 and the number of
+structures. --index segments are checked strictly: a descending range or a
+malformed segment is refused, and several values form one list.
 """
-examples         = ["tadah data sample -d full.tadah -o sample.tadah"]
+examples         = ["tadah data sample -d full.tadah -o sample.tadah --uniform 10", "tadah data sample -d full.tadah -o sample.tadah --random 100", "tadah data sample -d full.tadah -o sample.tadah -i 1-50,75"]
 [TASKS.data.sample.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.uniform", "ALLOWED_KEYS.random", "ALLOWED_KEYS.index", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.append"]
 [TASKS.data.sample.keys.outfile]
