@@ -375,6 +375,23 @@ std::vector<size_t> parse_indices_strict(const std::string& input);
  */
 std::vector<size_t> parse_indices(const std::vector<std::string>& input);
 
+/**
+ * @brief The 1-based structure indices of a dataset command (tadah data
+ * sample and data balance -i), checked.
+ *
+ * The values form one list, as the command line and a task file give them
+ * ('1, 3' arrives as the values '1,' and '3'): entries separated by commas
+ * or whitespace, each 'i', 'a-b' or 'a-b:step', with spaces allowed around
+ * '-' and ':'. Indices are returned in order, repeated ones removed.
+ *
+ * Refused, naming the text and prefixed with @p who: an empty entry ('1,,2',
+ * a leading or trailing comma), a token that is not an index, a descending
+ * range, a step of 0, and an index outside 1 ... @p total. The bounds are
+ * checked before a range is expanded.
+ */
+std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values,
+                                          size_t total, const std::string& who);
+
 
 /**
  * @brief Move specified columns in place to the right end of the matrix.
