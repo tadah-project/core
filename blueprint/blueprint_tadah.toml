@@ -1444,6 +1444,22 @@ cli_long_flag  = "--threshold"
 cli_short_flag = ""
 cli_required     = false
 
+[ALLOWED_KEYS.close_contact]
+INHERIT = ["TYPES.DOUBLE"]
+value_format = ["<distance>"]
+description  = "List every pair of atoms closer than this distance (Angstrom)."
+long_description = """
+`tadah analysis dataset_stats` prints every pair of atoms closer than this
+distance, in Angstrom: each pair once, a pair through a periodic image
+included, by structure (1-based index and label), atoms (1-based, with their
+symbols) and distance. Two atoms at one position are listed at distance 0.
+It must be greater than 0. Without it no pair is listed.
+"""
+examples     = ["0.5", "1.0"]
+cli_long_flag  = "--close-contact"
+cli_short_flag = ""
+cli_required   = false
+
 [ALLOWED_KEYS.merge]
 INHERIT = ["TYPES.BOOL"]
 description  = "Merge deduplication results into one file."
@@ -2603,13 +2619,18 @@ percentiles per element, energy-per-atom percentiles, force-norm percentiles,
 and a material-class label over the supplied DBFILEs / STRUCTUREs. Writes
 the result to a text file (default 'dataset_stats.tadah') consumed by
 `tadah hpo --suggest-bounds` and the pre-flight design-matrix audit.
+Every pair strictly inside the cutoff counts, a pair at distance 0 (two
+atoms at one position) included, so r_min is 0 for such a dataset.
 It also prints how many structures have a non-symmetric cell and lists
 them by index and label: only in these can a cell stored transposed by an
 older Tadah be told apart (see the data-migration note of Dataset Format).
+With --close-contact <A> it lists every pair of atoms closer than A
+Angstrom by structure, atoms and distance.
 """
-examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats.tadah"]
+examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats.tadah",
+                    "tadah analysis dataset_stats -c train.tadah --outfile stats.tadah --close-contact 0.5"]
 [TASKS.analysis.dataset_stats.keys]
-INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
 [TASKS.analysis.dataset_stats.groups.input]
 description      = "Structure source or a task file. Select from the following options:"
 cli_required = true
