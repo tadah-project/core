@@ -742,22 +742,23 @@ from databases (MP mp-<n>, COD cod-<n>, AFLOW aflow:<auid>, NOMAD).
 Multiple structures can be space-separated or repeated. A mix of files and
 online sources is allowed.
 A CIF's space group comes from its symmetry-operator loop, else its Hall
-symbol, else its H-M symbol (also as P2_1/c, P2(1)/c, 'P 21/c (No. 14)'
-or the full symbol, 'I 4/m -3 2/m'; ICSD's ' S' and ' Z' suffixes name
-origin choice 1 and 2), else (without a
-loop) its number (1 to 230), in the setting named or else the standard one
-(origin choice 2, hexagonal or rhombohedral axes from the cell angles): a
-number gives a WARNING naming the setting used when the cell could be in
-another, and a symbol used that cannot be read is refused (next to an
-operator loop that forms a group, a WARNING). A monoclinic group
-in a setting of gemmi's table, or with the rotations of one, must fit the
-cell (the angles between its unique axis and the other axes 90 degrees; a
-short symbol or a number means unique axis b, except B 2, B m, B b, B n,
-B 2/m, B 2/b and B 2/n, unique axis c), and a trigonal or hexagonal
-group its axes (hexagonal: alpha = beta = 90, gamma = 120; an R group's
-rhombohedral axes: alpha = beta = gamma; those the symbol names, or else
-the cell's), or the CIF is refused. An inconsistent symmetry record gives a WARNING. The three cell lengths must
-be given; an angle left out is 90 degrees. A site whose occupancy is
+symbol, else its H-M symbol (also as P2_1/c, P2(1)/c, 'P 21/c (No. 14)' or
+the full symbol, 'I 4/m -3 2/m'; ICSD's ' S' and ' Z' suffixes name origin
+choice 1 and 2), else its number (1 to 230), in the setting named or else
+the standard one (origin choice 2, hexagonal or rhombohedral axes from the
+cell angles): a number gives a WARNING naming the setting used when the
+cell could be in another, and a symbol used that cannot be read is refused
+(next to an operator loop that forms a group, a WARNING). A monoclinic
+group in a setting of gemmi's table, or with the rotations of one, must
+fit the cell (the angles between its unique axis and the other axes 90
+degrees; a short symbol or a number means unique axis b, except B 2, B m,
+B b, B n, B 2/m, B 2/b and B 2/n, unique axis c), and a trigonal or
+hexagonal group its axes (hexagonal: alpha = beta = 90, gamma = 120; an R
+group's rhombohedral axes: alpha = beta = gamma; those the symbol names,
+or else the cell's), or the CIF is refused. An inconsistent symmetry
+record gives a WARNING. The three cell lengths must be given; an angle
+left out is 90 degrees.
+A site whose occupancy is
 not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
 site. A failed AFLOW fetch names the AUID and the service's reason.
 """
