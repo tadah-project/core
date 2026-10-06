@@ -2293,6 +2293,16 @@ long_description = "Write structures from a dataset or a structure file or onlin
 examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
 [TASKS.data.write.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
+[TASKS.data.write.keys.index]
+long_description = """
+The 1-based indices of the dataset structures to write, one output file
+(--outfile) each, in order, each between 1 and the number of structures:
+single indices, ranges start-stop and intervals start-stop:step, separated by
+commas or spaces (spaces around '-' and ':' are allowed). Repeated indices are
+removed. A descending range, a step of 0, a malformed or empty entry and an
+index outside the dataset are refused, naming it. Every structure and every
+output file is checked before the first file is written.
+"""
 [TASKS.data.write.groups.input]
 description      = "Structure sources for writing. Select from the following options:"
 cli_required = true
