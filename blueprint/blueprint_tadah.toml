@@ -2196,8 +2196,11 @@ and the force and stress metrics when forces (-F) or stresses (-S) are
 predicted. A structure stored with force weight 0 (fweight) is left out of
 the force metrics, and one with stress weight 0 (sweight) out of the stress
 metrics: it has no forces or stress tensor of its own (tadah data convert
-stores zeros in their place). A dataset in which every structure has that
-weight 0 is refused before predicting.
+stores zeros in their place). With -F (-S), a dataset in which every
+structure has force (stress) weight 0 is refused before predicting, and so,
+with or without them, is a dataset that the filters (EFILTER, FFILTER) leave
+without structures. The training-only weight keys a potential records
+(WDBFILE, WDBFILE_AUTO, EWEIGHT_TEMP) are not applied to the data predicted.
 """
 [TASKS.predict.keys.outfile]
 default_value = ["energy.pred", "forces.pred", "stress.pred"]
