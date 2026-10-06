@@ -321,6 +321,79 @@ std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
   return parse_indices(input_str);
 }
 
+std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values,
+                                          size_t total, const std::string& who) {
+  // One list: the values joined, without the spaces around '-' and ':'.
+  std::string list;
+  {
+    const std::string joined = join(values);
+    for (size_t i = 0; i < joined.size(); ++i) {
+      const char c = joined[i];
+      if (std::isspace(static_cast<unsigned char>(c))) {
+        const size_t prev = list.find_last_not_of(" \t\r\n\v\f");
+        const size_t next = joined.find_first_not_of(" \t\r\n\v\f", i);
+        if ((prev != std::string::npos && (list[prev] == '-' || list[prev] == ':')) ||
+            (next != std::string::npos && (joined[next] == '-' || joined[next] == ':')))
+          continue;
+      }
+      list += c;
+    }
+  }
+  const std::string usage = " (use i, a-b or a-b:step, 1-based, separated by commas)";
+  auto whole_number = [](const std::string& t, size_t& value) {
+    const auto r = std::from_chars(t.data(), t.data() + t.size(), value);
+    return !t.empty() && r.ec == std::errc{} && r.ptr == t.data() + t.size();
+  };
+  std::vector<size_t> out;
+  std::set<size_t> seen;
+  size_t pos = 0;
+  while (true) {
+    const size_t comma = list.find(',', pos);
+    const std::string segment =
+        list.substr(pos, comma == std::string::npos ? std::string::npos : comma - pos);
+    if (trim(segment).empty())
+      throw std::runtime_error(who + ": the index list '" + trim(join(values)) +
+                               "' has an empty entry" + usage);
+    std::istringstream tokens(segment);
+    for (std::string token; tokens >> token;) {
+      const auto bad = [&](const std::string& why) {
+        return std::runtime_error(who + ": index '" + token + "' " + why + usage);
+      };
+      size_t a = 0, b = 0, step = 1;
+      const size_t dash = token.find('-');
+      if (dash == std::string::npos) {
+        if (!whole_number(token, a)) throw bad("is not an index");
+        b = a;
+      } else {
+        const size_t colon = token.find(':', dash);
+        if (!whole_number(token.substr(0, dash), a) ||
+            !whole_number(token.substr(dash + 1, colon == std::string::npos
+                                                     ? std::string::npos
+                                                     : colon - dash - 1), b) ||
+            (colon != std::string::npos && !whole_number(token.substr(colon + 1), step)))
+          throw bad("is not an index range");
+        if (a > b) throw bad("is a descending range");
+        if (step == 0) throw bad("has a step of 0");
+      }
+      // The bounds first: a range is expanded only within 1 ... total.
+      for (const size_t i : {a, b})
+        if (i == 0 || i > total)
+          throw std::runtime_error(
+              who + ": index " + std::to_string(i) +
+              (token == std::to_string(i) ? "" : " (in '" + token + "')") +
+              " is outside 1-" + std::to_string(total) + " (the dataset has " +
+              std::to_string(total) + " structures)");
+      for (size_t i = a;; i += step) {
+        if (seen.insert(i).second) out.push_back(i);
+        if (b - i < step) break;
+      }
+    }
+    if (comma == std::string::npos) break;
+    pos = comma + 1;
+  }
+  return out;
+}
+
 void reverse_vector(t_type& vec, const std::vector<size_t>& original_map) {
     t_type temp_vec = vec;
     for (size_t i = 0; i < original_map.size(); ++i) {
