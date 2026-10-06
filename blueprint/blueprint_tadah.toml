@@ -751,8 +751,9 @@ another, and a symbol that cannot be read is refused. A monoclinic group
 in a setting of gemmi's table, or with the rotations of one, must fit the
 cell (the angles between its unique axis and the other axes 90 degrees; a
 short symbol or a number means unique axis b, except B 2, B m, B b, B n,
-B 2/m, B 2/b and B 2/n, unique axis c), or the CIF is refused. An
-inconsistent symmetry record gives a WARNING. A site whose occupancy is
+B 2/m, B 2/b and B 2/n, unique axis c), and an R group the axes it names
+(hexagonal: gamma = 120; rhombohedral: alpha = beta = gamma), or the CIF
+is refused. An inconsistent symmetry record gives a WARNING. A site whose occupancy is
 not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
 site. A failed AFLOW fetch names the AUID and the service's reason.
 """
