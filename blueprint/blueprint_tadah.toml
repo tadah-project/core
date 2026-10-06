@@ -749,9 +749,9 @@ loop) its number (1 to 230), in the setting named or else the standard one
 number gives a WARNING naming the setting used when the cell could be in
 another, and a symbol that cannot be read is refused. A monoclinic group
 must fit the cell (the angles between its unique axis and the other axes
-90 degrees; a short symbol or a number means unique axis b, a B-centred
-short symbol unique axis c), or the CIF is refused. An inconsistent
-symmetry record gives a WARNING. A site whose occupancy is
+90 degrees; a short symbol or a number means unique axis b, except B 2,
+B m, B b, B 2/m and B 2/b, unique axis c), or the CIF is refused. An
+inconsistent symmetry record gives a WARNING. A site whose occupancy is
 not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
 site. A failed AFLOW fetch names the AUID and the service's reason.
 """
