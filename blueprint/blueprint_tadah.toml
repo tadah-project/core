@@ -741,15 +741,18 @@ Supported file formats: .cif (Crystallographic Information File), VASP
 from databases (MP mp-<n>, COD cod-<n>, AFLOW aflow:<auid>, NOMAD).
 Multiple structures can be space-separated or repeated. A mix of files and
 online sources is allowed.
-A CIF's space group comes from its symmetry-operator loop, else its Hall or
-H-M symbol (ICSD's ' S' and ' Z' suffixes name origin choice 1 and 2), else
-its number, in the standard setting (origin choice 2, hexagonal or
-rhombohedral axes from the cell angles): a number with more than one
-setting gives a WARNING naming the one used, a monoclinic number needs a
-cell with unique axis b, and a symbol that names no known group is refused.
-An inconsistent symmetry record gives a WARNING. A site whose occupancy is
+A CIF's space group comes from its symmetry-operator loop, else its Hall
+symbol, else its H-M symbol (also as P2_1/c, P2(1)/c or 'P 21/c (No. 14)';
+ICSD's ' S' and ' Z' suffixes name origin choice 1 and 2), else its number
+(1 to 230), in the setting named or else the standard one (origin choice 2,
+hexagonal or rhombohedral axes from the cell angles): a number with more
+than one setting gives a WARNING naming the one used, and a symbol that
+cannot be read is refused. A monoclinic group must fit the cell (the two
+angles away from its unique axis 90 degrees; a short symbol or a number
+means unique axis b), or the CIF is refused. An inconsistent symmetry
+record gives a WARNING. A site whose occupancy is
 not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
-site. A failed online fetch names the ID and the service's reason.
+site. A failed AFLOW fetch names the AUID and the service's reason.
 """
 examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
 cli_long_flag  = "--structure"
