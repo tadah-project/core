@@ -736,10 +736,20 @@ INHERIT = ["TYPES.STRINGS"]
 value_N      = [2147483647]
 description  = "Unified structural input(s)."
 long_description = """
-Supported file formats: .cif (Crystallographic Information File), VASP 
-(POSCAR/CONTCAR), and CASTEP (.cell). The online option fetches structures 
-from databases (MP, COD, NOMAD). Multiple structures can be space-separated 
-or repeated. A mix of files and online sources is allowed.
+Supported file formats: .cif (Crystallographic Information File), VASP
+(POSCAR/CONTCAR), and CASTEP (.cell). The online option fetches structures
+from databases (MP mp-<n>, COD cod-<n>, AFLOW aflow:<auid>, NOMAD).
+Multiple structures can be space-separated or repeated. A mix of files and
+online sources is allowed.
+A CIF's space group comes from its symmetry-operator loop, else its Hall or
+H-M symbol (ICSD's ' S' and ' Z' suffixes name origin choice 1 and 2), else
+its number, in the standard setting (origin choice 2, hexagonal or
+rhombohedral axes from the cell angles): a number with more than one
+setting gives a WARNING naming the one used, a monoclinic number needs a
+cell with unique axis b, and a symbol that names no known group is refused.
+An inconsistent symmetry record gives a WARNING. A site whose occupancy is
+not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
+site. A failed online fetch names the ID and the service's reason.
 """
 examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
 cli_long_flag  = "--structure"
