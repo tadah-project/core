@@ -1423,8 +1423,47 @@ cli_required   = false
 [ALLOWED_KEYS.optimizer]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
-description  = "Optimiser sub-block for a `tadah refit` stage (EXPLORE/REFINE/FUSE). A multi-line `OPTIMIZER ... ENDOPTIMIZER` block nested INSIDE a stage block, written like the `tadah hpo --hpotarget` optimiser attributes but taking only the keys the stage reads: `ALGO <name>` (required; NONE, or UNIFORM for the EXPLORE optimiser, switches a search off), `LIB <name>` (required, as in `tadah hpo`, wherever the block runs an optimiser: the library of its ALGO, NLOPT, DLIB or CERES, and a missing or different LIB is an error; with ALGO NONE or UNIFORM, which run none, LIB is an error), and the stopping criteria its ALGO reads (MAXEVAL, an integer from 1 to 2147483647: the objective evaluations of the NLopt and dlib algorithms, counted exactly, and the iterations of Ceres' LM and DOGLEG, for which alone MAXITER is its alias). A stopping criterion the block's ALGO does not read is an error naming the ALGO and the keys it reads, and with ALGO NONE or UNIFORM, which run no optimiser, every one is; the one exception: under the EXPLORE optimiser GN_MLSL_LDS an INNER block's MAXEVAL, FTOL_REL and XTOL_REL also set MLSL's local LN_SBPLX searches, whatever its ALGO. The EXPLORE optimiser (GN_MLSL_LDS, GN_DIRECT_L, GN_CRS2_LM, GLOBAL) reads MAXEVAL, and takes an optional nested `INNER ... ENDINNER` for the per-rung local search: the NLopt searches (LN_SBPLX, LN_NELDERMEAD, LN_BOBYQA, LN_PRAXIS, LD_LBFGS) read MAXEVAL, FTOL_REL and XTOL_REL, dlib's LBFGS MAXEVAL and FTOL_ABS (the absolute change of the objective it stops at). REFINE: Ceres' LM and DOGLEG read MAXEVAL (alias MAXITER), FTOL_REL and GTOL, NLopt's LD_LBFGS MAXEVAL and FTOL_REL, dlib's LBFGS MAXEVAL and FTOL_ABS. FUSE (LM, DOGLEG) reads MAXEVAL (alias MAXITER), FTOL_REL and GTOL; its MAXEVAL bounds the whole stage under REFIT_OBJECTIVE energy and each function's FUSE refine under REFIT_OBJECTIVE curve. The tolerances FTOL_REL, FTOL_ABS, XTOL_REL and GTOL are finite numbers >= 0 (0 switches the test off; a negative one is an error). Any other optimiser key (SEED, THREADS, MAXTIME, XTOL_ABS, ...) is an error naming the keys the stage reads; see the Refitting page. In REFINE and FUSE, ENABLED false (which skips the stage) together with an OPTIMIZER block is an error: write ALGO NONE in the block instead. A top-level OPTIMIZER block (the grammar before the stage blocks) is rejected in either REFIT_MODE, before the EAM file is read: it must be nested in a stage. REFIT_MODE compact only: REFIT_MODE dense refuses the stage blocks."
+description  = "Optimiser sub-block for a `tadah refit` stage (EXPLORE/REFINE/FUSE): the algorithm, its library and its stopping criteria."
 long_description = """
+Optimiser sub-block for a `tadah refit` stage (EXPLORE/REFINE/FUSE): the
+algorithm, its library and its stopping criteria. A multi-line
+`OPTIMIZER ... ENDOPTIMIZER` block nested INSIDE a stage block, written
+like the `tadah hpo --hpotarget` optimiser attributes but taking only the
+keys the stage reads: `ALGO <name>` (required; NONE, or UNIFORM for the
+EXPLORE optimiser, switches a search off), `LIB <name>` (required, as in
+`tadah hpo`, wherever the block runs an optimiser: the library of its ALGO,
+NLOPT, DLIB or CERES, and a missing or different LIB is an error; with ALGO
+NONE or UNIFORM, which run none, LIB is an error), and the stopping
+criteria its ALGO reads (MAXEVAL, an integer from 1 to 2147483647: the
+objective evaluations of the NLopt and dlib algorithms, counted exactly,
+and the iterations of Ceres' LM and DOGLEG, for which alone MAXITER is its
+alias).
+
+A stopping criterion the block's ALGO does not read is an error naming the
+ALGO and the keys it reads, and with ALGO NONE or UNIFORM, which run no
+optimiser, every one is; the one exception: under the EXPLORE optimiser
+GN_MLSL_LDS an INNER block's MAXEVAL, FTOL_REL and XTOL_REL also set MLSL's
+local LN_SBPLX searches, whatever its ALGO. The EXPLORE optimiser
+(GN_MLSL_LDS, GN_DIRECT_L, GN_CRS2_LM, GLOBAL) reads MAXEVAL, and takes an
+optional nested `INNER ... ENDINNER` for the per-rung local search: the
+NLopt searches (LN_SBPLX, LN_NELDERMEAD, LN_BOBYQA, LN_PRAXIS, LD_LBFGS)
+read MAXEVAL, FTOL_REL and XTOL_REL, dlib's LBFGS MAXEVAL and FTOL_ABS (the
+absolute change of the objective it stops at). REFINE: Ceres' LM and DOGLEG
+read MAXEVAL (alias MAXITER), FTOL_REL and GTOL, NLopt's LD_LBFGS MAXEVAL
+and FTOL_REL, dlib's LBFGS MAXEVAL and FTOL_ABS. FUSE (LM, DOGLEG) reads
+MAXEVAL (alias MAXITER), FTOL_REL and GTOL; its MAXEVAL bounds the whole
+stage under REFIT_OBJECTIVE energy and each function's FUSE refine under
+REFIT_OBJECTIVE curve. The tolerances FTOL_REL, FTOL_ABS, XTOL_REL and GTOL
+are finite numbers >= 0 (0 switches the test off; a negative one is an
+error). Any other optimiser key (SEED, THREADS, MAXTIME, XTOL_ABS, ...) is
+an error naming the keys the stage reads; see the Refitting page.
+
+In REFINE and FUSE, ENABLED false (which skips the stage) together with an
+OPTIMIZER block is an error: write ALGO NONE in the block instead. A
+top-level OPTIMIZER block (the grammar before the stage blocks) is rejected
+in either REFIT_MODE, before the EAM file is read: it must be nested in a
+stage. REFIT_MODE compact only: REFIT_MODE dense refuses the stage blocks.
+
 Written inside a stage block, for example::
 
     REFINE
@@ -1452,8 +1491,15 @@ cli_required   = false
 [ALLOWED_KEYS.init]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
-description  = "`tadah refit` INIT stage block (`INIT ... ENDINIT`, no optimisation). Declares manual / anchored knots or blips per channel: `<PHI|RHO|F> <MANUAL <mu> [<eta>] | XMIN | XMAX | YMIN | YMAX | SMAX | CMAX> [PIN]`. PIN freezes that position in EXPLORE/REFINE/FUSE (the linear coefficient is still solved). Captured verbatim; parsed by the refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the block."
+description  = "`tadah refit` INIT stage block (`INIT ... ENDINIT`, no optimisation): manual or anchored knots or blips per channel."
 long_description = """
+`tadah refit` INIT stage block (`INIT ... ENDINIT`, no optimisation):
+manual or anchored knots or blips per channel. Each placement is
+`<PHI|RHO|F> <MANUAL <mu> [<eta>] | XMIN | XMAX | YMIN | YMAX | SMAX | CMAX> [PIN]`.
+PIN freezes that position in EXPLORE/REFINE/FUSE (the linear coefficient is
+still solved). Captured verbatim; parsed by the refit engine. REFIT_MODE
+compact only: REFIT_MODE dense refuses the block.
+
 Written as a block, one placement per line, for example::
 
     INIT
@@ -1468,8 +1514,15 @@ cli_required   = false
 [ALLOWED_KEYS.explore]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
-description  = "`tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): structure search + basis growth (absorbs the old GLOBAL stage at rung 0). Takes `MAX_ADD <n>` (max basis added per function) and a nested OPTIMIZER block (default global MLSL with an INNER local SBPLX). Captured verbatim; parsed by the refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the block."
+description  = "`tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): structure search + basis growth (absorbs the old GLOBAL stage at rung 0)."
 long_description = """
+`tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): structure
+search + basis growth (absorbs the old GLOBAL stage at rung 0). Takes
+`MAX_ADD <n>` (max basis added per function) and a nested OPTIMIZER block
+(default global MLSL with an INNER local SBPLX). Captured verbatim; parsed
+by the refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the
+block.
+
 Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
 
     EXPLORE
@@ -1487,8 +1540,13 @@ cli_required   = false
 [ALLOWED_KEYS.refine]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
-description  = "`tadah refit` REFINE stage block (`REFINE ... ENDREFINE`): per-rung high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local). Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the block."
+description  = "`tadah refit` REFINE stage block (`REFINE ... ENDREFINE`): per-rung high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local)."
 long_description = """
+`tadah refit` REFINE stage block (`REFINE ... ENDREFINE`): per-rung
+high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local). Takes a
+nested OPTIMIZER block. Captured verbatim; parsed by the refit engine.
+REFIT_MODE compact only: REFIT_MODE dense refuses the block.
+
 Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
 
     REFINE
@@ -1505,8 +1563,16 @@ cli_required   = false
 [ALLOWED_KEYS.fuse]
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
-description  = "`tadah refit` FUSE stage block (`FUSE ... ENDFUSE`): the final refinement (least-squares only: Ceres LM/DOGLEG or NONE). Under REFIT_OBJECTIVE energy a joint refinement of all three functions against curve + crystal energy-volume residuals; under REFIT_OBJECTIVE curve a refine of each function against its curve, each with FUSE's own MAXEVAL, FTOL_REL and GTOL. Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the block."
+description  = "`tadah refit` FUSE stage block (`FUSE ... ENDFUSE`): the final refinement (least-squares only: Ceres LM/DOGLEG or NONE)."
 long_description = """
+`tadah refit` FUSE stage block (`FUSE ... ENDFUSE`): the final refinement
+(least-squares only: Ceres LM/DOGLEG or NONE). Under REFIT_OBJECTIVE energy
+a joint refinement of all three functions against curve + crystal
+energy-volume residuals; under REFIT_OBJECTIVE curve a refine of each
+function against its curve, each with FUSE's own MAXEVAL, FTOL_REL and
+GTOL. Takes a nested OPTIMIZER block. Captured verbatim; parsed by the
+refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the block.
+
 Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
 
     FUSE
@@ -2347,9 +2413,9 @@ Config-file options (EAM and RHOFORM are required):
   NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS, REFIT_PLACEMENT,
   REFIT_CONSTRAIN_F0 (EMBF0 FREE only).
 - Compact mode only: the ladder (REFIT_COMPACT_NMAX, REFIT_COMPACT_STALL,
-  REFIT_COMPACT_SHARE, REFIT_COMPACT_OPT_EVERY, REFIT_COMPACT_INSERT_TOPK,
-  REFIT_COMPACT_SEED and the other REFIT_COMPACT_* keys; OPT_EVERY,
-  INSERT_TOPK and MERGE with a knot basis only), REFIT_OBJECTIVE
+  REFIT_COMPACT_SHARE, REFIT_COMPACT_SEED and the other REFIT_COMPACT_*
+  keys; REFIT_COMPACT_OPT_EVERY, REFIT_COMPACT_INSERT_TOPK and
+  REFIT_COMPACT_MERGE with a knot basis only), REFIT_OBJECTIVE
   curve and REFIT_CURVE_* (under REFIT_OBJECTIVE curve only;
   REFIT_CURVE_RELAX with REFIT_CURVE_WEIGHTING true only), and the stage
   blocks below.
@@ -2398,9 +2464,14 @@ the largest knot position (the true effective cutoff).
 
 Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) or
 `tadah explain <KEY>` (e.g. `tadah explain RHOFORM`) for the full
-description of a key above, including those that are no options of tadah
-refit: RHOFORM, EMBF0 and NUMERIC (keys a configuration may set) and RCUT2B,
-RCUTMB and AMPGRIDMB (keys of the potential).
+description of a configuration key above, including those that are no
+options of tadah refit: RHOFORM, EMBF0 and NUMERIC (keys a configuration may
+set) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the potential). The keys
+written inside a stage block are no configuration keys:
+`tadah explain refit.optimizer` describes those of an OPTIMIZER block (ALGO,
+LIB and the stopping criteria) and `tadah explain refit.init` the
+placements of INIT, as does the Refitting page of the documentation (Stage
+blocks).
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --pct 10 --rcut2b 6.0 --rcutmb 6.0 -o wide.hpotarget", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
