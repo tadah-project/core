@@ -737,19 +737,20 @@ takes one parameter on its TYPE line, a placeholder written 0
 (TYPE2B D2_EAM 0 Ta Ta, TYPEMB DM_EAM 0 Ta Ta); another value has no effect
 and is reported once on standard error. The file's cutoff is used in place
 of RCUT2B and RCUTMB: set them to it.
+
+A configuration with both descriptors and one setfl file::
+
+    INIT2B    true
+    TYPE2B    D2_EAM 0 Ta Ta
+    RCTYPE2B  Cut_Dummy
+    RCUT2B    5.58190742024
+    INITMB    true
+    TYPEMB    DM_EAM 0 Ta Ta
+    RCTYPEMB  Cut_Dummy
+    RCUTMB    5.58190742024
+    SETFL     Ta.eam.alloy
 """
-examples = [
-    'Ta1_Ravelo_2013.eam.alloy',
-    """INIT2B    true
-TYPE2B    D2_EAM 0 Ta Ta
-RCTYPE2B  Cut_Dummy
-RCUT2B    5.58190742024
-INITMB    true
-TYPEMB    DM_EAM 0 Ta Ta
-RCTYPEMB  Cut_Dummy
-RCUTMB    5.58190742024
-SETFL     Ta.eam.alloy"""
-]
+examples = ['Ta1_Ravelo_2013.eam.alloy']
 
 
 [ALLOWED_KEYS.structure]
@@ -1874,7 +1875,7 @@ description = "The Σ matrix used in Bayesian Linear Regression."
 long_description = """
 An N×N matrix in column-major order. Applies to M_BLR. 
 """
-examples = ["`2 1.2 2.2 2.3 3.3`"]
+examples = ["2 1.2 2.2 2.3 3.3"]
 
 [ALLOWED_KEYS.NSTDEV]
 INHERIT = ["TYPES.DOUBLES"]
