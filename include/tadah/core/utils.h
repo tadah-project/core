@@ -377,20 +377,37 @@ std::vector<size_t> parse_indices(const std::vector<std::string>& input);
 
 /**
  * @brief The 1-based structure indices of a dataset command (tadah data
- * sample and data balance -i), checked.
+ * sample, data balance and data write -i), checked.
  *
- * The values form one list, as the command line and a task file give them
- * ('1, 3' arrives as the values '1,' and '3'): entries separated by commas
- * or whitespace, each 'i', 'a-b' or 'a-b:step', with spaces allowed around
- * '-' and ':'. Indices are returned in order, repeated ones removed.
- *
- * Refused, naming the text and prefixed with @p who: an empty entry ('1,,2',
- * a leading or trailing comma), a token that is not an index, a descending
- * range, a step of 0, and an index outside 1 ... @p total. The bounds are
- * checked before a range is expanded.
+ * parse_one_based_indices() with @p counted "the dataset has <total>
+ * structures": an index outside the dataset is refused with
+ * "<who>: index 11 is outside 1-10 (the dataset has 10 structures)".
  */
 std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values,
                                           size_t total, const std::string& who);
+
+/**
+ * @brief A checked list of 1-based indices of @p total items: structures
+ * (parse_dataset_indices(), tadah data print and analysis descriptor -i) or
+ * basis functions (tadah analysis bfunc -i).
+ *
+ * The values form one list, as the command line and a task file give them
+ * ('1, 3' arrives as the values '1,' and '3'; '-i 1 3' as '1' and '3'):
+ * entries separated by commas or whitespace, each 'i', 'a-b' or 'a-b:step',
+ * with spaces allowed around '-' and ':'. Indices are returned in the given
+ * order, repeated ones removed.
+ *
+ * Refused, naming the text and prefixed with @p who: an empty entry ('1,,2',
+ * a leading or trailing comma), a token that is not an index, a descending
+ * range, a step of 0, and an index outside 1 ... @p total, whose message
+ * ends with @p counted in parentheses, what the indices count
+ * ("tadah analysis bfunc: index 9 (in '2-9') is outside 1-4 (the D2_Blip
+ * basis has 4 functions)"). The bounds are checked before a range is
+ * expanded, so a range past the end is refused at once.
+ */
+std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& values,
+                                            size_t total, const std::string& who,
+                                            const std::string& counted);
 
 
 /**
