@@ -29,7 +29,12 @@ namespace core {
 class fd_type {
   size_t rows_ = 0;
   double* data_ = nullptr;
-  aed_type* aed_type2_ptr[3] = {nullptr, nullptr, nullptr};
+  // The three columns: views of data_ (they own no storage), empty for a
+  // default-constructed or moved-from fd_type.
+  aed_type cols_[3];
+
+  // Points the three columns at data_, rows_ values each.
+  void view_columns() noexcept;
 
 public:
 
@@ -38,15 +43,10 @@ public:
   inline fd_type(size_t dim) : rows_(dim) {
     data_ = static_cast<double*>(malloc(3 * dim * sizeof(double)));
     std::fill(data_, data_ + 3 * rows_, 0.0);
-    for (int i = 0; i < 3; ++i) {
-      aed_type2_ptr[i] = new aed_type(&data_[i * dim], dim, 1, false);
-    }
+    view_columns();
   }
 
   inline ~fd_type() {
-    for (int i = 0; i < 3; ++i) {
-      delete aed_type2_ptr[i];
-    }
     free(data_);
   }
   fd_type(const fd_type& other);
