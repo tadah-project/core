@@ -1,6 +1,7 @@
 #ifndef TADAH_CORE_KEY_NOTICE_H
 #define TADAH_CORE_KEY_NOTICE_H
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -35,11 +36,13 @@ void report_ignored_key(const std::string &subject, const std::string &reason);
  *        while it lives, for a caller that delivers them itself.
  *
  * pair_style tadah loads a potential under a capture and writes each
- * notice as a LAMMPS warning on rank 0 (the screen and log.lammps, once per
- * run), where standard error reached neither log.lammps nor only one rank.
- * report_ignored_key_once() still reports a key once per process: a key
- * reported before the capture (or under another one) gives it nothing.
- * Captures nest; the innermost one receives. Not copyable.
+ * notice as a LAMMPS warning on rank 0 (the screen and log.lammps), where
+ * standard error reached neither log.lammps nor only one rank. A capture
+ * receives each key of report_ignored_key_once() once, also a key the
+ * process reported before it (on standard error or to another capture):
+ * each pair_coeff that loads such a potential writes the warning, so the
+ * log.lammps of every LAMMPS instance of a process has it. Captures nest;
+ * the innermost one receives. Not copyable.
  */
 class IgnoredKeyNoticeCapture {
 public:
@@ -55,25 +58,35 @@ public:
   /** Appends @p line (report_ignored_key() calls it). */
   void add(const std::string &line) { notices_.push_back(line); }
 
+  /** Records that this capture received the notice of @p key
+   *  (report_ignored_key_once()); false when it had already. */
+  bool take_key(const std::string &key) { return keys_.insert(key).second; }
+
 private:
   std::vector<std::string> notices_;
+  std::set<std::string> keys_;
   IgnoredKeyNoticeCapture *outer_;
 };
 
 /**
  * @brief report_ignored_key(@p subject, @p reason), at most once per
- *        process for @p key.
+ *        process for @p key on standard error, and once per capture.
  *
- * The first call for @p key in the process writes the notice and returns
- * true; every later call for the same @p key (any thread, any subject or
- * reason) writes nothing and returns false. Thread-safe.
+ * Without an IgnoredKeyNoticeCapture on the calling thread, the first call
+ * for @p key in the process writes the notice to standard error; every
+ * later call for the same @p key (any thread, any subject or reason)
+ * writes nothing. While a capture lives on the calling thread, the first
+ * call for @p key under it gives it the notice, whatever the process
+ * reported before, and nothing goes to standard error. Either way the key
+ * counts as reported in the process (ignored_key_reported()). Returns
+ * whether this call wrote or captured the notice. Thread-safe.
  */
 bool report_ignored_key_once(const std::string &key, const std::string &subject,
                              const std::string &reason);
 
 /**
- * @brief Whether report_ignored_key_once() has written the notice for
- *        @p key in this process.
+ * @brief Whether report_ignored_key_once() has written or captured the
+ *        notice for @p key in this process.
  */
 bool ignored_key_reported(const std::string &key);
 
