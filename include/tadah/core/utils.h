@@ -17,10 +17,13 @@
 #include <tuple>
 #include <type_traits>
 #include <cstddef>
+#include <optional>
 #include <utility>
 
 namespace tadah {
 namespace core {
+
+class Context;
 
 /** Vector printing to streams */
 template <typename T>
@@ -408,6 +411,40 @@ std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values
 std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& values,
                                             size_t total, const std::string& who,
                                             const std::string& counted);
+
+/**
+ * @brief The model weights FIXINDEX pins, checked: 1-based, in declaration
+ * order, the i-th the weight the i-th FIXWEIGHT value pins.
+ *
+ * The one reader of FIXINDEX (the trainers M_BLR_Train and M_KRR_Train,
+ * MLIP's weight provisioning and BIAS composition check, tadah hpo's OPTIM
+ * FIXWEIGHT mapping and startup checks). Empty when @p ctx has neither
+ * FIXINDEX nor FIXWEIGHT.
+ *
+ * The values of FIXINDEX form one list, with the grammar of
+ * parse_one_based_indices(): entries separated by commas or whitespace
+ * ('FIXINDEX 13 14', 'FIXINDEX 13,14' and 'FIXINDEX 13, 14' are the same
+ * list), each 'i', 'a-b' or 'a-b:step', with spaces allowed around '-' and
+ * ':'. The order is kept.
+ *
+ * Refused with std::runtime_error, one message per error naming the text:
+ * a lone FIXINDEX or FIXWEIGHT; an empty entry, a token that is not an
+ * index, a descending range and a step of 0 ("FIXINDEX: index '14-13' is a
+ * descending range (...)"); index 0, and, when @p n_weights is given, an
+ * index above it ("FIXINDEX: index 9 (in '2-9') is outside 1-4 (the model
+ * has 4 weights)"); a number of indices other than the number of FIXWEIGHT
+ * values, counted per entry before any range is expanded, so
+ * '1-4000000000' is refused at once ("FIXINDEX 1-4000000000 has 4000000000
+ * indices but FIXWEIGHT has 2 values; ..."); a weight named twice
+ * ("FIXINDEX 13,13,14 names weight 13 twice; ..."), since FIXWEIGHT pairs
+ * by position.
+ *
+ * @param ctx       the configuration (FIXINDEX and FIXWEIGHT)
+ * @param n_weights the number of model weights, when known; std::nullopt
+ *                  checks every rule but the upper bound
+ */
+std::vector<size_t> parse_fixindex(const Context& ctx,
+                                   std::optional<size_t> n_weights);
 
 
 /**
