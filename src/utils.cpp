@@ -323,6 +323,14 @@ std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
 
 std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values,
                                           size_t total, const std::string& who) {
+  return parse_one_based_indices(values, total, who,
+                                 "the dataset has " + std::to_string(total) +
+                                     " structures");
+}
+
+std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& values,
+                                            size_t total, const std::string& who,
+                                            const std::string& counted) {
   // One list: the values joined, without the spaces around '-' and ':'.
   std::string list;
   {
@@ -381,8 +389,7 @@ std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values
           throw std::runtime_error(
               who + ": index " + std::to_string(i) +
               (token == std::to_string(i) ? "" : " (in '" + token + "')") +
-              " is outside 1-" + std::to_string(total) + " (the dataset has " +
-              std::to_string(total) + " structures)");
+              " is outside 1-" + std::to_string(total) + " (" + counted + ")");
       for (size_t i = a;; i += step) {
         if (seen.insert(i).second) out.push_back(i);
         if (b - i < step) break;

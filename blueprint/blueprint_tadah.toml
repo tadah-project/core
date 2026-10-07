@@ -1448,9 +1448,13 @@ value_format = ["<index>[,<index>...]", "<start>-<stop>", "<start>-<stop>:<step>
 value_N      = [-2147483647]
 description = "Index pattern."
 long_description = """
-Allows flexible selection of dataset indices. Supports single indices, ranges 
-(e.g., start-stop), lists, or intervals (start-stop:step). Indices are 1-based. 
-Repeated indices are removed automatically.
+1-based indices, each between 1 and the number of items they select (the
+structures of a dataset, or the basis functions of a descriptor): single
+indices, ranges start-stop and intervals start-stop:step, separated by commas
+or spaces (spaces around '-' and ':' are allowed; several values form one
+list). Repeated indices are removed. A descending range, a step of 0, a
+malformed or empty entry (1,,2 or a trailing comma) and an index outside the
+items are refused, naming it; a range is checked before it is expanded.
 """
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 cli_long_flag  = "--index"
@@ -2054,7 +2058,11 @@ A task in a task file begins with the keyword 'TASK' followed by the task name.
 The task name is simply a command to be executed or both command and subcommand.
 The lines following the `TASK` keyword should contain parameters required for
 the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
-task file.
+task file. Options above the first `TASK` line apply to every task, so a
+`TASK` line with no parameter lines after it runs with those alone. Every task
+name is checked, with or without parameters: an unknown one, or a command that
+needs a subcommand (`TASK data` instead of `TASK data convert`), is an error
+before any task runs.
 
 # Example TASK file containing two tasks:
 # Global options
@@ -2432,6 +2440,17 @@ Print structure(s) information from dataset or structure files.
 examples         = ["tadah data print -d dataset.tadah", "tadah data print -s crystal.cif"]
 [TASKS.data.print.keys]
 INHERIT          = ["ALLOWED_KEYS.index", "ALLOWED_KEYS.numeric"]
+[TASKS.data.print.keys.index]
+long_description = """
+The 1-based indices of the dataset structures to print, printed in the given
+order, each between 1 and the number of structures: single indices, ranges
+start-stop and intervals start-stop:step, separated by commas or spaces
+(spaces around '-' and ':' are allowed; several values form one list).
+Repeated indices are removed. A descending range, a step of 0, a malformed or
+empty entry (1,,2 or a trailing comma) and an index outside the dataset are
+refused, naming it, before any structure is read. Without --index the
+dataset's summary is printed.
+"""
 [TASKS.data.print.groups.input]
 description      = "Input sources for printing. Select from the following options:"
 cli_required = true
@@ -2728,6 +2747,17 @@ long_description = "Calculate structure descriptors."
 examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt --index 1,3,5"]
 [TASKS.analysis.descriptor.keys]
 INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.force", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.append"]
+[TASKS.analysis.descriptor.keys.index]
+long_description = """
+The 1-based indices of the structures of the (single) DBFILE whose
+descriptors are calculated, in the given order, each between 1 and the number
+of structures: single indices, ranges start-stop and intervals
+start-stop:step, separated by commas or spaces (spaces around '-' and ':' are
+allowed; several values form one list). Repeated indices are removed. A
+descending range, a step of 0, a malformed or empty entry (1,,2 or a trailing
+comma) and an index outside the dataset are refused, naming it, before any
+structure is read.
+"""
 [TASKS.analysis.descriptor.groups.input]
 description      = "Structure source or a task file. Select from the following options:"
 cli_required = true
@@ -2845,6 +2875,18 @@ description  = "Basis function type. \"2b Y\" or \"mb N\"."
 long_description  = """
 Choice of basis function. For example: \"2b Y\" or \"mb N\".
 Where Y/N controls computation of the cutoff function.
+"""
+[TASKS.analysis.bfunc.keys.index]
+description = "Basis-function indices."
+long_description = """
+The 1-based indices of the basis functions to evaluate, in the given order,
+each between 1 and the number of functions of the descriptor (the number of
+its CGRID2B or CGRIDMB values; of each descriptor of a D2_mJoin or DM_mJoin
+line): single indices, ranges start-stop and intervals start-stop:step,
+separated by commas or spaces (spaces around '-' and ':' are allowed; several
+values form one list). Repeated indices are removed. A descending range, a
+step of 0, a malformed or empty entry and an index outside the functions are
+refused, naming it. Without --index every function is evaluated.
 """
 [TASKS.analysis.bfunc.keys.rescale]
 description = "Rescale the basis function by the cutoff function. This is useful for visualisation purposes."
