@@ -13,7 +13,13 @@
 # - value_format: Human readable list showing expected tokens; a trailing "..." means the last <token> may repeat.
 # - value_N: Maximum allowed tokens.
 # - description: Short explanation. (used by cli for a brief description)
-# - examples: Array of valid example usage strings.
+# - examples: Array of example values of the key: what follows the key on a
+#   configuration line, never the key itself (an example of several lines is
+#   one value per line, each a line of the key, as in a D2_mJoin). The
+#   parser's refusal of a value and the configuration-keys page show each line
+#   as "<KEY>   <value>"; the CLI pages show the values. A key written as a
+#   block (INIT ... ENDINIT) has none (`examples = []`): its layout goes in its
+#   description.
 # - default_value: Default value (optional).
 # - deprecated: Reason and replacement, for a key that is only still accepted
 #   (optional). A configuration or potential file may contain the key; its value
@@ -185,7 +191,7 @@ is interpreted relative to the current working directory. Multiple dataset
 paths can be provided either as space-separated tokens or by repeating 
 this key.
 """
-examples     = ["dbfile /path/to/dbfile", "dbfile /path/to/dbfile1 /path/to/dbfile2"]
+examples     = ["/path/to/dbfile", "/path/to/dbfile1 /path/to/dbfile2"]
 cli_long_flag  = "--dbfile"
 cli_short_flag = "-d"
 cli_required     = false
@@ -193,13 +199,13 @@ cli_required     = false
 [ALLOWED_KEYS.INIT2B]
 INHERIT = ["TYPES.BOOL"]
 description = """If set to true, the two-body descriptor will be calculated."""
-examples = ["INIT2B true"]
+examples = ["true"]
 
 
 [ALLOWED_KEYS.INITMB]
 INHERIT = ["TYPES.BOOL"]
 description = """If set to true, the many-body descriptor will be calculated."""
-examples = ["INITMB true"]
+examples = ["true"]
 
 [ALLOWED_KEYS.RCTYPE2B]
 INHERIT = ["TYPES.STRINGS"]
@@ -209,7 +215,7 @@ long_description = """
 Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or multiple 
 types corresponding to each descriptor when using the D2_mJoin meta descriptor.
 """
-examples     = ["RCTYPE2B Cut_Cos", "RCTYPE2B Cut_Cos Cut_Tanh"]
+examples     = ["Cut_Cos", "Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCTYPEMB]
 INHERIT = ["TYPES.STRINGS"]
@@ -220,7 +226,7 @@ Provide a single cutoff type (e.g., Cut_Cos) for one descriptor or a series of
 types—each for a corresponding descriptor when using the DM_mJoin 
 meta descriptor.
 """
-examples     = ["RCTYPEMB Cut_Cos", "RCTYPEMB Cut_Cos Cut_Tanh"]
+examples     = ["Cut_Cos", "Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCUT2B]
 INHERIT = ["TYPES.DOUBLES"]
@@ -229,7 +235,7 @@ long_description = """
 Provide a single value for one descriptor or multiple values—one for each 
 descriptor when using the D2_mJoin meta descriptor.
 """
-examples     = ["RCUT2B 3.0", "RCUT2B 3.0 7.5"]
+examples     = ["3.0", "3.0 7.5"]
 
 [ALLOWED_KEYS.RCUTMB]
 INHERIT = ["TYPES.DOUBLES"]
@@ -238,7 +244,7 @@ long_description = """
 Provide a single value for a standalone descriptor or multiple values
 corresponding to each descriptor when using the DM_mJoin meta descriptor.
 """
-examples     = ["RCUTMB 4.9", "RCUTMB 4.9 8.0"]
+examples     = ["4.9", "4.9 8.0"]
 
 [ALLOWED_KEYS.RCUTENV]
 INHERIT = ["TYPES.DOUBLE"]
@@ -249,7 +255,7 @@ embedding by the DM_mBlipEnv descriptor: the envelope ramps from 0 at rho=0
 to 1 at rho=RCUTENV, suppressing the embedding contribution where the
 underlying Gaussian basis is largest.
 """
-examples     = ["RCUTENV 1.5"]
+examples     = ["1.5"]
 
 [ALLOWED_KEYS.TYPE2B]
 value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}", "STRING"]
@@ -264,11 +270,10 @@ descriptors, use the meta descriptor D2_mJoin followed by the individual
 descriptor parameters. Elements should be provided in pairs.
 """
 examples     = [
-  "TYPE2B D2_LJ Kr Kr",
-  """TYPE2B    D2_mJoin
-  TYPE2B    D2_MIE 11 6 Ti Ti
-  TYPE2B    D2_Blip 6 6 Ti Nb Nb Nb
-  """
+  "D2_LJ Kr Kr",
+  """D2_mJoin
+D2_MIE 11 6 Ti Ti
+D2_Blip 6 6 Ti Nb Nb Nb"""
 ]
 
 [ALLOWED_KEYS.TYPEMB]
@@ -283,11 +288,10 @@ descriptors, use the meta descriptor DM_mJoin followed by the individual
 descriptor parameters. Elements should be provided in pairs.
 """
 examples     = [
-  "TYPEMB DM_Blip 0 6 6 Ti Ti",
-  """TYPEMB    DM_mJoin
-  TYPEMB    DM_Blip 1 6 6 Ti TI
-  TYPEMB    DM_Blip 0 6 6 Ti Nb Nb Nb
-  """
+  "DM_Blip 0 6 6 Ti Ti",
+  """DM_mJoin
+DM_Blip 1 6 6 Ti Ti
+DM_Blip 0 6 6 Ti Nb Nb Nb"""
 ]
 
 [ALLOWED_KEYS.CGRID2B]
@@ -304,10 +308,10 @@ Alternatively, use the algorithm keyword followed by parameters to generate
 centers automatically (e.g., LOG or LIN).
 """
 examples     = [
-    "CGRID2B LIN 10 0 6",
-    "CGRID2B 1.0 2.0",
-    """CGRID2B   1.0 2.0
-CGRID2B   1.5 2.5"""
+    "LIN 10 0 6",
+    "1.0 2.0",
+    """1.0 2.0
+1.5 2.5"""
 ]
 
 [ALLOWED_KEYS.SGRID2B]
@@ -323,10 +327,10 @@ concatenated descriptor. The number of widths must match the number of centers
 generate widths automatically (e.g., LOG or LIN).
 """
 examples     = [
-    "SGRID2B LIN 3 0 1.0",
-    "SGRID2B GEOM 6 0.1 10",
-    """SGRID2B   0.01 0.02 0.03
-SGRID2B   GEOM 6 0.1 10"""
+    "LIN 3 0 1.0",
+    "GEOM 6 0.1 10",
+    """0.01 0.02 0.03
+GEOM 6 0.1 10"""
 ]
 
 [ALLOWED_KEYS.CGRIDMB]
@@ -341,10 +345,10 @@ concatenated descriptor. Alternatively, include an algorithm such as 'L'
 (logarithmic) or 'U' (uniform spacing) followed by parameters.
 """
 examples     = [
-    "CGRIDMB LIN 4 0 6.2",
-    "CGRIDMB 0.5 0.7",
-    """CGRIDMB   0.5 0.7
-CGRIDMB   0.6 0.8"""
+    "LIN 4 0 6.2",
+    "0.5 0.7",
+    """0.5 0.7
+0.6 0.8"""
 ]
 
 [ALLOWED_KEYS.SGRIDMB]
@@ -360,10 +364,10 @@ use an algorithm (e.g., LOG or LIN) and its parameters to generate widths
 automatically.
 """
 examples     = [
-    "SGRIDMB LIN 3 0 1.0",
-    "SGRIDMB 0.01 0.02 0.03",
-    """SGRIDMB   0.01 0.02 0.03
-SGRIDMB   0.02 0.03 0.04"""
+    "LIN 3 0 1.0",
+    "0.01 0.02 0.03",
+    """0.01 0.02 0.03
+0.02 0.03 0.04"""
 ]
 
 [ALLOWED_KEYS.SEMBFUNC]
@@ -374,7 +378,7 @@ Used by certain many-body descriptors (e.g., F_RLR). When using the DM_mJoin
 descriptor, provide lists of parameters corresponding to each descriptor, 
 ensuring consistency with CEMBFUNC.
 """
-examples = ["SEMBFUNC 0.14 0.45 1.00 1.1"]
+examples = ["0.14 0.45 1.00 1.1"]
 
 [ALLOWED_KEYS.CEMBFUNC]
 INHERIT = ["TYPES.DOUBLES"]
@@ -383,7 +387,7 @@ long_description = """
 Used by certain many-body descriptors (e.g., F_RLR). When using DM_mJoin, 
 supply one or more lists of parameters matching those in SEMBFUNC.
 """
-examples = ["CEMBFUNC 0.14 0.45 1.00 1.1"]
+examples = ["0.14 0.45 1.00 1.1"]
 
 [ALLOWED_KEYS.AMPGRIDMB]
 INHERIT = ["TYPES.DOUBLES"]
@@ -398,7 +402,7 @@ Written by 'tadah refit'. The density form RHOFORM decides what they
 multiply: psi_n under SIGNED and NONNEG, the integrated bump S_n under
 MONOTONE. Under NONNEG and MONOTONE every entry must be >= 0.
 """
-examples = ["AMPGRIDMB 0.21 0.05 -0.01 0.0"]
+examples = ["0.21 0.05 -0.01 0.0"]
 [ALLOWED_KEYS.KDEG2B]
 INHERIT = ["TYPES.DOUBLES"]
 description  = "Per-atom knot degree DATA (3|5) for D2_Knot5 (optional; absent = all quintic). NOT optimizable."
@@ -411,7 +415,7 @@ mJoin meta-descriptors but NOT an optimisation dimension - values outside
 {3,5} are rejected at construction, so an OPTIM block on it fails loudly.
 Written by 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
 """
-examples = ["KDEG2B 5 5 3 5"]
+examples = ["5 5 3 5"]
 
 [ALLOWED_KEYS.KDEGMB]
 INHERIT = ["TYPES.DOUBLES"]
@@ -423,7 +427,7 @@ quintic. A data_keys entry: mJoin-splittable, never OPTIM (values outside
 {3,5} are rejected at construction). Written by 'tadah refit' for
 REFIT_BASIS Knot3/KnotMix.
 """
-examples = ["KDEGMB 5 3 5"]
+examples = ["5 3 5"]
 
 [ALLOWED_KEYS.KDEGEMB]
 INHERIT = ["TYPES.DOUBLES"]
@@ -434,7 +438,7 @@ under basis code 2 (knot functions). Same length as CEMBFUNC; absent = all
 quintic. A data_keys entry: mJoin-splittable, never OPTIM. Written by
 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
 """
-examples = ["KDEGEMB 5 5 3"]
+examples = ["5 5 3"]
 
 [ALLOWED_KEYS.EMBF0]
 INHERIT = ["TYPES.STRING"]
@@ -582,7 +586,7 @@ Kern_Linear, Kern_Quadratic, Kern_LQ and the basis functions of M_BLR
 function that takes none), on the degree d of Kern_Polynomial (an integer)
 and on the sigma of Kern_RBF with a box that is not positive.
 """
-examples     = ["MPARAMS 0.5", "MPARAMS 3 0.5 1.0"]
+examples     = ["0.5", "3 0.5 1.0"]
 
 [ALLOWED_KEYS.MODEL]
 value_type   = ["STRING STRING", "STRING STRING STRING",  "STRING STRING UINT"] 
@@ -605,10 +609,10 @@ and t the energy per atom of each drawn structure (0 for e0). Every kernel
 but Kern_Linear works on SBASIS basis vectors (see SBASIS).
 """
 examples     = [
-    "MODEL M_BLR BF_Linear",
-    "MODEL M_BLR BF_Polynomial2",
-    "MODEL M_KRR Kern_Linear",
-    "MODEL M_KRR Kern_RBF 1"
+    "M_BLR BF_Linear",
+    "M_BLR BF_Polynomial2",
+    "M_KRR Kern_Linear",
+    "M_KRR Kern_RBF 1"
 ]
 
 [ALLOWED_KEYS.AUDIT]
@@ -700,7 +704,7 @@ Available options:
   - Use **Option 4 (Cholesky Decomposition)** when you have a well-conditioned, full-rank matrix and need an efficient solution, but be cautious of potential numerical instability in ill-conditioned or rank-deficient problems.
 
 '''
-examples = ["OALGO 1", "OALGO 1 -1", "OALGO 2", "OALGO 3 1e-10", "OALGO 4"]
+examples = ["1", "1 -1", "2", "3 1e-10", "4"]
 
 
 [ALLOWED_KEYS.SBASIS]
@@ -755,7 +759,7 @@ Kern_Polynomial and Kern_Sigmoid, both with BIAS true and ATOM; Kern_RBF has
 none. OALGO 3 penalises every column alike and refuses λ != 0 for a model
 with an intercept column.
 """
-examples = ["LAMBDA -1", "LAMBDA 1e-4", "LAMBDA 0", "LAMBDA 0 1e-12"]
+examples = ["-1", "1e-4", "0", "0 1e-12"]
 
 [ALLOWED_KEYS.ALPHA]
 INHERIT = ["TYPES.DOUBLE"]
@@ -764,7 +768,7 @@ description = "Weight precision hyper-parameter."
 long_description = """
 This is the starting guess for the evidence approximation algorithm. 
 """
-examples = ["ALPHA 0.23"]
+examples = ["0.23"]
 
 [ALLOWED_KEYS.BETA]
 INHERIT = ["TYPES.DOUBLE"]
@@ -773,7 +777,7 @@ description = "Noise precision hyper-parameter."
 long_description = """
 This is the starting guess for the evidence approximation algorithm.
 """
-examples = ["BETA 0.0001"]
+examples = ["0.0001"]
 
 [ALLOWED_KEYS.SETFL]
 INHERIT = ["TYPES.STRING"]
@@ -1131,7 +1135,6 @@ cli_required   = false
 INHERIT = ["TYPES.BOOL"]
 default_value = ["false"]
 description  = "`tadah refit --retarget`: overwrite the input hpotarget file (atomic temp-write + rename) instead of writing a new file. Mutually exclusive with -o."
-examples     = ["--in-place"]
 cli_long_flag  = "--in-place"
 cli_short_flag = ""
 cli_required   = false
@@ -1400,7 +1403,16 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "Optimiser sub-block for a `tadah refit` stage (EXPLORE/REFINE/FUSE). A multi-line `OPTIMIZER ... ENDOPTIMIZER` block nested INSIDE a stage block, written like the `tadah hpo --hpotarget` optimiser attributes but taking only the keys the stage reads: `ALGO <name>` (required; NONE, or UNIFORM for the EXPLORE optimiser, switches a search off), `LIB <name>` (required, as in `tadah hpo`, wherever the block runs an optimiser: the library of its ALGO, NLOPT, DLIB or CERES, and a missing or different LIB is an error; with ALGO NONE or UNIFORM, which run none, LIB is an error), and the stopping criteria its ALGO reads (MAXEVAL, an integer from 1 to 2147483647: the objective evaluations of the NLopt and dlib algorithms, counted exactly, and the iterations of Ceres' LM and DOGLEG, for which alone MAXITER is its alias). A stopping criterion the block's ALGO does not read is an error naming the ALGO and the keys it reads, and with ALGO NONE or UNIFORM, which run no optimiser, every one is; the one exception: under the EXPLORE optimiser GN_MLSL_LDS an INNER block's MAXEVAL, FTOL_REL and XTOL_REL also set MLSL's local LN_SBPLX searches, whatever its ALGO. The EXPLORE optimiser (GN_MLSL_LDS, GN_DIRECT_L, GN_CRS2_LM, GLOBAL) reads MAXEVAL, and takes an optional nested `INNER ... ENDINNER` for the per-rung local search: the NLopt searches (LN_SBPLX, LN_NELDERMEAD, LN_BOBYQA, LN_PRAXIS, LD_LBFGS) read MAXEVAL, FTOL_REL and XTOL_REL, dlib's LBFGS MAXEVAL and FTOL_ABS (the absolute change of the objective it stops at). REFINE: Ceres' LM and DOGLEG read MAXEVAL (alias MAXITER), FTOL_REL and GTOL, NLopt's LD_LBFGS MAXEVAL and FTOL_REL, dlib's LBFGS MAXEVAL and FTOL_ABS. FUSE (LM, DOGLEG) reads MAXEVAL (alias MAXITER), FTOL_REL and GTOL; its MAXEVAL bounds the whole stage under REFIT_OBJECTIVE energy and each function's FUSE refine under REFIT_OBJECTIVE curve. The tolerances FTOL_REL, FTOL_ABS, XTOL_REL and GTOL are finite numbers >= 0 (0 switches the test off; a negative one is an error). Any other optimiser key (SEED, THREADS, MAXTIME, XTOL_ABS, ...) is an error naming the keys the stage reads; see the Refitting page. In REFINE and FUSE, ENABLED false (which skips the stage) together with an OPTIMIZER block is an error: write ALGO NONE in the block instead. A top-level OPTIMIZER block is rejected (it must be nested in a stage)."
-examples     = ["see HPO_REFIT_2B_EAM/REDESIGN/configs (OPTIMIZER nested in EXPLORE/REFINE/FUSE)"]
+long_description = """
+Written inside a stage block, for example::
+
+    REFINE
+      OPTIMIZER
+        LIB CERES  ALGO LM  MAXEVAL 1000
+      ENDOPTIMIZER
+    ENDREFINE
+"""
+examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1409,7 +1421,14 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` INIT stage block (`INIT ... ENDINIT`, no optimisation). Declares manual / anchored knots or blips per channel: `<PHI|RHO|F> <MANUAL <mu> [<eta>] | XMIN | XMAX | YMIN | YMAX | SMAX | CMAX> [PIN]`. PIN freezes that position in EXPLORE/REFINE/FUSE (the linear coefficient is still solved). Captured verbatim; parsed by the refit engine."
-examples     = ["INIT / PHI XMIN PIN / ENDINIT"]
+long_description = """
+Written as a block, one placement per line, for example::
+
+    INIT
+      PHI XMIN PIN
+    ENDINIT
+"""
+examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1418,7 +1437,17 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): structure search + basis growth (absorbs the old GLOBAL stage at rung 0). Takes `MAX_ADD <n>` (max basis added per function) and a nested OPTIMIZER block (default global MLSL with an INNER local SBPLX). Captured verbatim; parsed by the refit engine."
-examples     = ["EXPLORE / MAX_ADD 38 / OPTIMIZER ... ENDOPTIMIZER / ENDEXPLORE"]
+long_description = """
+Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
+
+    EXPLORE
+      MAX_ADD 38
+      OPTIMIZER
+        ...
+      ENDOPTIMIZER
+    ENDEXPLORE
+"""
+examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1427,7 +1456,16 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` REFINE stage block (`REFINE ... ENDREFINE`): per-rung high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local). Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine."
-examples     = ["REFINE / OPTIMIZER ... ENDOPTIMIZER / ENDREFINE"]
+long_description = """
+Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
+
+    REFINE
+      OPTIMIZER
+        ...
+      ENDOPTIMIZER
+    ENDREFINE
+"""
+examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1436,7 +1474,16 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` FUSE stage block (`FUSE ... ENDFUSE`): the final refinement (least-squares only: Ceres LM/DOGLEG or NONE). Under REFIT_OBJECTIVE energy a joint refinement of all three functions against curve + crystal energy-volume residuals; under REFIT_OBJECTIVE curve a refine of each function against its curve, each with FUSE's own MAXEVAL, FTOL_REL and GTOL. Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine."
-examples     = ["FUSE / OPTIMIZER ... ENDOPTIMIZER / ENDFUSE"]
+long_description = """
+Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
+
+    FUSE
+      OPTIMIZER
+        ...
+      ENDOPTIMIZER
+    ENDFUSE
+"""
+examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
 cli_required   = false
@@ -1832,7 +1879,7 @@ Atom-pair weights. Two formats accepted:
   Explicit pair triples: WATOM sym1 sym2 val  sym1 sym2 val  ...
     Directly sets symmetric pair weights: w(sym1,sym2) = w(sym2,sym1) = val.
 """
-examples = ['WATOM 1.0 1.5', 'WATOM Kr Kr 0.5', 'WATOM Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
+examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
 [ALLOWED_KEYS.error]
 INHERIT = ["TYPES.BOOL"]
@@ -1879,7 +1926,7 @@ names specific element pairs (such as N N) is refused when it is loaded:
 "DIMER evaluates every atom as Z=1; declare TYPE2B/TYPEMB with * * element
 pairs".
 """
-examples = ['DIMER true 1.104 true']
+examples = ['true 1.104 true']
 
 [ALLOWED_KEYS.EWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
@@ -1889,7 +1936,7 @@ long_description = """
 Energies are always scaled by 1/(number of atoms). Additional configuration-level 
 scaling factors can apply. Combined factor = EWEIGHT*(config eweight)/(#atoms).
 """
-examples = ["EWEIGHT 0.96"]
+examples = ["0.96"]
 
 [ALLOWED_KEYS.FWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
@@ -1899,7 +1946,7 @@ long_description = """
 Each force component is scaled by 1/(#atoms)/3. Additional config-level 
 scaling factors can apply. Combined factor = FWEIGHT*(config fweight)/(#atoms)/3.
 """
-examples = ["FWEIGHT 1e-2"]
+examples = ["1e-2"]
 
 [ALLOWED_KEYS.SWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
@@ -1909,7 +1956,7 @@ long_description = """
 Each stress component is scaled by 1/6. Additional config-level scaling can 
 apply. Combined factor = SWEIGHT*(config sweight)/6.
 """
-examples = ["SWEIGHT 1e-1"]
+examples = ["1e-1"]
 
 [ALLOWED_KEYS.WEIGHTS]
 INHERIT = ["TYPES.DOUBLES"]
@@ -1923,7 +1970,7 @@ re-fits WEIGHTS on every evaluation, so optimising them directly would be
 a silent no-op. To search linear coefficients, pin them with
 FIXINDEX/FIXWEIGHT and use `OPTIM FIXWEIGHT`.
 """
-examples = ["WEIGHTS 0.12 1.2 0.3"]
+examples = ["0.12 1.2 0.3"]
 
 [ALLOWED_KEYS.SIGMA]
 value_type = ["INT {DOUBLE}"]
