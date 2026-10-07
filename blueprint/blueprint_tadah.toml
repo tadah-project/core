@@ -144,7 +144,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.bias]
 INHERIT = ["TYPES.BOOL"]
-description  = "Per-species intercept. When true, adds N=size(ATOM) one-hot intercept columns to the design matrix; the regression learns one constant energy per species and LAMMPS adds it back per atom. Required when NORM=true with MODEL=BF_Linear."
+description  = "Per-species intercept. When true, every atom's descriptor starts with N=size(ATOM) one-hot intercept columns, in ATOM order (1 for the atom's species, 0 for the others), on every path (tadah train, predict and hpo, and pair_style tadah): the regression learns one constant energy per species (for BF_Linear and Kern_Linear weights 1 to N, the descriptor weights from N+1; for BF_Polynomial2 the products (k,k); for a dot-product kernel the weights of the intercept basis vectors, its weights 1 to N) and LAMMPS adds it back per atom. Requires ATOM; an atom of an element ATOM does not list is refused. Only energies determine the constants: the compositions of the training structures with an energy weight must determine them (not every structure of one composition, e.g. a fixed stoichiometry), or training is refused (tadah train, tadah hpo at startup; not M_KRR implementation 2, whose solve fits the basis vectors' targets), naming the model's intercept weights; FIXINDEX/FIXWEIGHT can pin some of them instead (the ridge still penalises every other weight). Required when NORM=true with MODEL=BF_Linear or Kern_Linear. A potential trained with BIAS true and two or more species by tadah 1.5.x or earlier (or a 1.6.0 development build without per-species intercepts) has one intercept column shared by all species; it is refused when it predicts (tadah predict, pair_style tadah): retrain it."
 
 [ALLOWED_KEYS.eamfast]
 INHERIT = ["TYPES.BOOL"]
@@ -493,8 +493,8 @@ Migration: add `EMBF0 FREE` to a potential written by tadah 1.5.0 or earlier
 to reproduce its energies. Training a DM_REAM model on absolute reference
 energies (e.g. DFT totals) under ZERO needs a per-atom reference energy from
 ESHIFT, ESHIFT_ATOM or ESHIFT_DBATOM (compatible with EAMFAST), or BIAS true
-(disables EAMFAST; its intercept column precedes the descriptor weights, so
-FIXINDEX/FIXWEIGHT indices shift). External setfl converters must tabulate F(rho) - F(0) unless EMBF0 is FREE.
+(disables EAMFAST; its intercept columns, one per ATOM species, precede the
+descriptor weights, so FIXINDEX/FIXWEIGHT indices shift). External setfl converters must tabulate F(rho) - F(0) unless EMBF0 is FREE.
 """
 examples     = ["ZERO", "FREE"]
 cli_long_flag  = ""
@@ -605,7 +605,8 @@ M_BLR the basis functions BF_Linear and BF_Polynomial2. The third token of
 M_KRR is its implementation: 1 (the default) fits energies, forces and
 stresses by least squares over the design matrix; 2 fits energies only: it
 solves (K + LAMBDA I) w = t, with K the kernel matrix of the basis vectors
-and t the energy per atom of each drawn structure (0 for e0). Every kernel
+and t the energy per atom of each drawn structure (0 for the intercept
+vectors). Every kernel
 but Kern_Linear works on SBASIS basis vectors (see SBASIS).
 """
 examples     = [
@@ -713,11 +714,14 @@ description = "Number of basis vectors of a non-linear M_KRR kernel."
 long_description = """
 Required by M_KRR with every kernel but Kern_Linear, and ignored by the other
 models. The model is E_i = sum_j w_j K(b_j, x_i) over SBASIS basis vectors
-b_j, one weight each. Column 0 is the bias vector e0 = (1, 0, ..., 0); the
-other SBASIS-1 are drawn from the training data: atomic energy descriptors
-(implementation 1, see MODEL) or the mean descriptors of whole structures
-(implementation 2). SBASIS must be at least 2 and at most the number of
-candidates plus 1 (SBASIS-1 candidates are drawn, each once).
+b_j, one weight each. The first n columns are the intercept ("bias")
+vectors e_0 .. e_(n-1) (e_k is 1 in component k, 0 elsewhere): with BIAS
+true one per ATOM species, n = size(ATOM); else n = 1, the bias vector
+e0 = (1, 0, ..., 0). The other SBASIS-n are drawn from the training data:
+atomic energy descriptors (implementation 1, see MODEL) or the mean
+descriptors of whole structures (implementation 2). SBASIS must be at least
+n+1 (2 with one species or BIAS false) and at most the number of candidates
+plus n (SBASIS-n candidates are drawn, each once).
 
 The draw is fixed: a partial Fisher-Yates shuffle of the candidates, in
 the order of the training set, driven by the raw output of std::mt19937_64
@@ -726,8 +730,10 @@ same basis on every run and platform, so `tadah train` is reproducible and
 the loss of `tadah hpo` at a given point does not depend on the draw.
 
 `tadah train` writes SBASIS and the basis vectors (BASIS) into the
-potential with the weights. SBASIS is an integer, and `tadah hpo` refuses
-`OPTIM SBASIS` at its line.
+potential with the weights. A fit draws its basis anew: the BASIS of a
+potential used as a training configuration is not read, so it may be
+retrained with another SBASIS. SBASIS is an integer. `tadah hpo` refuses an
+SBASIS below n+1 at startup, and `OPTIM SBASIS` at its line.
 """
 examples = ["10", "102"]
 
@@ -736,7 +742,18 @@ INHERIT = ["TYPES.BOOL"]
 description = "Standardize descriptors."
 long_description = """
 Set to true to standardize descriptors, typically relevant if energies are used 
-for fitting.
+for fitting. With a linear model (BF_Linear, Kern_Linear) NORM true requires
+BIAS true: the weights fitted to the standardized descriptors are converted to
+weights of the raw descriptors, and the constant this moves goes into the
+intercept columns. A linear potential with NORM true and BIAS false, written
+by an earlier version, is refused when it predicts (tadah predict,
+pair_style tadah); retrain it. Its conversion had no intercept column for
+that constant: M_KRR Kern_Linear (until 1.6.0) and M_BLR BF_Linear (up to
+1.2.0) took descriptor component 0 for an intercept, so the energies and
+forces are wrong; M_BLR BF_Linear from 1.3.0-beta.1 (written by tadah hpo
+and the API; tadah train refused the configuration) dropped the constant, so
+the energies are off by the same amount for every atom and the forces are
+right.
 """
 
 [ALLOWED_KEYS.LAMBDA]
@@ -751,11 +768,13 @@ approximation is used to estimate λ. For LAMBDA 0, you can provide a second
 number (double) that sets the effective rank threshold (default 1e-8).
 
 The penalty (λ times the sum of the squared weights) leaves out the
-weights of the model's intercept columns, the columns that are the same
-for every atom: the bias columns of the descriptor for BF_Linear and
-Kern_Linear (BIAS true with ATOM), column 0 (bias x bias) for BF_Polynomial2
-and column 0 (the bias vector e0) for Kern_Quadratic, Kern_LQ,
-Kern_Polynomial and Kern_Sigmoid, both with BIAS true and ATOM; Kern_RBF has
+weights of the model's intercept columns, the columns that depend on an
+atom only through its species, and penalises every other weight, also when
+FIXINDEX pins some: with BIAS true and ATOM (N species), the intercept
+columns of the descriptor for BF_Linear and Kern_Linear, the products (k,k)
+of each intercept component with itself for BF_Polynomial2 (column 0 with
+one species), and columns 0 to N-1 (the intercept basis vectors e_k) for
+Kern_Quadratic, Kern_LQ, Kern_Polynomial and Kern_Sigmoid; Kern_RBF has
 none. OALGO 3 penalises every column alike and refuses λ != 0 for a model
 with an intercept column.
 """
@@ -1980,6 +1999,14 @@ to atomic numbers if unspecified.
 re-fits WEIGHTS on every evaluation, so optimising them directly would be
 a silent no-op. To search linear coefficients, pin them with
 FIXINDEX/FIXWEIGHT and use `OPTIM FIXWEIGHT`.
+
+A potential whose WEIGHTS do not fit its descriptor (their number, the length
+of a kernel's basis vectors, NMEAN and NSTDEV of a non-linear model with NORM
+true) is refused when it predicts (tadah predict, pair_style tadah). WEIGHTS
+in a training configuration are replaced by the fit and not read: tadah train
+and tadah hpo build the model to be fitted without them (and without BASIS,
+NMEAN, NSTDEV and SIGMA), so a potential retrains from its own file
+(`tadah train -c pot.tadah` with a DBFILE), also with another SBASIS.
 """
 examples = ["0.12 1.2 0.3"]
 
@@ -1996,8 +2023,11 @@ writes into the potential and `tadah predict --error` reads.
 A SIGMA belongs to the fit that computed it. A fit replaces the SIGMA of
 its configuration (a potential used as the configuration, or the -c
 potential of `tadah hpo`), and a fit that computes none (OALGO 1, 2 or 4,
-M_KRR implementation 2, M_BLR with FIXINDEX pinning every weight, weights
-set from FIXWEIGHT without training data in `tadah hpo`) writes none.
+M_KRR implementation 2, M_BLR or M_KRR with FIXINDEX pinning every weight,
+weights set from FIXWEIGHT without training data in `tadah hpo`) writes
+none. With FIXINDEX pinning some weights, SIGMA is the covariance of
+every weight (N counts them all), and a pinned weight has no variance: its
+row and column are 0.
 `tadah predict --error` refuses a SIGMA that does not hold N×N+1 values,
 naming N and both counts.
 """
@@ -2016,6 +2046,11 @@ INHERIT = ["TYPES.DOUBLES"]
 description = "Mean values from descriptor normalization."
 long_description = """
 Obtained after standardizing the columns of the DesignMatrix (see NORM).
+A non-linear model reads NMEAN and NSTDEV when it predicts (it standardizes
+every descriptor), and a potential whose NMEAN or NSTDEV does not have one
+value per descriptor component is refused. A linear model (BF_Linear,
+Kern_Linear) predicts with its weights converted to the raw descriptors and
+does not read them.
 """
 
 [ALLOWED_KEYS.BASIS]
@@ -2030,11 +2065,11 @@ WEIGHTS must carry SBASIS and BASIS, with one weight per basis vector:
 and refuse a BASIS without SBASIS, a BASIS whose length is not a multiple
 of SBASIS, and basis vectors whose length is not the descriptor's.
 
-With BIAS true on several species (ATOM) the descriptor tadah trains has
-one bias component shared by the species, while that of `pair_style tadah`
-has one per species: `pair_style tadah` refuses such a potential of a
-non-linear model, naming the cause. Train it with BIAS false to run it in
-LAMMPS.
+With BIAS true the descriptor has one intercept component per ATOM species,
+in training and in `pair_style tadah` alike, and so do the basis vectors. A
+potential trained with BIAS true on several species before 1.6.0 has basis
+vectors with one bias component shared by the species: it is refused, with
+the instruction to retrain it.
 """
 
 [ALLOWED_KEYS.MPIWPCKG]
@@ -2090,7 +2125,16 @@ pairing). Allows flexible selection of indices. Supports single indices,
 ranges (e.g., start-stop), lists, or intervals (start-stop:step). Indices
 are 1-based. Repeated indices are removed automatically. Without a
 training DBFILE, FIXINDEX must cover every model weight (there is no data
-to fit the rest).
+to fit the rest). The pinned weights leave the fit; LAMBDA penalises every
+other weight but the model's unpinned intercepts. With BIAS true and a
+linear model (BF_Linear, Kern_Linear), indices 1 to N are the per-species
+intercepts (N = size(ATOM), in ATOM order) and the descriptor weights start
+at N+1; before 1.6.0 BIAS true had one intercept and they started at 2. The
+intercepts of BF_Polynomial2 are its products (k,k) (weights 1 and DSIZE+1
+for two species), those of a dot-product kernel weights 1 to N (its
+intercept basis vectors). tadah train and tadah hpo warn when FIXINDEX is
+used with BIAS true and two or more species, naming the model's intercept
+weights.
 """
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 
@@ -2169,7 +2213,7 @@ cli_required     = false
 [INTERNAL_KEYS.DSIZE]
 INHERIT = ["TYPES.UINT"]
 default_value = ["0"]
-description = """The total size of the descriptor. Two-body + many-body + bias."""
+description = """The total size of the descriptor: one intercept column per ATOM species when BIAS is true, then the two-body and the many-body descriptors."""
 value_N = [1]
 
 [INTERNAL_KEYS.RCUTMAX]

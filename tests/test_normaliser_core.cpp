@@ -9,14 +9,26 @@ using namespace tadah::core;
 TEST_CASE( "Testing Normaliser_Core()", "[create]" ) {
     REQUIRE_NOTHROW(Normaliser_Core());
 }
+// Pins: a Normaliser_Core is built from a context without BIAS (0 intercept
+// columns); BIAS true without ATOM is refused (std::runtime_error naming
+// ATOM, from n_intercept_columns); with ATOM Nb Ta it skips 2 intercept
+// columns, one per species.
+// Before the fix: BIAS true without ATOM was accepted with 0 intercept
+// columns (REQUIRE_THROWS_WITH failed: nothing thrown). This case expected
+// REQUIRE_NOTHROW there before BIAS true without ATOM was refused.
 TEST_CASE( "Testing Normaliser_Core(Context&)", "[create]" ) {
 
     Context c;
     REQUIRE_NOTHROW(Normaliser_Core(c));
+    CHECK(Normaliser_Core(c).bias == 0);
 
     c.add("BIAS", true);
-    REQUIRE_NOTHROW(Normaliser_Core(c));
+    REQUIRE_THROWS_WITH(Normaliser_Core(c), Catch::Contains("ATOM"));
 
+    c.add("ATOM", "Nb");
+    c.add("ATOM", "Ta");
+    REQUIRE_NOTHROW(Normaliser_Core(c));
+    CHECK(Normaliser_Core(c).bias == 2);
 }
 TEST_CASE( "Testing Normaliser_Core::normalise(aed)", "[method]" ) {
     Context c = tadah::core::CoreUserConfigParser().parse("tests_data/valid_configs/valid_config5");
