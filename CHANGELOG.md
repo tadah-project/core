@@ -7,6 +7,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 ## [Unreleased]
 
 ### Added
+- Tests: `tadah.core_headers` (`ctest -L headers`, cmake-tools' `tadah_add_header_check`) compiles every header of `include/` and the generated `blueprint_tadah.hpp` on its own and twice in a row, with what a user of `tadah.core` gets. Every CORE header passes.
 - **`parse_one_based_indices(values, total, who, counted)`** (`utils.h`): the checked 1-based index list of `parse_dataset_indices` (the same grammar and refusals; the bounds are checked before a range is expanded), whose bound message ends with `counted`, what the indices count: `tadah analysis bfunc: index 9 (in '2-9') is outside 1-4 (the D2_Blip basis has 4 functions)`. `parse_dataset_indices` is now `parse_one_based_indices` with `the dataset has <N> structures`; its messages are unchanged. `tadah data print`, `analysis descriptor` and `analysis bfunc -i` use them (see Tadah.MLIP). The lenient `parse_indices` stays for `FIXINDEX`, its only remaining user.
 
 ### Changed
