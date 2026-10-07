@@ -701,11 +701,14 @@ description = "Number of basis vectors of a non-linear M_KRR kernel."
 long_description = """
 Required by M_KRR with every kernel but Kern_Linear, and ignored by the other
 models. The model is E_i = sum_j w_j K(b_j, x_i) over SBASIS basis vectors
-b_j, one weight each. Column 0 is the bias vector e0 = (1, 0, ..., 0); the
-other SBASIS-1 are drawn from the training data: atomic energy descriptors
-(implementation 1, see MODEL) or the mean descriptors of whole structures
-(implementation 2). SBASIS must be at least 2 and at most the number of
-candidates plus 1 (SBASIS-1 candidates are drawn, each once).
+b_j, one weight each. The first n columns are the intercept ("bias")
+vectors e_0 .. e_(n-1) (e_k is 1 in component k, 0 elsewhere): with BIAS
+true one per ATOM species, n = size(ATOM); else n = 1, the bias vector
+e0 = (1, 0, ..., 0). The other SBASIS-n are drawn from the training data:
+atomic energy descriptors (implementation 1, see MODEL) or the mean
+descriptors of whole structures (implementation 2). SBASIS must be at least
+n+1 (2 with one species or BIAS false) and at most the number of candidates
+plus n (SBASIS-n candidates are drawn, each once).
 
 The draw is fixed: a partial Fisher-Yates shuffle of the candidates, in
 the order of the training set, driven by the raw output of std::mt19937_64
@@ -726,7 +729,10 @@ Set to true to standardize descriptors, typically relevant if energies are used
 for fitting. With a linear model (BF_Linear, Kern_Linear) NORM true requires
 BIAS true: the weights fitted to the standardized descriptors are converted to
 weights of the raw descriptors, and the constant this moves goes into the
-intercept columns.
+intercept columns. A linear potential with NORM true and BIAS false, written
+by an earlier version, is refused when it predicts (tadah predict,
+pair_style tadah): its conversion took descriptor component 0 for an
+intercept, so its energies and forces are wrong; retrain it.
 """
 
 [ALLOWED_KEYS.LAMBDA]
@@ -1912,10 +1918,10 @@ re-fits WEIGHTS on every evaluation, so optimising them directly would be
 a silent no-op. To search linear coefficients, pin them with
 FIXINDEX/FIXWEIGHT and use `OPTIM FIXWEIGHT`.
 
-A potential whose WEIGHTS do not fit its descriptor (their number, NMEAN and
-NSTDEV with NORM true, the length of a kernel's basis vectors) is refused when
-it predicts (tadah predict, pair_style tadah). WEIGHTS in a training
-configuration are replaced by the fit.
+A potential whose WEIGHTS do not fit its descriptor (their number, the length
+of a kernel's basis vectors, NMEAN and NSTDEV of a non-linear model with NORM
+true) is refused when it predicts (tadah predict, pair_style tadah). WEIGHTS
+in a training configuration are replaced by the fit.
 """
 examples = ["WEIGHTS 0.12 1.2 0.3"]
 
@@ -1942,6 +1948,11 @@ INHERIT = ["TYPES.DOUBLES"]
 description = "Mean values from descriptor normalization."
 long_description = """
 Obtained after standardizing the columns of the DesignMatrix (see NORM).
+A non-linear model reads NMEAN and NSTDEV when it predicts (it standardizes
+every descriptor), and a potential whose NMEAN or NSTDEV does not have one
+value per descriptor component is refused. A linear model (BF_Linear,
+Kern_Linear) predicts with its weights converted to the raw descriptors and
+does not read them.
 """
 
 [ALLOWED_KEYS.BASIS]
@@ -1956,11 +1967,11 @@ WEIGHTS must carry SBASIS and BASIS, with one weight per basis vector:
 and refuse a BASIS without SBASIS, a BASIS whose length is not a multiple
 of SBASIS, and basis vectors whose length is not the descriptor's.
 
-With BIAS true on several species (ATOM) the descriptor tadah trains has
-one bias component shared by the species, while that of `pair_style tadah`
-has one per species: `pair_style tadah` refuses such a potential of a
-non-linear model, naming the cause. Train it with BIAS false to run it in
-LAMMPS.
+With BIAS true the descriptor has one intercept component per ATOM species,
+in training and in `pair_style tadah` alike, and so do the basis vectors. A
+potential trained with BIAS true on several species before 1.6.0 has basis
+vectors with one bias component shared by the species: it is refused, with
+the instruction to retrain it.
 """
 
 [ALLOWED_KEYS.MPIWPCKG]
