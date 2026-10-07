@@ -138,7 +138,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.bias]
 INHERIT = ["TYPES.BOOL"]
-description  = "Per-species intercept. When true, adds N=size(ATOM) one-hot intercept columns to the design matrix; the regression learns one constant energy per species and LAMMPS adds it back per atom. Required when NORM=true with MODEL=BF_Linear."
+description  = "Per-species intercept. When true, every atom's descriptor starts with N=size(ATOM) one-hot intercept columns, in ATOM order (1 for the atom's species, 0 for the others), on every path (tadah train, predict and hpo, and pair_style tadah): the regression learns one constant energy per species (weights 1 to N; the descriptor weights start at N+1) and LAMMPS adds it back per atom. Requires ATOM; an atom of an element ATOM does not list is refused. Only energies determine the constants: the compositions of the training structures with an energy weight must determine them (not every structure of one composition, e.g. a fixed stoichiometry), or training is refused; FIXINDEX/FIXWEIGHT can pin some of them instead. Required when NORM=true with MODEL=BF_Linear or Kern_Linear. A potential trained with BIAS true and two or more species by tadah 1.5.x or earlier (or a 1.6.0 development build without per-species intercepts) has one intercept column shared by all species; it is refused when it predicts (tadah predict, pair_style tadah): retrain it."
 
 [ALLOWED_KEYS.eamfast]
 INHERIT = ["TYPES.BOOL"]
@@ -489,8 +489,8 @@ Migration: add `EMBF0 FREE` to a potential written by tadah 1.5.0 or earlier
 to reproduce its energies. Training a DM_REAM model on absolute reference
 energies (e.g. DFT totals) under ZERO needs a per-atom reference energy from
 ESHIFT, ESHIFT_ATOM or ESHIFT_DBATOM (compatible with EAMFAST), or BIAS true
-(disables EAMFAST; its intercept column precedes the descriptor weights, so
-FIXINDEX/FIXWEIGHT indices shift). External setfl converters must tabulate F(rho) - F(0) unless EMBF0 is FREE.
+(disables EAMFAST; its intercept columns, one per ATOM species, precede the
+descriptor weights, so FIXINDEX/FIXWEIGHT indices shift). External setfl converters must tabulate F(rho) - F(0) unless EMBF0 is FREE.
 """
 examples     = ["ZERO", "FREE"]
 cli_long_flag  = ""
@@ -691,7 +691,10 @@ INHERIT = ["TYPES.BOOL"]
 description = "Standardize descriptors."
 long_description = """
 Set to true to standardize descriptors, typically relevant if energies are used 
-for fitting.
+for fitting. With a linear model (BF_Linear, Kern_Linear) NORM true requires
+BIAS true: the weights fitted to the standardized descriptors are converted to
+weights of the raw descriptors, and the constant this moves goes into the
+intercept columns.
 """
 
 [ALLOWED_KEYS.LAMBDA]
@@ -1839,6 +1842,11 @@ to atomic numbers if unspecified.
 re-fits WEIGHTS on every evaluation, so optimising them directly would be
 a silent no-op. To search linear coefficients, pin them with
 FIXINDEX/FIXWEIGHT and use `OPTIM FIXWEIGHT`.
+
+A potential whose WEIGHTS do not fit its descriptor (their number, NMEAN and
+NSTDEV with NORM true, the length of a kernel's basis vectors) is refused when
+it predicts (tadah predict, pair_style tadah). WEIGHTS in a training
+configuration are replaced by the fit.
 """
 examples = ["WEIGHTS 0.12 1.2 0.3"]
 
@@ -1928,7 +1936,11 @@ pairing). Allows flexible selection of indices. Supports single indices,
 ranges (e.g., start-stop), lists, or intervals (start-stop:step). Indices
 are 1-based. Repeated indices are removed automatically. Without a
 training DBFILE, FIXINDEX must cover every model weight (there is no data
-to fit the rest).
+to fit the rest). With BIAS true, indices 1 to N are the per-species
+intercepts (N = size(ATOM), in ATOM order) and the descriptor weights start
+at N+1; before 1.6.0 BIAS true had one intercept and they started at 2
+(tadah train and tadah hpo warn when FIXINDEX is used with BIAS true and two
+or more species).
 """
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 
@@ -2003,7 +2015,7 @@ cli_required     = false
 [INTERNAL_KEYS.DSIZE]
 INHERIT = ["TYPES.UINT"]
 default_value = ["0"]
-description = """The total size of the descriptor. Two-body + many-body + bias."""
+description = """The total size of the descriptor: one intercept column per ATOM species when BIAS is true, then the two-body and the many-body descriptors."""
 value_N = [1]
 
 [INTERNAL_KEYS.RCUTMAX]
