@@ -936,3 +936,175 @@ TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
   CHECK(back12("WEIGHTS")[4] == "0.123456789012");
   CHECK(back12.get<double>("WEIGHTS", 4) != c.get<double>("WEIGHTS", 4));
 }
+
+namespace {
+
+/* A container whose size() is n while it has room for 8 values: it records
+ * the indices written through operator[], so a write past size() is seen
+ * without undefined behaviour. */
+struct SizeProbe {
+  std::size_t n = 0;
+  double store[8] = {};
+  std::vector<std::size_t> written;
+  std::size_t size() const { return n; }
+  double &operator[](std::size_t i) {
+    written.push_back(i);
+    return store[i < 8 ? i : 7];
+  }
+};
+
+/* The message of the exception f throws, or "" when it throws none. */
+template <class F> std::string thrown_message(F f) {
+  try {
+    f();
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "";
+}
+
+/* KEY set to exactly the tokens of `text`, stored as they are written. */
+void set_tokens(Context &c, const std::string &key, const std::string &text) {
+  c.remove(key);
+  c.add(key, text);
+}
+
+}  // namespace
+
+/* Pins: Context::get(key, container) refuses a key that stores more values
+ * than the container holds: with six WEIGHTS and a container whose size()
+ * is 2 it throws std::runtime_error naming WEIGHTS, 6 and 2, and writes no
+ * element (it refuses before converting a value); with six values and room
+ * for six it fills them.
+ * Before the fix: no throw; every stored value was written, the last at
+ * index 5 of the container of size 2 (into a std::vector of size 2 that is
+ * a write past its end: read_sigma reading a SIGMA that an earlier fit had
+ * appended to corrupted the heap). */
+TEST_CASE("Context get(key, container) refuses more values than the "
+          "container holds",
+          "[context][get_container]") {
+  Context c;
+  c.add("WEIGHTS", "0.5 1.5 2.5 3.5 4.5 5.5");
+  SizeProbe two;
+  two.n = 2;
+  const std::string msg = thrown_message([&] { c.get("WEIGHTS", two); });
+  INFO("message: " << msg << "; indices written: " << two.written.size());
+  CHECK(msg.find("WEIGHTS") != std::string::npos);
+  CHECK(msg.find("6 values") != std::string::npos);
+  CHECK(msg.find("holds 2") != std::string::npos);
+  CHECK(two.written.empty());
+
+  SizeProbe six;
+  six.n = 6;
+  REQUIRE_NOTHROW(c.get("WEIGHTS", six));
+  for (std::size_t i = 0; i < 6; ++i)
+    CHECK(ctx_bits(six.store[i]) == ctx_bits(0.5 + static_cast<double>(i)));
+}
+
+/* Pins: a key with fewer stored values than the container holds fills
+ * those values and leaves the rest of the container as it was (the
+ * documented behaviour, owner decision D6 of the trainer-reuse fix).
+ * Before the fix: passes as well (a pin of the behaviour the size check
+ * keeps). */
+TEST_CASE("Context get(key, container) fills a larger container with the "
+          "stored values",
+          "[context][get_container]") {
+  Context c;
+  c.add("WEIGHTS", "0.5 1.5");
+  std::vector<double> v(4, -1.0);
+  REQUIRE_NOTHROW(c.get("WEIGHTS", v));
+  CHECK(ctx_bits(v[0]) == ctx_bits(0.5));
+  CHECK(ctx_bits(v[1]) == ctx_bits(1.5));
+  CHECK(ctx_bits(v[2]) == ctx_bits(-1.0));
+  CHECK(ctx_bits(v[3]) == ctx_bits(-1.0));
+}
+
+/* Pins: an integer read of a Context value (get<int>, get<size_t>, the
+ * n-th value, and get(key, container) into integers) takes a value that is
+ * an exact integer in the type's range, whatever its spelling: "2", "+5",
+ * "2.0", "2.", "-0", "1e3", "2.50e1", "7E+0", ".5e1", "-4.000", the int
+ * limits, and "18446744073709551615" for size_t; it refuses, naming the key
+ * and the value, a fraction ("2.7", "1e-3", "14.47"), trailing text
+ * ("2abc", "1e"), a value out of the type's range ("3000000000" and "1e10"
+ * for int, "-1" and "1.8446744073709551616e19" for size_t) and text that is
+ * not a decimal number ("abc", "0x10", "inf", "nan", ".", "-", "e3"). A
+ * double read is unchanged ("2.7" is 2.7).
+ * Before the fix: an integer read took the longest integer prefix of the
+ * text and ignored the rest without an error: "2.7", "2abc", "1e-3", "1e3",
+ * "2.50e1", "1e10", "1e" and "0x10" gave 2, 2, 1, 1, 2, 1, 1 and 0; the
+ * size_t reads of "-1", "14.47" and "1.8446744073709551616e19" gave
+ * 18446744073709551615, 14 and 1; the container read of "2.0 1e3 -4" gave
+ * {2, 1, -4} and that of "2.7 1 0" no error; ".5e1" was refused. (A
+ * Kern_Polynomial degree MPARAMS 2.7 was so used as 2.) */
+TEST_CASE("Context integer reads take exact integers in any spelling and "
+          "refuse every other value",
+          "[context][integral]") {
+  Context c;
+  struct Good {
+    const char *text;
+    long long value;
+  };
+  const Good good_int[] = {{"2", 2},     {"+5", 5},       {"2.0", 2},
+                           {"-0", 0},    {"1e3", 1000},   {"2.50e1", 25},
+                           {"-4", -4},   {"-4.000", -4},  {"7E+0", 7},
+                           {".5e1", 5},  {"2.", 2},
+                           {"2147483647", 2147483647LL},
+                           {"-2147483648", -2147483648LL}};
+  for (const Good &g : good_int) {
+    INFO("int value '" << g.text << "'");
+    set_tokens(c, "MPARAMS", g.text);
+    int v = -99;
+    CHECK_NOTHROW(v = c.get<int>("MPARAMS"));
+    CHECK(v == g.value);
+    CHECK_NOTHROW(v = c.get<int>("MPARAMS", 0));
+    CHECK(v == g.value);
+  }
+  const char *bad_int[] = {"2.7", "1e-3", "2abc", "abc", "0x10", "inf",
+                           "nan", "3000000000", "1e10", ".", "-", "1e", "e3"};
+  for (const char *text : bad_int) {
+    INFO("int value '" << text << "'");
+    set_tokens(c, "MPARAMS", text);
+    const std::string msg = thrown_message([&] { (void)c.get<int>("MPARAMS"); });
+    INFO("message: " << msg);
+    CHECK(msg.find("MPARAMS") != std::string::npos);
+    CHECK(msg.find(std::string("\"") + text + "\"") != std::string::npos);
+    const std::string msg_n =
+        thrown_message([&] { (void)c.get<int>("MPARAMS", 0); });
+    CHECK(msg_n.find("MPARAMS") != std::string::npos);
+  }
+
+  set_tokens(c, "SBASIS", "18446744073709551615");
+  std::size_t u = 0;
+  CHECK_NOTHROW(u = c.get<std::size_t>("SBASIS"));
+  CHECK(u == std::numeric_limits<std::size_t>::max());
+  for (const char *text : {"-1", "1.8446744073709551616e19", "14.47"}) {
+    INFO("size_t value '" << text << "'");
+    set_tokens(c, "SBASIS", text);
+    const std::string msg =
+        thrown_message([&] { (void)c.get<std::size_t>("SBASIS"); });
+    INFO("message: " << msg);
+    CHECK(msg.find("SBASIS") != std::string::npos);
+  }
+
+  // The container path converts each value the same way.
+  set_tokens(c, "MPARAMS", "2.0 1e3 -4");
+  std::vector<int> v3(3);
+  CHECK_NOTHROW(c.get("MPARAMS", v3));
+  CHECK(v3 == std::vector<int>{2, 1000, -4});
+  set_tokens(c, "MPARAMS", "2.7 1 0");
+  const std::string msg_c = thrown_message([&] { c.get("MPARAMS", v3); });
+  INFO("container message: " << msg_c);
+  CHECK(msg_c.find("MPARAMS") != std::string::npos);
+  CHECK(msg_c.find("\"2.7\"") != std::string::npos);
+  std::vector<std::size_t> u1(1);
+  set_tokens(c, "SBASIS", "-1");
+  CHECK(thrown_message([&] { c.get("SBASIS", u1); }).find("SBASIS") !=
+        std::string::npos);
+
+  // A double read is not an integer read.
+  set_tokens(c, "MPARAMS", "2.7 1 0");
+  CHECK(ctx_bits(c.get<double>("MPARAMS")) == ctx_bits(2.7));
+  std::vector<double> d3(3);
+  CHECK_NOTHROW(c.get("MPARAMS", d3));
+  CHECK(ctx_bits(d3[0]) == ctx_bits(2.7));
+}

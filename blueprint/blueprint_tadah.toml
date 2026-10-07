@@ -566,13 +566,21 @@ long_description = """
 The parameters of the kernel of an M_KRR model, in this order:
 
 - Kern_RBF: sigma, the width of K(b, x) = exp(-r^2 / (2 sigma^2)), r the
-  distance between b and x (gamma = 1/sigma^2);
-- Kern_Polynomial: d gamma c, K(b, x) = (gamma b.x + c)^d (d is read as an
-  integer);
+  distance between b and x (gamma = 1/sigma^2); sigma 0 is refused, and a
+  negative sigma gives the kernel of its magnitude;
+- Kern_Polynomial: d gamma c, K(b, x) = (gamma b.x + c)^d; d is an
+  integer: 2, 2.0 or 2e0 is read as 2, and a value that is not an integer
+  (2.7) is refused;
 - Kern_Sigmoid: gamma c, K(b, x) = tanh(gamma b.x + c).
 
 Kern_Linear, Kern_Quadratic, Kern_LQ and the basis functions of M_BLR
 (BF_Linear, BF_Polynomial2) take none.
+
+`tadah hpo` builds the model of every evaluation from its candidate, so
+`OPTIM MPARAMS` searches the kernel's parameters. It refuses at startup
+`OPTIM MPARAMS (i)` on a function that reads fewer than i values (every
+function that takes none), on the degree d of Kern_Polynomial (an integer)
+and on the sigma of Kern_RBF with a box that is not positive.
 """
 examples     = ["MPARAMS 0.5", "MPARAMS 3 0.5 1.0"]
 
@@ -714,7 +722,8 @@ same basis on every run and platform, so `tadah train` is reproducible and
 the loss of `tadah hpo` at a given point does not depend on the draw.
 
 `tadah train` writes SBASIS and the basis vectors (BASIS) into the
-potential with the weights.
+potential with the weights. SBASIS is an integer, and `tadah hpo` refuses
+`OPTIM SBASIS` at its line.
 """
 examples = ["10", "102"]
 
@@ -779,8 +788,9 @@ takes one parameter on its TYPE line, a placeholder written 0
 and is reported once on standard error. RCUT2B and RCUTMB must be the
 file's cutoff (in a D2_mJoin or DM_mJoin, the EAM descriptor's own value):
 the file defines its functions up to it. Another value is refused, naming
-both. A potential written with NUMERIC below 17 records the cutoff rounded,
-and is refused until it is set to the file's cutoff.
+both, and so is, at the start of tadah hpo, an OPTIM RCUT2B/RCUTMB over
+that value. A potential written with NUMERIC below 17 records the cutoff
+rounded, and is refused until it is set to the file's cutoff.
 
 A configuration with both descriptors and one setfl file::
 
@@ -1921,7 +1931,17 @@ value_format = ["<integer> <double> ..."]
 value_N = [-2147483647]
 description = "The Σ matrix used in Bayesian Linear Regression."
 long_description = """
-An N×N matrix in column-major order. Applies to M_BLR. 
+N, then an N×N matrix in column-major order: the covariance of the weights
+that a fit with OALGO 3 computes (M_BLR and M_KRR), which `tadah train`
+writes into the potential and `tadah predict --error` reads.
+
+A SIGMA belongs to the fit that computed it. A fit replaces the SIGMA of
+its configuration (a potential used as the configuration, or the -c
+potential of `tadah hpo`), and a fit that computes none (OALGO 1, 2 or 4,
+M_KRR implementation 2, M_BLR with FIXINDEX pinning every weight, weights
+set from FIXWEIGHT without training data in `tadah hpo`) writes none.
+`tadah predict --error` refuses a SIGMA that does not hold N×N+1 values,
+naming N and both counts.
 """
 examples = ["2 1.2 2.2 2.3 3.3"]
 
