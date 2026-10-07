@@ -781,8 +781,10 @@ record gives a WARNING. The three cell lengths must be given; an angle
 left out is 90 degrees.
 A site whose occupancy is
 not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
-site. A failed fetch from any database (MP, COD, AFLOW, NOMAD) names the ID
-and the service's reason (cut to 300 characters).
+site. A CIF structure's label names the space group its cell is built
+with, and the errors and warnings of a COD entry name its COD ID. A failed
+fetch from any database (MP, COD, AFLOW, NOMAD) names the ID and the
+service's reason (cut to 300 characters).
 """
 examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
 cli_long_flag  = "--structure"
