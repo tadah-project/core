@@ -10,3 +10,10 @@ target_include_directories(test_core PUBLIC ${Tadah.CORE_SOURCE_DIR}/external/to
 
 include(Catch)
 catch_discover_tests(test_core)
+
+# tadah.core_headers (ctest -L headers): every installed header, include/ and
+# the generated blueprint header, compiles on its own and twice in a row.
+# Before the fix: passes as well (a pin: no CORE header failed when the
+# check was added).
+tadah_add_header_check(tadah.core HEADER_DIRS
+  ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated)
