@@ -1176,7 +1176,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.output_grid_scale]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit`: scale factor for the output setfl grid density (1.0 = same as input), a number > 0."
+description  = "`tadah refit`: scale factor for the output setfl grid density (1.0 = same as input), a number > 0 whose grid has 3 to 2147483647 points per table (nr x scale and nrho x scale, rounded; checked once the EAM file is read, before any fitting)."
 examples     = ["1.0", "2.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
