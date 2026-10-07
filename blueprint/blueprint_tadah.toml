@@ -890,7 +890,7 @@ cli_required     = false
 [ALLOWED_KEYS.hpofileout]
 INHERIT = ["TYPES.STRING"]
 value_format = ["<file>"]
-description  = "Output file for the `tadah hpo` starter target written by `tadah refit`."
+description  = "Output file for the `tadah hpo` starter target written by `tadah refit` and `tadah refit --edit`. `tadah refit --retarget`, whose output is -o (OUTFILE) or its input with --in-place, refuses it."
 examples     = ["refit.hpotarget"]
 cli_long_flag  = "--hpofileout"
 cli_short_flag = ""
@@ -1368,7 +1368,7 @@ cli_required   = false
 [ALLOWED_KEYS.refit_curve_deriv_weight]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["0.0"]
-description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: weight of EACH derivative block (1st and 2nd) RELATIVE to the value block in the curve objective (both the stacked coefficient solve and the rung-selection score). 0 (DEFAULT) = pure VALUE fit, which is crystal-faithful: LAMMPS computes the crystal energy from the curve VALUES, so a value-only fit reproduces the crystal as well as energy mode (measured Ti: cohesive +3.8 meV/atom, E-V 5-6 meV). ANY nonzero weight degrades the crystal sharply (measured: 0.01 -> -15, 0.1 -> -69, 1.0 -> +37 meV/atom cohesive) because the relative normalisation lets even a 1% derivative term trade away the large ABSOLUTE value error of a high-magnitude function like F. Raise it ONLY to capture the 1st/2nd-derivative SHAPE at the EXPENSE of crystal energy. 1.0 = value/d1/d2 equal (the original, crystal-wrecking curve mode). A number >= 0. Ignored unless REFIT_OBJECTIVE=curve (its value is checked in either objective). REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: weight of EACH derivative block (1st and 2nd) RELATIVE to the value block in the curve objective (both the stacked coefficient solve and the rung-selection score). 0 (DEFAULT) = pure VALUE fit, which is crystal-faithful: LAMMPS computes the crystal energy from the curve VALUES, so a value-only fit reproduces the crystal as well as energy mode (measured Ti: cohesive +3.8 meV/atom, E-V 5-6 meV). ANY nonzero weight degrades the crystal sharply (measured: 0.01 -> -15, 0.1 -> -69, 1.0 -> +37 meV/atom cohesive) because the relative normalisation lets even a 1% derivative term trade away the large ABSOLUTE value error of a high-magnitude function like F. Raise it ONLY to capture the 1st/2nd-derivative SHAPE at the EXPENSE of crystal energy. 1.0 = value/d1/d2 equal (the original, crystal-wrecking curve mode). A number >= 0. Read under REFIT_OBJECTIVE curve only: under REFIT_OBJECTIVE energy, written or the default, it has no effect and is refused. REFIT_MODE dense refuses it."
 examples     = ["0.0", "0.1", "1.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1381,7 +1381,7 @@ INHERIT = ["TYPES.BOOL"]
 # bget() sees `true` unless the user sets the key. Without it weighting would
 # silently default OFF (the inherited false would be injected).
 default_value = ["true"]
-description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve weighting (ON by default). Concentrates the fit where the crystal actually probes and relaxes it toward the high-pressure extremes, so a fixed knot budget spends its accuracy where it matters: phi(r) and rho(r) are weighted 1 between the ambient nearest-neighbour distance r_amb and the cutoff, ramping smoothly down to REFIT_CURVE_RELAX toward smaller r (compression); F(rho) is weighted 1 from rho=0 up to the ambient density rho_amb, ramping down to the floor for higher rho (compression). r_amb and rho_amb are derived self-contained from the lattice geometry and the EAM tables (no crystal energy-volume scan dependency). The weights apply to BOTH the stacked value+d1+d2 coefficient solve AND the rung-selection metrics, so fit and selection agree. false = uniform weighting (legacy curve mode). Under REFIT_OBJECTIVE energy, written or the default, this key is refused (it has no effect there). Multiplies with REFIT_CURVE_DERIV_WEIGHT (orthogonal: deriv_weight scales d1/d2 vs value; this scales per-region). REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve weighting (ON by default). Concentrates the fit where the crystal actually probes and relaxes it toward the high-pressure extremes, so a fixed knot budget spends its accuracy where it matters: phi(r) and rho(r) are weighted 1 between the ambient nearest-neighbour distance r_amb and the cutoff, ramping smoothly down to REFIT_CURVE_RELAX toward smaller r (compression); F(rho) is weighted 1 from rho=0 up to the ambient density rho_amb, ramping down to the floor for higher rho (compression). r_amb and rho_amb are derived self-contained from the lattice geometry and the EAM tables (no crystal energy-volume scan dependency). The weights apply to BOTH the stacked value+d1+d2 coefficient solve AND the rung-selection metrics, so fit and selection agree. false = uniform weighting (legacy curve mode), under which REFIT_CURVE_RELAX, the floor of the weighting, is refused. Under REFIT_OBJECTIVE energy, written or the default, this key is refused (it has no effect there). Multiplies with REFIT_CURVE_DERIV_WEIGHT (orthogonal: deriv_weight scales d1/d2 vs value; this scales per-region). REFIT_MODE dense refuses it."
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1390,7 +1390,7 @@ cli_required   = false
 [ALLOWED_KEYS.refit_curve_relax]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["0.05"]
-description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve with REFIT_CURVE_WEIGHTING on: the floor weight (a fraction greater than 0 and at most 1) that the pressure-relaxed profile ramps DOWN to in the compressed / high-pressure regions (phi/rho below r_amb, F above rho_amb). 1.0 reproduces uniform weighting, smaller values relax the fit harder away from ambient (default 0.05). The ramp is a C1 smoothstep between the ambient band (weight 1) and the window edge (weight equal to this floor). No effect in energy mode, where its value is checked too. REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve with REFIT_CURVE_WEIGHTING on: the floor weight (a fraction greater than 0 and at most 1) that the pressure-relaxed profile ramps DOWN to in the compressed / high-pressure regions (phi/rho below r_amb, F above rho_amb). 1.0 reproduces uniform weighting, smaller values relax the fit harder away from ambient (default 0.05). The ramp is a C1 smoothstep between the ambient band (weight 1) and the window edge (weight equal to this floor). It has no effect, and is refused, under REFIT_OBJECTIVE energy (written or the default) and with REFIT_CURVE_WEIGHTING false. REFIT_MODE dense refuses it."
 examples     = ["0.05", "0.1", "0.02"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1564,7 +1564,10 @@ NUMERIC itself is never written into a potential file; a NUMERIC line found in
 a potential used as a configuration (or edited with refit --edit) is treated
 as an explicit setting. The '#' comment headers of a potential (e.g. the
 header tadah hpo writes) are annotations not governed by NUMERIC; its
-machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact.
+machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact. The hpotarget
+files of tadah refit (a refit, --edit and --retarget) are not governed by
+NUMERIC either: their OPTIM bounds are printed %.8e (9 significant digits)
+whatever NUMERIC is.
 
 The structure exports of tadah data write use significant digits too for
 LAMMPS data files and VASP POSCAR (both read E-notation); the CASTEP cell
@@ -2344,8 +2347,9 @@ Config-file options (EAM and RHOFORM are required):
 - Compact mode only: the ladder (REFIT_COMPACT_NMAX, REFIT_COMPACT_STALL,
   REFIT_COMPACT_SHARE, REFIT_COMPACT_OPT_EVERY, REFIT_COMPACT_INSERT_TOPK,
   REFIT_COMPACT_SEED and the other REFIT_COMPACT_* keys), REFIT_OBJECTIVE
-  curve and REFIT_CURVE_* (REFIT_CURVE_WEIGHTING under REFIT_OBJECTIVE
-  curve only), and the stage blocks below.
+  curve and REFIT_CURVE_* (under REFIT_OBJECTIVE curve only;
+  REFIT_CURVE_RELAX with REFIT_CURVE_WEIGHTING true only), and the stage
+  blocks below.
 - Stage pipeline (compact mode): INIT -> EXPLORE -> REFINE -> FUSE, each its
   own multi-line block. INIT (no optimisation) declares manual/anchored,
   optionally PINned knots/blips. EXPLORE/REFINE/FUSE each take a nested
@@ -2381,11 +2385,19 @@ tabulated EAM file:
   under NONNEG/MONOTONE). A configuration may not set RHOFORM or EMBF0 for
   --retarget (no effect on an hpotarget); for --edit it may set them only to
   the potential's own values.
+A configuration for --edit or --retarget may not set a key that only a
+refit of an EAM file reads (REFIT_*, N2B, NRHO_BASIS, NF_BASIS,
+OUTPUT_GRID_SCALE, SETFL_OUT, the stage blocks; for --retarget also
+HPOFILEOUT, which --edit reads): it is an error naming the key and what
+reads it.
 For knot-family potentials both modes keep RCUT2B/RCUTMB consistent with
 the largest knot position (the true effective cutoff).
 
 Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) for
-the full description of any key.
+the full description of a key above. RHOFORM, EMBF0 and NUMERIC (keys a
+configuration may set) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the
+potential) are no options of tadah refit: the Configuration File page of the
+documentation describes them.
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --pct 10 --rcut2b 6.0 --rcutmb 6.0 -o wide.hpotarget", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
@@ -2398,7 +2410,7 @@ value_format = ["<file>"]
 description = "Output file name for the fitted native Tadah potential."
 [TASKS.refit.keys.hpofileout]
 default_value = ["refit.hpotarget"]
-description = "Output file name for the generated `tadah hpo` starter target file."
+description = "Output file name for the generated `tadah hpo` starter target file (a refit and --edit; --retarget, whose output is -o, refuses it)."
 [TASKS.refit.keys.func]
 cli_needs    = ["edit"]
 [TASKS.refit.keys.add]
@@ -3037,8 +3049,8 @@ cli_needs = ["range"]
 # work in progress
 [TASKS.explain]
 description      = "Explain tadah command or option in more detail."
-long_description      = "This is a help command that provides detailed information about a specific command or option in the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option."
-examples         = ["tadah explain task", "tadah explain train.verbose", "tadah explain data.split.even"]
+long_description      = "This is a help command that provides detailed information about a specific command or option in the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. An option that names no command, or no option of its command, is an error naming what was not found."
+examples         = ["tadah explain train", "tadah explain train.verbose", "tadah explain data.split.even"]
 
 [TASKS.explain.keys]
 INHERIT = ["ALLOWED_KEYS.option"]
