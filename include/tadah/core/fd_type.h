@@ -15,6 +15,17 @@
 namespace tadah {
 namespace core {
 
+/**
+ * @brief Derivatives of a descriptor with respect to the three Cartesian
+ *        directions: rows() values per direction, stored column by column.
+ *
+ * The element accessors, fd(i, k), fd[k] and fd(k), are the hot path and
+ * are not checked: i < rows() and k < 3 are the caller's preconditions.
+ * The whole-object operations check their operands' sizes once per call:
+ * +, - and * with a vector need an operand of rows() entries and throw
+ * std::invalid_argument naming both sizes otherwise; == and isApprox are
+ * false for fd_types of different sizes.
+ */
 class fd_type {
   size_t rows_ = 0;
   double* data_ = nullptr;
@@ -44,16 +55,21 @@ public:
   fd_type& operator=(const fd_type& other);
   fd_type& operator=(fd_type&& other) noexcept;
 
+  /// Row i of direction k; unchecked: requires i < rows() and k < 3.
   inline double& operator()(size_t i, size_t k) {
     return data_[i + k * rows_];
   }
 
+  /// Row i of direction k; unchecked: requires i < rows() and k < 3.
   inline const double& operator()(size_t i, size_t k) const {
     return data_[i + k * rows_];
   }
 
+  /// The rows() values of direction k; unchecked: requires k < 3.
   aed_type& operator[](size_t k);
+  /// The rows() values of direction k; unchecked: requires k < 3.
   const aed_type& operator()(size_t k) const;
+  /// The rows() values of direction k; unchecked: requires k < 3.
   aed_type& operator()(size_t k);
 
   inline size_t rows() const { return rows_; }
@@ -65,6 +81,8 @@ public:
 
   friend std::ostream& operator<<(std::ostream& os, const fd_type& v);
 
+  /// (sum_i fd(i, k) v2[i]) for k = 0, 1, 2; v2 must have rows() values
+  /// (std::invalid_argument otherwise).
   template <typename T>
   Vec3d operator*(const T& v2) const {
     require_vector_size(v2.size());
@@ -77,15 +95,21 @@ public:
     return temp;
   }
 
+  /// Elementwise; v2 must have rows() rows (std::invalid_argument
+  /// otherwise).
   fd_type operator-(const fd_type& v2) const;
+  /// Elementwise; v2 must have rows() rows (std::invalid_argument
+  /// otherwise).
   fd_type operator+(const fd_type& v2) const;
 
   void operator*=(double s);
   void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(),
               double lower = -1e4, double upper = 1e4);
 
+  /// Every value within EPS of v1's; false when v1 has another size.
   bool isApprox(const fd_type& v1, double EPS) const;
 
+  /// isApprox with the machine epsilon; false for another size.
   bool operator==(const fd_type& v1) const;
 
 private:
