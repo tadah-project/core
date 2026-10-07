@@ -24,7 +24,9 @@
 # - deprecated: Reason and replacement, for a key that is only still accepted
 #   (optional). A configuration or potential file may contain the key; its value
 #   is validated, a warning is written to standard error once per key and
-#   process and the key is not stored.
+#   process (pair_style tadah writes it as a LAMMPS warning on rank 0, in
+#   log.lammps and on the screen, each time pair_coeff loads the file) and
+#   the key is not stored.
 #   A deprecated key must not have a default_value, a CLI flag or examples
 #   (`examples = []` overrides those of an inherited TYPES table).
 
@@ -176,7 +178,20 @@ default_value      = ["false"]
 
 [ALLOWED_KEYS.uncertainty]
 INHERIT = ["TYPES.BOOL"]
-description  = "Output uncertainty estimates."
+description  = "Write the weights with their standard deviations (weights.tadah); needs OALGO 3."
+long_description = """
+`tadah train --uncertainty` writes weights.tadah: for every weight its
+index, its value and its standard deviation, the square root of the
+diagonal of the weight covariance WCOV of the fit (0 for a weight FIXINDEX
+pins), headed "Index  Mean weight  Std. dev.". Only an OALGO 3 fit of M_BLR
+or of M_KRR implementation 1 computes the covariance: any other OALGO, and
+M_KRR implementation 2 (MODEL M_KRR <kernel> 2), are refused before
+training, and a fit whose noise variance is undefined (no more
+observations than effective weights) is refused before the potential is
+written, saying what to change. Before 1.6.0 (and in 1.6.0 development
+builds before WCOV and WNOISE) the column was the diagonal of SIGMA, a
+transposed, unscaled matrix, headed "Uncertainty".
+"""
 cli_long_flag    = "--uncertainty"
 cli_short_flag   = ""
 cli_required     = false
@@ -485,9 +500,11 @@ potential without a DM_REAM block: it is accepted, never written into such a
 potential (tadah train, tadah refit, tadah hpo), and reported once per process
 on standard error, "WARNING: Key EMBF0 is ignored: it applies only to a
 DM_REAM many-body block, and the potential has none (...)", like a deprecated
-key (the Logger level and VERBOSE do not hide it, and pair_style tadah shows
-it too). A task value for such a potential (tadah predict) is reported the
-same way.
+key (the Logger level and VERBOSE do not hide it). pair_style tadah writes it
+as a LAMMPS warning on rank 0 instead, in log.lammps and on the screen, each
+time pair_coeff loads such a potential ("WARNING: pair tadah: potential
+'<file>': Key EMBF0 is ignored: ..."). A task value for such a potential
+(tadah predict) is reported the same way.
 
 Migration: add `EMBF0 FREE` to a potential written by tadah 1.5.0 or earlier
 to reproduce its energies. Training a DM_REAM model on absolute reference
@@ -550,8 +567,9 @@ in upper case); any other value is an error at its line when the
 configuration or potential is read, also without a DM_REAM block. A valid
 value has no effect on a potential without a DM_REAM block: it is accepted,
 never written into such a potential, and reported once per process on
-standard error ("WARNING: Key RHOFORM is ignored: ..."), like a deprecated
-key and as EMBF0.
+standard error ("WARNING: Key RHOFORM is ignored: ..."; by pair_style tadah as
+a LAMMPS warning on rank 0 each time pair_coeff loads such a potential), like
+a deprecated key and as EMBF0.
 
 Migration: the key is new in tadah 1.6.0, and a DM_REAM potential or
 configuration without RHOFORM is an error. Add `RHOFORM SIGNED` to a
@@ -648,7 +666,7 @@ Available options:
 
 **2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorization. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
 
-**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance matrix :math:`\Sigma`, providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance of the weights (:ref:`WCOV`, :ref:`WNOISE`), providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
 
 **4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It does not require additional parameters.
 
@@ -681,7 +699,7 @@ Available options:
 
 - **Conditioning Parameter** :code:`M`: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
 - **Machine Precision** (:code:`M = -1`): Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
-- **Covariance Matrix** :math:`\Sigma`: Option **3** provides the covariance matrix, which can be useful for statistical analyses and understanding the uncertainty in the estimated parameters.
+- **Covariance Matrix** :math:`\Sigma`: Option **3** computes the posterior covariance of the weights, :math:`s^2 (\Phi^\top W \Phi + \lambda I)^{-1}` over the singular directions the solve keeps, with the noise variance :math:`s^2` estimated from the residuals of the rows with a non-zero weight, and writes it into the potential as :ref:`WCOV`, with the noise variance of each row type as :ref:`WNOISE`. ``tadah train --uncertainty`` lists the weights' standard deviations, and ``tadah predict --error`` the predictive standard deviation of each value. A direction the solve drops (singular value at most :code:`M` times the largest) has no covariance either; a WARNING gives their number. With fewer observations than effective weights the noise variance is undefined, and no covariance is written (a WARNING).
 - **Cholesky Decomposition**: Option **4** solves the normal equations using Cholesky decomposition. It is efficient but may be numerically unstable for ill-conditioned or rank-deficient problems due to squaring the condition number. It is best used when the matrix is well-conditioned and of full rank.
 
 **Additional Information**:
@@ -764,7 +782,14 @@ value_N = [-2]
 description = "Controls the regularization parameter λ for BLR and KRR."
 long_description = """
 If N=0, no regularization. If N>0, λ is set to that value. If N<0, an evidence 
-approximation is used to estimate λ. For LAMBDA 0, you can provide a second 
+approximation is used to estimate λ (OALGO 3): it iterates
+alpha = gamma/(w.w) and beta = (n_obs - gamma)/RSS, n_obs the observations
+(the rows of the design matrix with a non-zero weight) and gamma the
+effective number of weights over the singular directions the solve keeps,
+to lambda = alpha/beta. (Before 1.6.0, and in 1.6.0 development builds
+before WCOV and WNOISE, it counted the design matrix's ridge-augmentation
+rows, one per weight, and its rows of weight 0 as observations, which made
+beta too large, so lambda and the weights of a LAMBDA -1 fit change.) For LAMBDA 0, you can provide a second 
 number (double) that sets the effective rank threshold (default 1e-8).
 
 The penalty (λ times the sum of the squared weights) leaves out the
@@ -808,7 +833,8 @@ function phi(r) and DM_EAM the density rho(r) and the embedding function
 F(rho), so one SETFL serves the usual D2_EAM + DM_EAM pair. Each descriptor
 takes one parameter on its TYPE line, a placeholder written 0
 (TYPE2B D2_EAM 0 Ta Ta, TYPEMB DM_EAM 0 Ta Ta); another value has no effect
-and is reported once on standard error. RCUT2B and RCUTMB must be the
+and is reported once on standard error (by pair_style tadah as a LAMMPS
+warning on rank 0). RCUT2B and RCUTMB must be the
 file's cutoff (in a D2_mJoin or DM_mJoin, the EAM descriptor's own value):
 the file defines its functions up to it. Another value is refused, naming
 both, and so is, at the start of tadah hpo, an OPTIM RCUT2B/RCUTMB over
@@ -1916,7 +1942,37 @@ examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
 [ALLOWED_KEYS.error]
 INHERIT = ["TYPES.BOOL"]
-description  = "Generate error estimates."
+description  = "Give every predicted value its predictive standard deviation (needs WCOV and WNOISE)."
+long_description = """
+`tadah predict --error` gives every predicted value its predictive
+standard deviation, sqrt(phi^T WCOV phi + WNOISE_t): phi the design-matrix
+row of the value (its derivatives with respect to the WEIGHTS), WCOV the
+covariance of the WEIGHTS and WNOISE_t the noise variance of an
+observation of the value's type (E, F, S), both written by an OALGO 3 fit.
+The first term is the variance of the predicted value, the second the
+scatter of a reference value about it, so the error is that of the
+prediction against data like the training data. energy.pred, forces.pred
+and stress.pred get a fourth column with it (per atom for the energy), and
+error.pred lists, per structure, the energy's (eV/atom) and the largest
+force (eV/Å) and stress (eV/Å^3) one.
+`tadah properties pairwise --error` gives the energy's per atom (per bond
+with --bondenergy); its two-body and many-body parts get
+sqrt(phi_p^T WCOV phi_p), without the noise term (a part is not observed).
+A potential without WCOV and WNOISE is refused, saying why it has none:
+a fit other than OALGO 3 (retrain it with OALGO 3), M_KRR implementation 2
+(retrain it with implementation 1), or, with OALGO 3, a potential of
+Tadah! 1.0.0 to 1.5.0 or of a 1.6.0 development build, whose SIGMA is
+ignored (retrain it), a fit with no more observations than effective
+weights, whose noise variance is undefined (add data and retrain it), or
+weights set from FIXWEIGHT without a fit. Refused too: every prediction of
+a potential fitted without energies of a non-zero weight (EWEIGHT 0, or
+every structure's eweight 0: no WNOISE E; every prediction has an energy),
+and forces or stresses asked for that the fit had no rows of with a
+non-zero weight (no WNOISE F or S). Before 1.6.0 (and in 1.6.0
+development builds before WCOV and WNOISE) the errors were computed from
+SIGMA, a transposed and unscaled matrix, minus their mean, and most were
+negative.
+"""
 cli_long_flag    = "--error"
 cli_short_flag   = ""
 default_value      = ["false"]
@@ -2008,7 +2064,7 @@ of a kernel's basis vectors, NMEAN and NSTDEV of a non-linear model with NORM
 true) is refused when it predicts (tadah predict, pair_style tadah). WEIGHTS
 in a training configuration are replaced by the fit and not read: tadah train
 and tadah hpo build the model to be fitted without them (and without BASIS,
-NMEAN, NSTDEV and SIGMA), so a potential retrains from its own file
+NMEAN, NSTDEV, WCOV, WNOISE and SIGMA), so a potential retrains from its own file
 (`tadah train -c pot.tadah` with a DBFILE), also with another SBASIS.
 """
 examples = ["0.12 1.2 0.3"]
@@ -2017,24 +2073,84 @@ examples = ["0.12 1.2 0.3"]
 value_type = ["INT {DOUBLE}"]
 value_format = ["<integer> <double> ..."]
 value_N = [-2147483647]
-description = "The Σ matrix used in Bayesian Linear Regression."
+description = "The weight matrix Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote for an OALGO 3 fit (deprecated: replaced by WCOV and WNOISE)."
 long_description = """
-N, then an N×N matrix in column-major order: the covariance of the weights
-that a fit with OALGO 3 computes (M_BLR and M_KRR), which `tadah train`
-writes into the potential and `tadah predict --error` reads.
-
-A SIGMA belongs to the fit that computed it. A fit replaces the SIGMA of
-its configuration (a potential used as the configuration, or the -c
-potential of `tadah hpo`), and a fit that computes none (OALGO 1, 2 or 4,
-M_KRR implementation 2, M_BLR or M_KRR with FIXINDEX pinning every weight,
-weights set from FIXWEIGHT without training data in `tadah hpo`) writes
-none. With FIXINDEX pinning some weights, SIGMA is the covariance of
-every weight (N counts them all), and a pinned weight has no variance: its
-row and column are 0.
-`tadah predict --error` refuses a SIGMA that does not hold N×N+1 values,
-naming N and both counts.
+N, then an N×N matrix in column-major order, which `tadah train` 1.0.0 to
+1.5.0 (and 1.6.0 development builds) wrote for an OALGO 3 fit as the
+covariance of the weights. It was
+computed with a transposed formula, V^T R V instead of V R V^T (V the
+right singular vectors of the design matrix, R the ridge factors
+1/(s_i^2 + lambda)), and without the noise variance, so it is not the
+covariance of the weights, and `tadah predict --error` reported wrong
+values with it (negative ones among them). Only the diagonal and the
+magnitudes of the entries of the covariance can be recovered from it: the
+signs of the off-diagonal entries and the noise scale need the training
+data. The key is accepted so that those potentials still load (`tadah
+predict`, `tadah train -c`, `pair_style tadah`), with one notice, and is
+not stored. Retrain such a potential with OALGO 3 to write its weight
+covariance, WCOV and WNOISE.
 """
-examples = ["2 1.2 2.2 2.3 3.3"]
+deprecated = """Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE: retrain the potential with OALGO 3."""
+examples = []
+
+[ALLOWED_KEYS.WCOV]
+value_type = ["INT {DOUBLE}"]
+value_format = ["<N> <double> ..."]
+value_N = [-2147483647]
+description = "The covariance of the potential's WEIGHTS, written by an OALGO 3 fit."
+long_description = """
+N, then the N×N covariance matrix of the WEIGHTS in column-major order, in
+the parameterisation of WEIGHTS (with NORM true and a linear model,
+BF_Linear or Kern_Linear, that of the weights of the raw descriptors). It
+is the posterior covariance of the fit that wrote it,
+s^2 (Phi^T W Phi + lambda I)^-1, with Phi the design matrix, W the row
+weights, lambda the fit's LAMBDA (the evidence approximation's for LAMBDA
+-1) and s^2 = RSS/(n_obs - gamma) the noise variance per unit row weight:
+RSS the weighted residual sum of squares, n_obs the number of rows with a
+non-zero weight (the observations) and gamma = sum_i s_i^2/(s_i^2 + lambda)
+the effective number of weights, the sum over the singular directions the
+solve keeps, s_i the singular values of the weighted design matrix. The
+inverse is over the kept directions too: a direction the solve drops (s_i
+at most rcond times the largest, rcond the second value of OALGO) has no
+weight component, no covariance and no part in gamma; the fit's WARNING
+gives their number. A weight FIXINDEX pins has
+no variance: its row and column are 0 (every weight pinned: all zeros).
+
+`tadah train` writes WCOV, with WNOISE, for an OALGO 3 fit (M_BLR, M_KRR
+implementation 1); a fit whose noise variance is undefined (n_obs <= gamma)
+writes neither, with a WARNING, and so does every other fit. A training
+configuration's WCOV and WNOISE are not read: the fit writes its own.
+`tadah predict --error` reads both, and refuses a WCOV whose N is not the
+number of WEIGHTS or that does not hold N×N+1 values (and, see WNOISE, a
+potential whose WNOISE has no E). `pair_style tadah`
+does not use them. Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote SIGMA instead (deprecated).
+"""
+examples = ["2 0.5 0.1 0.1 0.25"]
+
+[ALLOWED_KEYS.WNOISE]
+value_type = ["{STRING DOUBLE}"]
+value_format = ["<type> <variance> ..."]
+value_N = [-2147483647]
+description = "The noise variance of each row type of the potential's fit, written by an OALGO 3 fit."
+long_description = """
+Pairs of a row type, E (energies), F (forces) or S (stresses), and the
+noise variance of one such value in raw units: eV^2 for the energy of a
+structure, (eV/Å)^2 for a force component, (eV/Å^3)^2 for a stress
+component. Each is s^2/EWEIGHT, s^2/FWEIGHT or s^2/SWEIGHT, s^2 the noise
+variance per unit row weight of the fit (see WCOV), for a structure of
+weight 1: a structure's own eweight, fweight or sweight is not in it. Only
+the types the fit had rows of with a non-zero weight are listed (E alone
+for a fit with FORCE and STRESS false; F, and S, without E for a fit
+without energies: EWEIGHT 0, or every structure's eweight 0).
+
+`tadah predict --error` adds the WNOISE of a value's type to its variance
+phi^T WCOV phi and refuses a type WNOISE does not list: forces asked for
+with -F of a potential fitted without them (or with FWEIGHT 0), stresses
+likewise, and, as every prediction has an energy, every prediction of a
+potential whose WNOISE has no E (`tadah train` warns when it writes one;
+its WCOV and the standard deviations of --uncertainty are not affected).
+"""
+examples = ["E 1.2e-4 F 3.4e-3", "E 1e-3 F 0.01 S 1e-6"]
 
 [ALLOWED_KEYS.NSTDEV]
 INHERIT = ["TYPES.DOUBLES"]

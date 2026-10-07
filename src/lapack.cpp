@@ -1,7 +1,18 @@
 #include <tadah/core/lapack.h>
 
+#include <algorithm>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 namespace tadah {
 namespace core {
+
+namespace {
+std::string shape(const Matrix &A) {
+  return std::to_string(A.rows()) + " x " + std::to_string(A.cols());
+}
+}  // namespace
 
 // Some useful operations on vectors and matrices
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
@@ -28,6 +39,10 @@ aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
  *
  */
 aed_type T_MDMT_diag(const Matrix &M, const Matrix &D) {
+  if (D.rows() != M.cols() || D.cols() != M.cols())
+    throw std::invalid_argument(
+        "T_MDMT_diag: D must be N x N for an M of N columns; M is " +
+        shape(M) + ", D is " + shape(D));
 
   aed_type res(M.rows());
   res.set_zero();
@@ -37,6 +52,39 @@ aed_type T_MDMT_diag(const Matrix &M, const Matrix &D) {
     }
   }
 
+  return res;
+}
+aed_type T_MDMT_sym(const Matrix &M, const Matrix &S) {
+  if (S.rows() != M.cols() || S.cols() != M.cols())
+    throw std::invalid_argument(
+        "T_MDMT_sym: S must be N x N for an M of N columns; M is " +
+        shape(M) + ", S is " + shape(S));
+  const size_t m = M.rows(), n = M.cols();
+  aed_type res(m);
+  res.set_zero();
+  if (m == 0 || n == 0) return res;
+  // Row blocks of M: P_b = M_b S (dgemm), then res_i = sum_j P_b(i,j) M(i,j).
+  // M is column-major with leading dimension m, so the block of rows
+  // i0 .. i0+b-1 starts at M.data() + i0 with the same leading dimension.
+  const size_t block = std::max<size_t>(1, std::min<size_t>(m, 1024));
+  std::vector<double> P(block * n);
+  char transa = 'N', transb = 'N';
+  double alpha = 1.0, beta = 0.0;
+  int nn = static_cast<int>(n), lda = static_cast<int>(m);
+  // dgemm_ takes non-const pointers; it does not write A or B.
+  double *Mp = const_cast<Matrix &>(M).ptr();
+  double *Sp = const_cast<Matrix &>(S).ptr();
+  for (size_t i0 = 0; i0 < m; i0 += block) {
+    const size_t b = std::min(block, m - i0);
+    int bb = static_cast<int>(b);
+    dgemm_(&transa, &transb, &bb, &nn, &nn, &alpha, Mp + i0, &lda, Sp, &nn,
+           &beta, P.data(), &bb);
+    for (size_t j = 0; j < n; ++j) {
+      const double *pj = P.data() + j * b;
+      const double *mj = Mp + j * m + i0;
+      for (size_t r = 0; r < b; ++r) res[i0 + r] += pj[r] * mj[r];
+    }
+  }
   return res;
 }
 double norm_X(Matrix &A, char norm) {
