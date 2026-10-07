@@ -1393,6 +1393,15 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "Optimiser sub-block for a `tadah refit` stage (EXPLORE/REFINE/FUSE). A multi-line `OPTIMIZER ... ENDOPTIMIZER` block nested INSIDE a stage block, written like the `tadah hpo --hpotarget` optimiser attributes but taking only the keys the stage reads: `ALGO <name>` (required; NONE, or UNIFORM for the EXPLORE optimiser, switches a search off), `LIB <name>` (required, as in `tadah hpo`, wherever the block runs an optimiser: the library of its ALGO, NLOPT, DLIB or CERES, and a missing or different LIB is an error; with ALGO NONE or UNIFORM, which run none, LIB is an error), and the stage's stopping criteria (MAXEVAL, and its alias MAXITER, an integer from 1 to 2147483647: the objective evaluations of the NLopt and dlib algorithms, counted exactly, and the iterations of Ceres' LM and DOGLEG). In a block with ALGO NONE or UNIFORM a stopping criterion is an error too, unless another stage reads it (an EXPLORE INNER block's under the EXPLORE optimiser GN_MLSL_LDS; REFINE's under REFIT_OBJECTIVE curve while FUSE runs). EXPLORE reads MAXEVAL and an optional nested `INNER ... ENDINNER` for the per-rung local search (LIB, ALGO, MAXEVAL, FTOL_REL, XTOL_REL); REFINE reads MAXEVAL (alias MAXITER), FTOL_REL and GTOL; FUSE reads MAXEVAL (alias MAXITER) and FTOL_REL. Any other optimiser key (SEED, THREADS, MAXTIME, FTOL_ABS, XTOL_ABS, ...) is an error naming the keys the stage reads; see the Refitting page. A top-level OPTIMIZER block is rejected (it must be nested in a stage)."
+long_description = """
+Written inside a stage block, for example::
+
+    REFINE
+      OPTIMIZER
+        LIB CERES  ALGO LM  MAXEVAL 1000
+      ENDOPTIMIZER
+    ENDREFINE
+"""
 examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1402,6 +1411,13 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` INIT stage block (`INIT ... ENDINIT`, no optimisation). Declares manual / anchored knots or blips per channel: `<PHI|RHO|F> <MANUAL <mu> [<eta>] | XMIN | XMAX | YMIN | YMAX | SMAX | CMAX> [PIN]`. PIN freezes that position in EXPLORE/REFINE/FUSE (the linear coefficient is still solved). Captured verbatim; parsed by the refit engine."
+long_description = """
+Written as a block, one placement per line, for example::
+
+    INIT
+      PHI XMIN PIN
+    ENDINIT
+"""
 examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1411,6 +1427,16 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): structure search + basis growth (absorbs the old GLOBAL stage at rung 0). Takes `MAX_ADD <n>` (max basis added per function) and a nested OPTIMIZER block (default global MLSL with an INNER local SBPLX). Captured verbatim; parsed by the refit engine."
+long_description = """
+Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
+
+    EXPLORE
+      MAX_ADD 38
+      OPTIMIZER
+        ...
+      ENDOPTIMIZER
+    ENDEXPLORE
+"""
 examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1420,6 +1446,15 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` REFINE stage block (`REFINE ... ENDREFINE`): per-rung high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local). Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine."
+long_description = """
+Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
+
+    REFINE
+      OPTIMIZER
+        ...
+      ENDOPTIMIZER
+    ENDREFINE
+"""
 examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1429,6 +1464,15 @@ cli_required   = false
 INHERIT = ["TYPES.STRINGS"]
 value_N      = [-2147483647]
 description  = "`tadah refit` FUSE stage block (`FUSE ... ENDFUSE`): final joint refinement of all three functions against curve + crystal energy-volume residuals (least-squares only: Ceres LM/DOGLEG or NONE). Takes a nested OPTIMIZER block. Captured verbatim; parsed by the refit engine."
+long_description = """
+Written as a block, with an OPTIMIZER block inside (see OPTIMIZER for its keys)::
+
+    FUSE
+      OPTIMIZER
+        ...
+      ENDOPTIMIZER
+    ENDFUSE
+"""
 examples     = []
 cli_long_flag  = ""
 cli_short_flag = ""
