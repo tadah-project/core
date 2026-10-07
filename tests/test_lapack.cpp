@@ -2,6 +2,9 @@
 #include <tadah/core/lapack.h>
 #include <tadah/core/core_types.h>
 #include <iomanip>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 using namespace tadah::core;
 
@@ -74,6 +77,38 @@ TEST_CASE( "Testing T_MDMT_diag()", "[lapack]" ) {
     REQUIRE(res(0)==17);
     REQUIRE(res(1)==73);
     REQUIRE(res(2)==169);
+}
+/* Pins: T_MDMT_diag(M, D) refuses a D that is not N x N for an M of N
+ * columns (std::invalid_argument naming both shapes): a 3 x 2 M with a 4 x
+ * 4 D and with a 2 x 3 D; the 2 x 2 D of "Testing T_MDMT_diag()" is
+ * accepted.
+ * Before the fix: no check; it read D(j,j) for j < N whatever D's shape
+ * (with a smaller D, past its end: the out-of-bounds read predict --error
+ * made with FIXINDEX, a covariance of the free weights only), and returned
+ * a value for both. */
+TEST_CASE( "T_MDMT_diag refuses a D of another size than M's columns",
+           "[lapack]" ) {
+    Matrix m(3,2);
+    m.set_zero();
+    for (const auto &rc : {std::pair<size_t,size_t>{4,4},
+                           std::pair<size_t,size_t>{2,3}}) {
+        Matrix d(rc.first, rc.second);
+        d.set_zero();
+        INFO("D " << rc.first << " x " << rc.second);
+        std::string msg;
+        try {
+            T_MDMT_diag(m, d);
+        } catch (const std::invalid_argument &e) {
+            msg = e.what();
+        }
+        INFO("message: " << msg);
+        CHECK(msg.find("3 x 2") != std::string::npos);
+        CHECK(msg.find(std::to_string(rc.first) + " x " +
+                       std::to_string(rc.second)) != std::string::npos);
+    }
+    Matrix d(2,2);
+    d.set_zero();
+    CHECK_NOTHROW(T_MDMT_diag(m, d));
 }
 TEST_CASE( "Testing T_dgemv()", "[lapack]" ) {
     Matrix m(2,2);
