@@ -19,6 +19,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
+#include <limits>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -26,6 +28,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <tadah/core/blueprint_parser.h>
@@ -160,12 +163,18 @@ public:
    * @brief Fills a provided container with values for the key.
    *
    * If the key is absent, attempts to insert the blueprint default.
-   * Logs a warning if there are more stored values than the container size.
+   * Value i is written to out[i], converted as get<T>() converts (an
+   * integer element takes an exact integer only, see convertStringTo()).
+   * A key with fewer stored values than the container holds fills those
+   * and leaves the other elements as they are; a key with more is refused
+   * before any element is written.
    *
-   * @tparam Container type with operator[] and size() (e.g., std::vector<T>).
+   * @tparam Container type with operator[] and size() (e.g.,
+   *         std::vector<T>), or an array (std::size()).
    * @param key Key name.
    * @param out The container to fill.
-   * @throws std::runtime_error if the key is missing or conversion fails.
+   * @throws std::runtime_error if the key is missing, stores more values
+   *         than std::size(out), or a conversion fails.
    */
   template <typename Container>
   void get(const std::string &key, Container &out) const {
@@ -181,19 +190,30 @@ public:
       }
     }
     const std::vector<std::string> &vals = it->second;
-    try {
-      for (size_t i = 0; i < vals.size(); ++i) {
+    const size_t capacity = static_cast<size_t>(std::size(out));
+    if (vals.size() > capacity) {
+      const std::string msg =
+          "Context::get: key " + upKey + " stores " +
+          std::to_string(vals.size()) + " values, but the container it is " +
+          "read into holds " + std::to_string(capacity);
+      Logger::instance().log(LogLevel::ERROR, msg);
+      throw std::runtime_error(msg);
+    }
+    using Elem = std::remove_cv_t<std::remove_reference_t<decltype(out[0])>>;
+    for (size_t i = 0; i < vals.size(); ++i) {
+      if constexpr (is_strict_integral_v<Elem>) {
+        out[i] = convertStringTo<Elem>(vals[i], upKey);
+      } else {
         std::istringstream iss(vals[i]);
         iss >> out[i];
         if (iss.fail()) {
-          throw std::runtime_error("Conversion failed for key: " + upKey);
+          Logger::instance().log(
+              LogLevel::ERROR, "Context::get(container) -> Failed converting \"" +
+                                   vals[i] + "\" for key=" + upKey);
+          throw std::runtime_error("Conversion failed for key=" + upKey +
+                                   ", value=\"" + vals[i] + "\"");
         }
       }
-    } catch (std::exception &e) {
-      Logger::instance().log(
-          LogLevel::ERROR,
-          "Context::get(container) -> Conversion failed: ", e.what());
-      throw std::runtime_error("Conversion failed for key: " + upKey);
     }
   }
 
@@ -530,8 +550,95 @@ private:
    */
   void print_NoLock(std::ostream &os, bool potential, int sig_digits) const;
 
+  /** The integer types an integer read covers (convertStringTo()): every
+   *  integral type but bool and the character types. */
+  template <typename T>
+  static constexpr bool is_strict_integral_v =
+      std::is_integral_v<T> && !std::is_same_v<T, bool> &&
+      !std::is_same_v<T, char> && !std::is_same_v<T, signed char> &&
+      !std::is_same_v<T, unsigned char> && !std::is_same_v<T, wchar_t> &&
+      !std::is_same_v<T, char16_t> && !std::is_same_v<T, char32_t>;
+
   /**
-   * @brief Converts a string to type T using std::istringstream with
+   * @brief The integer a token spells, when it spells one exactly.
+   *
+   * The token is a decimal number, read whole: [+|-] digits [. digits]
+   * [(e|E) [+|-] digits], with at least one digit before the exponent. It is
+   * taken when its value is an integer in the range of T, whatever its
+   * spelling ("2", "2.0", "1e3", ".5e1"). The value is computed from the
+   * digits exactly (no floating-point rounding, independent of the locale).
+   *
+   * @return false for a fraction ("2.7"), text that is not such a number
+   *         ("2abc", "0x10", "inf") and a value out of the range of T.
+   */
+  template <typename T>
+  static bool parse_integral_token(const std::string &s, T &out) {
+    static_assert(is_strict_integral_v<T>, "an integer type");
+    using U = unsigned long long;
+    auto digit = [](char ch) { return ch >= '0' && ch <= '9'; };
+    size_t i = 0;
+    bool neg = false;
+    if (i < s.size() && (s[i] == '+' || s[i] == '-')) neg = s[i++] == '-';
+    std::string digits;            // the mantissa digits, without the point
+    long point = 0;                // digits before the decimal point
+    while (i < s.size() && digit(s[i])) digits += s[i++];
+    point = static_cast<long>(digits.size());
+    if (i < s.size() && s[i] == '.') {
+      ++i;
+      while (i < s.size() && digit(s[i])) digits += s[i++];
+    }
+    if (digits.empty()) return false;
+    if (i < s.size() && (s[i] == 'e' || s[i] == 'E')) {
+      ++i;
+      bool eneg = false;
+      if (i < s.size() && (s[i] == '+' || s[i] == '-')) eneg = s[i++] == '-';
+      if (i >= s.size() || !digit(s[i])) return false;
+      long e = 0;
+      // Clamped: past 10^6 every non-zero mantissa is out of range of T
+      // (or a fraction), which the loops below see either way.
+      while (i < s.size() && digit(s[i])) {
+        if (e < 1000000) e = e * 10 + (s[i] - '0');
+        ++i;
+      }
+      point += eneg ? -e : e;
+    }
+    if (i != s.size()) return false;
+    // A digit after the (shifted) decimal point that is not 0: a fraction.
+    for (long k = point < 0 ? 0 : point; k < static_cast<long>(digits.size()); ++k)
+      if (digits[static_cast<size_t>(k)] != '0') return false;
+    // The magnitude: the digits before the point, then zeros up to it.
+    const U max_mag =
+        neg ? (std::is_signed_v<T>
+                   ? static_cast<U>(std::numeric_limits<T>::max()) + 1
+                   : 0)
+            : static_cast<U>(std::numeric_limits<T>::max());
+    U mag = 0;
+    for (long k = 0; k < point; ++k) {
+      const U d = k < static_cast<long>(digits.size())
+                      ? static_cast<U>(digits[static_cast<size_t>(k)] - '0')
+                      : 0;
+      if (mag > max_mag / 10 || (mag == max_mag / 10 && d > max_mag % 10))
+        return false;   // out of range of T
+      mag = mag * 10 + d;
+    }
+    if (!neg) {
+      out = static_cast<T>(mag);
+    } else if constexpr (std::is_signed_v<T>) {
+      out = mag == max_mag ? std::numeric_limits<T>::min()
+                           : static_cast<T>(-static_cast<T>(mag));
+    } else {
+      out = 0;   // "-0": max_mag is 0, so mag is 0
+    }
+    return true;
+  }
+
+  /**
+   * @brief Converts a string to type T.
+   *
+   * An integer T (is_strict_integral_v) takes the whole token when it spells
+   * an exact integer in the range of T (parse_integral_token()): "2", "2.0"
+   * and "1e3" are read, "2.7", "2abc" and, for an unsigned T, "-1" are
+   * refused. Every other T is read with std::istringstream and
    * std::boolalpha.
    *
    * @tparam T The target type to parse.
@@ -542,15 +649,27 @@ private:
    */
   template <typename T>
   T convertStringTo(const std::string &s, const std::string &key) const {
-    std::istringstream iss(s);
-    iss >> std::boolalpha;
-    T value;
-    if (!(iss >> value)) {
+    T value{};
+    bool ok = false;
+    std::string why;
+    if constexpr (is_strict_integral_v<T>) {
+      ok = parse_integral_token(s, value);
+      if (!ok)
+        why = std::string(": an integer is required") +
+              (std::is_signed_v<T> ? "" : " that is not negative") +
+              ", from " + std::to_string(std::numeric_limits<T>::min()) +
+              " to " + std::to_string(std::numeric_limits<T>::max());
+    } else {
+      std::istringstream iss(s);
+      iss >> std::boolalpha;
+      ok = static_cast<bool>(iss >> value);
+    }
+    if (!ok) {
       Logger::instance().log(
           LogLevel::ERROR, "Context::convertStringTo -> Failed converting \"" +
-                               s + "\" for key=" + key);
+                               s + "\" for key=" + key + why);
       throw std::runtime_error("Conversion failed for key=" + key +
-                               ", value=\"" + s + "\"");
+                               ", value=\"" + s + "\"" + why);
     }
     return value;
   }
