@@ -3,6 +3,8 @@
 #include <tadah/core/fd_type.h>
 
 #include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 using namespace tadah::core;
@@ -425,4 +427,129 @@ TEST_CASE("fd_type borderline differences for isApprox()", "[fd_type][improved]"
     fd2(1,2) = 10.00001; 
     REQUIRE(fd1.isApprox(fd2, 1e-12) == false); 
     // because difference is 1e-5 which is >> 1e-12
+}
+
+namespace {
+
+/* The message f throws, or "no exception". */
+template <class F> std::string fd_refusal(F f) {
+  try {
+    f();
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "no exception";
+}
+
+}  // namespace
+
+/* Pins: a column of an fd_type is a view of the fd_type's values, and an
+ * assignment to it writes through: fd[k] = a (a copy), fd[k] = a * 2.0 (a
+ * move from a temporary) and fd(k) = a set fd(i, k) for every i, the
+ * column stays the view (fd[k].data() is fd.ptr() + k * rows()), the other
+ * columns are unchanged, and the fd_type's copy has the values. Assigning a
+ * vector of another size throws std::invalid_argument naming both sizes and
+ * changes nothing. Moving a column out (aed_type x(std::move(fd[k])), x =
+ * std::move(fd[k])) copies its values and leaves the column in place. A
+ * view is not resized: resize to another size throws; to its size is a
+ * no-op. A default-constructed fd_type's columns are empty views (an
+ * assignment of a non-empty vector throws).
+ * Before the fix: the assignment made the column own a new buffer with the
+ * values (move: the temporary's), so fd(i, k), ptr() and a copy of the
+ * fd_type kept the old values (0) and fd[k].data() was not fd.ptr() + k *
+ * rows(); a size mismatch replaced the column with a vector of another
+ * size; a move out left the column a null data() with its size 3 (a
+ * dangling column); resize gave the column a buffer of its own, and a
+ * default fd_type's column took the assigned values. */
+TEST_CASE("fd_type: an assignment to a column writes into the fd_type",
+          "[fd_type][column_view]") {
+  const aed_type a({1.0, 2.0, 3.0});
+  fd_type fd(3);
+  fd[1] = a;
+  fd[2] = a * 2.0;
+  for (size_t i = 0; i < 3; ++i) {
+    INFO("row " << i);
+    CHECK(fd(i, 0) == 0.0);
+    CHECK(fd(i, 1) == a[i]);
+    CHECK(fd(i, 2) == 2.0 * a[i]);
+  }
+  for (size_t k = 0; k < 3; ++k) {
+    CHECK(fd[k].data() == fd.ptr() + 3 * k);
+    CHECK(fd[k].size() == 3);
+  }
+  const fd_type copy(fd);
+  CHECK(copy(2, 1) == 3.0);
+  CHECK(copy(2, 2) == 6.0);
+  fd(0) = a;
+  CHECK(fd(1, 0) == 2.0);
+  CHECK(fd(0).data() == fd.ptr());
+
+  // Another size: refused, nothing changed.
+  CHECK(fd_refusal([&] { fd[0] = aed_type(4); }) ==
+        "aed_type: cannot assign 4 values to a view of 3 values (a column of "
+        "an fd_type or aeds_type2 is a view of its values)");
+  CHECK(fd_refusal([&] { fd[0] = aed_type(); }) ==
+        "aed_type: cannot assign 0 values to a view of 3 values (a column of "
+        "an fd_type or aeds_type2 is a view of its values)");
+  CHECK(fd(0, 0) == 1.0);
+  CHECK(fd[0].data() == fd.ptr());
+
+  // Moving a column out copies it.
+  aed_type moved(std::move(fd[1]));
+  CHECK(moved.size() == 3);
+  CHECK(moved[2] == 3.0);
+  CHECK(moved.data() != fd.ptr() + 3);
+  aed_type assigned;
+  assigned = std::move(fd[2]);
+  CHECK(assigned.size() == 3);
+  CHECK(assigned[2] == 6.0);
+  for (size_t k = 1; k < 3; ++k) {
+    CHECK(fd[k].data() == fd.ptr() + 3 * k);
+    CHECK(fd[k].size() == 3);
+  }
+  CHECK(fd(2, 1) == 3.0);
+  CHECK(fd(2, 2) == 6.0);
+  moved[0] = 99.0;  // a copy: the fd_type is not changed
+  CHECK(fd(0, 1) == 1.0);
+
+  // A view keeps its size.
+  CHECK(fd_refusal([&] { fd[0].resize(5); }) ==
+        "aed_type: cannot resize a view of 3 values to 5 (a column of an "
+        "fd_type or aeds_type2 is a view of its values)");
+  CHECK_NOTHROW(fd[0].resize(3));
+  CHECK(fd[0].data() == fd.ptr());
+
+  // A default-constructed fd_type has empty columns that are views.
+  fd_type empty;
+  CHECK(fd_refusal([&] { empty[0] = a; }) ==
+        "aed_type: cannot assign 3 values to a view of 0 values (a column of "
+        "an fd_type or aeds_type2 is a view of its values)");
+  CHECK(empty[0].size() == 0);
+}
+
+/* Pins: an owning aed_type keeps its value semantics: copy assignment of
+ * another size replaces its values (a buffer of its own, not shared), move
+ * assignment takes the other's buffer and leaves it empty, and assigning a
+ * column view to an owner copies the values.
+ * Before the fix: passes as well (a pin of what the fix keeps). */
+TEST_CASE("aed_type: an owning vector's assignment replaces its values",
+          "[fd_type][column_view]") {
+  aed_type b(2);
+  const aed_type a({1.0, 2.0, 3.0});
+  b = a;
+  CHECK(b.size() == 3);
+  CHECK(b[2] == 3.0);
+  CHECK(b.data() != a.data());
+  aed_type c({4.0, 5.0});
+  const double *cdata = c.data();
+  b = std::move(c);
+  CHECK(b.size() == 2);
+  CHECK(b.data() == cdata);
+  fd_type fd(3);
+  fd(1, 0) = 7.0;
+  aed_type d;
+  d = fd[0];
+  CHECK(d.size() == 3);
+  CHECK(d[1] == 7.0);
+  CHECK(d.data() != fd.ptr());
 }
