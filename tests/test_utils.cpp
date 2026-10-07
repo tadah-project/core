@@ -196,46 +196,26 @@ TEST_CASE("Testing divide_by_percentage(size_t, const std::vector<size_t>&)", "[
     REQUIRE(parts3[1] == 50);
 }
 
-TEST_CASE("Testing parse_indices(const std::string&)", "[utils][new]") {
-    // Basic single values
-    auto idx1 = parse_indices("0, 2, 5");
-    REQUIRE(idx1.size() == 3);
-    REQUIRE(idx1[0] == 0);
-    REQUIRE(idx1[1] == 2);
-    REQUIRE(idx1[2] == 5);
-
-    // Range and step
-    auto idx2 = parse_indices("2-4, 6-10:2");
-    REQUIRE(idx2.size() == 6); 
-    // 2,3,4 plus (6,8,10)
-    REQUIRE(idx2[0] == 2);
-    REQUIRE(idx2[1] == 3);
-    REQUIRE(idx2[2] == 4);
-    REQUIRE(idx2[3] == 6);
-    REQUIRE(idx2[4] == 8);
-    REQUIRE(idx2[5] == 10);
-
-    // Duplicates
-    std::stringstream buffer;
-    std::streambuf* oldCerr = std::cerr.rdbuf(buffer.rdbuf());
-    auto idx3 = parse_indices("1,1,1-3");
-    std::cerr.rdbuf(oldCerr);
-    // 1-3 -> 1,2,3 plus repeated 1 => should see duplicates warning
-    REQUIRE(idx3.size() == 3);
-    REQUIRE(idx3[0] == 1);
-    REQUIRE(idx3[1] == 2);
-    REQUIRE(idx3[2] == 3);
-    REQUIRE(buffer.str().find("Warning: Duplicate indices") != std::string::npos);
-
-    // Invalid input
-    buffer.str(std::string());
-    buffer.clear();
-    std::cerr.rdbuf(buffer.rdbuf());
-    auto idx4 = parse_indices("abc, 1-2:xyz");
-    std::cerr.rdbuf(oldCerr);
-    // Should have errors printed
-    REQUIRE(idx4.empty() == true); // clearly user input is invalid
-    REQUIRE(buffer.str().find("Error:") != std::string::npos);
+/* Pins: the strict index-list parsers on the inputs this case gave the
+ * lenient core::parse_indices, removed once FIXINDEX had its own reader
+ * (nothing called it any more): parse_indices_strict gives "0, 2, 5" and
+ * "2-4, 6-10:2" in order, and refuses a repeat ("1,1,1-3") and a malformed
+ * segment ("abc, 1-2:xyz"); parse_one_based_indices removes the repeats of
+ * "1,1,1-3" without a word.
+ * Before the fix: passes as well (a pin of the strict parsers). The case
+ * tested parse_indices, which removed the repeats with "Warning: Duplicate
+ * indices found and removed." on stderr and dropped both segments of
+ * "abc, 1-2:xyz" with an "Error:" line, returning nothing. */
+TEST_CASE("Testing parse_indices_strict(const std::string&)", "[utils][new]") {
+    CHECK(parse_indices_strict("0, 2, 5") == std::vector<size_t>{0, 2, 5});
+    CHECK(parse_indices_strict("2-4, 6-10:2") ==
+          std::vector<size_t>{2, 3, 4, 6, 8, 10});
+    CHECK_THROWS_WITH(parse_indices_strict("1,1,1-3"),
+                      "Duplicate index in '1,1,1-3'");
+    CHECK_THROWS_WITH(parse_indices_strict("abc, 1-2:xyz"),
+                      "Invalid index number 'abc'");
+    CHECK(parse_one_based_indices({"1,1,1-3"}, 3, "t", "3 items") ==
+          std::vector<size_t>{1, 2, 3});
 }
 
 TEST_CASE("Testing generate_2d_histogram()", "[utils][new]") {
@@ -380,74 +360,40 @@ TEST_CASE("Testing random() in a loop", "[utils][improvements]") {
     REQUIRE(inRange == true);
 }
 
-// 4) Testing parse_indices() with step patterns like "2-10:3"
-TEST_CASE("Testing parse_indices() - advanced step patterns", "[utils][improvements]") {
-    auto idx = parse_indices("2-10:3");
-    // This should produce {2, 5, 8}
-    REQUIRE(idx.size() == 3);
-    REQUIRE(idx[0] == 2);
-    REQUIRE(idx[1] == 5);
-    REQUIRE(idx[2] == 8);
-
-    // Larger range with custom step
-    auto idx2 = parse_indices("0-15:5");
-    // This should produce {0, 5, 10, 15}
-    REQUIRE(idx2.size() == 4);
-    REQUIRE(idx2[0] == 0);
-    REQUIRE(idx2[1] == 5);
-    REQUIRE(idx2[2] == 10);
-    REQUIRE(idx2[3] == 15);
+// 4) Testing parse_indices_strict() with step patterns like "2-10:3"
+/* Pins: parse_indices_strict expands "2-10:3" to 2, 5, 8 and "0-15:5" to 0,
+ * 5, 10, 15 (as the removed lenient parse_indices did).
+ * Before the fix: passes as well (a pin; the case tested parse_indices). */
+TEST_CASE("Testing parse_indices_strict() - advanced step patterns", "[utils][improvements]") {
+    CHECK(parse_indices_strict("2-10:3") == std::vector<size_t>{2, 5, 8});
+    CHECK(parse_indices_strict("0-15:5") == std::vector<size_t>{0, 5, 10, 15});
 }
 
-// 1) Further testing parse_indices() edge cases
-TEST_CASE("parse_indices() with edge cases", "[utils][missing_tests]") {
-    SECTION("Parse empty string") {
-        auto result = parse_indices("");
-        REQUIRE(result.empty());
-    }
-    SECTION("Parse string with only commas and spaces") {
-        auto result = parse_indices(" ,  , ");
-        REQUIRE(result.empty());
-    }
-    SECTION("Parse invalid range start") {
-        // Should print an error and skip
-        std::stringstream buffer;
-        std::streambuf* oldCerr = std::cerr.rdbuf(buffer.rdbuf());
-        auto result = parse_indices("abc-5");
-        std::cerr.rdbuf(oldCerr);
-
-        // "abc-5" -> non-numeric start => prints error, result is empty
-        REQUIRE(result.empty());
-        REQUIRE(buffer.str().find("Error: Non-numeric start value") != std::string::npos);
-    }
-    SECTION("Parse invalid range end") {
-        // e.g. "10-abc"
-        std::stringstream buffer;
-        std::streambuf* oldCerr = std::cerr.rdbuf(buffer.rdbuf());
-        auto result2 = parse_indices("10-abc");
-        std::cerr.rdbuf(oldCerr);
-
-        REQUIRE(result2.empty());
-        REQUIRE(buffer.str().find("Non-numeric end value or incorrect syntax") != std::string::npos);
-    }
-    SECTION("Parse partial range like '5-'", "[utils]") {
-        // Should add just {5}, ignoring the blank after dash
-        auto result3 = parse_indices("5-");
-        REQUIRE(result3.size() == 1);
-        REQUIRE(result3[0] == 5);
-    }
-    SECTION("Parse duplicates with multiple ranges") {
-        // e.g. "2,2,2-4"
-        std::stringstream buffer;
-        std::streambuf* oldCerr2 = std::cerr.rdbuf(buffer.rdbuf());
-        auto result4 = parse_indices("2,2,2-4");
-        std::cerr.rdbuf(oldCerr2);
-
-        // 2-4 => {2,3,4}, plus 2 repeated => duplicates
-        // final unique => {2,3,4}
-        REQUIRE(result4.size() == 3);
-        REQUIRE(buffer.str().find("Duplicate indices found and removed") != std::string::npos);
-    }
+// 1) Further testing the strict index parsers on edge cases
+/* Pins: on the edge cases this case gave the removed lenient parse_indices,
+ * parse_indices_strict refuses an empty list, a list of empty segments, a
+ * malformed range start or end and a range without its end ("5-"), and a
+ * repeat ("2,2,2-4"); parse_one_based_indices refuses the empty list and
+ * "5-" with its messages and removes the repeats of "2,2,2-4".
+ * Before the fix: passes as well (a pin of the strict parsers). The lenient
+ * parse_indices returned nothing for "", " ,  , ", "abc-5" and "10-abc"
+ * (with an "Error:" line for the last two), took "5-" as 5 and removed the
+ * repeats of "2,2,2-4" with a stderr warning. */
+TEST_CASE("Strict index parsers with edge cases", "[utils][missing_tests]") {
+    using S = std::vector<std::string>;
+    CHECK_THROWS_WITH(parse_indices_strict(""), "Invalid index number ''");
+    CHECK_THROWS_WITH(parse_indices_strict(" ,  , "), "Invalid index number ''");
+    CHECK_THROWS_WITH(parse_indices_strict("abc-5"), "Invalid index number 'abc'");
+    CHECK_THROWS_WITH(parse_indices_strict("10-abc"), "Invalid index number 'abc'");
+    CHECK_THROWS_WITH(parse_indices_strict("5-"), "Invalid index number ''");
+    CHECK_THROWS_WITH(parse_indices_strict("2,2,2-4"), "Duplicate index in '2,2,2-4'");
+    const std::string usage = " (use i, a-b or a-b:step, 1-based, separated by commas)";
+    CHECK_THROWS_WITH(parse_one_based_indices(S{""}, 10, "t", "10 items"),
+                      "t: the index list '' has an empty entry" + usage);
+    CHECK_THROWS_WITH(parse_one_based_indices(S{"5-"}, 10, "t", "10 items"),
+                      "t: index '5-' is not an index range" + usage);
+    CHECK(parse_one_based_indices(S{"2,2,2-4"}, 10, "t", "10 items") ==
+          std::vector<size_t>{2, 3, 4});
 }
 
 // 2) Additional test for generate_2d_histogram() with invalid range & empty data

@@ -606,8 +606,8 @@ M_KRR is its implementation: 1 (the default) fits energies, forces and
 stresses by least squares over the design matrix; 2 fits energies only: it
 solves (K + LAMBDA I) w = t, with K the kernel matrix of the basis vectors
 and t the energy per atom of each drawn structure (0 for the intercept
-vectors). Every kernel
-but Kern_Linear works on SBASIS basis vectors (see SBASIS).
+vectors), every weight at once, so it refuses FIXINDEX and FIXWEIGHT.
+Every kernel but Kern_Linear works on SBASIS basis vectors (see SBASIS).
 """
 examples     = [
     "M_BLR BF_Linear",
@@ -2103,7 +2103,9 @@ dim(FIXWEIGHT). The i-th value in FIXWEIGHT pins the model weight named by
 the i-th index in FIXINDEX (declaration order defines the pairing). Pinned
 weights are excluded from the least-squares solve; the remaining weights
 are fitted against the residual target. Incompatible with NORM=true (the
-values would be interpreted in the normalized feature space).
+values would be interpreted in the normalized feature space). M_KRR
+implementation 2 (MODEL M_KRR <kernel> 2) pins no weight and refuses
+FIXWEIGHT and FIXINDEX (see FIXINDEX).
 
 In `tadah hpo`, `OPTIM FIXWEIGHT (<weight-index>) <low> <high>` lets the
 nonlinear optimiser search a pinned weight: the (indices) name MODEL
@@ -2122,15 +2124,28 @@ value_N      = [-2147483647]
 description = "Indices of weights to be fixed in optimization."
 long_description = """
 Must be used with FIXWEIGHT; a lone FIXINDEX (or lone FIXWEIGHT) is a hard
-error. dim(FIXINDEX) = dim(FIXWEIGHT); the i-th index names the model
-weight pinned by the i-th FIXWEIGHT value (declaration order defines the
-pairing). Allows flexible selection of indices. Supports single indices,
-ranges (e.g., start-stop), lists, or intervals (start-stop:step). Indices
-are 1-based. Repeated indices are removed automatically. Without a
-training DBFILE, FIXINDEX must cover every model weight (there is no data
-to fit the rest). The pinned weights leave the fit; LAMBDA penalises every
-other weight but the model's unpinned intercepts. With BIAS true and a
-linear model (BF_Linear, Kern_Linear), indices 1 to N are the per-species
+error. The i-th index names the model weight pinned by the i-th FIXWEIGHT
+value (declaration order defines the pairing), so FIXINDEX names as many
+weights as FIXWEIGHT has values, each weight once. Indices are 1-based
+model weights: single indices, ranges start-stop and intervals
+start-stop:step, separated by commas or spaces (FIXINDEX 13 14, FIXINDEX
+13,14 and FIXINDEX 13, 14 are the same list; spaces around '-' and ':' are
+allowed). Refused, naming the text: a descending range (14-13), a step of
+0, a malformed or empty entry (1,,2), index 0, an index above the model's
+weights, a weight named twice (13,13,14, with two FIXWEIGHT values, one per
+distinct weight, or with three) and any other number of indices than
+FIXWEIGHT's values (counted before a range is expanded). Earlier
+versions dropped FIXINDEX given as separate values (FIXINDEX 13 14) and
+expanded a descending range to nothing, which tadah reported as a
+FIXWEIGHT count mismatch (tadah hpo as a weight 'not pinned by FIXINDEX'),
+and removed a repeated index with a warning. Without a training DBFILE,
+FIXINDEX must cover every model weight (there is no data to fit the
+rest). The pinned weights leave the fit; LAMBDA penalises every
+other weight but the model's unpinned intercepts. M_KRR implementation 2
+(MODEL M_KRR <kernel> 2), whose solve fits every weight at once, pins none:
+FIXINDEX and FIXWEIGHT are refused with it (tadah train, tadah hpo at
+startup), whatever their values; earlier versions ignored them. With BIAS
+true and a linear model (BF_Linear, Kern_Linear), indices 1 to N are the per-species
 intercepts (N = size(ATOM), in ATOM order) and the descriptor weights start
 at N+1; before 1.6.0 BIAS true had one intercept and they started at 2. The
 intercepts of BF_Polynomial2 are its products (k,k) (weights 1 and DSIZE+1
