@@ -1144,7 +1144,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.n2b]
 INHERIT = ["TYPES.UINT"]
-description  = "Override: number of two-body basis functions in `tadah refit`."
+description  = "Override: number of two-body basis functions in `tadah refit` (dense mode), an integer from 1 to 1024 (the cap of the basis escalation)."
 examples     = ["50"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1152,7 +1152,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.nrho_basis]
 INHERIT = ["TYPES.UINT"]
-description  = "Override: number of density basis functions in `tadah refit`."
+description  = "Override: number of density basis functions in `tadah refit` (dense mode), an integer from 1 to 1024."
 examples     = ["40"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1160,7 +1160,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.nf_basis]
 INHERIT = ["TYPES.UINT"]
-description  = "Override: number of embedding basis functions in `tadah refit`."
+description  = "Override: number of embedding basis functions in `tadah refit` (dense mode), an integer from 1 to 1024."
 examples     = ["30"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1168,7 +1168,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.optim_pct]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "Default +-percent half-width for the OPTIM bounds emitted by `tadah refit`."
+description  = "Default +-percent half-width for the OPTIM bounds emitted by `tadah refit` (also by --edit and --retarget), a number > 0. Default 5."
 examples     = ["5.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1176,7 +1176,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.output_grid_scale]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "Scale factor for the output setfl grid density (1.0 = same as input)."
+description  = "`tadah refit`: scale factor for the output setfl grid density (1.0 = same as input), a number > 0."
 examples     = ["1.0", "2.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1184,7 +1184,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_tol_ambient]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` faithfulness tolerance (meV/atom) for the ambient crystal self-test (E-V, a/a0 0.95-1.10). The basis auto-escalates until met. Default 0.1."
+description  = "`tadah refit` faithfulness tolerance (meV/atom) for the ambient crystal self-test (E-V, a/a0 0.95-1.10). The basis auto-escalates until met. A number > 0. Default 0.1."
 examples     = ["0.5"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1192,7 +1192,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_tol_compressed]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` faithfulness tolerance (meV/atom) for the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42). The basis auto-escalates until met. Default 1.0."
+description  = "`tadah refit` faithfulness tolerance (meV/atom) for the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42). The basis auto-escalates until met. A number > 0. Default 1.0."
 examples     = ["5.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1200,7 +1200,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_max_escalations]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` maximum automatic basis-escalation rounds when the self-test is above tolerance (0 disables escalation). Default 4."
+description  = "`tadah refit` maximum automatic basis-escalation rounds when the self-test is above tolerance, an integer from 0 (0 disables escalation). Default 4."
 examples     = ["4", "0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1216,7 +1216,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_reach_smin]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` reachability probe: smallest linear compression a/a0 the fit must stay faithful at (0.75 ~ V/V0=0.42, multi-hundred-GPa regime). Sets the reachable pair-distance/density window and the self-test span. Default 0.75."
+description  = "`tadah refit` reachability probe: smallest linear compression a/a0 the fit must stay faithful at (0.75 ~ V/V0=0.42, multi-hundred-GPa regime). Sets the reachable pair-distance/density window and the self-test span. A number greater than 0 and at most 1. Default 0.75."
 examples     = ["0.75", "0.65"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1224,7 +1224,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_reach_margin]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` safety margin multiplying the maximum reachable embedding density when choosing the F(rho) fit window. Default 1.25."
+description  = "`tadah refit` safety margin multiplying the maximum reachable embedding density when choosing the F(rho) fit window, a number > 0. Default 1.25."
 examples     = ["1.25"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1254,7 +1254,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_opt_every]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode, Knot5 family: run the full per-rung optimisation (explore + polish) only every K-th ladder rung; intermediate rungs grow by energy-aware insertion + linear solve, with one final full optimisation of the best fit. Default 1 (optimise every rung — matrix-measured most consistent). 999 = insertion-only growth + final optimisation: best results when no ladder stalls (measured Ta: Cij <= 0.09 GPa), but can underfit if a ladder stalls during growth."
+description  = "`tadah refit` compact mode, Knot5 family: run the full per-rung optimisation (explore + polish) only every K-th ladder rung; intermediate rungs grow by energy-aware insertion + linear solve, with one final full optimisation of the best fit. Default 1 (optimise every rung — matrix-measured most consistent). 999 = insertion-only growth + final optimisation: best results when no ladder stalls (measured Ta: Cij <= 0.09 GPa), but can underfit if a ladder stalls during growth. An integer from 1."
 examples     = ["1", "3"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1262,7 +1262,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_stall]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: stop the ladder after this many consecutive rungs without energy-metric improvement. Default 6 (Blip) / 12 (Knot5)."
+description  = "`tadah refit` compact mode: stop the ladder after this many consecutive rungs without energy-metric improvement, an integer from 1. Default 6 (Blip) / 12 (Knot5)."
 examples     = ["6", "12"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1270,7 +1270,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_insert_topk]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode, Knot5 family: energy-aware insertion — evaluate the top-k separated curve-residual peaks and insert at the one that most improves the crystal energy metric. Default 3 for Knot5, 1 (curve peak only) for Blip."
+description  = "`tadah refit` compact mode, Knot5 family: energy-aware insertion — evaluate the top-k separated curve-residual peaks and insert at the one that most improves the crystal energy metric. An integer from 1. Default 3 for Knot5, 1 (curve peak only) for Blip."
 examples     = ["1", "3"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1286,7 +1286,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_nmax]
 INHERIT = ["TYPES.UINTS"]
-description  = "`tadah refit` compact mode: per-function basis (blip/knot) ceiling for the EXPLORE ladder. Give ONE value (applies to all three functions) or THREE values 'phi rho F' (separate per-function ceilings, e.g. 39 5 27). Default 40. Only EXPLORE grows the basis; REFINE/FUSE only refine the existing basis."
+description  = "`tadah refit` compact mode: per-function basis (blip/knot) ceiling for the EXPLORE ladder. Give ONE value (applies to all three functions) or THREE values 'phi rho F' (separate per-function ceilings, e.g. 39 5 27), each an integer from 1; the curve sample grid of at least 4 x NMAX points (REFIT_COMPACT_SAMPLES) must fit 2147483647. Default 40. Only EXPLORE grows the basis; REFINE/FUSE only refine the existing basis."
 examples     = ["40", "39 5 27"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1294,7 +1294,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_share]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` compact mode: fraction of the REFIT_TOL_* budget each function must reach alone during its ladder (the joint refinement then handles cross-function coupling). Default 0.5."
+description  = "`tadah refit` compact mode: fraction of the REFIT_TOL_* budget each function must reach alone during its ladder (the joint refinement then handles cross-function coupling), a number > 0. Default 0.5."
 examples     = ["0.5"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1302,7 +1302,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_seed]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: RNG seed for the jittered ladder restarts (deterministic reruns). Default 12345."
+description  = "`tadah refit` compact mode: RNG seed for the jittered ladder restarts (deterministic reruns), an integer from 0 to 4294967295. Default 12345."
 examples     = ["12345"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1310,7 +1310,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_samples]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: number of uniform sample points per function across its fit window. The VALUE RMSE and the 1st/2nd-derivative (d1/d2) RMSEs — and the curve objective (REFIT_OBJECTIVE curve) — are all evaluated on THIS shared grid: at each point the EAM cubic-spline value and its analytic 1st/2nd derivatives are the targets. More points = finer RMSE estimate and finer curve fit but slower (each closed-form VARPRO solve is O(samples * basis)); fewer = faster, coarser. Default 800. Clamped up to max(50, 4 x REFIT_COMPACT_NMAX). Independent of the energy E-V scan and the OUTPUT_GRID_SCALE setfl output grid."
+description  = "`tadah refit` compact mode: number of uniform sample points per function across its fit window. The VALUE RMSE and the 1st/2nd-derivative (d1/d2) RMSEs — and the curve objective (REFIT_OBJECTIVE curve) — are all evaluated on THIS shared grid: at each point the EAM cubic-spline value and its analytic 1st/2nd derivatives are the targets. More points = finer RMSE estimate and finer curve fit but slower (each closed-form VARPRO solve is O(samples * basis)); fewer = faster, coarser. An integer from 1. Default 800. Clamped up to max(50, 4 x REFIT_COMPACT_NMAX). Independent of the energy E-V scan and the OUTPUT_GRID_SCALE setfl output grid."
 examples     = ["800", "400", "1600"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1318,7 +1318,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_jitters]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: number of randomised warm restarts per ladder rung. Each rung runs jitters+1 candidates (1 warm start + this many perturbed restarts) through the full EXPLORE -> REFINE pipeline and keeps the energy-metric-best — exploration that stops the local search locking into a poor local minimum. This is why the coalescence guard can fire several times within one rung (once per candidate). Default 2 (3 candidates/rung). 0 = warm start only (cheaper, less robust)."
+description  = "`tadah refit` compact mode: number of randomised warm restarts per ladder rung. Each rung runs jitters+1 candidates (1 warm start + this many perturbed restarts) through the full EXPLORE -> REFINE pipeline and keeps the energy-metric-best — exploration that stops the local search locking into a poor local minimum. This is why the coalescence guard can fire several times within one rung (once per candidate). An integer from 0 to 2147483646. Default 2 (3 candidates/rung). 0 = warm start only (cheaper, less robust)."
 examples     = ["2", "0", "4"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1336,7 +1336,7 @@ cli_required   = false
 [ALLOWED_KEYS.refit_curve_deriv_weight]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["0.0"]
-description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: weight of EACH derivative block (1st and 2nd) RELATIVE to the value block in the curve objective (both the stacked coefficient solve and the rung-selection score). 0 (DEFAULT) = pure VALUE fit, which is crystal-faithful: LAMMPS computes the crystal energy from the curve VALUES, so a value-only fit reproduces the crystal as well as energy mode (measured Ti: cohesive +3.8 meV/atom, E-V 5-6 meV). ANY nonzero weight degrades the crystal sharply (measured: 0.01 -> -15, 0.1 -> -69, 1.0 -> +37 meV/atom cohesive) because the relative normalisation lets even a 1% derivative term trade away the large ABSOLUTE value error of a high-magnitude function like F. Raise it ONLY to capture the 1st/2nd-derivative SHAPE at the EXPENSE of crystal energy. 1.0 = value/d1/d2 equal (the original, crystal-wrecking curve mode). Ignored unless REFIT_OBJECTIVE=curve."
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: weight of EACH derivative block (1st and 2nd) RELATIVE to the value block in the curve objective (both the stacked coefficient solve and the rung-selection score). 0 (DEFAULT) = pure VALUE fit, which is crystal-faithful: LAMMPS computes the crystal energy from the curve VALUES, so a value-only fit reproduces the crystal as well as energy mode (measured Ti: cohesive +3.8 meV/atom, E-V 5-6 meV). ANY nonzero weight degrades the crystal sharply (measured: 0.01 -> -15, 0.1 -> -69, 1.0 -> +37 meV/atom cohesive) because the relative normalisation lets even a 1% derivative term trade away the large ABSOLUTE value error of a high-magnitude function like F. Raise it ONLY to capture the 1st/2nd-derivative SHAPE at the EXPENSE of crystal energy. 1.0 = value/d1/d2 equal (the original, crystal-wrecking curve mode). A number >= 0. Ignored unless REFIT_OBJECTIVE=curve (its value is checked in either objective)."
 examples     = ["0.0", "0.1", "1.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1358,7 +1358,7 @@ cli_required   = false
 [ALLOWED_KEYS.refit_curve_relax]
 INHERIT = ["TYPES.DOUBLE"]
 default_value = ["0.05"]
-description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve with REFIT_CURVE_WEIGHTING on: the floor weight (a fraction greater than 0 and at most 1) that the pressure-relaxed profile ramps DOWN to in the compressed / high-pressure regions (phi/rho below r_amb, F above rho_amb). 1.0 reproduces uniform weighting, smaller values relax the fit harder away from ambient (default 0.05). The ramp is a C1 smoothstep between the ambient band (weight 1) and the window edge (weight equal to this floor). Rejected in energy mode."
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve with REFIT_CURVE_WEIGHTING on: the floor weight (a fraction greater than 0 and at most 1) that the pressure-relaxed profile ramps DOWN to in the compressed / high-pressure regions (phi/rho below r_amb, F above rho_amb). 1.0 reproduces uniform weighting, smaller values relax the fit harder away from ambient (default 0.05). The ramp is a C1 smoothstep between the ambient band (weight 1) and the window edge (weight equal to this floor). No effect in energy mode, where its value is checked too."
 examples     = ["0.05", "0.1", "0.02"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1380,7 +1380,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_r_lo_frac]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` inner radial fit bound as a fraction of rcut (default 0.20). Below it the round-trip setfl tabulates a smooth C2-matched repulsive continuation and the native pot.tadah is outside its validity domain."
+description  = "`tadah refit` inner radial fit bound as a fraction of rcut, a number in (0, 1) (default 0.20). Below it the round-trip setfl tabulates a smooth C2-matched repulsive continuation and the native pot.tadah is outside its validity domain."
 examples     = ["0.20", "0.15"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -2199,6 +2199,11 @@ Config-file options (EAM and RHOFORM are required):
   (default 5).
 - OUTPUT_GRID_SCALE: output setfl grid density relative to the input
   (default 1.0).
+- The numbers are read strictly before the EAM file, each within its range
+  (`tadah explain refit.<key>`): e.g. the tolerances, OPTIM_PCT and
+  OUTPUT_GRID_SCALE > 0, REFIT_REACH_SMIN greater than 0 and at most 1,
+  REFIT_COMPACT_SEED 0 to 4294967295; an error names the key and the
+  value.
 - Dense mode only: REFIT_LEVEL (coarse|balanced|fine|accurate), N2B,
   NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS.
 - Compact ladder: REFIT_COMPACT_NMAX, REFIT_COMPACT_STALL,
