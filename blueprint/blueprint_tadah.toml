@@ -2127,8 +2127,9 @@ start-stop:step, separated by commas or spaces (FIXINDEX 13 14, FIXINDEX
 13,14 and FIXINDEX 13, 14 are the same list; spaces around '-' and ':' are
 allowed). Refused, naming the text: a descending range (14-13), a step of
 0, a malformed or empty entry (1,,2), index 0, an index above the model's
-weights, a number of indices other than FIXWEIGHT's values (counted before
-a range is expanded) and a weight named twice (13,13,14). Earlier
+weights, a weight named twice (13,13,14, with two FIXWEIGHT values, one per
+distinct weight, or with three) and any other number of indices than
+FIXWEIGHT's values (counted before a range is expanded). Earlier
 versions dropped FIXINDEX given as separate values (FIXINDEX 13 14) and
 expanded a descending range to nothing, which tadah reported as a
 FIXWEIGHT count mismatch (tadah hpo as a weight 'not pinned by FIXINDEX'),
