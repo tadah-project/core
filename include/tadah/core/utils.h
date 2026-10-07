@@ -415,16 +415,17 @@ std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& valu
  * index, a descending range and a step of 0 ("FIXINDEX: index '14-13' is a
  * descending range (...)"); index 0, and, when @p n_weights is given, an
  * index above it ("FIXINDEX: index 9 (in '2-9') is outside 1-4 (the model
- * has 4 weights)"); a weight named twice ("FIXINDEX 13,13,14 names weight
- * 13 twice; ...", the first weight named again), since FIXWEIGHT pairs by
- * position, when the list names no more distinct weights than FIXWEIGHT
- * has values (so '13,13,14' with two values, one per distinct weight, as
- * with three); otherwise a number of indices other than the number of
- * FIXWEIGHT values ("FIXINDEX 1,2,3,1 has 4 indices but FIXWEIGHT has 2
- * values; ..."), repeats or not. The indices are counted per entry and expanded only while they
- * name at most as many distinct weights as FIXWEIGHT has values, so
- * '1-4000000000' is refused at once ("FIXINDEX 1-4000000000 has 4000000000
- * indices but FIXWEIGHT has 2 values; ...").
+ * has 4 weights)"); a weight named twice among the first n + 1 indices, n
+ * the number of FIXWEIGHT values ("FIXINDEX 13,13,14 names weight 13
+ * twice; ...", the first weight named again), since FIXWEIGHT pairs by
+ * position: so every list with a repeat that names no more distinct
+ * weights than FIXWEIGHT has values ('13,13,14' with two values, one per
+ * distinct weight, as with three); otherwise a number of indices other
+ * than the number of FIXWEIGHT values ("FIXINDEX 1,2,3,1 has 4 indices but
+ * FIXWEIGHT has 2 values; ..."). The indices are counted per entry, and
+ * no more than n + 1 of them are expanded, so '1-4000000000' is refused at
+ * once ("FIXINDEX 1-4000000000 has 4000000000 indices but FIXWEIGHT has 2
+ * values; ...").
  *
  * @param ctx       the configuration (FIXINDEX and FIXWEIGHT)
  * @param n_weights the number of model weights, when known; std::nullopt
