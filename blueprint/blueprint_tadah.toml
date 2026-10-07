@@ -3123,14 +3123,14 @@ cli_needs = ["range"]
 # work in progress
 [TASKS.explain]
 description      = "Explain a tadah command, option or configuration key in more detail."
-long_description      = "This is a help command that provides detailed information about a specific command, option or configuration key of the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. A name that is no command, subcommand or option of its command is looked up among the configuration keys, in any letter case, so `tadah explain SETFL` and `tadah explain refit.rhoform` describe keys that no command has as an option; a command's own option comes first. A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. A name that is none of these is an error naming what was not found."
+long_description      = "This is a help command that provides detailed information about a specific command, option or configuration key of the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. Every name is read in any letter case. A name that is no command, subcommand or option of its command is looked up among the configuration keys, so `tadah explain SETFL` and `tadah explain refit.rhoform` describe keys that no command has as an option; a command's own subcommand or option comes first (`tadah explain data.MERGE` is the merge subcommand, not the MERGE key). A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. A name that is none of these is an error naming what was not found."
 examples         = ["tadah explain train", "tadah explain train.verbose", "tadah explain data.split.even", "tadah explain SETFL"]
 
 [TASKS.explain.keys]
 INHERIT = ["ALLOWED_KEYS.option"]
 [TASKS.explain.keys.option]
 description = "Command, option or configuration key to explain, in a dot separated format."
-long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'), in any letter case."
+long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'). Each part is read in any letter case."
 value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>", "<KEY>"]
 cli_required = true
 examples = ["tadah explain train.task", "tadah explain data.split.even"]
