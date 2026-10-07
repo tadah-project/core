@@ -2119,13 +2119,22 @@ value_N      = [-2147483647]
 description = "Indices of weights to be fixed in optimization."
 long_description = """
 Must be used with FIXWEIGHT; a lone FIXINDEX (or lone FIXWEIGHT) is a hard
-error. dim(FIXINDEX) = dim(FIXWEIGHT); the i-th index names the model
-weight pinned by the i-th FIXWEIGHT value (declaration order defines the
-pairing). Allows flexible selection of indices. Supports single indices,
-ranges (e.g., start-stop), lists, or intervals (start-stop:step). Indices
-are 1-based. Repeated indices are removed automatically. Without a
-training DBFILE, FIXINDEX must cover every model weight (there is no data
-to fit the rest). The pinned weights leave the fit; LAMBDA penalises every
+error. The i-th index names the model weight pinned by the i-th FIXWEIGHT
+value (declaration order defines the pairing), so FIXINDEX names as many
+weights as FIXWEIGHT has values, each weight once. Indices are 1-based
+model weights: single indices, ranges start-stop and intervals
+start-stop:step, separated by commas or spaces (FIXINDEX 13 14, FIXINDEX
+13,14 and FIXINDEX 13, 14 are the same list; spaces around '-' and ':' are
+allowed). Refused, naming the text: a descending range (14-13), a step of
+0, a malformed or empty entry (1,,2), index 0, an index above the model's
+weights, a number of indices other than FIXWEIGHT's values (counted before
+a range is expanded) and a weight named twice (13,13,14). Earlier
+versions dropped FIXINDEX given as separate values (FIXINDEX 13 14) and
+expanded a descending range to nothing, which tadah reported as a
+FIXWEIGHT count mismatch (tadah hpo as a weight 'not pinned by FIXINDEX'),
+and removed a repeated index with a warning. Without a training DBFILE,
+FIXINDEX must cover every model weight (there is no data to fit the
+rest). The pinned weights leave the fit; LAMBDA penalises every
 other weight but the model's unpinned intercepts. With BIAS true and a
 linear model (BF_Linear, Kern_Linear), indices 1 to N are the per-species
 intercepts (N = size(ATOM), in ATOM order) and the descriptor weights start
