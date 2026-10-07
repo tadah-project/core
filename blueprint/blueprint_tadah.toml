@@ -1972,7 +1972,10 @@ A task in a task file begins with the keyword 'TASK' followed by the task name.
 The task name is simply a command to be executed or both command and subcommand.
 The lines following the `TASK` keyword should contain parameters required for
 the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
-task file.
+task file. Options above the first `TASK` line apply to every task, so a
+`TASK` line with no parameter lines after it runs with those alone. Every task
+name is checked, with or without parameters: an unknown one is an error before
+any task runs.
 
 # Example TASK file containing two tasks:
 # Global options
