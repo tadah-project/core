@@ -85,6 +85,13 @@ std::size_t format_sig_chars(double v, int digits, char *buf,
 bool is_integer_literal(std::string_view tok);
 
 /**
+ * @brief True iff the WHOLE token @p tok is a decimal floating literal:
+ * [+-]? digits [. digits] [e|E [+-] digits], with at least one mantissa
+ * digit ("5", "5.", ".5", "-1e-3"); no hex literals, inf or nan.
+ */
+bool is_decimal_literal(std::string_view tok);
+
+/**
  * @brief Parses @p tok iff the WHOLE token is a decimal floating literal
  * ([+-]? digits [. digits] [e|E [+-] digits], also "5." and ".5") whose
  * value is finite (strtod in the "C" locale).
@@ -95,6 +102,17 @@ bool is_integer_literal(std::string_view tok);
  * for it (the subnormal, or +-0).
  */
 bool parse_decimal_finite(std::string_view tok, double &out);
+
+/**
+ * @brief parse_decimal_finite() into a float (strtof) or a long double
+ * (strtold): the same grammar (is_decimal_literal()), a value that
+ * overflows the type is refused, one that underflows it is accepted with
+ * the value the conversion gives (the subnormal, or +-0). @p out is left
+ * untouched on false.
+ */
+bool parse_decimal_finite(std::string_view tok, float &out);
+/// @copydoc parse_decimal_finite(std::string_view, float &)
+bool parse_decimal_finite(std::string_view tok, long double &out);
 
 /**
  * @brief parse_decimal_finite() whose value is also zero or a normal
