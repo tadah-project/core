@@ -529,8 +529,9 @@ TEST_CASE("fd_type: an assignment to a column writes into the fd_type",
 
 /* Pins: an owning aed_type keeps its value semantics: copy assignment of
  * another size replaces its values (a buffer of its own, not shared), move
- * assignment takes the other's buffer and leaves it empty, and assigning a
- * column view to an owner copies the values.
+ * assignment takes the other's buffer (b.data() is the moved-from c's old
+ * buffer; what is left in c: the next case), and assigning a column view
+ * to an owner copies the values.
  * Before the fix: passes as well (a pin of what the fix keeps). */
 TEST_CASE("aed_type: an owning vector's assignment replaces its values",
           "[fd_type][column_view]") {
@@ -552,4 +553,27 @@ TEST_CASE("aed_type: an owning vector's assignment replaces its values",
   CHECK(d.size() == 3);
   CHECK(d[1] == 7.0);
   CHECK(d.data() != fd.ptr());
+}
+
+/* Pins: a moved-from owning aed_type is empty: after `b = std::move(c)`,
+ * c.size() is 0 and c.data() is null, and after `aed_type x(std::move(o))`
+ * the same holds for o; b and x hold the moved values.
+ * Before the fix: c.size() was 2 and o.size() 3, with data() null, so
+ * c[0], c.begin() to c.end() or a loop to c.size() read through a null
+ * pointer. */
+TEST_CASE("aed_type: a moved-from owner is empty", "[fd_type][column_view]") {
+  aed_type b(3);
+  aed_type c({4.0, 5.0});
+  b = std::move(c);
+  CHECK(b.size() == 2);
+  CHECK(b[1] == 5.0);
+  CHECK(c.size() == 0);
+  CHECK(c.data() == nullptr);
+
+  aed_type o({1.0, 2.0, 3.0});
+  aed_type x(std::move(o));
+  CHECK(x.size() == 3);
+  CHECK(x[2] == 3.0);
+  CHECK(o.size() == 0);
+  CHECK(o.data() == nullptr);
 }
