@@ -2,6 +2,9 @@
 #define TADAH_CORE_AED_TYPE2_H
 #include <cstring>
 #include <cmath>
+#include <cstdlib>
+#include <stdexcept>
+#include <string>
 #include <limits>
 #include <random>
 #include <vector>
@@ -11,11 +14,27 @@
 namespace tadah {
 namespace core {
 
+/**
+ * @brief A vector of doubles that owns its values, or a view of values it
+ *        does not own (a column of an fd_type or an aeds_type2).
+ *
+ * A view is made by the non-owning pointer constructor (allocated false)
+ * or rebind(). An assignment to a view writes the other's values into the
+ * viewed storage, whatever the other is (copy or move): the sizes must
+ * match (std::invalid_argument otherwise), and a view is not resized to
+ * another size. An assignment to an owning (or default-constructed)
+ * aed_type replaces its values. Moving from a view copies its values (a
+ * view owns nothing to give) and leaves it as it is.
+ */
 class aed_type {
   double *data_ = nullptr;
   size_t size_ = 0;
   size_t stride_ = 1;
   bool allocated_ = false;
+  bool view_ = false;   // values of storage another object owns
+
+  // The values of `other` into this view; sizes must match.
+  void assign_to_view(const aed_type& other);
 
 public:
 
@@ -43,18 +62,33 @@ public:
     std::memcpy(data_, arr, size_ * stride_ * sizeof(double));
   }
 
+  /// A view of @p size values of @p arr, @p stride apart (allocated
+  /// false), or, with allocated true, an owner of the malloc'ed @p arr.
   inline aed_type(double* arr, size_t size, size_t stride = 1, bool allocated = false)
-  : data_(arr), size_(size), stride_(stride), allocated_(allocated) {}
+  : data_(arr), size_(size), stride_(stride), allocated_(allocated),
+    view_(!allocated) {}
 
+  /// An owning copy, also of a view.
   inline aed_type(const aed_type& other)
   : size_(other.size_), stride_(other.stride_), allocated_(true) {
     data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-    std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
+    if (size_ * stride_ > 0)
+      std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
   }
 
+  /// Takes the other's buffer, leaving it empty; from a view, an owning
+  /// copy (the view keeps viewing its storage).
   inline aed_type(aed_type&& other) noexcept
   : data_(other.data_), size_(other.size_), stride_(other.stride_), allocated_(other.allocated_) {
+    if (other.view_) {
+      allocated_ = true;
+      data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
+      if (size_ * stride_ > 0)
+        std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
+      return;
+    }
     other.data_ = nullptr;
+    other.size_ = 0;
     other.allocated_ = false;
   }
 
@@ -64,8 +98,20 @@ public:
     }
   }
 
+  /// Into a view: the other's values written through (sizes must match,
+  /// std::invalid_argument otherwise); into an owner: an owning copy.
   aed_type& operator=(const aed_type& other);
-  aed_type& operator=(aed_type&& other) noexcept;
+  /// Into a view: as the copy assignment. Into an owner: takes the
+  /// other's buffer (an owning copy of a view), leaving it empty.
+  aed_type& operator=(aed_type&& other);
+
+  /// Makes this aed_type a view of @p size values of @p data, @p stride
+  /// apart, freeing what it owned (fd_type and aeds_type2 point their
+  /// columns at their storage with it).
+  void rebind(double* data, size_t size, size_t stride = 1) noexcept;
+
+  /// True for a view (rebind(), or the non-owning pointer constructor).
+  bool is_view() const noexcept { return view_; }
 
   inline double& operator[](size_t i) {
     return data_[i * stride_];
@@ -205,6 +251,8 @@ public:
     return !(*this == v1);
   }
 
+  /// Resizes an owner (new values 0). A view keeps its size: resizing it
+  /// to another size throws std::invalid_argument.
   void resize(const size_t n);
 
   double* data();

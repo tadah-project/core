@@ -8,8 +8,9 @@ namespace tadah {
 namespace core {
 
 void fd_type::view_columns() noexcept {
+  // rebind, not assignment: an assignment to a column writes through.
   for (size_t k = 0; k < 3; ++k) {
-    cols_[k] = aed_type(data_ + k * rows_, rows_, 1, false);
+    cols_[k].rebind(data_ == nullptr ? nullptr : data_ + k * rows_, rows_, 1);
   }
 }
 
@@ -35,7 +36,7 @@ fd_type::fd_type(fd_type&& other) noexcept : rows_(other.rows_), data_(other.dat
   view_columns();
   other.data_ = nullptr;
   other.rows_ = 0;
-  for (auto& c : other.cols_) c = aed_type();
+  other.view_columns();
 }
 
 fd_type& fd_type::operator=(fd_type&& other) noexcept {
@@ -46,7 +47,7 @@ fd_type& fd_type::operator=(fd_type&& other) noexcept {
     view_columns();
     other.data_ = nullptr;
     other.rows_ = 0;
-    for (auto& c : other.cols_) c = aed_type();
+    other.view_columns();
   }
   return *this;
 }
