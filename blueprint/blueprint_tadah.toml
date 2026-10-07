@@ -1016,9 +1016,11 @@ finite, zero or a normal double: 5x, 0x10, inf, nan and 1e-320 are errors).
   RCUT in the training config).
 
 Everything that is not an OPTIM line is preserved byte-for-byte. The output
-goes to -o (default: <input>_edited.hpotarget) or back into the input with
---in-place. For knot-family potentials the commented RCUT2B/RCUTMB lines are
-recomputed from the largest knot position (the true effective cutoff).
+goes to -o (default: <input>_retargeted.hpotarget, which no other mode of
+tadah refit writes by default: --edit writes refit_edited.hpotarget) or back
+into the input with --in-place. For knot-family potentials the commented
+RCUT2B/RCUTMB lines are recomputed from the largest knot position (the true
+effective cutoff).
 """
 examples     = ["refit.hpotarget"]
 cli_long_flag  = "--retarget"
@@ -1278,7 +1280,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_mode]
 INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` fitting mode, in any letter case (another value is an error): 'compact' (DEFAULT; optimised blip centres/widths via ladder + analytic-gradient Ceres polish, ~30-120 params — the HPO-friendly search space; needs the compact fitter of the HPO build with Ceres, TADAH_ENABLE_NFP and TADAH_ENABLE_CERES: a tadah built without it refuses compact mode, written or the default) or 'dense' (region-uniform grids + auto-escalation, ~300-450 params, fastest fit). A key that only the other mode reads is an error naming it and the mode that reads it: REFIT_LEVEL, N2B, NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS, REFIT_PLACEMENT and REFIT_CONSTRAIN_F0 are dense-only; the REFIT_COMPACT_* keys, REFIT_OBJECTIVE curve, REFIT_CURVE_WEIGHTING, REFIT_CURVE_RELAX, REFIT_CURVE_DERIV_WEIGHT and the INIT, EXPLORE, REFINE and FUSE blocks are compact-only. A default that tadah stores for a key the configuration does not set is not refused."
+description  = "`tadah refit` fitting mode, in any letter case (another value is an error): 'compact' (DEFAULT; optimised blip centres/widths via ladder + analytic-gradient Ceres polish, ~30-120 params — the HPO-friendly search space; needs the compact fitter of the HPO build with Ceres, TADAH_ENABLE_NFP and TADAH_ENABLE_CERES: a tadah built without it refuses compact mode, written or the default) or 'dense' (region-uniform grids + auto-escalation, ~300-450 params, fastest fit). A key that only the other mode reads is an error naming it and the mode that reads it: REFIT_LEVEL, N2B, NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS, REFIT_PLACEMENT and REFIT_CONSTRAIN_F0 are dense-only; the REFIT_COMPACT_* keys, REFIT_OBJECTIVE curve, REFIT_CURVE_WEIGHTING, REFIT_CURVE_RELAX, REFIT_CURVE_DERIV_WEIGHT and the INIT, EXPLORE, REFINE and FUSE blocks are compact-only, and REFIT_COMPACT_MERGE, REFIT_COMPACT_OPT_EVERY and REFIT_COMPACT_INSERT_TOPK, which the knot families alone read, are refused with REFIT_BASIS Blip or Blip5. A default that tadah stores for a key the configuration does not set is not refused."
 examples     = ["dense", "compact"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1286,7 +1288,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_opt_every]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode, Knot5 family: run the full per-rung optimisation (explore + polish) only every K-th ladder rung; intermediate rungs grow by energy-aware insertion + linear solve, with one final full optimisation of the best fit. Default 1 (optimise every rung — matrix-measured most consistent). 999 = insertion-only growth + final optimisation: best results when no ladder stalls (measured Ta: Cij <= 0.09 GPa), but can underfit if a ladder stalls during growth. An integer from 1. REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, knot families (Knot5, Knot3, KnotMix): run the full per-rung optimisation (explore + polish) only every K-th ladder rung; intermediate rungs grow by energy-aware insertion + linear solve, with one final full optimisation of the best fit. Default 1 (optimise every rung — matrix-measured most consistent). 999 = insertion-only growth + final optimisation: best results when no ladder stalls (measured Ta: Cij <= 0.09 GPa), but can underfit if a ladder stalls during growth. An integer from 1. The Blip families optimise every rung: REFIT_BASIS Blip or Blip5 refuses it, and so does REFIT_MODE dense."
 examples     = ["1", "3"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1302,7 +1304,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_insert_topk]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode, Knot5 family: energy-aware insertion — evaluate the top-k separated curve-residual peaks and insert at the one that most improves the crystal energy metric. An integer from 1. Default 3 for Knot5, 1 (curve peak only) for Blip. REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, knot families (Knot5, Knot3, KnotMix): energy-aware insertion — evaluate the top-k separated curve-residual peaks and insert at the one that most improves the crystal energy metric. An integer from 1. Default 3. The Blip families insert at the curve peak only: REFIT_BASIS Blip or Blip5 refuses it, and so does REFIT_MODE dense."
 examples     = ["1", "3"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1399,7 +1401,7 @@ cli_required   = false
 [ALLOWED_KEYS.refit_compact_merge]
 INHERIT = ["TYPES.STRING"]
 default_value = ["auto"]
-description  = "`tadah refit` compact mode, Knot families: coalescence guard. 'true' applies a soft anti-coalescence penalty during EXPLORE plus a post-REFINE merge of near-coincident knot pairs that re-inserts a fresh knot at the worst residual. 'auto' (default) sets it OFF for REFIT_OBJECTIVE curve and ON for REFIT_OBJECTIVE energy. 'false' keeps it off. Knot families only. REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, Knot families: coalescence guard. 'true' applies a soft anti-coalescence penalty during EXPLORE plus a post-REFINE merge of near-coincident knot pairs that re-inserts a fresh knot at the worst residual. 'auto' (default) sets it OFF for REFIT_OBJECTIVE curve and ON for REFIT_OBJECTIVE energy. 'false' keeps it off. Knot families only: the Blip families have no knots, and REFIT_BASIS Blip or Blip5 refuses it, as REFIT_MODE dense does."
 examples     = ["auto", "true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1412,7 +1414,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_r_lo_frac]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` inner radial fit bound as a fraction of rcut, a number in (0, 1) (default 0.20). Below it the round-trip setfl tabulates a smooth C2-matched repulsive continuation and the native pot.tadah is outside its validity domain."
+description  = "`tadah refit` inner radial fit bound as a fraction of rcut, a number in (0, 1) (default 0.20; the bound is at least the table's dr). REFIT_MODE compact fits from max(0.8 r_reach, this bound), r_reach the nearest-neighbour distance at REFIT_REACH_SMIN. Below the inner bound of the fit the round-trip setfl (SETFL_OUT) tabulates the original table's phi and rho, each shifted by the constant that joins it to the fit there (rho clamped at 0 under RHOFORM NONNEG and MONOTONE), and the native pot.tadah is outside its validity domain."
 examples     = ["0.20", "0.15"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -2346,7 +2348,8 @@ Config-file options (EAM and RHOFORM are required):
   REFIT_CONSTRAIN_F0 (EMBF0 FREE only).
 - Compact mode only: the ladder (REFIT_COMPACT_NMAX, REFIT_COMPACT_STALL,
   REFIT_COMPACT_SHARE, REFIT_COMPACT_OPT_EVERY, REFIT_COMPACT_INSERT_TOPK,
-  REFIT_COMPACT_SEED and the other REFIT_COMPACT_* keys), REFIT_OBJECTIVE
+  REFIT_COMPACT_SEED and the other REFIT_COMPACT_* keys; OPT_EVERY,
+  INSERT_TOPK and MERGE with a knot basis only), REFIT_OBJECTIVE
   curve and REFIT_CURVE_* (under REFIT_OBJECTIVE curve only;
   REFIT_CURVE_RELAX with REFIT_CURVE_WEIGHTING true only), and the stage
   blocks below.
@@ -2393,11 +2396,11 @@ reads it.
 For knot-family potentials both modes keep RCUT2B/RCUTMB consistent with
 the largest knot position (the true effective cutoff).
 
-Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) for
-the full description of a key above. RHOFORM, EMBF0 and NUMERIC (keys a
-configuration may set) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the
-potential) are no options of tadah refit: the Configuration File page of the
-documentation describes them.
+Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) or
+`tadah explain <KEY>` (e.g. `tadah explain RHOFORM`) for the full
+description of a key above, including those that are no options of tadah
+refit: RHOFORM, EMBF0 and NUMERIC (keys a configuration may set) and RCUT2B,
+RCUTMB and AMPGRIDMB (keys of the potential).
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --pct 10 --rcut2b 6.0 --rcutmb 6.0 -o wide.hpotarget", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
@@ -3048,16 +3051,16 @@ cli_needs = ["range"]
 
 # work in progress
 [TASKS.explain]
-description      = "Explain tadah command or option in more detail."
-long_description      = "This is a help command that provides detailed information about a specific command or option in the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. An option that names no command, or no option of its command, is an error naming what was not found."
-examples         = ["tadah explain train", "tadah explain train.verbose", "tadah explain data.split.even"]
+description      = "Explain a tadah command, option or configuration key in more detail."
+long_description      = "This is a help command that provides detailed information about a specific command, option or configuration key of the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. A name that is no command, subcommand or option of its command is looked up among the configuration keys, in any letter case, so `tadah explain SETFL` and `tadah explain refit.rhoform` describe keys that no command has as an option; a command's own option comes first. A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. A name that is none of these is an error naming what was not found."
+examples         = ["tadah explain train", "tadah explain train.verbose", "tadah explain data.split.even", "tadah explain SETFL"]
 
 [TASKS.explain.keys]
 INHERIT = ["ALLOWED_KEYS.option"]
 [TASKS.explain.keys.option]
-description = "Command or option to explain in a dot separated format."
-long_description = "The command or option to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'."
-value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>"]
+description = "Command, option or configuration key to explain, in a dot separated format."
+long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'), in any letter case."
+value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>", "<KEY>"]
 cli_required = true
 examples = ["tadah explain train.task", "tadah explain data.split.even"]
 
