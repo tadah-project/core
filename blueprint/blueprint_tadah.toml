@@ -788,8 +788,9 @@ takes one parameter on its TYPE line, a placeholder written 0
 and is reported once on standard error. RCUT2B and RCUTMB must be the
 file's cutoff (in a D2_mJoin or DM_mJoin, the EAM descriptor's own value):
 the file defines its functions up to it. Another value is refused, naming
-both. A potential written with NUMERIC below 17 records the cutoff rounded,
-and is refused until it is set to the file's cutoff.
+both, and so is, at the start of tadah hpo, an OPTIM RCUT2B/RCUTMB over
+that value. A potential written with NUMERIC below 17 records the cutoff
+rounded, and is refused until it is set to the file's cutoff.
 
 A configuration with both descriptors and one setfl file::
 
