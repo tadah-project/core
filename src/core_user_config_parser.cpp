@@ -368,11 +368,19 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
     Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", fmt);
   }
 
-  // Provide examples if available
+  // Provide examples if available. An example is a value of the key (the
+  // blueprint's rule): each of its lines is shown as a line of the key.
   if (!keyInfo.examples.empty()) {
     Logger::instance().log(LogLevel::ERROR, "  Examples:");
     for (const auto &ex : keyInfo.examples) {
-      Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", ex);
+      std::istringstream lines(ex);
+      std::string line;
+      while (std::getline(lines, line)) {
+        line = trim(line);
+        if (!line.empty()) {
+          Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", line);
+        }
+      }
     }
   }
 
