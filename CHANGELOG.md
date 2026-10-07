@@ -6,6 +6,12 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+### Changed
+- `EAMFAST` description: the speed-up and the log line it quotes are given for a D2_LJ potential (`RCUT2B 6.5`, `Cut_Dummy`), which they were measured with, instead of for the docs quickstart potential, which is now a D2_Blip + DM_mBlipEnv model that runs the generic kernel (see Tadah.MLIP). It also names DM_REAM as the only many-body descriptor for which the EAM collapse is implemented: a model with any other many-body descriptor (DM_mBlipEnv, for example) runs the generic kernel; the description used to say "many-body descriptors that are not EAM-form".
+
+### Fixed
+- **A `CONFIG` line with an inline comment** (`CONFIG config.train   # nested config`) includes the file it names. The parser kept the blanks before the `#` in the line, so the path was `config.train   `: `tadah train -c`, `tadah --task` and every other reader of such a file stopped with `Failed to open config file: config.train   `, and an include chain that was circular reported that error instead of the chain. The blanks before an inline comment are now dropped from every key line. Other keys were not affected: their values are read as whitespace-separated tokens. (The `TASK` lines of a task file are read by Tadah.MLIP, which now ignores their comments too.)
+
 ## [1.6.0] — 2026-09-25
 
 ### Added
