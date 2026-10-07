@@ -1,14 +1,20 @@
 #include "catch2/catch.hpp"
+#include <tadah/core/blueprint_parser.h>
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
+#include <tadah/core/logger.h>
 #include <dirent.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <istream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -530,4 +536,153 @@ TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
     CHECK(msg == "Circular dependency detected between CONFIG files: " + b +
                      " -> " + a + " -> " + b);
   }
+}
+
+namespace {
+
+/* Captures what the Logger writes (to std::cout) with ERROR lines on;
+ * restores the stream and the level afterwards. */
+class CaptureLog {
+public:
+  CaptureLog()
+      : level_(Logger::instance().getLogLevel()),
+        old_(std::cout.rdbuf(out_.rdbuf())) {
+    Logger::instance().setLogLevel(LogLevel::ERROR);
+  }
+  ~CaptureLog() {
+    std::cout.rdbuf(old_);
+    Logger::instance().setLogLevel(level_);
+  }
+  std::string text() const { return out_.str(); }
+
+private:
+  LogLevel level_;
+  std::ostringstream out_;
+  std::streambuf *old_;
+};
+
+/* The text of each line of `log`, after the Logger's "[time] ERROR: "
+ * prefix (a line without one, such as the rest of a message that holds a
+ * newline, as it is). */
+std::vector<std::string> log_lines(const std::string &log) {
+  std::vector<std::string> out;
+  std::istringstream in(log);
+  std::string line;
+  const std::string tag = "ERROR: ";
+  while (std::getline(in, line)) {
+    const auto at = line.find(tag);
+    out.push_back(at == std::string::npos ? line : line.substr(at + tag.size()));
+  }
+  return out;
+}
+
+std::string upper_case(std::string t) {
+  for (char &ch : t)
+    ch = static_cast<char>(std::toupper(static_cast<unsigned char>(ch)));
+  return t;
+}
+
+std::string trimmed(const std::string &t) {
+  const auto b = t.find_first_not_of(" \t\r");
+  if (b == std::string::npos) return "";
+  return t.substr(b, t.find_last_not_of(" \t\r") - b + 1);
+}
+
+} // namespace
+
+/* Pins: when CoreUserConfigParser refuses a value of a key (the value does
+ * not have the key's format), the lines it writes under "  Examples:" are,
+ * for every key whose value can be refused (one of "@", "", "1.5", "@ @ @"
+ * is), exactly one line "    <KEY>   <line>" for each non-blank line of each
+ * of the key's examples, in order, and the word after the key is never the
+ * key again.
+ * Before the fix: an example that began with its key was printed with the
+ * key twice ("    BETA   BETA 0.0001"), and an example of several lines was
+ * printed as one message whose later lines had neither the key nor the
+ * indentation ("    CGRID2B   CGRID2B   1.0 2.0" then "CGRID2B   1.5 2.5"). */
+TEST_CASE("Config parser: a refused value lists each example once, after "
+          "its key", "[config][examples]") {
+  std::size_t keys = 0;
+  for (const auto &kv : BlueprintParser::getKeysMapRef()) {
+    const std::string &key = kv.first;
+    const BlueprintKey &k = kv.second;
+    if (k.examples.empty()) continue;
+    std::string refused;
+    bool found = false;
+    for (const std::string candidate : {"@", "", "1.5", "@ @ @"}) {
+      if (!CoreUserConfigParser::validateSchemaOnly(candidate, k)) {
+        refused = candidate;
+        found = true;
+        break;
+      }
+    }
+    if (!found) continue;   /* every value has its format: never refused */
+    ++keys;
+    INFO("key " << key << ", refused value '" << refused << "'");
+
+    std::vector<std::string> expected;
+    for (const std::string &example : k.examples) {
+      std::istringstream lines(example);
+      std::string line;
+      while (std::getline(lines, line))
+        if (!trimmed(line).empty())
+          expected.push_back("    " + key + "   " + trimmed(line));
+    }
+
+    std::string log;
+    {
+      CaptureLog capture;
+      CHECK_FALSE(CoreUserConfigParser::validateWithBlueprint(key, refused, k));
+      log = capture.text();
+    }
+    const std::vector<std::string> all = log_lines(log);
+    const auto head = std::find(all.begin(), all.end(), "  Examples:");
+    REQUIRE(head != all.end());
+    const std::vector<std::string> printed(head + 1, all.end());
+    CHECK(printed == expected);
+    for (const std::string &line : printed) {
+      INFO("printed '" << line << "'");
+      std::istringstream words(line);
+      std::string first, second;
+      words >> first >> second;
+      CHECK(upper_case(first) == key);
+      CHECK(upper_case(second) != key);
+    }
+  }
+  CHECK(keys > 100);
+}
+
+/* Pins: a key that CoreUserConfigParser reads as a block -- the key alone
+ * on its line opens it and the lines up to END<KEY> are its value: the
+ * `tadah refit` stages INIT, EXPLORE, REFINE and FUSE and their nested
+ * OPTIMIZER -- has no examples in the blueprint. "<KEY>   <value>", as the
+ * parser's refusal and the configuration-keys page show an example, is not
+ * how such a key is written (the parser does not read the rest of the
+ * opening line). The block keys are found from the parser itself: the key
+ * alone on a line is refused as a block that is not closed.
+ * Before the fix: all five had an example, "INIT / PHI XMIN PIN / ENDINIT"
+ * and the like, and OPTIMIZER's was "see HPO_REFIT_2B_EAM/REDESIGN/configs
+ * (OPTIMIZER nested in EXPLORE/REFINE/FUSE)", a directory that is in no
+ * Tadah repository. */
+TEST_CASE("Config parser: a key written as a block has no examples",
+          "[config][examples]") {
+  std::set<std::string> blocks;
+  for (const auto &kv : BlueprintParser::getKeysMapRef()) {
+    const std::string &key = kv.first;
+    std::string what;
+    {
+      CaptureLog quiet;
+      try {
+        CoreUserConfigParser().parse(std::vector<std::string>{key});
+      } catch (const std::exception &e) {
+        what = e.what();
+      }
+    }
+    if (what != key + " block is not closed with END" + key) continue;
+    blocks.insert(key);
+    INFO("block key " << key);
+    CHECK(kv.second.examples.empty());
+  }
+  CHECK(blocks == std::set<std::string>{"EXPLORE", "FUSE", "INIT",
+                                        "OPTIMIZER", "REFINE"});
 }

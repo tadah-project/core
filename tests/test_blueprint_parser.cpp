@@ -211,19 +211,25 @@ TEST_CASE("BlueprintParser::findClosestKey with large distance key", "[findClose
 }
 
 
-/* Pins: every example of every key of the blueprint is either a value the
- * key's format accepts (BlueprintValidator on its value_type, as the
- * configuration parser checks a value) or a configuration line that starts
- * with the key itself or with its command-line flag, possibly followed by
- * more lines (the TYPE2B D2_mJoin block). CoreUserConfigParser prints each
- * example as "<KEY>   <example>" under "Examples:" when it refuses a value,
- * so an example that is neither shows a line that is not one of the key's.
- * Before the fix: two examples were neither. SETFL's second was a whole
- * configuration starting with another key, "INIT2B    true" (the parser
- * printed "SETFL   INIT2B    true"), and SIGMA's was quoted in backticks,
- * "`2 1.2 2.2 2.3 3.3`", which its format (INT {DOUBLE}) does not accept. */
-TEST_CASE("Every blueprint example is a value of its key or a line that "
-          "starts with the key",
+/* Pins: every example of every key of the blueprint (ALLOWED_KEYS and
+ * INTERNAL_KEYS) is a value of that key -- what follows the key on its
+ * configuration line -- and an example of several lines is one value per
+ * line: every non-blank line passes the key's format (BlueprintValidator on
+ * its value_type, as the configuration parser checks a value), is one of
+ * the key's allowed_values when it has a list, and does not begin with the
+ * key itself or its command-line flag. CoreUserConfigParser shows each line
+ * of an example as "<KEY>   <line>" under "Examples:" when it refuses a
+ * value, and the configuration-keys page of the docs shows it the same way,
+ * so the key is written once.
+ * The rule was: a value, or a configuration line that starts with the key
+ * or its command-line flag (possibly followed by more lines); the parser
+ * printed the key twice for the latter.
+ * Before the fix: 64 examples of 36 keys began with the key (BETA's
+ * "BETA 0.0001", printed "BETA   BETA 0.0001"; dbfile's
+ * "dbfile /path/to/dbfile"; the D2_mJoin block "TYPE2B    D2_mJoin" /
+ * "TYPE2B    D2_MIE 11 6 Ti Ti" / ...; the refit blocks' "INIT / PHI XMIN
+ * PIN / ENDINIT"), and IN_PLACE's was its flag, "--in-place". */
+TEST_CASE("Every blueprint example is a value of its key, one per line",
           "[BlueprintParser]") {
   const auto upper = [](std::string t) {
     for (char &ch : t) ch = static_cast<char>(std::toupper(
@@ -231,21 +237,33 @@ TEST_CASE("Every blueprint example is a value of its key or a line that "
     return t;
   };
   std::size_t checked = 0;
-  for (const auto &kv : BlueprintParser::getKeysMapRef()) {
-    const BlueprintKey &k = kv.second;
-    if (k.examples.empty()) continue;
-    const BlueprintValidator validator(k.value_type);
-    for (const std::string &example : k.examples) {
-      ++checked;
-      std::istringstream words(example);
-      std::string first;
-      words >> first;
-      const bool line_of_key =
-          upper(first) == kv.first ||
-          (!k.cli_long_flag.empty() && first == k.cli_long_flag) ||
-          (!k.cli_short_flag.empty() && first == k.cli_short_flag);
-      INFO("key " << kv.first << ", example:\n" << example);
-      CHECK((line_of_key || validator.validate(example)));
+  for (const auto *map : {&BlueprintParser::getKeysMapRef(),
+                          &BlueprintParser::getInternalKeysMapRef()}) {
+    for (const auto &kv : *map) {
+      const BlueprintKey &k = kv.second;
+      const BlueprintValidator validator(k.value_type);
+      for (const std::string &example : k.examples) {
+        INFO("key " << kv.first << ", example:\n" << example);
+        std::istringstream lines(example);
+        std::string line;
+        std::size_t values = 0;
+        while (std::getline(lines, line)) {
+          std::istringstream words(line);
+          std::string first;
+          if (!(words >> first)) continue;   /* a blank line */
+          ++values;
+          ++checked;
+          INFO("line '" << line << "'");
+          CHECK(upper(first) != kv.first);
+          CHECK((k.cli_long_flag.empty() || first != k.cli_long_flag));
+          CHECK((k.cli_short_flag.empty() || first != k.cli_short_flag));
+          CHECK(validator.validate(line));
+          const auto b = line.find_first_not_of(" \t\r");
+          const auto e = line.find_last_not_of(" \t\r");
+          CHECK(k.isAllowedValue(line.substr(b, e - b + 1)));
+        }
+        CHECK(values > 0);
+      }
     }
   }
   CHECK(checked > 200);
