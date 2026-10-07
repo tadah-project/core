@@ -20,7 +20,9 @@ namespace core {
  *        directions: rows() values per direction, stored column by column.
  *
  * The element accessors, fd(i, k), fd[k] and fd(k), are the hot path and
- * are not checked: i < rows() and k < 3 are the caller's preconditions.
+ * are not checked: i < rows() and k < 3 are the caller's preconditions, for
+ * every fd_type. A default-constructed or moved-from fd_type has rows() 0
+ * and three empty columns (fd[k].size() is 0), as fd_type(0) has.
  * The whole-object operations check their operands' sizes once per call:
  * +, - and * with a vector need an operand of rows() entries and throw
  * std::invalid_argument naming both sizes otherwise; == and isApprox are
@@ -65,11 +67,14 @@ public:
     return data_[i + k * rows_];
   }
 
-  /// The rows() values of direction k; unchecked: requires k < 3.
+  /// The rows() values of direction k, a view of this fd_type's values
+  /// (empty when rows() is 0); unchecked: requires k < 3.
   aed_type& operator[](size_t k);
-  /// The rows() values of direction k; unchecked: requires k < 3.
+  /// The rows() values of direction k, a view of this fd_type's values
+  /// (empty when rows() is 0); unchecked: requires k < 3.
   const aed_type& operator()(size_t k) const;
-  /// The rows() values of direction k; unchecked: requires k < 3.
+  /// The rows() values of direction k, a view of this fd_type's values
+  /// (empty when rows() is 0); unchecked: requires k < 3.
   aed_type& operator()(size_t k);
 
   inline size_t rows() const { return rows_; }
