@@ -1210,3 +1210,43 @@ TEST_CASE("Context floating reads take a finite decimal number, the whole "
   CHECK((msg.size() > why.size() &&
          msg.compare(msg.size() - why.size(), why.size(), why) == 0));
 }
+
+/* Pins: a configuration line of usual length whose list value holds
+ * commas (the blueprint validator's list patterns take a comma, or a '+',
+ * between two values, but the parser splits a line at blanks only) is
+ * accepted by CoreUserConfigParser as one token per blank-separated word,
+ * and a number read of such a token is refused, naming the key and the
+ * value: 'MPARAMS 1.0,2.0', 'CGRID2B 1.0,2.0,3.0' and 'FIXWEIGHT 0.1,0.2'
+ * are one token each, 'SGRID2B 1.0,2.0 3.0' two ("1.0,2.0" and "3.0"), and
+ * get<double> of a comma token gives "Conversion failed for key=<KEY>,
+ * value=\"<token>\": a finite decimal number is required"; "3.0" reads.
+ * Before the fix: the parser accepted the same lines, and each comma token
+ * was read as its first number, 1, 1, 0.1 and 1, without an error. */
+TEST_CASE("Context: a short configuration line with commas in a list is "
+          "refused when its number is read",
+          "[context][floating]") {
+  struct Line {
+    std::string key, text, token;
+    size_t tokens;
+  };
+  const Line lines[] = {{"MPARAMS", "MPARAMS 1.0,2.0", "1.0,2.0", 1},
+                        {"CGRID2B", "CGRID2B 1.0,2.0,3.0", "1.0,2.0,3.0", 1},
+                        {"FIXWEIGHT", "FIXWEIGHT 0.1,0.2", "0.1,0.2", 1},
+                        {"SGRID2B", "SGRID2B 1.0,2.0 3.0", "1.0,2.0", 2}};
+  for (const Line &l : lines) {
+    INFO(l.text);
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(
+                        std::vector<std::string>{l.text}));
+    REQUIRE(c.size(l.key) == l.tokens);
+    CHECK(c.get<std::string>(l.key) == l.token);
+    CHECK(thrown_message([&] { (void)c.get<double>(l.key); }) ==
+          "Conversion failed for key=" + l.key + ", value=\"" + l.token +
+              "\": a finite decimal number is required");
+    std::vector<double> all(l.tokens);
+    CHECK(thrown_message([&] { c.get(l.key, all); }) ==
+          "Conversion failed for key=" + l.key + ", value=\"" + l.token +
+              "\": a finite decimal number is required");
+    if (l.tokens == 2) CHECK(c.get<double>(l.key, 1) == 3.0);
+  }
+}
