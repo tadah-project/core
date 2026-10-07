@@ -152,6 +152,11 @@ public:
     return p.string();
   }
 
+  /* The path of <dir>/<name>, written or not. */
+  std::string path(const std::string &name) const {
+    return (dir_ / name).string();
+  }
+
 private:
   std::filesystem::path dir_;
 };
@@ -414,5 +419,115 @@ TEST_CASE("Config parser: refuse_keys applies to stream and line input",
         [&] { return parser.parse(lines, 4, "run.task"); },
         "parse(lines, 4, run.task)");
     check_refusal(msg, "FORCE", 6, "run.task", kForceReason);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// CONFIG with an inline comment
+//
+// Every key may carry an inline comment ("KEY value   # comment"); CONFIG,
+// whose value is the path of the file to include, must too. The cases use
+// the scratch directory of the refuse_keys cases above (RefuseScratch: unique
+// to the process, removed with its files).
+// ---------------------------------------------------------------------------
+namespace {
+
+/* The keys an included file sets, checked after the include. */
+void check_included_keys(const Context &c) {
+  CHECK(c.get<double>("WATOM") == 73.0);
+  CHECK(c.get<double>("RCUT2B") == 5.0);
+}
+
+} // namespace
+
+// Pins: a CONFIG line whose path is followed by an inline comment (blanks
+// or a tab before the '#') includes the file it names, in a file, a stream
+// and the lines of a TASK block (parse(lines, first_line, source), which is
+// how `tadah --task` parses each TASK section): the included keys are set,
+// and the result equals that of the same line without the comment.
+// Before the fix: every section threw std::runtime_error "Failed to open
+// config file: <path>   " -- the path was read up to the '#', with the blanks
+// before it, so no such file existed (`tadah --task` and `tadah train -c`
+// stopped with that error).
+TEST_CASE("Config parser: a CONFIG line with an inline comment includes the "
+          "file it names",
+          "[config][config_include]") {
+  RefuseScratch dir;
+  const std::string inner =
+      dir.write("inner_settings.cfg", "WATOM 73\nRCUT2B 5.0\n");
+  const std::string plain = dir.write(
+      "plain_include.cfg", "ATOM Ta\nCONFIG " + inner + "\nINIT2B true\n");
+  const Context expected = CoreUserConfigParser().parse(plain);
+  check_included_keys(expected);
+
+  SECTION("a file, blanks before the comment") {
+    const std::string outer =
+        dir.write("commented_include.cfg",
+                  "ATOM Ta\n"
+                  "CONFIG " + inner + "   # nested config\n"
+                  "INIT2B true\n");
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(outer));
+    check_included_keys(c);
+    CHECK(c == expected);
+  }
+  SECTION("a file, a tab before the comment") {
+    const std::string outer =
+        dir.write("tab_include.cfg",
+                  "ATOM Ta\n"
+                  "CONFIG " + inner + "\t# nested config\n"
+                  "INIT2B true\n");
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(outer));
+    CHECK(c == expected);
+  }
+  SECTION("a stream") {
+    std::istringstream in("ATOM Ta\nCONFIG " + inner +
+                          "   # nested config\nINIT2B true\n");
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(in));
+    CHECK(c == expected);
+  }
+  SECTION("the lines of a TASK block (lines 4 to 6 of run.task)") {
+    const std::vector<std::string> lines = {
+        "ATOM Ta", "CONFIG " + inner + "   # nested config",
+        "INIT2B true   # two-body"};
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(lines, 4, "run.task"));
+    CHECK(c == expected);
+  }
+}
+
+// Pins: with an inline comment on the CONFIG line, a missing file is reported
+// by its path alone ("Failed to open config file: <path>", nothing after the
+// path), and a circular include names the files of the chain, each by its
+// path alone ("... CONFIG files: <b> -> <a> -> <b>").
+// Before the fix: the missing file was reported as "<path>   " (the blanks
+// before the '#'), and the circular include was never detected: the first
+// CONFIG line already failed to open "<b>  ", so the message was "Failed to
+// open config file: <b>  " instead of the chain.
+TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
+          "file alone in its errors",
+          "[config][config_include]") {
+  RefuseScratch dir;
+
+  SECTION("a missing file") {
+    const std::string missing = dir.path("missing.cfg");
+    const std::string outer = dir.write(
+        "missing_include.cfg", "CONFIG " + missing + "   # not there\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(outer); }, "parse " + outer);
+    CHECK(msg == "Failed to open config file: " + missing);
+  }
+  SECTION("a circular include") {
+    const std::string b = dir.write(
+        "loop_b.cfg",
+        "WATOM 73\nCONFIG " + dir.path("loop_a.cfg") + "  # back to a\n");
+    const std::string a =
+        dir.write("loop_a.cfg", "ATOM Ta\nCONFIG " + b + "  # on to b\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(a); }, "parse " + a);
+    CHECK(msg == "Circular dependency detected between CONFIG files: " + b +
+                     " -> " + a + " -> " + b);
   }
 }
