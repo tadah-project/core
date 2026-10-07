@@ -356,27 +356,10 @@ void trimInPlace(std::string& str);
  */
 std::string join(const std::vector<std::string>& vec);
 
-/**
- * @brief Parses a string of indices, handling ranges and steps.
- * 
- * @param input The string containing indices to parse.
- * @return A vector of unique indices extracted from the string.
- */
-std::vector<size_t> parse_indices(const std::string& input);
-
 /** Strict list/range/stride parser. Rejects malformed segments, duplicates,
  * descending ranges, zero strides and integer overflow. Zero is a valid
  * value here; one-based callers must reject it at their boundary. */
 std::vector<size_t> parse_indices_strict(const std::string& input);
-
-
-/**
- * @brief Parses a vector of strings containing raw indices from user configuration, handling ranges and steps.
- * 
- * @param input The vector of strings containing indices to parse.
- * @return A vector of unique indices extracted from the input.
- */
-std::vector<size_t> parse_indices(const std::vector<std::string>& input);
 
 /**
  * @brief The 1-based structure indices of a dataset command (tadah data
