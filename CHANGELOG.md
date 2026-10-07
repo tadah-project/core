@@ -11,7 +11,7 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ### Changed
 - `INDEX` descriptions: the general text states the strict rules (1-based, within the items selected, a descending range, a step of 0, a malformed or empty entry and an index outside refused; it said only that repeated indices are removed), and `data print`, `analysis descriptor` and `analysis bfunc` have their own: the structures to print or analyse, and for `bfunc` the basis functions of the descriptor (it inherited the text about dataset indices).
-- `TASK` description: options above the first `TASK` line apply to every task, a `TASK` line with no parameter lines runs with those alone, and every task name is checked, with or without parameters (Tadah.MLIP's task-file parser dropped a `TASK` line without parameter lines, unchecked).
+- `TASK` description: options above the first `TASK` line apply to every task, a `TASK` line with no parameter lines runs with those alone, and every task name is checked, with or without parameters, a command that needs a subcommand (`TASK data`) included (Tadah.MLIP's task-file parser dropped a `TASK` line without parameter lines, unchecked).
 - `EAMFAST` description: the speed-up and the log line it quotes are given for a D2_LJ potential (`RCUT2B 6.5`, `Cut_Dummy`), which they were measured with, instead of for the docs quickstart potential, which is now a D2_Blip + DM_mBlipEnv model that runs the generic kernel (see Tadah.MLIP). It also names DM_REAM as the only many-body descriptor for which the EAM collapse is implemented: a model with any other many-body descriptor (DM_mBlipEnv, for example) runs the generic kernel; the description used to say "many-body descriptors that are not EAM-form".
 
 ### Fixed
