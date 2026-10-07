@@ -19,8 +19,24 @@ std::unordered_set<std::string> &reported_keys() {
 }
 } // namespace
 
+namespace {
+/* The innermost IgnoredKeyNoticeCapture of this thread, or nullptr. */
+thread_local IgnoredKeyNoticeCapture *tls_capture = nullptr;
+} // namespace
+
+IgnoredKeyNoticeCapture::IgnoredKeyNoticeCapture() : outer_(tls_capture) {
+  tls_capture = this;
+}
+
+IgnoredKeyNoticeCapture::~IgnoredKeyNoticeCapture() { tls_capture = outer_; }
+
 void report_ignored_key(const std::string &subject, const std::string &reason) {
-  std::cerr << ("WARNING: " + subject + " is ignored: " + reason + "\n");
+  const std::string line = subject + " is ignored: " + reason;
+  if (tls_capture) {
+    tls_capture->add(line);
+    return;
+  }
+  std::cerr << ("WARNING: " + line + "\n");
 }
 
 bool report_ignored_key_once(const std::string &key, const std::string &subject,

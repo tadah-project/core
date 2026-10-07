@@ -2,6 +2,7 @@
 #define TADAH_CORE_KEY_NOTICE_H
 
 #include <string>
+#include <vector>
 
 namespace tadah {
 namespace core {
@@ -22,8 +23,42 @@ namespace core {
  * (which leaves the Logger at ERROR) and a file whose VERBOSE 0 line
  * lowered the level. The line is composed first and written with one
  * insertion; std::cerr is unit-buffered, so it is flushed at once.
+ *
+ * While an IgnoredKeyNoticeCapture lives on the calling thread, the
+ * notice goes to it instead ("<subject> is ignored: <reason>", without the
+ * "WARNING: " prefix and the newline), and nothing to standard error.
  */
 void report_ignored_key(const std::string &subject, const std::string &reason);
+
+/**
+ * @brief Collects the notices report_ignored_key() gives on this thread
+ *        while it lives, for a caller that delivers them itself.
+ *
+ * pair_style tadah loads a potential under a capture and writes each
+ * notice as a LAMMPS warning on rank 0 (the screen and log.lammps, once per
+ * run), where standard error reached neither log.lammps nor only one rank.
+ * report_ignored_key_once() still reports a key once per process: a key
+ * reported before the capture (or under another one) gives it nothing.
+ * Captures nest; the innermost one receives. Not copyable.
+ */
+class IgnoredKeyNoticeCapture {
+public:
+  IgnoredKeyNoticeCapture();
+  ~IgnoredKeyNoticeCapture();
+  IgnoredKeyNoticeCapture(const IgnoredKeyNoticeCapture &) = delete;
+  IgnoredKeyNoticeCapture &operator=(const IgnoredKeyNoticeCapture &) = delete;
+
+  /** The notices captured so far, in order: "<subject> is ignored:
+   *  <reason>". */
+  const std::vector<std::string> &notices() const { return notices_; }
+
+  /** Appends @p line (report_ignored_key() calls it). */
+  void add(const std::string &line) { notices_.push_back(line); }
+
+private:
+  std::vector<std::string> notices_;
+  IgnoredKeyNoticeCapture *outer_;
+};
 
 /**
  * @brief report_ignored_key(@p subject, @p reason), at most once per

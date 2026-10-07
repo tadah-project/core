@@ -92,3 +92,36 @@ TEST_CASE("report_ignored_key_once: once per key and process, also across "
   CHECK(report_ignored_key_once(other, "Key " + other, "why."));
   CHECK(count_of(cap.err(), "is ignored") == 2);
 }
+
+/* Pins: while an IgnoredKeyNoticeCapture lives, report_ignored_key() and
+ * report_ignored_key_once() give it the notice ("<subject> is ignored:
+ * <reason>", without "WARNING: ") and write nothing to standard error; a
+ * key reported once is not reported again under a capture; captures nest
+ * (the inner one receives, the outer one again after it); after the
+ * capture the notice goes to standard error again. pair_style tadah loads
+ * a potential under one and writes its notices as LAMMPS warnings.
+ * A new class: there is no before (the notices went to standard error
+ * only, which LAMMPS' log never saw). */
+TEST_CASE("IgnoredKeyNoticeCapture collects the notices instead of "
+          "standard error",
+          "[key_notice]") {
+  StreamCapture cap(LogLevel::WARNING);
+  {
+    IgnoredKeyNoticeCapture outer;
+    report_ignored_key("Key A", "reason a");
+    {
+      IgnoredKeyNoticeCapture inner;
+      CHECK(report_ignored_key_once("capture_test_key_B", "Key B", "reason b"));
+      CHECK_FALSE(report_ignored_key_once("capture_test_key_B", "Key B", "reason b"));
+      REQUIRE(inner.notices().size() == 1);
+      CHECK(inner.notices()[0] == "Key B is ignored: reason b");
+    }
+    report_ignored_key("Key C", "reason c");
+    REQUIRE(outer.notices().size() == 2);
+    CHECK(outer.notices()[0] == "Key A is ignored: reason a");
+    CHECK(outer.notices()[1] == "Key C is ignored: reason c");
+  }
+  CHECK(cap.err().empty());
+  report_ignored_key("Key D", "reason d");
+  CHECK(cap.err() == "WARNING: Key D is ignored: reason d\n");
+}

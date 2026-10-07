@@ -791,7 +791,8 @@ Context make_pot_fixture() {
   c.add("SGRID2B", std::vector<double>{0.123456789012345678, 2.5, 7.0});
   c.add("WEIGHTS", std::vector<double>{0.1, 1e-20, -0.0, 3.0,
                                         0.123456789012345678, -2.0 / 3});
-  c.add("SIGMA", "2 0.1 0.2 0.3 0.4");
+  c.add("SIGMA", "2 0.1 0.2 0.3 0.4");  // deprecated: written, not read back
+  c.add("WCOV", "2 0.1 0.2 0.3 0.4");
   c.remove("OALGO");
   c.add("OALGO", "1 1e-13");
   c.add("FIXINDEX", "1-58");
@@ -846,10 +847,16 @@ TEST_CASE("Context write_potential: per-type rendering", "[context][pot]") {
                                  "9.99999999999999945e-21", "-0", "3",
                                  "0.123456789012345677",
                                  "-0.66666666666666663"});
-  CHECK(lines["SIGMA"] ==
-        std::vector<std::string>{"2", "0.100000000000000006",
-                                 "0.200000000000000011", "0.299999999999999989",
-                                 "0.400000000000000022"});
+  // INT {DOUBLE}: the integer verbatim, every double at the precision. The
+  // writer renders by value_type and does not consult `deprecated`: SIGMA,
+  // a deprecated key added to a Context in code, is written like WCOV.
+  for (const char *key : {"SIGMA", "WCOV"}) {
+    INFO(key);
+    CHECK(lines[key] ==
+          std::vector<std::string>{"2", "0.100000000000000006",
+                                   "0.200000000000000011", "0.299999999999999989",
+                                   "0.400000000000000022"});
+  }
   CHECK(lines["OALGO"] ==
         std::vector<std::string>{"1", "1.00000000000000003e-13"});
   CHECK(lines["FIXINDEX"] == std::vector<std::string>{"1-58"});
@@ -904,6 +911,13 @@ TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
     for (const auto &kv : c.storage_snapshot()) {
       const std::string &key = kv.first;
       if (key == "NUMERIC" || key.find("MAX") != std::string::npos) continue;
+      // SIGMA is deprecated (weight covariance of Tadah! 1.0.0 to 1.6.0):
+      // parsed with a notice and not stored. (Before WCOV replaced it, it
+      // was read back like every other key.)
+      if (key == "SIGMA") {
+        CHECK_FALSE(back.has_stored(key));
+        continue;
+      }
       REQUIRE(back.has_stored(key));
       const auto &orig = kv.second;
       REQUIRE(back.size(key) == orig.size());

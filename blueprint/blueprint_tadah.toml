@@ -2014,24 +2014,76 @@ examples = ["0.12 1.2 0.3"]
 value_type = ["INT {DOUBLE}"]
 value_format = ["<integer> <double> ..."]
 value_N = [-2147483647]
-description = "The Σ matrix used in Bayesian Linear Regression."
+description = "The weight matrix Tadah! 1.0.0 to 1.6.0 wrote for an OALGO 3 fit (deprecated: replaced by WCOV and WNOISE)."
 long_description = """
-N, then an N×N matrix in column-major order: the covariance of the weights
-that a fit with OALGO 3 computes (M_BLR and M_KRR), which `tadah train`
-writes into the potential and `tadah predict --error` reads.
-
-A SIGMA belongs to the fit that computed it. A fit replaces the SIGMA of
-its configuration (a potential used as the configuration, or the -c
-potential of `tadah hpo`), and a fit that computes none (OALGO 1, 2 or 4,
-M_KRR implementation 2, M_BLR or M_KRR with FIXINDEX pinning every weight,
-weights set from FIXWEIGHT without training data in `tadah hpo`) writes
-none. With FIXINDEX pinning some weights, SIGMA is the covariance of
-every weight (N counts them all), and a pinned weight has no variance: its
-row and column are 0.
-`tadah predict --error` refuses a SIGMA that does not hold N×N+1 values,
-naming N and both counts.
+N, then an N×N matrix in column-major order, which `tadah train` 1.0.0 to
+1.6.0 wrote for an OALGO 3 fit as the covariance of the weights. It was
+computed with a transposed formula, V^T R V instead of V R V^T (V the
+right singular vectors of the design matrix, R the ridge factors
+1/(s_i^2 + lambda)), and without the noise variance, so it is not the
+covariance of the weights, and `tadah predict --error` reported wrong
+values with it (negative ones among them). Only the diagonal and the
+magnitudes of the entries of the covariance can be recovered from it: the
+signs of the off-diagonal entries and the noise scale need the training
+data. The key is accepted so that those potentials still load (`tadah
+predict`, `tadah train -c`, `pair_style tadah`), with one notice, and is
+not stored. Retrain such a potential with OALGO 3 to write its weight
+covariance, WCOV and WNOISE.
 """
-examples = ["2 1.2 2.2 2.3 3.3"]
+deprecated = """Tadah! 1.0.0 to 1.6.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE: retrain the potential with OALGO 3."""
+examples = []
+
+[ALLOWED_KEYS.WCOV]
+value_type = ["INT {DOUBLE}"]
+value_format = ["<N> <double> ..."]
+value_N = [-2147483647]
+description = "The covariance of the potential's WEIGHTS, written by an OALGO 3 fit."
+long_description = """
+N, then the N×N covariance matrix of the WEIGHTS in column-major order, in
+the parameterisation of WEIGHTS (with NORM true and a linear model,
+BF_Linear or Kern_Linear, that of the weights of the raw descriptors). It
+is the posterior covariance of the fit that wrote it,
+s^2 (Phi^T W Phi + lambda I)^-1, with Phi the design matrix, W the row
+weights, lambda the fit's LAMBDA (the evidence approximation's for LAMBDA
+-1) and s^2 = RSS/(n_obs - gamma) the noise variance per unit row weight:
+RSS the weighted residual sum of squares, n_obs the number of rows with a
+non-zero weight (the observations) and gamma = sum_i s_i^2/(s_i^2 + lambda)
+the effective number of weights, s_i the singular values of the weighted
+design matrix. A direction the solve drops (s_i at most rcond times the
+largest, rcond the second value of OALGO) has no weight component and no
+covariance; the fit's WARNING gives their number. A weight FIXINDEX pins has
+no variance: its row and column are 0 (every weight pinned: all zeros).
+
+`tadah train` writes WCOV, with WNOISE, for an OALGO 3 fit (M_BLR, M_KRR
+implementation 1); a fit whose noise variance is undefined (n_obs <= gamma)
+writes neither, with a WARNING, and so does every other fit. A training
+configuration's WCOV and WNOISE are not read: the fit writes its own.
+`tadah predict --error` reads both, and refuses a WCOV whose N is not the
+number of WEIGHTS or that does not hold N×N+1 values. `pair_style tadah`
+does not use them. Tadah! 1.0.0 to 1.6.0 wrote SIGMA instead (deprecated).
+"""
+examples = ["2 0.5 0.1 0.1 0.25"]
+
+[ALLOWED_KEYS.WNOISE]
+value_type = ["{STRING DOUBLE}"]
+value_format = ["<type> <variance> ..."]
+value_N = [-2147483647]
+description = "The noise variance of each row type of the potential's fit, written by an OALGO 3 fit."
+long_description = """
+Pairs of a row type, E (energies), F (forces) or S (stresses), and the
+noise variance of one such value in raw units: eV^2 for the energy of a
+structure, (eV/Å)^2 for a force component, (eV/Å^3)^2 for a stress
+component. Each is s^2/EWEIGHT, s^2/FWEIGHT or s^2/SWEIGHT, s^2 the noise
+variance per unit row weight of the fit (see WCOV), for a structure of
+weight 1: a structure's own eweight, fweight or sweight is not in it. Only
+the types the fit had rows of with a non-zero weight are listed (E alone
+for a fit with FORCE and STRESS false).
+
+`tadah predict --error` adds the WNOISE of a value's type to its variance
+phi^T WCOV phi and refuses a type WNOISE does not list (forces asked for
+with -F of a potential fitted without them, or with FWEIGHT 0).
+"""
+examples = ["E 1.2e-4 F 3.4e-3", "E 1e-3 F 0.01 S 1e-6"]
 
 [ALLOWED_KEYS.NSTDEV]
 INHERIT = ["TYPES.DOUBLES"]
