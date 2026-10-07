@@ -139,8 +139,57 @@ TEST_CASE("parse_fixindex: a refusal names the FIXINDEX text",
       {"1,2,3", 1, std::nullopt,
        "FIXINDEX 1,2,3 has 3 indices but FIXWEIGHT has 1 value" + pair},
       {"1", 2, 4, "FIXINDEX 1 has 1 index but FIXWEIGHT has 2 values" + pair},
-      {"13,13,14", 2, std::nullopt,
-       "FIXINDEX 13,13,14 has 3 indices but FIXWEIGHT has 2 values" + pair},
+  };
+  for (const Case& c : cases) {
+    INFO("FIXINDEX '" << c.fixindex << "', " << c.n_fixweight
+                      << " FIXWEIGHT values, n_weights "
+                      << (c.n_weights ? std::to_string(*c.n_weights) : "none"));
+    CHECK(refusal(c.fixindex, c.n_fixweight, c.n_weights) == c.message);
+  }
+}
+
+/* Pins: a weight named twice is refused as such ("FIXINDEX 13,13,14 names
+ * weight 13 twice; ...", the first weight named again) whenever the list
+ * names no more distinct weights than FIXWEIGHT has values: with one
+ * FIXWEIGHT value per distinct weight, the configuration an earlier
+ * version accepted by removing the repeat ('13,13,14' with two values,
+ * '1,1' with one, '1-3,2' with three, also with a weight count), as with
+ * one value per index. A list that names more distinct weights than
+ * FIXWEIGHT has values is a count mismatch whatever its repeats ('1,2,3,1'
+ * and '1,1,2,3' with two values: "has 4 indices but FIXWEIGHT has 2
+ * values"), also with a range past the values after the repeat
+ * ('1,2,1-4000000000', refused at once).
+ * Before the fix: the count was compared first, so '13,13,14' with two
+ * values was refused as "FIXINDEX 13,13,14 has 3 indices but FIXWEIGHT has
+ * 2 values" (this file pinned that), '1,1' with one as "has 2 indices but
+ * FIXWEIGHT has 1 value" and '1-3,2' with three as "has 4 indices but
+ * FIXWEIGHT has 3 values"; the count cases pass as well (pins). */
+TEST_CASE("parse_fixindex: a weight named twice is named before the count",
+          "[utils][indices][fixindex]") {
+  const std::string pair =
+      "; they must pair 1:1 (the i-th FIXWEIGHT value pins the weight of the "
+      "i-th FIXINDEX index).";
+  const std::string once =
+      " twice; each FIXWEIGHT value pins one weight (the i-th value the "
+      "weight of the i-th index), so name each weight once.";
+  struct Case {
+    std::string fixindex;
+    std::size_t n_fixweight;
+    std::optional<std::size_t> n_weights;
+    std::string message;
+  };
+  const std::vector<Case> cases = {
+      {"13,13,14", 2, std::nullopt, "FIXINDEX 13,13,14 names weight 13" + once},
+      {"13,13,14", 2, 14, "FIXINDEX 13,13,14 names weight 13" + once},
+      {"1,1", 1, std::nullopt, "FIXINDEX 1,1 names weight 1" + once},
+      {"1-3,2", 3, std::nullopt, "FIXINDEX 1-3,2 names weight 2" + once},
+      {"1,2,3,1", 2, std::nullopt,
+       "FIXINDEX 1,2,3,1 has 4 indices but FIXWEIGHT has 2 values" + pair},
+      {"1,1,2,3", 2, std::nullopt,
+       "FIXINDEX 1,1,2,3 has 4 indices but FIXWEIGHT has 2 values" + pair},
+      {"1,2,1-4000000000", 2, std::nullopt,
+       "FIXINDEX 1,2,1-4000000000 has 4000000002 indices but FIXWEIGHT has 2 "
+       "values" + pair},
   };
   for (const Case& c : cases) {
     INFO("FIXINDEX '" << c.fixindex << "', " << c.n_fixweight
