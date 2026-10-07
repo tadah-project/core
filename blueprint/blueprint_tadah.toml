@@ -1919,6 +1919,12 @@ WEIGHTS must carry SBASIS and BASIS, with one weight per basis vector:
 `tadah predict`, `tadah hpo` and `pair_style tadah` refuse it otherwise,
 and refuse a BASIS without SBASIS, a BASIS whose length is not a multiple
 of SBASIS, and basis vectors whose length is not the descriptor's.
+
+With BIAS true on several species (ATOM) the descriptor tadah trains has
+one bias component shared by the species, while that of `pair_style tadah`
+has one per species: `pair_style tadah` refuses such a potential of a
+non-linear model, naming the cause. Train it with BIAS false to run it in
+LAMMPS.
 """
 
 [ALLOWED_KEYS.MPIWPCKG]
