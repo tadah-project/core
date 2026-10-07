@@ -1564,9 +1564,10 @@ NUMERIC itself is never written into a potential file; a NUMERIC line found in
 a potential used as a configuration (or edited with refit --edit) is treated
 as an explicit setting. The '#' comment headers of a potential (e.g. the
 header tadah hpo writes) are annotations not governed by NUMERIC; its
-machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact. tadah refit
---retarget, which writes no potential (its hpotarget bounds have 8
-significant digits), refuses NUMERIC.
+machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact. The hpotarget
+files of tadah refit (a refit, --edit and --retarget) are not governed by
+NUMERIC either: their OPTIM bounds are printed %.8e (9 significant digits)
+whatever NUMERIC is.
 
 The structure exports of tadah data write use significant digits too for
 LAMMPS data files and VASP POSCAR (both read E-notation); the CASTEP cell
@@ -2387,14 +2388,16 @@ tabulated EAM file:
 A configuration for --edit or --retarget may not set a key that only a
 refit of an EAM file reads (REFIT_*, N2B, NRHO_BASIS, NF_BASIS,
 OUTPUT_GRID_SCALE, SETFL_OUT, the stage blocks; for --retarget also
-HPOFILEOUT and NUMERIC, which --edit reads): it is an error naming the key
-and what reads it.
+HPOFILEOUT, which --edit reads): it is an error naming the key and what
+reads it.
 For knot-family potentials both modes keep RCUT2B/RCUTMB consistent with
 the largest knot position (the true effective cutoff).
 
 Run `tadah explain refit.<key>` (e.g. `tadah explain refit.refit_mode`) for
-the full description of a key above; RHOFORM and EMBF0 are described on the
-Configuration keys page of the documentation.
+the full description of a key above. RHOFORM, EMBF0 and NUMERIC (keys a
+configuration may set) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the
+potential) are no options of tadah refit: the Configuration File page of the
+documentation describes them.
 """
 examples         = ["tadah refit -c refit.cfg", "tadah refit -c refit.cfg -v 2", "tadah refit --edit pot.tadah --func phi --add 2.75", "tadah refit --edit pot.tadah --func F --remove 0.9", "tadah refit --retarget refit.hpotarget --pct 10 FIXWEIGHT=2", "tadah refit --retarget refit.hpotarget --pct 10 --rcut2b 6.0 --rcutmb 6.0 -o wide.hpotarget", "tadah refit --retarget refit.hpotarget --set 'CGRID2B(3)=2.1,2.4' --in-place"]
 [TASKS.refit.keys]
