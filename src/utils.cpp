@@ -405,9 +405,37 @@ std::vector<size_t> parse_fixindex(const Context& ctx,
     entries.push_back(e);
   });
 
-  // FIXWEIGHT pairs by position: as many indices as values, checked before
-  // any range is expanded.
+  // FIXWEIGHT pairs by position, so each weight is named once and there are
+  // as many indices as values. The indices are expanded in order only while
+  // they name at most n_values distinct weights: past that the count cannot
+  // match, whatever the repeats, and a range past the values is never
+  // expanded. Within that a weight named twice is reported as such, also
+  // when FIXWEIGHT has one value per distinct weight ('13,13,14' with two
+  // values): removing the repeat would make the counts agree.
   const size_t n_values = ctx.size("FIXWEIGHT");
+  std::vector<size_t> out;
+  std::set<size_t> seen;
+  std::optional<size_t> repeated;
+  bool more_weights_than_values = false;
+  for (const IndexEntry& e : entries) {
+    for (size_t i = e.first;; i += e.step) {
+      if (!seen.insert(i).second) {
+        if (!repeated) repeated = i;
+      } else if (seen.size() > n_values) {
+        more_weights_than_values = true;
+        break;
+      } else {
+        out.push_back(i);
+      }
+      if (e.last - i < e.step) break;
+    }
+    if (more_weights_than_values) break;
+  }
+  if (repeated && !more_weights_than_values)
+    throw std::runtime_error(
+        "FIXINDEX " + list + " names weight " + std::to_string(*repeated) +
+        " twice; each FIXWEIGHT value pins one weight (the i-th value the "
+        "weight of the i-th index), so name each weight once.");
   if (count_overflows || count != n_values)
     throw std::runtime_error(
         "FIXINDEX " + list + " has " +
@@ -418,21 +446,7 @@ std::vector<size_t> parse_fixindex(const Context& ctx,
         " but FIXWEIGHT has " + plural(n_values, "value", "values") +
         "; they must pair 1:1 (the i-th FIXWEIGHT value pins the weight of "
         "the i-th FIXINDEX index).");
-
-  // As many indices as FIXWEIGHT values: expanded, each weight named once.
-  std::vector<size_t> out;
-  out.reserve(count);
-  std::set<size_t> seen;
-  for (const IndexEntry& e : entries)
-    for (size_t i = e.first;; i += e.step) {
-      if (!seen.insert(i).second)
-        throw std::runtime_error(
-            "FIXINDEX " + list + " names weight " + std::to_string(i) +
-            " twice; each FIXWEIGHT value pins one weight (the i-th value the "
-            "weight of the i-th index), so name each weight once.");
-      out.push_back(i);
-      if (e.last - i < e.step) break;
-    }
+  // No repeat and count == n_values: every index expanded, once each.
   return out;
 }
 
