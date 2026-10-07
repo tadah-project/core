@@ -1,4 +1,5 @@
 #include <tadah/core/utils.h>
+#include <tadah/core/context.h>
 #include <tadah/core/number_format.h>
 #include <stdexcept>
 #include <set>
@@ -192,8 +193,8 @@ std::string join(const std::vector<std::string>& vec) {
 }
 
 namespace {
-// Shared expansion: subtract before incrementing so a range ending at
-// SIZE_MAX cannot wrap, and a zero stride cannot hang either parser.
+// The expansion of parse_indices_strict: subtract before incrementing so a
+// range ending at SIZE_MAX cannot wrap, and a zero stride cannot hang it.
 void append_index_range(size_t start, size_t end, size_t step,
                         std::vector<size_t>& result, std::set<size_t>& seen,
                         bool& duplicates) {
@@ -245,82 +246,6 @@ std::vector<size_t> parse_indices_strict(const std::string& input) {
   return result;
 }
 
-std::vector<size_t> parse_indices(const std::string& input) {
-  std::vector<size_t> result;
-  std::set<size_t> uniqueNumbers;
-  std::stringstream ss(input);
-  std::string segment;
-  bool hasDuplicates = false;
-
-  while (std::getline(ss, segment, ',')) {
-    segment = trim(segment);
-    size_t dashPos = segment.find('-');
-    size_t colonPos = segment.find(':');
-
-    if (dashPos == std::string::npos) {
-      // Single number
-      if (is_integer(segment)) {
-        size_t number = static_cast<size_t>(std::stoul(segment));
-        if (!uniqueNumbers.insert(number).second) {
-          hasDuplicates = true;
-        } else {
-          result.push_back(number);
-        }
-      } else {
-        std::cerr << "Error: Non-numeric value or incorrect syntax found: " << segment << std::endl;
-      }
-    } else {
-      // Extract range start
-      std::string startStr = trim(segment.substr(0, dashPos));
-      if (!is_integer(startStr)) {
-        std::cerr << "Error: Non-numeric start value or incorrect syntax found: " << startStr << std::endl;
-        continue;
-      }
-      size_t start = static_cast<size_t>(std::stoul(startStr));
-
-      size_t end, step = 1;  // Default step is 1
-
-      if (colonPos != std::string::npos) {
-        std::string endStr = trim(segment.substr(dashPos + 1, colonPos - dashPos - 1));
-        std::string stepStr = trim(segment.substr(colonPos + 1));
-        if (!is_integer(endStr) || !is_integer(stepStr)) {
-          std::cerr << "Error: Non-numeric end or step value or incorrect syntax found." << std::endl;
-          continue;
-        }
-        end = static_cast<size_t>(std::stoul(endStr));
-        step = static_cast<size_t>(std::stoul(stepStr));
-      } else if (dashPos + 1 < segment.size()) {
-        std::string endStr = trim(segment.substr(dashPos + 1));
-        if (!is_integer(endStr)) {
-          std::cerr << "Error: Non-numeric end value or incorrect syntax found: " << endStr << std::endl;
-          continue;
-        }
-        end = static_cast<size_t>(std::stoul(endStr));
-      } else {
-        if (!uniqueNumbers.insert(start).second) {
-          hasDuplicates = true;
-        } else {
-          result.push_back(start);
-        }
-        continue;
-      }
-
-      // Generate numbers in range [start, end] with given step
-      append_index_range(start, end, step, result, uniqueNumbers, hasDuplicates);
-    }
-  }
-
-  if (hasDuplicates) {
-    std::cerr << "Warning: Duplicate indices found and removed." << std::endl;
-  }
-
-  return result;
-}
-std::vector<size_t> parse_indices(const std::vector<std::string>& input) {
-  std::string input_str = join(input);
-  return parse_indices(input_str);
-}
-
 std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values,
                                           size_t total, const std::string& who) {
   return parse_one_based_indices(values, total, who,
@@ -328,10 +253,29 @@ std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values
                                      " structures");
 }
 
-std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& values,
-                                            size_t total, const std::string& who,
-                                            const std::string& counted) {
-  // One list: the values joined, without the spaces around '-' and ':'.
+namespace {
+
+/* One entry of a strict index list ('3', '2-9', '1-9:2'): the indices
+ * first, first + step, ... up to last (first <= last, step >= 1). */
+struct IndexEntry {
+  std::string text;
+  size_t first = 0;
+  size_t last = 0;
+  size_t step = 1;
+};
+
+/* The strict grammar of parse_one_based_indices() and parse_fixindex(): the
+ * values form one list (joined, without the spaces around '-' and ':'),
+ * entries separated by commas or whitespace, each 'i', 'a-b' or 'a-b:step'.
+ * Calls visit(entry) for each entry in the order given, before the next is
+ * read, so a caller's own check of an entry (its bounds) comes in that
+ * order too. An empty entry, a token that is not an index, a descending
+ * range and a step of 0 are refused: "<who>: index '5-2' is a descending
+ * range<usage>". Nothing is expanded. */
+template <typename Visit>
+void for_each_index_entry(const std::vector<std::string>& values,
+                          const std::string& who, const std::string& usage,
+                          Visit&& visit) {
   std::string list;
   {
     const std::string joined = join(values);
@@ -347,13 +291,10 @@ std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& valu
       list += c;
     }
   }
-  const std::string usage = " (use i, a-b or a-b:step, 1-based, separated by commas)";
   auto whole_number = [](const std::string& t, size_t& value) {
     const auto r = std::from_chars(t.data(), t.data() + t.size(), value);
     return !t.empty() && r.ec == std::errc{} && r.ptr == t.data() + t.size();
   };
-  std::vector<size_t> out;
-  std::set<size_t> seen;
   size_t pos = 0;
   while (true) {
     const size_t comma = list.find(',', pos);
@@ -367,37 +308,137 @@ std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& valu
       const auto bad = [&](const std::string& why) {
         return std::runtime_error(who + ": index '" + token + "' " + why + usage);
       };
-      size_t a = 0, b = 0, step = 1;
+      IndexEntry e;
+      e.text = token;
       const size_t dash = token.find('-');
       if (dash == std::string::npos) {
-        if (!whole_number(token, a)) throw bad("is not an index");
-        b = a;
+        if (!whole_number(token, e.first)) throw bad("is not an index");
+        e.last = e.first;
       } else {
         const size_t colon = token.find(':', dash);
-        if (!whole_number(token.substr(0, dash), a) ||
+        if (!whole_number(token.substr(0, dash), e.first) ||
             !whole_number(token.substr(dash + 1, colon == std::string::npos
                                                      ? std::string::npos
-                                                     : colon - dash - 1), b) ||
-            (colon != std::string::npos && !whole_number(token.substr(colon + 1), step)))
+                                                     : colon - dash - 1), e.last) ||
+            (colon != std::string::npos && !whole_number(token.substr(colon + 1), e.step)))
           throw bad("is not an index range");
-        if (a > b) throw bad("is a descending range");
-        if (step == 0) throw bad("has a step of 0");
+        if (e.first > e.last) throw bad("is a descending range");
+        if (e.step == 0) throw bad("has a step of 0");
       }
-      // The bounds first: a range is expanded only within 1 ... total.
-      for (const size_t i : {a, b})
-        if (i == 0 || i > total)
-          throw std::runtime_error(
-              who + ": index " + std::to_string(i) +
-              (token == std::to_string(i) ? "" : " (in '" + token + "')") +
-              " is outside 1-" + std::to_string(total) + " (" + counted + ")");
-      for (size_t i = a;; i += step) {
-        if (seen.insert(i).second) out.push_back(i);
-        if (b - i < step) break;
-      }
+      visit(static_cast<const IndexEntry&>(e));
     }
     if (comma == std::string::npos) break;
     pos = comma + 1;
   }
+}
+
+/* " (in '2-9')" when index i is not the whole entry, "" when it is. */
+std::string in_entry(size_t i, const IndexEntry& e) {
+  return e.text == std::to_string(i) ? "" : " (in '" + e.text + "')";
+}
+
+}  // namespace
+
+std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& values,
+                                            size_t total, const std::string& who,
+                                            const std::string& counted) {
+  const std::string usage = " (use i, a-b or a-b:step, 1-based, separated by commas)";
+  std::vector<size_t> out;
+  std::set<size_t> seen;
+  for_each_index_entry(values, who, usage, [&](const IndexEntry& e) {
+    // The bounds first: a range is expanded only within 1 ... total.
+    for (const size_t i : {e.first, e.last})
+      if (i == 0 || i > total)
+        throw std::runtime_error(who + ": index " + std::to_string(i) +
+                                 in_entry(i, e) + " is outside 1-" +
+                                 std::to_string(total) + " (" + counted + ")");
+    for (size_t i = e.first;; i += e.step) {
+      if (seen.insert(i).second) out.push_back(i);
+      if (e.last - i < e.step) break;
+    }
+  });
+  return out;
+}
+
+std::vector<size_t> parse_fixindex(const Context& ctx,
+                                   std::optional<size_t> n_weights) {
+  const bool has_fi = ctx.has_stored("FIXINDEX");
+  const bool has_fw = ctx.has_stored("FIXWEIGHT");
+  if (has_fi != has_fw)
+    throw std::runtime_error(
+        "FIXINDEX requires FIXWEIGHT (and vice versa). Provide both keys with "
+        "matching lengths; the i-th FIXWEIGHT value pins the weight named by "
+        "the i-th FIXINDEX entry. There is no auto-seeding from WEIGHTS.");
+  if (!has_fi) return {};
+
+  const std::vector<std::string>& values = ctx("FIXINDEX");
+  const std::string list = trim(join(values));
+  const std::string usage =
+      " (FIXINDEX takes 1-based weight indices i, a-b or a-b:step, separated "
+      "by commas or spaces)";
+  auto plural = [](size_t n, const std::string& one, const std::string& many) {
+    return std::to_string(n) + " " + (n == 1 ? one : many);
+  };
+
+  // The entries, each checked against the bounds and counted, not expanded.
+  std::vector<IndexEntry> entries;
+  size_t count = 0;
+  bool count_overflows = false;
+  for_each_index_entry(values, "FIXINDEX", usage, [&](const IndexEntry& e) {
+    for (const size_t i : {e.first, e.last}) {
+      if (n_weights && (i == 0 || i > *n_weights))
+        throw std::runtime_error(
+            "FIXINDEX: index " + std::to_string(i) + in_entry(i, e) +
+            " is outside 1-" + std::to_string(*n_weights) + " (the model has " +
+            plural(*n_weights, "weight", "weights") + ")");
+      if (i == 0)
+        throw std::runtime_error("FIXINDEX: index 0" + in_entry(0, e) +
+                                 " is not a model weight (the weights are "
+                                 "numbered from 1)");
+    }
+    // first >= 1, so this is at most SIZE_MAX.
+    const size_t n = (e.last - e.first) / e.step + 1;
+    if (count_overflows || n > std::numeric_limits<size_t>::max() - count)
+      count_overflows = true;
+    else
+      count += n;
+    entries.push_back(e);
+  });
+
+  // FIXWEIGHT pairs by position, so each weight is named once and there are
+  // as many indices as values. The first n_values + 1 indices are expanded,
+  // in order, and a weight named twice among them is refused as such: so is
+  // every list with a repeat that names no more distinct weights than
+  // FIXWEIGHT has values (n_values + 1 of its indices name at most n_values
+  // weights), '13,13,14' with two values, whose counts would agree without
+  // the repeat, as with three. No range is expanded past them: then the
+  // count is compared.
+  const size_t n_values = ctx.size("FIXWEIGHT");
+  std::vector<size_t> out;
+  std::set<size_t> seen;
+  for (const IndexEntry& e : entries) {
+    for (size_t i = e.first; out.size() <= n_values; i += e.step) {
+      if (!seen.insert(i).second)
+        throw std::runtime_error(
+            "FIXINDEX " + list + " names weight " + std::to_string(i) +
+            " twice; each FIXWEIGHT value pins one weight (the i-th value the "
+            "weight of the i-th index), so name each weight once.");
+      out.push_back(i);
+      if (e.last - i < e.step) break;
+    }
+    if (out.size() > n_values) break;
+  }
+  if (count_overflows || count != n_values)
+    throw std::runtime_error(
+        "FIXINDEX " + list + " has " +
+        (count_overflows
+             ? "more than " + std::to_string(std::numeric_limits<size_t>::max()) +
+                   " indices"
+             : plural(count, "index", "indices")) +
+        " but FIXWEIGHT has " + plural(n_values, "value", "values") +
+        "; they must pair 1:1 (the i-th FIXWEIGHT value pins the weight of "
+        "the i-th FIXINDEX index).");
+  // count == n_values: every index expanded, each weight once.
   return out;
 }
 

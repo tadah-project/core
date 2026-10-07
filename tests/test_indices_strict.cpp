@@ -12,7 +12,6 @@ TEST_CASE("Strict indices expand lists ranges and strides", "[utils][pc_dataset]
     const auto max = std::numeric_limits<std::size_t>::max();
     const auto s = std::to_string(max);
     CHECK(tadah::core::parse_indices_strict(s + "-" + s) == std::vector<std::size_t>{max});
-    CHECK(tadah::core::parse_indices(s + "-" + s) == std::vector<std::size_t>{max});
 }
 
 TEST_CASE("Strict indices reject partial input and unsafe expansion", "[utils][pc_dataset]") {
@@ -22,7 +21,6 @@ TEST_CASE("Strict indices reject partial input and unsafe expansion", "[utils][p
         INFO(input);
         CHECK_THROWS(tadah::core::parse_indices_strict(input));
     }
-    CHECK_THROWS(tadah::core::parse_indices("1-3:0"));
 }
 
 /* Pins: parse_dataset_indices, the 1-based index list of the dataset
