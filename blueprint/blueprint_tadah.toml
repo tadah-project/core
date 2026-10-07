@@ -1286,7 +1286,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_compact_nmax]
 INHERIT = ["TYPES.UINTS"]
-description  = "`tadah refit` compact mode: per-function basis (blip/knot) ceiling for the EXPLORE ladder. Give ONE value (applies to all three functions) or THREE values 'phi rho F' (separate per-function ceilings, e.g. 39 5 27), each an integer from 1; the curve sample grid of at least 4 x NMAX points (REFIT_COMPACT_SAMPLES) must fit 2147483647. Default 40. Only EXPLORE grows the basis; REFINE/FUSE only refine the existing basis."
+description  = "`tadah refit` compact mode: per-function basis (blip/knot) ceiling for the EXPLORE ladder. Give ONE value (applies to all three functions) or THREE values 'phi rho F' (separate per-function ceilings, e.g. 39 5 27), each an integer from 1; the curve sample grid of at least 4 x NMAX points (REFIT_COMPACT_SAMPLES) must fit 2147483647, so the largest is at most 536870911. Default 40. Only EXPLORE grows the basis; REFINE/FUSE only refine the existing basis."
 examples     = ["40", "39 5 27"]
 cli_long_flag  = ""
 cli_short_flag = ""
