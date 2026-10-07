@@ -19,16 +19,42 @@ std::unordered_set<std::string> &reported_keys() {
 }
 } // namespace
 
+namespace {
+/* The innermost IgnoredKeyNoticeCapture of this thread, or nullptr. */
+thread_local IgnoredKeyNoticeCapture *tls_capture = nullptr;
+} // namespace
+
+IgnoredKeyNoticeCapture::IgnoredKeyNoticeCapture() : outer_(tls_capture) {
+  tls_capture = this;
+}
+
+IgnoredKeyNoticeCapture::~IgnoredKeyNoticeCapture() { tls_capture = outer_; }
+
 void report_ignored_key(const std::string &subject, const std::string &reason) {
-  std::cerr << ("WARNING: " + subject + " is ignored: " + reason + "\n");
+  const std::string line = subject + " is ignored: " + reason;
+  if (tls_capture) {
+    tls_capture->add(line);
+    return;
+  }
+  std::cerr << ("WARNING: " + line + "\n");
 }
 
 bool report_ignored_key_once(const std::string &key, const std::string &subject,
                              const std::string &reason) {
+  bool first;
   {
     std::lock_guard<std::mutex> lock(reported_mutex());
-    if (!reported_keys().insert(key).second) return false;
+    first = reported_keys().insert(key).second;
   }
+  // A capture (pair_style tadah's load of a potential) gets each key once
+  // for itself, whatever the process reported before: every LAMMPS
+  // instance writes it to its own log. The capture is this thread's.
+  if (tls_capture) {
+    if (!tls_capture->take_key(key)) return false;
+    report_ignored_key(subject, reason);
+    return true;
+  }
+  if (!first) return false;
   report_ignored_key(subject, reason);
   return true;
 }
