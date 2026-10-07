@@ -781,7 +781,8 @@ record gives a WARNING. The three cell lengths must be given; an angle
 left out is 90 degrees.
 A site whose occupancy is
 not 1 (disorder, a vacancy) is refused, naming it: Tadah has one atom per
-site. A failed AFLOW fetch names the AUID and the service's reason.
+site. A failed fetch from any database (MP, COD, AFLOW, NOMAD) names the ID
+and the service's reason (cut to 300 characters).
 """
 examples     = ["crystal.cif", "crystal1.cif crystal2.cell", "mp-42 crystal.cif"]
 cli_long_flag  = "--structure"
