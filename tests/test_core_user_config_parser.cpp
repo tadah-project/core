@@ -598,8 +598,10 @@ std::string trimmed(const std::string &t) {
  * key again.
  * Before the fix: an example that began with its key was printed with the
  * key twice ("    BETA   BETA 0.0001"), and an example of several lines was
- * printed as one message whose later lines had neither the key nor the
- * indentation ("    CGRID2B   CGRID2B   1.0 2.0" then "CGRID2B   1.5 2.5"). */
+ * printed as one message, whose later lines were the example's own text
+ * without the "    <KEY>   " in front (or the log prefix of a line):
+ * "    CGRID2B   CGRID2B   1.0 2.0" then "CGRID2B   1.5 2.5", and
+ * "  TYPE2B    D2_MIE 11 6 Ti Ti" after "    TYPE2B   TYPE2B    D2_mJoin". */
 TEST_CASE("Config parser: a refused value lists each example once, after "
           "its key", "[config][examples]") {
   std::size_t keys = 0;
