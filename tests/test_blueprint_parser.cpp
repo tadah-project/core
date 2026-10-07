@@ -4,6 +4,9 @@
 #include <iostream>
 #include <unordered_map>
 #include "tadah/core/blueprint_parser.h"
+#include "tadah/core/blueprint_validator.h"
+#include <cctype>
+#include <sstream>
 
 using namespace tadah::core;
 
@@ -207,3 +210,43 @@ TEST_CASE("BlueprintParser::findClosestKey with large distance key", "[findClose
   REQUIRE_FALSE(result.empty());
 }
 
+
+/* Pins: every example of every key of the blueprint is either a value the
+ * key's format accepts (BlueprintValidator on its value_type, as the
+ * configuration parser checks a value) or a configuration line that starts
+ * with the key itself or with its command-line flag, possibly followed by
+ * more lines (the TYPE2B D2_mJoin block). CoreUserConfigParser prints each
+ * example as "<KEY>   <example>" under "Examples:" when it refuses a value,
+ * so an example that is neither shows a line that is not one of the key's.
+ * Before the fix: two examples were neither. SETFL's second was a whole
+ * configuration starting with another key, "INIT2B    true" (the parser
+ * printed "SETFL   INIT2B    true"), and SIGMA's was quoted in backticks,
+ * "`2 1.2 2.2 2.3 3.3`", which its format (INT {DOUBLE}) does not accept. */
+TEST_CASE("Every blueprint example is a value of its key or a line that "
+          "starts with the key",
+          "[BlueprintParser]") {
+  const auto upper = [](std::string t) {
+    for (char &ch : t) ch = static_cast<char>(std::toupper(
+                           static_cast<unsigned char>(ch)));
+    return t;
+  };
+  std::size_t checked = 0;
+  for (const auto &kv : BlueprintParser::getKeysMapRef()) {
+    const BlueprintKey &k = kv.second;
+    if (k.examples.empty()) continue;
+    const BlueprintValidator validator(k.value_type);
+    for (const std::string &example : k.examples) {
+      ++checked;
+      std::istringstream words(example);
+      std::string first;
+      words >> first;
+      const bool line_of_key =
+          upper(first) == kv.first ||
+          (!k.cli_long_flag.empty() && first == k.cli_long_flag) ||
+          (!k.cli_short_flag.empty() && first == k.cli_short_flag);
+      INFO("key " << kv.first << ", example:\n" << example);
+      CHECK((line_of_key || validator.validate(example)));
+    }
+  }
+  CHECK(checked > 200);
+}
