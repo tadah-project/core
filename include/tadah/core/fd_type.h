@@ -67,6 +67,7 @@ public:
 
   template <typename T>
   Vec3d operator*(const T& v2) const {
+    require_vector_size(v2.size());
     Vec3d temp;
     for (size_t k = 0; k < 3; ++k) {
       for (size_t i = 0; i < v2.size(); ++i) {
@@ -86,6 +87,10 @@ public:
   bool isApprox(const fd_type& v1, double EPS) const;
 
   bool operator==(const fd_type& v1) const;
+
+private:
+  void require_same_rows(const fd_type& v2, const char* op) const;
+  void require_vector_size(size_t n) const;
 };
 
 } // namespace core

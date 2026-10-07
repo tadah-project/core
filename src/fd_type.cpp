@@ -1,6 +1,9 @@
 #include <tadah/core/fd_type.h>
 #include <tadah/core/aed_type.h>
 
+#include <stdexcept>
+#include <string>
+
 namespace tadah {
 namespace core {
 
@@ -85,7 +88,23 @@ std::ostream& operator<<(std::ostream& os, const fd_type& v) {
   return os;
 }
 
+void fd_type::require_same_rows(const fd_type& v2, const char* op) const {
+  if (v2.rows_ != rows_)
+    throw std::invalid_argument(std::string("fd_type: operator") + op +
+                                " of fd_types of " + std::to_string(rows_) +
+                                " and " + std::to_string(v2.rows_) + " rows");
+}
+
+void fd_type::require_vector_size(size_t n) const {
+  if (n != rows_)
+    throw std::invalid_argument("fd_type: operator* of an fd_type of " +
+                                std::to_string(rows_) +
+                                " rows and a vector of " + std::to_string(n) +
+                                " values");
+}
+
 fd_type fd_type::operator-(const fd_type& v2) const {
+  require_same_rows(v2, "-");
   fd_type temp(rows_);
   for (size_t i = 0; i < 3 * rows_; ++i) {
     temp.data_[i] = data_[i] - v2.data_[i];
@@ -94,6 +113,7 @@ fd_type fd_type::operator-(const fd_type& v2) const {
 }
 
 fd_type fd_type::operator+(const fd_type& v2) const {
+  require_same_rows(v2, "+");
   fd_type temp(rows_);
   for (size_t i = 0; i < 3 * rows_; ++i) {
     temp.data_[i] = data_[i] + v2.data_[i];
@@ -118,6 +138,7 @@ void fd_type::random(int seed, double lower, double upper) {
 }
 
 bool fd_type::isApprox(const fd_type& v1, double EPS) const {
+  if (v1.rows_ != rows_) return false;  // different shapes are not equal
   for (size_t i = 0; i < 3 * rows_; ++i) {
     if (std::abs(data_[i] - v1.data_[i]) > EPS) return false;
   }
