@@ -1965,8 +1965,11 @@ writes into the potential and `tadah predict --error` reads.
 A SIGMA belongs to the fit that computed it. A fit replaces the SIGMA of
 its configuration (a potential used as the configuration, or the -c
 potential of `tadah hpo`), and a fit that computes none (OALGO 1, 2 or 4,
-M_KRR implementation 2, M_BLR with FIXINDEX pinning every weight, weights
-set from FIXWEIGHT without training data in `tadah hpo`) writes none.
+M_KRR implementation 2, M_BLR or M_KRR with FIXINDEX pinning every weight,
+weights set from FIXWEIGHT without training data in `tadah hpo`) writes
+none. With FIXINDEX pinning some weights, SIGMA is the covariance of
+every weight (N counts them all), and a pinned weight has no variance: its
+row and column are 0.
 `tadah predict --error` refuses a SIGMA that does not hold N×N+1 values,
 naming N and both counts.
 """
