@@ -106,8 +106,10 @@ namespace {
       if (rawLine.empty() || rawLine[0] == '#') {
         continue;
       }
-      // Remove in-line comments
-      rawLine = rawLine.substr(0, rawLine.find('#'));
+      // Remove in-line comments, and the blanks before them: the value of a
+      // key is the text up to the last non-blank character before the '#'
+      // (CONFIG uses it as a path, also in its circular-include check).
+      rawLine = trim(rawLine.substr(0, rawLine.find('#')));
       std::istringstream iss(rawLine);
       std::vector<std::string> tokens;
       {
