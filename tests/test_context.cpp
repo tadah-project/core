@@ -911,9 +911,10 @@ TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
     for (const auto &kv : c.storage_snapshot()) {
       const std::string &key = kv.first;
       if (key == "NUMERIC" || key.find("MAX") != std::string::npos) continue;
-      // SIGMA is deprecated (weight covariance of Tadah! 1.0.0 to 1.6.0):
-      // parsed with a notice and not stored. (Before WCOV replaced it, it
-      // was read back like every other key.)
+      // SIGMA is deprecated (the weight covariance of Tadah! 1.0.0 to
+      // 1.5.0 and the 1.6.0 development builds): parsed with a notice and
+      // not stored. (Before WCOV replaced it, it was read back like every
+      // other key.)
       if (key == "SIGMA") {
         CHECK_FALSE(back.has_stored(key));
         continue;

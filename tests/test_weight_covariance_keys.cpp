@@ -2,9 +2,10 @@
 // covariance of the WEIGHTS (N, then the N x N matrix column-major), and
 // WNOISE, the noise variance of each row type the fit had (E, F, S), both
 // written by an OALGO 3 fit and read by `tadah predict --error`; and SIGMA,
-// the matrix Tadah! 1.0.0 to 1.6.0 wrote instead, now a deprecated key:
-// accepted so that those potentials still load (predict, train, pair_style
-// tadah), with one notice, and never stored.
+// the matrix Tadah! 1.0.0 to 1.5.0 and the 1.6.0 development builds wrote
+// instead, now a deprecated key: accepted so that those potentials still
+// load (predict, train, pair_style tadah), with one notice, and never
+// stored.
 //
 // ctest runs every test case in a process of its own, where no deprecated
 // key has been reported yet; a case counts a notice only when
@@ -92,9 +93,10 @@ std::string refusal(const std::vector<std::string> &lines) {
 
 }  // namespace
 
-/* Pins: a potential with a SIGMA line (as Tadah! 1.0.0 to 1.6.0 wrote for
- * an OALGO 3 fit, here "SIGMA 2 1 0 0 1") parses: one WARNING on standard
- * error, "Deprecated key SIGMA is ignored", naming the transposed formula,
+/* Pins: a potential with a SIGMA line (as Tadah! 1.0.0 to 1.5.0 and the
+ * 1.6.0 development builds wrote for an OALGO 3 fit, here "SIGMA 2 1 0 0
+ * 1") parses: one WARNING on standard error, "Deprecated key SIGMA is
+ * ignored", naming the transposed formula,
  * WCOV and OALGO 3; the key is not stored (has_stored false) and a
  * potential written from the Context has no SIGMA line; the other keys are
  * kept.
