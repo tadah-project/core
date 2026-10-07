@@ -563,10 +563,18 @@ cli_required   = false
 INHERIT = ["TYPES.DOUBLES"]
 description  = "Specifies additional numeric parameters for certain models."
 long_description = """
-Some models require extra parameters. Refer to the model-specific documentation 
-for details. Many models do not need any extra parameters.
+The parameters of the kernel of an M_KRR model, in this order:
+
+- Kern_RBF: sigma, the width of K(b, x) = exp(-r^2 / (2 sigma^2)), r the
+  distance between b and x (gamma = 1/sigma^2);
+- Kern_Polynomial: d gamma c, K(b, x) = (gamma b.x + c)^d (d is read as an
+  integer);
+- Kern_Sigmoid: gamma c, K(b, x) = tanh(gamma b.x + c).
+
+Kern_Linear, Kern_Quadratic, Kern_LQ and the basis functions of M_BLR
+(BF_Linear, BF_Polynomial2) take none.
 """
-examples     = ["MPARAMS 0.1", "MPARAMS 0.1 0.2 0.3"]
+examples     = ["MPARAMS 0.5", "MPARAMS 3 0.5 1.0"]
 
 [ALLOWED_KEYS.MODEL]
 value_type   = ["STRING STRING", "STRING STRING STRING",  "STRING STRING UINT"] 
@@ -578,11 +586,21 @@ MODEL can be any class inheriting from M_Base (e.g., M_KRR, M_BLR). FUNCTION
 must be a valid child class of Function_Base (e.g., Kern_Linear, BF_Linear, 
 BF_Polynomial2). Various combinations (KRR with different kernels, BLR with 
 various basis functions) are possible.
+
+M_KRR takes the kernels Kern_Linear, Kern_RBF, Kern_Polynomial,
+Kern_Quadratic, Kern_LQ and Kern_Sigmoid (their parameters: MPARAMS), and
+M_BLR the basis functions BF_Linear and BF_Polynomial2. The third token of
+M_KRR is its implementation: 1 (the default) fits energies, forces and
+stresses by least squares over the design matrix; 2 fits energies only: it
+solves (K + LAMBDA I) w = t, with K the kernel matrix of the basis vectors
+and t the energy per atom of each drawn structure (0 for e0). Every kernel
+but Kern_Linear works on SBASIS basis vectors (see SBASIS).
 """
 examples     = [
     "MODEL M_BLR BF_Linear",
     "MODEL M_BLR BF_Polynomial2",
-    "MODEL M_KRR Kern_Linear"
+    "MODEL M_KRR Kern_Linear",
+    "MODEL M_KRR Kern_RBF 1"
 ]
 
 [ALLOWED_KEYS.AUDIT]
@@ -679,10 +697,24 @@ examples = ["OALGO 1", "OALGO 1 -1", "OALGO 2", "OALGO 3 1e-10", "OALGO 4"]
 
 [ALLOWED_KEYS.SBASIS]
 INHERIT = ["TYPES.UINT"]
-description = "Number of basis functions for the DesignMatrix."
+description = "Number of basis vectors of a non-linear M_KRR kernel."
 long_description = """
-Many models do not require this. If specified, it sets the number of basis 
-functions used in the design matrix.
+Required by M_KRR with every kernel but Kern_Linear, and ignored by the other
+models. The model is E_i = sum_j w_j K(b_j, x_i) over SBASIS basis vectors
+b_j, one weight each. Column 0 is the bias vector e0 = (1, 0, ..., 0); the
+other SBASIS-1 are drawn from the training data: atomic energy descriptors
+(implementation 1, see MODEL) or the mean descriptors of whole structures
+(implementation 2). SBASIS must be at least 2 and at most the number of
+candidates plus 1 (SBASIS-1 candidates are drawn, each once).
+
+The draw is fixed: a partial Fisher-Yates shuffle of the candidates, in
+the order of the training set, driven by the raw output of std::mt19937_64
+with its default seed (5489). The same training set and SBASIS give the
+same basis on every run and platform, so `tadah train` is reproducible and
+the loss of `tadah hpo` at a given point does not depend on the draw.
+
+`tadah train` writes SBASIS and the basis vectors (BASIS) into the
+potential with the weights.
 """
 examples = ["10", "102"]
 
@@ -704,6 +736,15 @@ long_description = """
 If N=0, no regularization. If N>0, λ is set to that value. If N<0, an evidence 
 approximation is used to estimate λ. For LAMBDA 0, you can provide a second 
 number (double) that sets the effective rank threshold (default 1e-8).
+
+The penalty (λ times the sum of the squared weights) leaves out the
+weights of the model's intercept columns, the columns that are the same
+for every atom: the bias columns of the descriptor for BF_Linear and
+Kern_Linear (BIAS true with ATOM), column 0 (bias x bias) for BF_Polynomial2
+and column 0 (the bias vector e0) for Kern_Quadratic, Kern_LQ,
+Kern_Polynomial and Kern_Sigmoid, both with BIAS true and ATOM; Kern_RBF has
+none. OALGO 3 penalises every column alike and refuses λ != 0 for a model
+with an intercept column.
 """
 examples = ["LAMBDA -1", "LAMBDA 1e-4", "LAMBDA 0", "LAMBDA 0 1e-12"]
 
@@ -1871,8 +1912,13 @@ Obtained after standardizing the columns of the DesignMatrix (see NORM).
 INHERIT = ["TYPES.DOUBLES"]
 description = "Basis vectors for non-linear Kernel Ridge Regression."
 long_description = """
-They represent the features or functions used to map input data into a 
-higher-dimensional feature space.
+The SBASIS basis vectors of a trained non-linear M_KRR potential, one after
+another, each with the descriptor's length (SBASIS x descriptor size
+values); `tadah train` writes them. A potential of a non-linear kernel with
+WEIGHTS must carry SBASIS and BASIS, with one weight per basis vector:
+`tadah predict`, `tadah hpo` and `pair_style tadah` refuse it otherwise,
+and refuse a BASIS without SBASIS, a BASIS whose length is not a multiple
+of SBASIS, and basis vectors whose length is not the descriptor's.
 """
 
 [ALLOWED_KEYS.MPIWPCKG]
