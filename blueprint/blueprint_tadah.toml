@@ -735,8 +735,11 @@ function phi(r) and DM_EAM the density rho(r) and the embedding function
 F(rho), so one SETFL serves the usual D2_EAM + DM_EAM pair. Each descriptor
 takes one parameter on its TYPE line, a placeholder written 0
 (TYPE2B D2_EAM 0 Ta Ta, TYPEMB DM_EAM 0 Ta Ta); another value has no effect
-and is reported once on standard error. The file's cutoff is used in place
-of RCUT2B and RCUTMB: set them to it.
+and is reported once on standard error. RCUT2B and RCUTMB must be the
+file's cutoff (in a D2_mJoin or DM_mJoin, the EAM descriptor's own value):
+the file defines its functions up to it. Another value is refused, naming
+both. A potential written with NUMERIC below 17 records the cutoff rounded,
+and is refused until it is set to the file's cutoff.
 
 A configuration with both descriptors and one setfl file::
 
