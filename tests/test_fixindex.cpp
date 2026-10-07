@@ -148,22 +148,28 @@ TEST_CASE("parse_fixindex: a refusal names the FIXINDEX text",
   }
 }
 
-/* Pins: a weight named twice is refused as such ("FIXINDEX 13,13,14 names
- * weight 13 twice; ...", the first weight named again) whenever the list
- * names no more distinct weights than FIXWEIGHT has values: with one
- * FIXWEIGHT value per distinct weight, the configuration an earlier
- * version accepted by removing the repeat ('13,13,14' with two values,
- * '1,1' with one, '1-3,2' with three, also with a weight count), as with
- * one value per index. A list that names more distinct weights than
- * FIXWEIGHT has values is a count mismatch whatever its repeats ('1,2,3,1'
- * and '1,1,2,3' with two values: "has 4 indices but FIXWEIGHT has 2
- * values"), also with a range past the values after the repeat
- * ('1,2,1-4000000000', refused at once).
+/* Pins: a weight named twice among the first n + 1 indices (n the number
+ * of FIXWEIGHT values, in declaration order) is refused as such ("FIXINDEX
+ * 13,13,14 names weight 13 twice; ...", the first weight named again):
+ * so every list with a repeat that names no more distinct weights than
+ * FIXWEIGHT has values, the configuration an earlier version accepted by
+ * removing the repeat ('13,13,14' with two values, '1,1' with one, '1-3,2'
+ * with three, also with a weight count), as with one value per index; and
+ * '1,1,2,3' and '1,2,1-4000000000' with two values, whose repeat comes
+ * among their first three indices. A list whose first n + 1 indices name
+ * n + 1 weights is a count mismatch whatever its later repeats ('1,2,3,1'
+ * with two values: "has 4 indices but FIXWEIGHT has 2 values"), also with
+ * a range past the values ('1,2,3-4000000000' and '1-4000000000,1',
+ * refused at once).
  * Before the fix: the count was compared first, so '13,13,14' with two
  * values was refused as "FIXINDEX 13,13,14 has 3 indices but FIXWEIGHT has
  * 2 values" (this file pinned that), '1,1' with one as "has 2 indices but
  * FIXWEIGHT has 1 value" and '1-3,2' with three as "has 4 indices but
- * FIXWEIGHT has 3 values"; the count cases pass as well (pins). */
+ * FIXWEIGHT has 3 values". The first version of the fix named a repeat
+ * only when the list named no more distinct weights than FIXWEIGHT has
+ * values, expanding until it named more, so '1,1,2,3' and
+ * '1,2,1-4000000000' with two values were count mismatches (this case
+ * pinned that); the other count cases pass as well (pins). */
 TEST_CASE("parse_fixindex: a weight named twice is named before the count",
           "[utils][indices][fixindex]") {
   const std::string pair =
@@ -183,12 +189,16 @@ TEST_CASE("parse_fixindex: a weight named twice is named before the count",
       {"13,13,14", 2, 14, "FIXINDEX 13,13,14 names weight 13" + once},
       {"1,1", 1, std::nullopt, "FIXINDEX 1,1 names weight 1" + once},
       {"1-3,2", 3, std::nullopt, "FIXINDEX 1-3,2 names weight 2" + once},
+      {"1,1,2,3", 2, std::nullopt, "FIXINDEX 1,1,2,3 names weight 1" + once},
+      {"1,2,1-4000000000", 2, std::nullopt,
+       "FIXINDEX 1,2,1-4000000000 names weight 1" + once},
       {"1,2,3,1", 2, std::nullopt,
        "FIXINDEX 1,2,3,1 has 4 indices but FIXWEIGHT has 2 values" + pair},
-      {"1,1,2,3", 2, std::nullopt,
-       "FIXINDEX 1,1,2,3 has 4 indices but FIXWEIGHT has 2 values" + pair},
-      {"1,2,1-4000000000", 2, std::nullopt,
-       "FIXINDEX 1,2,1-4000000000 has 4000000002 indices but FIXWEIGHT has 2 "
+      {"1,2,3-4000000000", 2, std::nullopt,
+       "FIXINDEX 1,2,3-4000000000 has 4000000000 indices but FIXWEIGHT has 2 "
+       "values" + pair},
+      {"1-4000000000,1", 2, std::nullopt,
+       "FIXINDEX 1-4000000000,1 has 4000000001 indices but FIXWEIGHT has 2 "
        "values" + pair},
   };
   for (const Case& c : cases) {
