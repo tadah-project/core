@@ -190,6 +190,18 @@ Absolute or relative path to the Tadah! database file(s). The relative path
 is interpreted relative to the current working directory. Multiple dataset 
 paths can be provided either as space-separated tokens or by repeating 
 this key.
+
+Each entry is a dataset. A training configuration (tadah train, tadah hpo)
+that lists one file twice (the same path, two spellings of it, or a link to
+it) is refused, naming both entries: its structures would be fitted twice.
+To give a dataset more weight, use WDBFILE.
+
+A potential records no DBFILE (tadah train, tadah hpo and tadah refit write
+none), whichever the model: to retrain one, add the DBFILE of the retrain
+to a copy of it (`tadah train -c pot.tadah` with a DBFILE line). An M_BLR
+potential written by Tadah! 1.5.x or earlier, or a 1.6.0 development build,
+records the DBFILE it was trained on (tadah predict and pair_style tadah do
+not read it): remove that line before adding the DBFILE of a retrain.
 """
 examples     = ["/path/to/dbfile", "/path/to/dbfile1 /path/to/dbfile2"]
 cli_long_flag  = "--dbfile"
@@ -607,7 +619,13 @@ stresses by least squares over the design matrix; 2 fits energies only: it
 solves (K + LAMBDA I) w = t, with K the kernel matrix of the basis vectors
 and t the energy per atom of each drawn structure (0 for the intercept
 vectors), every weight at once, so it refuses FIXINDEX and FIXWEIGHT.
-Every kernel but Kern_Linear works on SBASIS basis vectors (see SBASIS).
+Every kernel but Kern_Linear works on SBASIS basis vectors (see SBASIS), and
+Kern_Linear does with implementation 2, whose solve needs them: its weights
+are then the descriptor weights of the basis vectors (sum_j w_j b_j, the
+same model, as the kernel is linear), DSIZE of them and no BASIS, as with
+implementation 1 (before 1.6.0 they were the SBASIS coefficients w, which
+tadah predict and pair_style tadah evaluated as descriptor weights, so the
+energies were wrong).
 """
 examples     = [
     "M_BLR BF_Linear",
@@ -712,8 +730,9 @@ examples = ["1", "1 -1", "2", "3 1e-10", "4"]
 INHERIT = ["TYPES.UINT"]
 description = "Number of basis vectors of a non-linear M_KRR kernel."
 long_description = """
-Required by M_KRR with every kernel but Kern_Linear, and ignored by the other
-models. The model is E_i = sum_j w_j K(b_j, x_i) over SBASIS basis vectors
+Required by M_KRR with every kernel but Kern_Linear, and by M_KRR Kern_Linear
+implementation 2 (see MODEL), and ignored by the other models. The model is
+E_i = sum_j w_j K(b_j, x_i) over SBASIS basis vectors
 b_j, one weight each. The first n columns are the intercept ("bias")
 vectors e_0 .. e_(n-1) (e_k is 1 in component k, 0 elsewhere): with BIAS
 true one per ATOM species, n = size(ATOM); else n = 1, the bias vector
@@ -730,7 +749,8 @@ same basis on every run and platform, so `tadah train` is reproducible and
 the loss of `tadah hpo` at a given point does not depend on the draw.
 
 `tadah train` writes SBASIS and the basis vectors (BASIS) into the
-potential with the weights. A fit draws its basis anew: the BASIS of a
+potential with the weights (Kern_Linear: SBASIS alone, its weights being
+descriptor weights). A fit draws its basis anew: the BASIS of a
 potential used as a training configuration is not read, so it may be
 retrained with another SBASIS. SBASIS is an integer. `tadah hpo` refuses an
 SBASIS below n+1 at startup, and `OPTIM SBASIS` at its line.
@@ -785,7 +805,11 @@ INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
 description = "Weight precision hyper-parameter."
 long_description = """
-This is the starting guess for the evidence approximation algorithm. 
+This is the starting guess for the evidence approximation algorithm
+(LAMBDA -1). The fit replaces it with the value the approximation found
+(LAMBDA = ALPHA/BETA), which the potential records, M_BLR and M_KRR alike
+(M_KRR potentials did not record it before 1.6.0), so `tadah train -c
+pot.tadah` starts the approximation from it.
 """
 examples = ["0.23"]
 
@@ -794,7 +818,11 @@ INHERIT = ["TYPES.DOUBLE"]
 default_value = ["1.0"]
 description = "Noise precision hyper-parameter."
 long_description = """
-This is the starting guess for the evidence approximation algorithm.
+This is the starting guess for the evidence approximation algorithm
+(LAMBDA -1). The fit replaces it with the value the approximation found
+(LAMBDA = ALPHA/BETA), which the potential records, M_BLR and M_KRR alike
+(M_KRR potentials did not record it before 1.6.0), so `tadah train -c
+pot.tadah` starts the approximation from it.
 """
 examples = ["0.0001"]
 
@@ -2009,7 +2037,8 @@ true) is refused when it predicts (tadah predict, pair_style tadah). WEIGHTS
 in a training configuration are replaced by the fit and not read: tadah train
 and tadah hpo build the model to be fitted without them (and without BASIS,
 NMEAN, NSTDEV and SIGMA), so a potential retrains from its own file
-(`tadah train -c pot.tadah` with a DBFILE), also with another SBASIS.
+(`tadah train -c pot.tadah` with the DBFILE of the retrain added: a
+potential records none), also with another SBASIS.
 """
 examples = ["0.12 1.2 0.3"]
 
