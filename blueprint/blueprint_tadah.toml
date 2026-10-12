@@ -2794,6 +2794,17 @@ your priorities for accuracy, speed, and other metrics. This flexible
 workflow enables users to define search space constraints, assign weights
 to different objectives, and tune performance for a wide range of
 applications.
+
+The OPTIMIZER block of the hpotarget file names its optimiser with LIB and
+ALGO: `tadah explain ALGO` lists the optimisers of this build by library
+(and those it refuses), and `tadah explain <LIB>:<ALGO>`, or `tadah explain
+<ALGO>`, prints the stops, PARAM keys and STEP use of one.
+
+Ctrl-C (SIGINT) or SIGTERM stops the run once the evaluations in progress
+finish, writing its results, and tadah says so on standard error at once. A
+second Ctrl-C, or a second SIGTERM, ends it at once, as SIGKILL would:
+best_pot.tadah keeps the last best it saved, and the history files can lack
+the rows still queued.
 """
 examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
 [TASKS.hpo.keys]
@@ -3338,15 +3349,15 @@ cli_needs = ["range"]
 # work in progress
 [TASKS.explain]
 description      = "Explain a tadah command, option or configuration key in more detail."
-long_description      = "This is a help command that provides detailed information about a specific command, option or configuration key of the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. Every name is read in any letter case. A name that is no command, subcommand or option of its command is looked up among the configuration keys, so `tadah explain SETFL` and `tadah explain refit.rhoform` describe keys that no command has as an option; a command's own subcommand or option comes first (`tadah explain data.MERGE` is the merge subcommand, not the MERGE key). A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. A name that is none of these is an error naming what was not found."
-examples         = ["tadah explain train", "tadah explain train.verbose", "tadah explain data.split.even", "tadah explain SETFL"]
+long_description      = "This is a help command that provides detailed information about a specific command, option or configuration key of the Tadah! software. It is useful for users who want to understand the purpose and usage of a particular command or option. Every name is read in any letter case. A name that is no command, subcommand or option of its command is looked up among the configuration keys, so `tadah explain SETFL` and `tadah explain refit.rhoform` describe keys that no command has as an option; a command's own subcommand or option comes first (`tadah explain data.MERGE` is the merge subcommand, not the MERGE key). A single name that is neither may name an optimiser of `tadah hpo` (in a tadah built with HPO): `tadah explain ALGO` (or LIB) lists the optimisers that an hpotarget's LIB and ALGO can name, and `tadah explain <LIB>:<ALGO>` (or the ALGO alone, `tadah explain LD_LBFGS`) prints one's stops, PARAM keys and STEP use, or why it is refused. A long description is printed as text: a paragraph that introduces a layout ends with ':' and the layout follows it, indented. A name that is none of these is an error naming what was not found."
+examples         = ["tadah explain train", "tadah explain train.verbose", "tadah explain data.split.even", "tadah explain SETFL", "tadah explain ALGO", "tadah explain NLOPT:LN_BOBYQA"]
 
 [TASKS.explain.keys]
 INHERIT = ["ALLOWED_KEYS.option"]
 [TASKS.explain.keys.option]
 description = "Command, option or configuration key to explain, in a dot separated format."
-long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'). Each part is read in any letter case."
-value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>", "<KEY>"]
+long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, to explain the 'verbose' option of the 'train' command, you would use 'train.verbose'. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'). A single name may also be ALGO, LIB or an optimiser of `tadah hpo`, '<LIB>:<ALGO>' or the ALGO alone ('NLOPT:LN_BOBYQA', 'LD_LBFGS'). Each part is read in any letter case."
+value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>", "<KEY>", "ALGO", "<LIB>:<ALGO>"]
 cli_required = true
 examples = ["tadah explain train.task", "tadah explain data.split.even"]
 
