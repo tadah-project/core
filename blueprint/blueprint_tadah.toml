@@ -137,6 +137,9 @@ long_description = """
 Verbosity level. 0: ERROR, 1: WARNING, 2: INFO. The verbosity level controls 
 the amount of information printed during execution. Higher levels provide 
 more detailed output.
+
+A setting of the run, not of the model: no potential records it (tadah
+train, tadah hpo and tadah refit write none).
 """
 examples     = ["2"]
 default_value = ["1"]
@@ -209,11 +212,14 @@ this key.
 Each entry is a dataset. A training configuration (tadah train, tadah hpo)
 that lists one file twice (the same path, two spellings of it, or a link to
 it) is refused, naming both entries: its structures would be fitted twice.
-To give a dataset more weight, use WDBFILE.
+To give a dataset more weight, use WDBFILE. The validation file of tadah hpo
+(VALIDATION) that lists one file twice is refused likewise.
 
 A potential records no DBFILE (tadah train, tadah hpo and tadah refit write
 none), whichever the model: to retrain one, add the DBFILE of the retrain
-to a copy of it (`tadah train -c pot.tadah` with a DBFILE line). An M_BLR
+to a copy of it (`tadah train -c pot.tadah` with a DBFILE line). tadah train
+refuses a configuration without DBFILE, saying so; tadah hpo trains without
+one only when FIXINDEX/FIXWEIGHT pin every weight. An M_BLR
 potential written by Tadah! 1.5.x or earlier, or a 1.6.0 development build,
 records the DBFILE it was trained on (tadah predict and pair_style tadah do
 not read it): remove that line before adding the DBFILE of a retrain.
@@ -941,6 +947,12 @@ cli_required     = false
 INHERIT = ["TYPES.STRING"]
 value_format = ["<file>"]
 description  = "HPO target file."
+long_description = """
+The hpotarget file: the OPTIMIZER block, loss terms and OPTIM search space
+of a `tadah hpo` run (`tadah analysis check_bounds` reads it too). An input
+of the run: no potential records it (best_pot.tadah and the DUMP and BDUMP
+archives have no HPOTARGET line; the journal, hpo_run.log, names the file).
+"""
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
 cli_short_flag = ""
@@ -957,7 +969,20 @@ cli_required     = false
 
 [ALLOWED_KEYS.validation]
 INHERIT = ["TYPES.STRINGS"]
-description  = "Validation dataset file(s)."
+description  = "The validation configuration file of `tadah hpo`: its DBFILE lines list the validation datasets."
+long_description = """
+One configuration file (a second value is refused, naming both), whose
+DBFILE lines are the validation datasets, in the order the indexed PC_ERMSE
+(i) and PC_FRMSE (i) lines number them; it may also hold EFILTER and FFILTER
+for the validation set, and refuses FORCE and STRESS. Each DBFILE entry is a
+dataset: one file listed twice (the same path, two spellings of it, or a link
+to it) is refused, naming both entries, since every validation metric
+averages over the validation datasets.
+
+An input of the run: no potential records it (best_pot.tadah and the DUMP and
+BDUMP archives have no VALIDATION line; the journal names the file, and the
+header of best_pot.tadah the validation datasets).
+"""
 examples     = ["valid.tadah"]
 cli_long_flag  = "--validation"
 cli_short_flag = ""
