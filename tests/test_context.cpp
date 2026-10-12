@@ -1136,8 +1136,8 @@ TEST_CASE("Context integer reads take exact integers in any spelling and "
  * ("1e39" for get<float>). A bool read takes "true" or "false" whole
  * ("truex" is refused). A configuration line of 2048 characters or more
  * with comma-separated numbers is refused by the parser, naming the
- * separator (the validator's numeric shortcut splits a line at blanks, as
- * the parser does), and such a token stored without the parser
+ * separator (the validator splits a line at blanks, as the parser does),
+ * and such a token stored without the parser
  * (storage_update) is refused when read.
  * Before the fix: the read took the longest numeric prefix the stream
  * read and ignored the rest: "1.5abc", "1.5.2", "0x10" and "1.0,2.0" gave
