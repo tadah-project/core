@@ -436,3 +436,23 @@ TEST_CASE("resolve_pot_digits is non-inserting and reads NUMERIC",
     CHECK(pot_digits_warning(PotDigits{17, true}).empty());
   }
 }
+
+/* Pins: the NUMERIC warning (NUMERIC 6) names the keys whose numbers are
+ * written exactly whatever NUMERIC is, the cutoff and grid keys a load checks
+ * exactly, in alphabetical order: '(integers are written exactly, and so are
+ * the numbers of CGRID2B, CGRIDMB, RCUT2B, RCUTMB, SGRID2B and SGRIDMB, which
+ * a load checks exactly)', and says that the other values do not round-trip.
+ * Before the fix: it said that NUMERIC limits every non-integer number
+ * ('(integers are written exactly): values do not round-trip exactly'), and
+ * the cutoffs and grids were rounded too. */
+TEST_CASE("pot_digits_warning names the keys written exactly",
+          "[number_format][exact_in_potential]") {
+  const std::string w = pot_digits_warning(PotDigits{6, true});
+  INFO(w);
+  CHECK(w.find("NUMERIC 6 limits every non-integer number of the "
+               "potential's key/value lines to 6 significant digits "
+               "(integers are written exactly, and so are the numbers of "
+               "CGRID2B, CGRIDMB, RCUT2B, RCUTMB, SGRID2B and SGRIDMB, which "
+               "a load checks exactly): the other values do not round-trip "
+               "exactly") != std::string::npos);
+}

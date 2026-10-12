@@ -348,9 +348,13 @@ public:
    * Same layout as operator<<, except that NUMERIC is never written and
    * every non-integer decimal literal of a key whose blueprint value_type
    * contains DOUBLE is re-rendered with @p sig_digits significant digits
-   * ("%.{N}g"; 17 or more round-trip every double exactly). Integer
-   * literals, strings, grid generator names (LIN/GEOM), bools, index
-   * patterns and inf/nan are written verbatim.
+   * ("%.{N}g"; 17 or more round-trip every double exactly). Below 17 the
+   * literals of a key the blueprint marks exact_in_potential (RCUT2B,
+   * RCUTMB, CGRID2B, CGRIDMB, SGRID2B, SGRIDMB: a load checks them exactly)
+   * are written as the shortest text that reads back as the same double
+   * instead (reformat_double_token_exact()). Integer literals, strings,
+   * grid generator names (LIN/GEOM), bools, index patterns and inf/nan are
+   * written verbatim.
    *
    * @param os Output stream.
    * @param sig_digits Significant digits, clamped to [1, kMaxSigDigits];
@@ -549,7 +553,8 @@ private:
    *
    * With @p potential false every token is written verbatim (operator<<).
    * With @p potential true NUMERIC is skipped and DOUBLE-typed decimal
-   * literals are re-rendered with @p sig_digits significant digits.
+   * literals are re-rendered with @p sig_digits significant digits, those
+   * of an exact_in_potential key exactly (see write_potential()).
    */
   void print_NoLock(std::ostream &os, bool potential, int sig_digits) const;
 

@@ -15,7 +15,11 @@
  *  2. Potential and dataset files follow NUMERIC as SIGNIFICANT digits
  *     (printf %.{N}g). The default (kPotDigitsDefault = 18) is bit-exact
  *     for every double (17 significant digits always suffice). A smaller
- *     explicit NUMERIC is honoured, with a warning (pot_digits_warning()).
+ *     explicit NUMERIC is honoured, with a warning (pot_digits_warning()),
+ *     except for the keys a potential's load checks exactly (the blueprint's
+ *     exact_in_potential: the cutoffs and radial grids), whose numbers a
+ *     potential records exactly whatever NUMERIC is
+ *     (reformat_double_token_exact()).
  *     Loaded values are never limited by NUMERIC, and every TADAH reader
  *     of a file TADAH writes -- potential, configuration, checkpoint,
  *     dataset, VASP POSCAR -- accepts what the writers produce
@@ -28,6 +32,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace tadah {
 namespace core {
@@ -174,6 +179,25 @@ std::size_t reformat_double_token(std::string_view tok, int digits,
                                   char *buf, std::size_t cap);
 
 /**
+ * @brief The exact counterpart of reformat_double_token(): writes a
+ * non-integer decimal literal @p tok as the shortest text that reads back
+ * as the same double (format_roundtrip()) into @p buf and returns its
+ * length, or returns 0 when the token must be written verbatim (the tokens
+ * reformat_double_token() leaves verbatim). @p cap must be at least
+ * kReformatBufferSize. Context::write_potential writes the keys the
+ * blueprint marks `exact_in_potential` with it below kRoundTripDigits.
+ */
+std::size_t reformat_double_token_exact(std::string_view tok, char *buf,
+                                        std::size_t cap);
+
+/**
+ * @brief The ALLOWED_KEYS keys whose numbers a potential file records
+ * exactly whatever NUMERIC is (BlueprintKey::exact_in_potential), in
+ * alphabetical order: CGRID2B, CGRIDMB, RCUT2B, RCUTMB, SGRID2B, SGRIDMB.
+ */
+std::vector<std::string> exact_in_potential_keys();
+
+/**
  * @brief Precision for numbers written into a potential file.
  *
  * `explicit_` is true iff the Context STORES a NUMERIC value (user config,
@@ -199,7 +223,9 @@ PotDigits resolve_pot_digits(const Context &ctx);
  * empty unless `pd.explicit_ && pd.digits < kRoundTripDigits`.
  *
  * Covers the potential's key/value lines (integer literals are written
- * exactly; '#' comment headers are annotations NUMERIC does not govern).
+ * exactly, and so are the numbers of the keys exact_in_potential_keys()
+ * names, which the text lists; '#' comment headers are annotations NUMERIC
+ * does not govern).
  */
 std::string pot_digits_warning(const PotDigits &pd);
 
