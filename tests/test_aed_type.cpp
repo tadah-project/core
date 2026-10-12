@@ -404,8 +404,10 @@ TEST_CASE("aed_type: iteration visits the values through the stride",
  * through the stride and frees the buffer; a null buffer for size > 0
  * cannot hold them and is refused (std::invalid_argument naming the size
  * and the stride); a null buffer of no values is an empty owner.
- * Before the fix: aed_type(nullptr, 3, 1, true) was constructed (data()
- * null, size() 3), and its first read dereferenced null. */
+ * Before the fix: aed_type(nullptr, 3, 2, true) was constructed without
+ * an error (data() null, size() 3), so the message check failed against an
+ * empty string; the owner checks and the null buffer of no values passed
+ * as well (a pin of the buffer contract). */
 TEST_CASE("aed_type: the adopting constructor owns a malloc'ed buffer of "
           "size * stride values", "[aed_type]") {
   double *buf = static_cast<double *>(malloc(3 * 2 * sizeof(double)));

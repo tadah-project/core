@@ -639,9 +639,14 @@ TEST_CASE("Long numeric lines: fast path accepts underflow, rejects overflow",
  * and refuses a '+' between two entries ('13+14'), an empty entry ('1,,2')
  * and a leading or trailing comma.
  * Before the fix: the elements of a repeated group were joined by the class
- * [,\s+], so every comma and '+' form above was accepted (and '13+14'), and
+ * [,\s+], so these were accepted: every {DOUBLE}, {INT}, {UINT} and {BOOL}
+ * comma and '+' form above, the three {STRING INT DOUBLE DOUBLE} forms,
+ * 'INT {DOUBLE}' '3 1.0,2.0' and {INDEX_PATTERN} '13+14' (19 checks), and
  * the parser stored '0.1,0.2' as one value, refused when read
- * ('Conversion failed for key=..., value="0.1,0.2"'). */
+ * ('Conversion failed for key=..., value="0.1,0.2"'). The other refusals
+ * ({STRING} '1,2' and '1+2', 'INT {DOUBLE}' '3,1.0 2.0', {INDEX_PATTERN}
+ * '1,,2', '1,3,', ',1' and '1, ,2') and every valid form passed as well (a
+ * pin). */
 TEST_CASE("Blueprint lists are separated by blanks, as the parser splits a "
           "line",
           "[blueprint][separators]") {
