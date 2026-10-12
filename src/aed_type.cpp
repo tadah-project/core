@@ -43,15 +43,16 @@ aed_type& aed_type::operator=(const aed_type& other) {
         assign_to_view(other);
         return *this;
     }
+    // The copy is made before the old buffer is freed: `other` may be a
+    // view of this owner's values.
+    double* const copy = compact_copy(other.data_, other.size_, other.stride_);
     if (allocated_) {
         free(data_);
     }
+    data_ = copy;
     size_ = other.size_;
-    stride_ = other.stride_;
+    stride_ = 1;
     allocated_ = true;
-    data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-    if (size_ * stride_ > 0)
-        std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
     return *this;
 }
 

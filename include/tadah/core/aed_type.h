@@ -25,6 +25,13 @@ namespace core {
  * another size. An assignment to an owning (or default-constructed)
  * aed_type replaces its values. Moving from a view copies its values (a
  * view owns nothing to give) and leaves it as it is.
+ *
+ * A copy (the copy constructor, an assignment into an owner, a move from
+ * a view, and the const double* constructor) is an owner of the size()
+ * values one after another (stride 1), read through the source's stride:
+ * a strided source (Matrix::row, size() values rows() apart) holds only
+ * the values it views, so a copy of size() * stride doubles from its first
+ * value would read past them.
  */
 class aed_type {
   double *data_ = nullptr;
@@ -35,6 +42,18 @@ class aed_type {
 
   // The values of `other` into this view; sizes must match.
   void assign_to_view(const aed_type& other);
+
+  // A new (malloc'ed) buffer of the `n` values `stride` apart in `src`,
+  // one after another.
+  static double* compact_copy(const double* src, size_t n, size_t stride) {
+    double* out = static_cast<double*>(malloc(n * sizeof(double)));
+    if (stride == 1) {
+      if (n > 0) std::memcpy(out, src, n * sizeof(double));
+    } else {
+      for (size_t i = 0; i < n; ++i) out[i] = src[i * stride];
+    }
+    return out;
+  }
 
 public:
 
@@ -56,11 +75,11 @@ public:
     std::fill(data_, data_ + s * n, 0.0);
   }
 
+  /// An owning copy of @p size values of @p arr, @p stride apart (stride
+  /// 1 in the copy).
   inline aed_type(const double* arr, size_t size, size_t stride = 1)
-  : size_(size), stride_(stride), allocated_(true) {
-    data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-    std::memcpy(data_, arr, size_ * stride_ * sizeof(double));
-  }
+  : data_(compact_copy(arr, size, stride)), size_(size), stride_(1),
+    allocated_(true) {}
 
   /// A view of @p size values of @p arr, @p stride apart (allocated
   /// false), or, with allocated true, an owner of the malloc'ed @p arr.
@@ -68,23 +87,19 @@ public:
   : data_(arr), size_(size), stride_(stride), allocated_(allocated),
     view_(!allocated) {}
 
-  /// An owning copy, also of a view.
+  /// An owning copy (stride 1), also of a view.
   inline aed_type(const aed_type& other)
-  : size_(other.size_), stride_(other.stride_), allocated_(true) {
-    data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-    if (size_ * stride_ > 0)
-      std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
-  }
+  : data_(compact_copy(other.data_, other.size_, other.stride_)),
+    size_(other.size_), stride_(1), allocated_(true) {}
 
   /// Takes the other's buffer, leaving it empty; from a view, an owning
-  /// copy (the view keeps viewing its storage).
+  /// copy (stride 1; the view keeps viewing its storage).
   inline aed_type(aed_type&& other) noexcept
   : data_(other.data_), size_(other.size_), stride_(other.stride_), allocated_(other.allocated_) {
     if (other.view_) {
       allocated_ = true;
-      data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-      if (size_ * stride_ > 0)
-        std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
+      stride_ = 1;
+      data_ = compact_copy(other.data_, size_, other.stride_);
       return;
     }
     other.data_ = nullptr;
@@ -99,10 +114,11 @@ public:
   }
 
   /// Into a view: the other's values written through (sizes must match,
-  /// std::invalid_argument otherwise); into an owner: an owning copy.
+  /// std::invalid_argument otherwise); into an owner: an owning copy
+  /// (stride 1), also of a view of the owner's own values.
   aed_type& operator=(const aed_type& other);
   /// Into a view: as the copy assignment. Into an owner: takes the
-  /// other's buffer (an owning copy of a view), leaving it empty.
+  /// other's buffer (an owning copy of a view, stride 1), leaving it empty.
   aed_type& operator=(aed_type&& other);
 
   /// Makes this aed_type a view of @p size values of @p data, @p stride
