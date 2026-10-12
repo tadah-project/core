@@ -12,6 +12,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <atomic>
 #include <thread>
@@ -899,8 +900,19 @@ TEST_CASE("Context write_potential: same layout as operator<<",
   }
 }
 
+/* Pins: a potential written at 17, 18 and 12 significant digits parses back
+ * (CoreUserConfigParser) with every key but NUMERIC (never written) and
+ * SIGMA (deprecated, not stored); integers and names verbatim; at 17 and 18
+ * every number bit-exact; at 12 the numbers of the cutoff and grid keys
+ * (RCUT2B, RCUTMB, CGRID2B, CGRIDMB, SGRID2B, SGRIDMB) bit-exact and every
+ * other number exactly its %.12g rounding.
+ * Before the fix: at 12 digits the cutoff and grid keys were rounded like
+ * every other number (SGRID2B 0.123456789012345678 read back as
+ * 0.123456789012). */
 TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
   const Context c = make_pot_fixture();
+  const std::set<std::string> exact_keys = {"CGRID2B", "CGRIDMB", "RCUT2B",
+                                            "RCUTMB",  "SGRID2B", "SGRIDMB"};
   for (int digits : {17, 18, 12}) {
     std::ostringstream os;
     c.write_potential(os, digits);
@@ -930,8 +942,9 @@ TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
           continue;
         }
         REQUIRE(parse_decimal_finite(t, y));
-        if (digits >= kRoundTripDigits) {
-          CHECK(ctx_bits(y) == ctx_bits(x));  // bit-exact at 17/18
+        if (digits >= kRoundTripDigits || exact_keys.count(key)) {
+          // bit-exact at 17/18, and the cutoff and grid keys at any digits
+          CHECK(ctx_bits(y) == ctx_bits(x));
         } else {
           // NUMERIC < 17: exactly the %.{N}g rounding, nothing else.
           double z = 0;
@@ -950,6 +963,155 @@ TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
   }();
   CHECK(back12("WEIGHTS")[4] == "0.123456789012");
   CHECK(back12.get<double>("WEIGHTS", 4) != c.get<double>("WEIGHTS", 4));
+}
+
+namespace {
+/* The tokens of each key line of a potential body, by key. */
+std::map<std::string, std::vector<std::string>>
+pot_lines(const std::string &pot) {
+  std::map<std::string, std::vector<std::string>> lines;
+  for (const auto &l : split_lines(pot)) {
+    auto t = ctx_tokens(l);
+    if (t.empty()) continue;
+    const std::string k = t[0];
+    t.erase(t.begin());
+    lines[k] = t;
+  }
+  return lines;
+}
+} // namespace
+
+/* Pins: below 17 significant digits (3, 6, 12 and 16) write_potential writes
+ * every number of the cutoff and grid keys as the shortest text that reads
+ * back as the same double (format_roundtrip): RCUT2B '5.58190742024
+ * 4.51234567891' (two values, one per descriptor of a D2_mJoin), RCUTMB,
+ * CGRID2B 'LIN 7 0.123456789 3.3333333333' (the generator name and its
+ * integer count verbatim), CGRIDMB, SGRID2B (1/3 added as a double:
+ * 0.3333333333333333) and SGRIDMB '0.987654321098 2'; every other number
+ * with its %.{N}g rounding (WEIGHTS, CEMBFUNC, AMPGRIDMB, WATOM); integers
+ * verbatim. At 17 and 18 digits every key is %.{N}g, as before. The written
+ * file parses back with the cutoff and grid keys bit-exact.
+ * Before the fix: the cutoff and grid keys were rounded like every other
+ * number (RCUT2B '5.58 4.51' at 3 digits, '5.58191 4.51235' at 6), so a
+ * D2_EAM potential recorded a cutoff its setfl check refuses. */
+TEST_CASE("Context write_potential: the cutoff and grid keys are written "
+          "exactly whatever the digits", "[context][pot][exact_in_potential]") {
+  Context c;
+  c.add("TYPE2B", "D2_Blip 3 3 Ta Ta");
+  c.add("RCUT2B", "5.58190742024 4.51234567891");
+  c.add("RCUTMB", "4.51234567891");
+  c.add("CGRID2B", "LIN 7 0.123456789 3.3333333333");
+  c.add("CGRIDMB", "1.23456789012 2.5 3");
+  c.add("SGRID2B", 1.0 / 3);
+  c.add("SGRIDMB", "0.987654321098 2");
+  c.add("WEIGHTS", std::vector<double>{1.0 / 3, -2.0 / 3, 7.0});
+  c.add("CEMBFUNC", "0.123456789012");
+  c.add("AMPGRIDMB", "1.23456789012");
+  c.add("WATOM", "73.123456789");
+  const std::set<std::string> exact_keys = {"CGRID2B", "CGRIDMB", "RCUT2B",
+                                            "RCUTMB",  "SGRID2B", "SGRIDMB"};
+  const std::set<std::string> rounded_keys = {"WEIGHTS", "CEMBFUNC",
+                                              "AMPGRIDMB", "WATOM"};
+  for (int digits : {3, 6, 12, 16, 17, 18}) {
+    std::ostringstream os;
+    c.write_potential(os, digits);
+    INFO("digits " << digits << "\n" << os.str());
+    auto lines = pot_lines(os.str());
+    for (const auto &key : exact_keys) {
+      INFO(key);
+      REQUIRE(lines[key].size() == c.size(key));
+      for (size_t j = 0; j < c.size(key); ++j) {
+        const std::string &orig = c(key)[j];
+        const std::string &tok = lines[key][j];
+        double x = 0;
+        if (is_integer_literal(orig) || !parse_decimal_finite(orig, x)) {
+          CHECK(tok == orig);  // LIN, 7, 3, 2
+          continue;
+        }
+        CHECK(tok == (digits >= kRoundTripDigits ? format_sig(x, digits)
+                                                 : format_roundtrip(x)));
+      }
+    }
+    for (const auto &key : rounded_keys) {
+      INFO(key);
+      REQUIRE(lines[key].size() == c.size(key));
+      for (size_t j = 0; j < c.size(key); ++j) {
+        const std::string &orig = c(key)[j];
+        double x = 0;
+        if (is_integer_literal(orig)) {
+          CHECK(lines[key][j] == orig);  // WEIGHTS 7
+          continue;
+        }
+        REQUIRE(parse_decimal_finite(orig, x));
+        CHECK(lines[key][j] == format_sig(x, digits));
+      }
+    }
+    std::istringstream is(os.str());
+    const Context back = CoreUserConfigParser().parse(is);
+    for (const auto &key : exact_keys) {
+      REQUIRE(back.size(key) == c.size(key));
+      for (size_t j = 0; j < c.size(key); ++j) {
+        double x = 0, y = 0;
+        if (!parse_decimal_finite(c(key)[j], x)) continue;  // LIN
+        REQUIRE(parse_decimal_finite(back(key)[j], y));
+        CHECK(ctx_bits(y) == ctx_bits(x));
+      }
+    }
+  }
+  // The shortest exact text, e.g. at NUMERIC 6:
+  std::ostringstream os6;
+  c.write_potential(os6, 6);
+  auto lines = pot_lines(os6.str());
+  CHECK(lines["RCUT2B"] ==
+        std::vector<std::string>{"5.58190742024", "4.51234567891"});
+  CHECK(lines["CGRID2B"] ==
+        std::vector<std::string>{"LIN", "7", "0.123456789", "3.3333333333"});
+  CHECK(lines["SGRID2B"] == std::vector<std::string>{"0.3333333333333333"});
+  CHECK(lines["WEIGHTS"] ==
+        std::vector<std::string>{"0.333333", "-0.666667", "7"});
+}
+
+/* Pins: below 17 digits write_potential writes exactly the numbers of
+ * CGRID2B, CGRIDMB, RCUT2B, RCUTMB, SGRID2B and SGRIDMB, and no other key's:
+ * every ALLOWED_KEYS key with a DOUBLE position in its value_type that a
+ * potential prints (value_N not 0) gets the token 0.123456789012345; at 3
+ * digits the keys printed with it unchanged are exactly those six, and every
+ * other such key is printed with 0.123.
+ * Before the fix: every key was printed with 0.123 (no key exact). */
+TEST_CASE("Context write_potential: below 17 digits exactly the blueprint's "
+          "cutoff and grid keys are written exactly",
+          "[context][pot][exact_in_potential]") {
+  const std::string tok = "0.123456789012345";
+  Context c;
+  std::set<std::string> added;
+  for (const auto &kv : BlueprintParser::getKeysMapRef()) {
+    const BlueprintKey &bk = kv.second;
+    if (bk.value_N.empty() || bk.value_N[0] == 0) continue;
+    bool dbl = false;
+    for (const auto &vt : bk.value_type)
+      if (vt.find("DOUBLE") != std::string::npos) dbl = true;
+    if (!dbl) continue;
+    c.add(kv.first, tok);
+    added.insert(to_upper(kv.first));
+  }
+  REQUIRE(added.count("RCUT2B"));
+  REQUIRE(added.count("WEIGHTS"));
+  std::ostringstream os;
+  c.write_potential(os, 3);
+  INFO(os.str());
+  std::set<std::string> exact, rounded;
+  for (const auto &kv : pot_lines(os.str())) {
+    if (!added.count(kv.first)) continue;
+    REQUIRE(kv.second.size() == 1);
+    if (kv.second[0] == tok) exact.insert(kv.first);
+    else if (kv.second[0] == "0.123") rounded.insert(kv.first);
+    else FAIL(kv.first << " written as " << kv.second[0]);
+  }
+  CHECK(exact == std::set<std::string>{"CGRID2B", "CGRIDMB", "RCUT2B",
+                                       "RCUTMB", "SGRID2B", "SGRIDMB"});
+  CHECK(rounded.count("WEIGHTS"));
+  CHECK(rounded.count("CEMBFUNC"));
+  CHECK(exact.size() + rounded.size() == added.size());
 }
 
 namespace {
