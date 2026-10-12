@@ -23,6 +23,10 @@ namespace core {
  * are not checked: i < rows() and k < 3 are the caller's preconditions, for
  * every fd_type. A default-constructed or moved-from fd_type has rows() 0
  * and three empty columns (fd[k].size() is 0), as fd_type(0) has.
+ * A column is a view of the fd_type's values (aed_type::is_view()): an
+ * assignment to it, fd[k] = v, writes v's values into fd(i, k) (v must
+ * have rows() values; std::invalid_argument otherwise), and it is not
+ * resized.
  * The whole-object operations check their operands' sizes once per call:
  * +, - and * with a vector need an operand of rows() entries and throw
  * std::invalid_argument naming both sizes otherwise; == and isApprox are
@@ -31,8 +35,8 @@ namespace core {
 class fd_type {
   size_t rows_ = 0;
   double* data_ = nullptr;
-  // The three columns: views of data_ (they own no storage), empty for a
-  // default-constructed or moved-from fd_type.
+  // The three columns: views of data_ (they own no storage, see
+  // aed_type), empty for a default-constructed or moved-from fd_type.
   aed_type cols_[3];
 
   // Points the three columns at data_, rows_ values each.
@@ -40,7 +44,7 @@ class fd_type {
 
 public:
 
-  inline fd_type() = default;
+  inline fd_type() { view_columns(); }
 
   inline fd_type(size_t dim) : rows_(dim) {
     data_ = static_cast<double*>(malloc(3 * dim * sizeof(double)));

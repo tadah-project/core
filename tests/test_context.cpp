@@ -1123,3 +1123,145 @@ TEST_CASE("Context integer reads take exact integers in any spelling and "
   CHECK_NOTHROW(c.get("MPARAMS", d3));
   CHECK(ctx_bits(d3[0]) == ctx_bits(2.7));
 }
+
+/* Pins: a floating read of a Context value (get<double>, get<float>,
+ * get<long double>, the n-th value, and get(key, container) into doubles)
+ * takes the whole token when it is a finite decimal number, in any decimal
+ * spelling: "1", "1.5", ".5", "5.", "-1e-3", "+2", "1E3", "-0" (negative
+ * zero) and the subnormal "1e-310", bit for bit as before; it refuses,
+ * naming the key and the value and saying "a finite decimal number is
+ * required", trailing text ("1.5abc", "2e", "1.5.2"), text that is not a
+ * decimal number ("0x10", "abc", ".", "-", "e3", ""), non-finite values
+ * ("inf", "-inf", "nan", "1e400"), and a float out of float's range
+ * ("1e39" for get<float>). A bool read takes "true" or "false" whole
+ * ("truex" is refused). A configuration line of 2048 characters or more
+ * (the validator's numeric shortcut, which takes commas as separators)
+ * with comma-separated numbers is stored as one token, and its read is
+ * refused.
+ * Before the fix: the read took the longest numeric prefix the stream
+ * read and ignored the rest: "1.5abc", "1.5.2", "0x10" and "1.0,2.0" gave
+ * 1.5, 1.5, 0 and 1 (also as float and long double), "truex" was true, and
+ * the long comma line gave 1.0, its first number; "2e", "abc", ".", "-",
+ * "e3", "inf", "-inf", "nan", "1e400", "" and "1e39" for float were
+ * refused (a stream failure) without the reason. */
+TEST_CASE("Context floating reads take a finite decimal number, the whole "
+          "token",
+          "[context][floating]") {
+  Context c;
+  struct Good {
+    const char *text;
+    double value;
+  };
+  const Good good[] = {{"1", 1.0},       {"1.5", 1.5},   {".5", 0.5},
+                       {"5.", 5.0},      {"-1e-3", -1e-3}, {"+2", 2.0},
+                       {"1E3", 1000.0},  {"-0", -0.0},   {"1e-310", 1e-310}};
+  for (const Good &g : good) {
+    INFO("double value '" << g.text << "'");
+    set_tokens(c, "MPARAMS", std::string(g.text) + " " + g.text);
+    double v = 99.0;
+    CHECK_NOTHROW(v = c.get<double>("MPARAMS"));
+    CHECK(ctx_bits(v) == ctx_bits(g.value));
+    CHECK_NOTHROW(v = c.get<double>("MPARAMS", 1));
+    CHECK(ctx_bits(v) == ctx_bits(g.value));
+    std::vector<double> two(2);
+    CHECK_NOTHROW(c.get("MPARAMS", two));
+    CHECK(ctx_bits(two[0]) == ctx_bits(g.value));
+    CHECK(ctx_bits(two[1]) == ctx_bits(g.value));
+  }
+  const char *bad[] = {"1.5abc", "2e",   "1.5.2", "0x10", "abc", ".",
+                       "-",      "e3",   "inf",   "-inf", "nan", "1e400",
+                       "1.0,2.0"};
+  const std::string why = ": a finite decimal number is required";
+  for (const char *text : bad) {
+    INFO("double value '" << text << "'");
+    set_tokens(c, "MPARAMS", std::string("1 ") + text);
+    const std::string quoted = std::string("value=\"") + text + "\"";
+    const std::string msg_n =
+        thrown_message([&] { (void)c.get<double>("MPARAMS", 1); });
+    INFO("message: " << msg_n);
+    CHECK(msg_n == "Conversion failed for key=MPARAMS, " + quoted + why);
+    std::vector<double> two(2);
+    CHECK(thrown_message([&] { c.get("MPARAMS", two); }) ==
+          "Conversion failed for key=MPARAMS, " + quoted + why);
+    set_tokens(c, "MPARAMS", text);
+    CHECK(thrown_message([&] { (void)c.get<double>("MPARAMS"); }) ==
+          "Conversion failed for key=MPARAMS, " + quoted + why);
+  }
+  // An empty token (storage_update stores tokens as given).
+  c.storage_update("MPARAMS", {""});
+  CHECK(thrown_message([&] { (void)c.get<double>("MPARAMS"); }) ==
+        "Conversion failed for key=MPARAMS, value=\"\"" + why);
+
+  // float and long double: the same grammar; a float out of its range.
+  set_tokens(c, "MPARAMS", "3.5 1e39 0.1 1.5abc");
+  CHECK(c.get<float>("MPARAMS", 0) == 3.5f);
+  CHECK(thrown_message([&] { (void)c.get<float>("MPARAMS", 1); }) ==
+        "Conversion failed for key=MPARAMS, value=\"1e39\"" + why);
+  CHECK(c.get<long double>("MPARAMS", 2) == 0.1L);
+  CHECK(thrown_message([&] { (void)c.get<long double>("MPARAMS", 3); }) ==
+        "Conversion failed for key=MPARAMS, value=\"1.5abc\"" + why);
+  CHECK(thrown_message([&] { (void)c.get<float>("MPARAMS", 3); }) ==
+        "Conversion failed for key=MPARAMS, value=\"1.5abc\"" + why);
+
+  // bool: true or false, whole.
+  set_tokens(c, "NORM", "true");
+  CHECK(c.get<bool>("NORM"));
+  set_tokens(c, "NORM", "false");
+  CHECK_FALSE(c.get<bool>("NORM"));
+  c.storage_update("NORM", {"truex"});
+  CHECK(thrown_message([&] { (void)c.get<bool>("NORM"); }) ==
+        "Conversion failed for key=NORM, value=\"truex\": true or false is "
+        "required");
+
+  // A long configuration line of comma-separated numbers.
+  std::string line = "MPARAMS 1.0";
+  while (line.size() < 2100) line += ",2.0";
+  const Context fc = CoreUserConfigParser().parse(std::vector<std::string>{line});
+  REQUIRE(fc.size("MPARAMS") == 1);
+  const std::string msg =
+      thrown_message([&] { (void)fc.get<double>("MPARAMS"); });
+  CHECK(msg.rfind("Conversion failed for key=MPARAMS, value=\"1.0,2.0,2.0,",
+                  0) == 0);
+  CHECK((msg.size() > why.size() &&
+         msg.compare(msg.size() - why.size(), why.size(), why) == 0));
+}
+
+/* Pins: a configuration line of usual length whose list value holds
+ * commas (the blueprint validator's list patterns take a comma, or a '+',
+ * between two values, but the parser splits a line at blanks only) is
+ * accepted by CoreUserConfigParser as one token per blank-separated word,
+ * and a number read of such a token is refused, naming the key and the
+ * value: 'MPARAMS 1.0,2.0', 'CGRID2B 1.0,2.0,3.0' and 'FIXWEIGHT 0.1,0.2'
+ * are one token each, 'SGRID2B 1.0,2.0 3.0' two ("1.0,2.0" and "3.0"), and
+ * get<double> of a comma token gives "Conversion failed for key=<KEY>,
+ * value=\"<token>\": a finite decimal number is required"; "3.0" reads.
+ * Before the fix: the parser accepted the same lines, and each comma token
+ * was read as its first number, 1, 1, 0.1 and 1, without an error. */
+TEST_CASE("Context: a short configuration line with commas in a list is "
+          "refused when its number is read",
+          "[context][floating]") {
+  struct Line {
+    std::string key, text, token;
+    size_t tokens;
+  };
+  const Line lines[] = {{"MPARAMS", "MPARAMS 1.0,2.0", "1.0,2.0", 1},
+                        {"CGRID2B", "CGRID2B 1.0,2.0,3.0", "1.0,2.0,3.0", 1},
+                        {"FIXWEIGHT", "FIXWEIGHT 0.1,0.2", "0.1,0.2", 1},
+                        {"SGRID2B", "SGRID2B 1.0,2.0 3.0", "1.0,2.0", 2}};
+  for (const Line &l : lines) {
+    INFO(l.text);
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(
+                        std::vector<std::string>{l.text}));
+    REQUIRE(c.size(l.key) == l.tokens);
+    CHECK(c.get<std::string>(l.key) == l.token);
+    CHECK(thrown_message([&] { (void)c.get<double>(l.key); }) ==
+          "Conversion failed for key=" + l.key + ", value=\"" + l.token +
+              "\": a finite decimal number is required");
+    std::vector<double> all(l.tokens);
+    CHECK(thrown_message([&] { c.get(l.key, all); }) ==
+          "Conversion failed for key=" + l.key + ", value=\"" + l.token +
+              "\": a finite decimal number is required");
+    if (l.tokens == 2) CHECK(c.get<double>(l.key, 1) == 3.0);
+  }
+}

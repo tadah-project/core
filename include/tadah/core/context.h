@@ -164,7 +164,8 @@ public:
    *
    * If the key is absent, attempts to insert the blueprint default.
    * Value i is written to out[i], converted as get<T>() converts (an
-   * integer element takes an exact integer only, see convertStringTo()).
+   * integer element takes an exact integer only, a floating element a
+   * finite decimal number, the whole token; see convertStringTo()).
    * A key with fewer stored values than the container holds fills those
    * and leaves the other elements as they are; a key with more is refused
    * before any element is written.
@@ -201,7 +202,9 @@ public:
     }
     using Elem = std::remove_cv_t<std::remove_reference_t<decltype(out[0])>>;
     for (size_t i = 0; i < vals.size(); ++i) {
-      if constexpr (is_strict_integral_v<Elem>) {
+      if constexpr (is_strict_integral_v<Elem> ||
+                    std::is_floating_point_v<Elem> ||
+                    std::is_same_v<Elem, bool>) {
         out[i] = convertStringTo<Elem>(vals[i], upKey);
       } else {
         std::istringstream iss(vals[i]);
@@ -638,8 +641,12 @@ private:
    * An integer T (is_strict_integral_v) takes the whole token when it spells
    * an exact integer in the range of T (parse_integral_token()): "2", "2.0"
    * and "1e3" are read, "2.7", "2abc" and, for an unsigned T, "-1" are
-   * refused. Every other T is read with std::istringstream and
-   * std::boolalpha.
+   * refused. A floating T (float, double, long double) takes the whole
+   * token when it is a finite decimal number in the range of T
+   * (parse_decimal_finite()): "1", "1.5", ".5", "5." and "1e-3" are read,
+   * "1.5abc", "0x10", "inf", "nan" and "1e400" are refused. A bool takes
+   * "true" or "false", the whole token. Every other T is read with
+   * std::istringstream and std::boolalpha.
    *
    * @tparam T The target type to parse.
    * @param s The source string.
@@ -659,6 +666,14 @@ private:
               (std::is_signed_v<T> ? "" : " that is not negative") +
               ", from " + std::to_string(std::numeric_limits<T>::min()) +
               " to " + std::to_string(std::numeric_limits<T>::max());
+    } else if constexpr (std::is_floating_point_v<T>) {
+      ok = parse_decimal_finite(s, value);
+      if (!ok) why = ": a finite decimal number is required";
+    } else if constexpr (std::is_same_v<T, bool>) {
+      std::istringstream iss(s);
+      ok = static_cast<bool>(iss >> std::boolalpha >> value) &&
+           (iss >> std::ws).eof();
+      if (!ok) why = ": true or false is required";
     } else {
       std::istringstream iss(s);
       iss >> std::boolalpha;

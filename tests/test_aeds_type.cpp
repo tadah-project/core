@@ -2,6 +2,7 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/aeds_type.h>
 #include <sstream>
+#include <stdexcept>
 
 using namespace tadah::core;
 
@@ -175,4 +176,29 @@ TEST_CASE("aeds_type2 operator<<(std::ostream&)", "[aeds_type2][new]") {
     REQUIRE(ss.str().find("1.1") != std::string::npos);
     REQUIRE(ss.str().find("4.4") != std::string::npos);
     // The lines are typically row-based
+}
+
+/* Pins: a column of an aeds_type2 is a view of its values, and an
+ * assignment to it writes through: aeds[c] = a and aeds.col(c) = a * 2.0
+ * set aeds(r, c) for every r, and aeds[c].data() stays &aeds(0, c); a
+ * vector of another size is refused (std::invalid_argument) and changes
+ * nothing.
+ * Before the fix: the column took a buffer of its own, so aeds(r, c) kept
+ * 0, and a vector of another size replaced the column. */
+TEST_CASE("aeds_type2: an assignment to a column writes into the aeds_type2",
+          "[aeds_type2][column_view]") {
+  aeds_type2 aeds(3, 2);
+  const aed_type a({1.0, 2.0, 3.0});
+  aeds[1] = a;
+  aeds.col(0) = a * 2.0;
+  for (size_t r = 0; r < 3; ++r) {
+    INFO("row " << r);
+    CHECK(aeds(r, 1) == a[r]);
+    CHECK(aeds(r, 0) == 2.0 * a[r]);
+  }
+  CHECK(aeds[0].data() == &aeds(0, 0));
+  CHECK(aeds[1].data() == &aeds(0, 1));
+  CHECK_THROWS_AS(aeds[1] = aed_type(2), std::invalid_argument);
+  CHECK(aeds(2, 1) == 3.0);
+  CHECK(aeds[1].size() == 3);
 }

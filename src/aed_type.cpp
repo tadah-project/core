@@ -1,35 +1,88 @@
 #include <tadah/core/aed_type.h>
 
+#include <stdexcept>
+#include <string>
+#include <vector>
+
 namespace tadah {
 namespace core {
 
+namespace {
+
+std::string view_note() {
+  return " (a column of an fd_type or aeds_type2 is a view of its values)";
+}
+
+}  // namespace
+
+void aed_type::assign_to_view(const aed_type& other) {
+  if (other.size_ != size_)
+    throw std::invalid_argument(
+        "aed_type: cannot assign " + std::to_string(other.size_) +
+        " values to a view of " + std::to_string(size_) + " values" +
+        view_note());
+  if (size_ == 0) return;
+  // The two may share storage (an aeds_type2's columns, a view assigned to
+  // itself): read every value before writing one.
+  const double* const o_first = other.data_;
+  const double* const o_last = other.data_ + (size_ - 1) * other.stride_;
+  const double* const t_first = data_;
+  const double* const t_last = data_ + (size_ - 1) * stride_;
+  if (o_first <= t_last && t_first <= o_last) {
+    std::vector<double> values(size_);
+    for (size_t i = 0; i < size_; ++i) values[i] = other[i];
+    for (size_t i = 0; i < size_; ++i) (*this)[i] = values[i];
+  } else {
+    for (size_t i = 0; i < size_; ++i) (*this)[i] = other[i];
+  }
+}
+
 aed_type& aed_type::operator=(const aed_type& other) {
-    if (this != &other) {
-        if (allocated_) {
-            free(data_);
-        }
-        size_ = other.size_;
-        stride_ = other.stride_;
-        allocated_ = true;
-        data_ = static_cast<double*>(malloc(size_ * stride_ * sizeof(double)));
-        std::memcpy(data_, other.data_, size_ * stride_ * sizeof(double));
+    if (this == &other) return *this;
+    if (view_) {
+        assign_to_view(other);
+        return *this;
     }
+    // The copy is made before the old buffer is freed: `other` may be a
+    // view of this owner's values.
+    double* const copy = compact_copy(other.data_, other.size_, other.stride_);
+    if (allocated_) {
+        free(data_);
+    }
+    data_ = copy;
+    size_ = other.size_;
+    stride_ = 1;
+    allocated_ = true;
     return *this;
 }
 
-aed_type& aed_type::operator=(aed_type&& other) noexcept {
-    if (this != &other) {
-        if (allocated_) {
-            free(data_);
-        }
-        data_ = other.data_;
-        size_ = other.size_;
-        stride_ = other.stride_;
-        allocated_ = other.allocated_;
-        other.data_ = nullptr;
-        other.allocated_ = false;
+aed_type& aed_type::operator=(aed_type&& other) {
+    if (this == &other) return *this;
+    if (view_ || other.view_) {
+        // Into a view: written through. From a view: an owning copy (the
+        // view keeps its storage).
+        return *this = static_cast<const aed_type&>(other);
     }
+    if (allocated_) {
+        free(data_);
+    }
+    data_ = other.data_;
+    size_ = other.size_;
+    stride_ = other.stride_;
+    allocated_ = other.allocated_;
+    other.data_ = nullptr;
+    other.size_ = 0;
+    other.allocated_ = false;
     return *this;
+}
+
+void aed_type::rebind(double* data, size_t size, size_t stride) noexcept {
+    if (allocated_) free(data_);
+    data_ = data;
+    size_ = size;
+    stride_ = stride;
+    allocated_ = false;
+    view_ = true;
 }
 
 bool aed_type::isApprox(const aed_type& v1, double EPS) const {
@@ -44,6 +97,12 @@ double* aed_type::data() { return data_; }
 const double* aed_type::data() const { return data_; }
 
 void aed_type::resize(const size_t n) {
+  if (view_) {
+    if (n == size_) return;
+    throw std::invalid_argument(
+        "aed_type: cannot resize a view of " + std::to_string(size_) +
+        " values to " + std::to_string(n) + view_note());
+  }
   size_t size_orig = size_;
   if (n != size_) {
     if (allocated_) {

@@ -121,7 +121,7 @@ bool is_integer_literal(std::string_view tok) {
   return true;
 }
 
-bool parse_decimal_finite(std::string_view tok, double &out) {
+bool is_decimal_literal(std::string_view tok) {
   const char *const b = tok.data();
   const char *const e = b + tok.size();
   const char *p = b;
@@ -140,7 +140,58 @@ bool parse_decimal_finite(std::string_view tok, double &out) {
     while (p != e && is_digit(*p)) { ++p; ++exp_digits; }
     if (exp_digits == 0) return false;
   }
-  if (p != e) return false;
+  return p == e;
+}
+
+namespace {
+
+// conv (strtof, strtold) of the decimal literal `tok`, finite: an overflow
+// is refused, an underflow (subnormal or +-0, |v| < 1) is the value, as
+// for parse_decimal_finite(double). errno is left as it was.
+template <class T, class Conv>
+bool convert_decimal_finite(std::string_view tok, T &out, Conv conv) {
+  char small[kReformatBufferSize];
+  std::string large;
+  const char *s = small;
+  if (tok.size() < sizeof small) {
+    std::memcpy(small, tok.data(), tok.size());
+    small[tok.size()] = '\0';
+  } else {
+    large.assign(tok.data(), tok.size());
+    s = large.c_str();
+  }
+  const int saved_errno = errno;
+  errno = 0;
+  char *end = nullptr;
+  const T v = conv(s, &end);
+  const bool range = errno == ERANGE;
+  errno = saved_errno;
+  if (end != s + tok.size()) return false;  // e.g. a non-"C" LC_NUMERIC
+  if (range && !(std::fabs(v) < T(1))) return false;
+  out = v;
+  return true;
+}
+
+}  // namespace
+
+bool parse_decimal_finite(std::string_view tok, float &out) {
+  return is_decimal_literal(tok) &&
+         convert_decimal_finite(tok, out, [](const char *s, char **end) {
+           return std::strtof(s, end);
+         });
+}
+
+bool parse_decimal_finite(std::string_view tok, long double &out) {
+  return is_decimal_literal(tok) &&
+         convert_decimal_finite(tok, out, [](const char *s, char **end) {
+           return std::strtold(s, end);
+         });
+}
+
+bool parse_decimal_finite(std::string_view tok, double &out) {
+  if (!is_decimal_literal(tok)) return false;
+  const char *const b = tok.data();
+  const char *const e = b + tok.size();
 
 #if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201611L
   // Fast path (about 4x cheaper than strtod, locale-independent). It

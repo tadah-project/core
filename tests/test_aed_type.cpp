@@ -1,7 +1,10 @@
 #define CATCH_AED_TYPE_MAIN
 #include "catch2/catch.hpp"
 #include <tadah/core/aed_type.h>
+#include <tadah/core/maths.h>
 #include <sstream>
+#include <utility>
+#include <vector>
 
 using namespace tadah::core;
 
@@ -199,4 +202,128 @@ TEST_CASE("aed_type::resize shrink then grow", "[aed_type][resize]") {
 
     v.resize(14);  // no-op resize keeps contents
     REQUIRE(v[5] == 6.0);
+}
+
+namespace {
+
+// M(3, 4) with M(r, c) = 10 r + c; Matrix::row(2) is a view of M(2, 0 .. 3),
+// 4 values 3 apart (M is column-major: M(r, c) is element r + 3 c).
+Matrix row_view_matrix() {
+  Matrix M(3, 4);
+  for (size_t r = 0; r < 3; ++r)
+    for (size_t c = 0; c < 4; ++c) M(r, c) = 10.0 * r + c;
+  return M;
+}
+
+// The values of x as its operator[], data() and begin() to end() give them.
+std::vector<double> indexed(const aed_type &x) {
+  std::vector<double> v;
+  for (size_t i = 0; i < x.size(); ++i) v.push_back(x[i]);
+  return v;
+}
+std::vector<double> stored(const aed_type &x) {
+  return std::vector<double>(x.data(), x.data() + x.size());
+}
+std::vector<double> ranged(const aed_type &x) {
+  return std::vector<double>(x.begin(), x.end());
+}
+
+}  // namespace
+
+/* Pins: a copy of a strided view, Matrix::row(2) of a 3 x 4 matrix (4
+ * values 3 apart), is an owner of the row's 4 values one after another
+ * (stride 1): its operator[], data()[0 .. 3] and begin() to end() are
+ * {20, 21, 22, 23}, for the copy constructor, the copy assignment into an
+ * owner, the move constructor (std::vector::push_back of the row, and
+ * aed_type(std::move(view))), the move assignment into an owner
+ * (x = M.row(2)) and the copy that const Matrix::row(2) gives; writing to
+ * a copy leaves the matrix as it was, and the moved-from view still views
+ * M(2, 0 .. 3). A copy of an owner made with a stride (aed_type(3, 2))
+ * holds its values one after another as well.
+ * Before the fix: every copy kept the stride (3) and copied size * stride
+ * = 12 doubles from M(2, 0), element 2 of M's 12, so it read 2 doubles
+ * past the end of M's storage (AddressSanitizer: heap-buffer-overflow,
+ * READ of size 96, in the copy and move constructors, the copy
+ * assignment and aed_type(const double*, size, stride)), and data() and
+ * begin() to end() gave M's elements 2 to 5, {20, 1, 11, 21}, not the row;
+ * the copy of the strided owner kept its stride 2 (data() {1, 0, 2}). The
+ * move paths from a view were new on this branch (v1-dev's moves took the
+ * view's pointer); the copies and const Matrix::row read past the end on
+ * v1-dev too. */
+TEST_CASE("aed_type: a copy of a strided view holds its values one after "
+          "another", "[aed_type][column_view]") {
+  Matrix M = row_view_matrix();
+  const std::vector<double> row2{20.0, 21.0, 22.0, 23.0};
+  auto check_copy = [&](const aed_type &x, const char *what) {
+    INFO(what);
+    CHECK_FALSE(x.is_view());
+    CHECK(x.size() == 4);
+    CHECK(indexed(x) == row2);
+    CHECK(stored(x) == row2);
+    CHECK(ranged(x) == row2);
+  };
+
+  aed_type view = M.row(2);
+  REQUIRE(view.is_view());
+  REQUIRE(view.data() == &M(2, 0));
+
+  aed_type copied(view);
+  check_copy(copied, "copy constructor");
+  aed_type assigned({9.0});
+  assigned = view;
+  check_copy(assigned, "copy assignment into an owner");
+  std::vector<aed_type> rows;
+  rows.push_back(M.row(2));
+  check_copy(rows[0], "move constructor (push_back of M.row(2))");
+  aed_type move_assigned;
+  move_assigned = M.row(2);
+  check_copy(move_assigned, "move assignment into an owner");
+  aed_type moved(std::move(view));
+  check_copy(moved, "move constructor from a named view");
+  CHECK(view.is_view());
+  CHECK(view.data() == &M(2, 0));
+  CHECK(indexed(view) == row2);
+  const Matrix &cM = M;
+  aed_type const_row = cM.row(2);
+  check_copy(const_row, "const Matrix::row");
+
+  // The copies own their values.
+  copied[0] = -1.0;
+  rows[0][1] = -1.0;
+  move_assigned[2] = -1.0;
+  moved[3] = -1.0;
+  const_row[0] = -1.0;
+  CHECK(M(2, 0) == 20.0);
+  CHECK(M(2, 1) == 21.0);
+  CHECK(M(2, 2) == 22.0);
+  CHECK(M(2, 3) == 23.0);
+
+  aed_type strided(3, 2);
+  strided[0] = 1.0;
+  strided[1] = 2.0;
+  strided[2] = 3.0;
+  const std::vector<double> s{1.0, 2.0, 3.0};
+  aed_type s_copy(strided);
+  CHECK(indexed(s_copy) == s);
+  CHECK(stored(s_copy) == s);
+  aed_type s_assigned;
+  s_assigned = strided;
+  CHECK(stored(s_assigned) == s);
+}
+
+/* Pins: an owner assigned from a view of its own values (the non-owning
+ * pointer constructor over x.data()) keeps them: x = view leaves x
+ * {1, 2, 3}, an owner of a buffer of its own.
+ * Before the fix: the copy assignment freed x's buffer before it copied
+ * the view's values, which were in that buffer, so it read freed memory
+ * (AddressSanitizer: heap-use-after-free, READ of size 24, in the copy
+ * assignment); x was {0, 0, 0} in the Release build. On v1-dev as well. */
+TEST_CASE("aed_type: an owner assigned from a view of its own values keeps "
+          "them", "[aed_type][column_view]") {
+  aed_type x({1.0, 2.0, 3.0});
+  aed_type view(x.data(), 3);
+  REQUIRE(view.is_view());
+  x = view;
+  CHECK_FALSE(x.is_view());
+  CHECK(indexed(x) == std::vector<double>{1.0, 2.0, 3.0});
 }
