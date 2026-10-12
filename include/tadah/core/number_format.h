@@ -15,7 +15,11 @@
  *  2. Potential and dataset files follow NUMERIC as SIGNIFICANT digits
  *     (printf %.{N}g). The default (kPotDigitsDefault = 18) is bit-exact
  *     for every double (17 significant digits always suffice). A smaller
- *     explicit NUMERIC is honoured, with a warning (pot_digits_warning()).
+ *     explicit NUMERIC is honoured, with a warning (pot_digits_warning()),
+ *     except for the keys a potential's load checks exactly (the blueprint's
+ *     exact_in_potential: the cutoffs and radial grids), whose numbers a
+ *     potential records exactly whatever NUMERIC is
+ *     (reformat_double_token_exact()).
  *     Loaded values are never limited by NUMERIC, and every TADAH reader
  *     of a file TADAH writes -- potential, configuration, checkpoint,
  *     dataset, VASP POSCAR -- accepts what the writers produce
@@ -201,7 +205,9 @@ PotDigits resolve_pot_digits(const Context &ctx);
  * empty unless `pd.explicit_ && pd.digits < kRoundTripDigits`.
  *
  * Covers the potential's key/value lines (integer literals are written
- * exactly; '#' comment headers are annotations NUMERIC does not govern).
+ * exactly, and so are the numbers of the keys exact_in_potential_keys()
+ * names, which the text lists; '#' comment headers are annotations NUMERIC
+ * does not govern).
  */
 std::string pot_digits_warning(const PotDigits &pd);
 

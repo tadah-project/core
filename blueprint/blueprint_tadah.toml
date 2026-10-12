@@ -877,7 +877,8 @@ warning on rank 0). RCUT2B and RCUTMB must be the
 file's cutoff (in a D2_mJoin or DM_mJoin, the EAM descriptor's own value):
 the file defines its functions up to it. Another value is refused, naming
 both, and so is, at the start of tadah hpo, an OPTIM RCUT2B/RCUTMB over
-that value. A potential written with NUMERIC below 17 records the cutoff
+that value. A potential records the cutoff exactly whatever NUMERIC is (see
+NUMERIC); one that an earlier tadah wrote with NUMERIC below 17 records it
 rounded, and is refused until it is set to the file's cutoff.
 
 A configuration with both descriptors and one setfl file::
@@ -1112,8 +1113,9 @@ rho) is 0, so the edited potential predicts EXACTLY like the input — the new
 basis function only adds capacity for a subsequent `tadah hpo` run (its
 OPTIM line is emitted in the regenerated hpotarget). Exact unless the input
 potential carries NUMERIC < 17 (every 1.5.0 `tadah hpo` pot has an
-auto-inserted NUMERIC 12) or one is set for the run: the edited file is then
-written with that many significant digits, with a WARNING; delete the line
+auto-inserted NUMERIC 12) or one is set for the run: the edited file's numbers
+are then written with that many significant digits, with a WARNING (the
+cutoffs and grids, RCUT2B/RCUTMB and CGRID*/SGRID*, exactly); delete the line
 for an exact edit.
 
 Knot families (Knot5/Knot3): the knot position is the only shape parameter
@@ -1688,11 +1690,20 @@ Sets the precision of numbers in written output files.
 Potential files (pot.tadah written by train, refit, refit --edit and hpo) and
 dataset files (written by tadah data convert, merge, split, sample, dedup and
 balance): NUMERIC is the number of SIGNIFICANT digits (printf %.{N}g) of every
-non-integer number of the potential's key/value lines, and of every number of
-a dataset. The default 18 is exact: every double reads back bit-identically
-(17 significant digits always suffice). An explicit NUMERIC below 17 is
-honoured but warned about, because the written file then differs from the
-values in memory. Integers in a potential are always written exactly.
+non-integer number of the potential's key/value lines but those of the cutoff
+and grid keys (below), and of every number of a dataset. The default 18 is
+exact: every double reads back bit-identically (17 significant digits always
+suffice). An explicit NUMERIC below 17 is honoured but warned about, because
+the written file then differs from the values in memory. Integers in a
+potential are always written exactly, and so are the numbers of the cutoff and
+radial-grid keys RCUT2B, RCUTMB, CGRID2B, CGRIDMB, SGRID2B and SGRIDMB,
+whatever NUMERIC is: a load checks them exactly (D2_EAM and DM_EAM compare
+RCUT2B/RCUTMB with the cutoff of their setfl file, a knot channel's cutoff is
+its largest knot, and the knot and bump-support checks relate the grids to the
+cutoff), so the potential loads with the cutoffs and grids it was fitted with.
+Below 17 they are written as the shortest text that reads back as the same
+value (RCUT2B 5.58190742024 at NUMERIC 6); earlier versions rounded them with
+the other numbers.
 NUMERIC itself is never written into a potential file; a NUMERIC line found in
 a potential used as a configuration (or edited with refit --edit) is treated
 as an explicit setting. The '#' comment headers of a potential (e.g. the
