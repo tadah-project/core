@@ -2286,16 +2286,19 @@ error, and there is no auto-seeding from WEIGHTS. dim(FIXINDEX) =
 dim(FIXWEIGHT). The i-th value in FIXWEIGHT pins the model weight named by
 the i-th index in FIXINDEX (declaration order defines the pairing). Pinned
 weights are excluded from the least-squares solve; the remaining weights
-are fitted against the residual target. Incompatible with NORM=true (the
-values would be interpreted in the normalized feature space). M_KRR
-implementation 2 (MODEL M_KRR <kernel> 2) pins no weight and refuses
-FIXWEIGHT and FIXINDEX (see FIXINDEX).
+are fitted against the residual target. Refused with NORM=true by tadah
+train and tadah hpo (the values would be interpreted in the normalized
+feature space: the conversion to weights of the raw descriptors moves
+them). M_KRR implementation 2 (MODEL M_KRR <kernel> 2) pins no weight and
+refuses FIXWEIGHT and FIXINDEX (see FIXINDEX).
 
 In `tadah hpo`, `OPTIM FIXWEIGHT (<weight-index>) <low> <high>` lets the
 nonlinear optimiser search a pinned weight: the (indices) name MODEL
 WEIGHTS (values of FIXINDEX), not positions in this list. When FIXINDEX
-covers every model weight, the LS solve is skipped entirely; in that case
-a training DBFILE becomes optional (the loss must then come from
+covers every model weight, the LS solve is skipped entirely (but under
+OALGO 3, whose fit gives the pinned weights their zero covariance and the
+noise of their residuals, WCOV and WNOISE); in that case a training DBFILE
+becomes optional (the loss must then come from
 validation metrics, PC_OBSERVABLE, or PC_LAMMPS, and the element set must
 be declared via ATOM).
 """
