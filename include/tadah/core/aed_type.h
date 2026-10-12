@@ -48,13 +48,14 @@ public:
   template <typename T>
   class strided_iterator {
   public:
-    using iterator_category = std::random_access_iterator_tag;
-    using value_type = std::remove_const_t<T>;
-    using difference_type = std::ptrdiff_t;
-    using pointer = T*;
-    using reference = T&;
+    using iterator_category = std::random_access_iterator_tag;  ///< Random access.
+    using value_type = std::remove_const_t<T>;  ///< double.
+    using difference_type = std::ptrdiff_t;     ///< A count of values.
+    using pointer = T*;                         ///< To a value.
+    using reference = T&;                       ///< To a value.
 
     strided_iterator() = default;
+    /// Element @p index of the values @p stride apart from @p base.
     strided_iterator(T* base, size_t stride, difference_type index) noexcept
     : base_(base), stride_(static_cast<difference_type>(stride)),
       index_(index) {}
@@ -64,34 +65,46 @@ public:
     strided_iterator(const strided_iterator<U>& o) noexcept
     : base_(o.base_), stride_(o.stride_), index_(o.index_) {}
 
+    /// The value at the iterator.
     reference operator*() const { return base_[index_ * stride_]; }
+    /// Its address.
     pointer operator->() const { return base_ + index_ * stride_; }
+    /// The value @p n elements on.
     reference operator[](difference_type n) const {
       return base_[(index_ + n) * stride_];
     }
 
+    /// The next element.
     strided_iterator& operator++() noexcept { ++index_; return *this; }
+    /// The next element; returns this one.
     strided_iterator operator++(int) noexcept {
       strided_iterator t = *this; ++index_; return t;
     }
+    /// The previous element.
     strided_iterator& operator--() noexcept { --index_; return *this; }
+    /// The previous element; returns this one.
     strided_iterator operator--(int) noexcept {
       strided_iterator t = *this; --index_; return t;
     }
+    /// @p n elements on.
     strided_iterator& operator+=(difference_type n) noexcept {
       index_ += n; return *this;
     }
+    /// @p n elements back.
     strided_iterator& operator-=(difference_type n) noexcept {
       index_ -= n; return *this;
     }
+    /// @p n elements on from @p it.
     friend strided_iterator operator+(strided_iterator it,
                                       difference_type n) noexcept {
       return it += n;
     }
+    /// @p n elements on from @p it.
     friend strided_iterator operator+(difference_type n,
                                       strided_iterator it) noexcept {
       return it += n;
     }
+    /// @p n elements back from @p it.
     friend strided_iterator operator-(strided_iterator it,
                                       difference_type n) noexcept {
       return it -= n;
@@ -101,26 +114,32 @@ public:
                                      const strided_iterator& b) noexcept {
       return a.index_ - b.index_;
     }
+    /// The same element of the same values.
     friend bool operator==(const strided_iterator& a,
                            const strided_iterator& b) noexcept {
       return a.base_ == b.base_ && a.index_ == b.index_;
     }
+    /// Not the same element.
     friend bool operator!=(const strided_iterator& a,
                            const strided_iterator& b) noexcept {
       return !(a == b);
     }
+    /// An earlier element of the same values.
     friend bool operator<(const strided_iterator& a,
                           const strided_iterator& b) noexcept {
       return a.index_ < b.index_;
     }
+    /// A later element of the same values.
     friend bool operator>(const strided_iterator& a,
                           const strided_iterator& b) noexcept {
       return b < a;
     }
+    /// Not a later element of the same values.
     friend bool operator<=(const strided_iterator& a,
                            const strided_iterator& b) noexcept {
       return !(b < a);
     }
+    /// Not an earlier element of the same values.
     friend bool operator>=(const strided_iterator& a,
                            const strided_iterator& b) noexcept {
       return !(a < b);
@@ -132,8 +151,8 @@ public:
     difference_type stride_ = 1;
     difference_type index_ = 0;
   };
-  using iterator = strided_iterator<double>;
-  using const_iterator = strided_iterator<const double>;
+  using iterator = strided_iterator<double>;              ///< Over the values.
+  using const_iterator = strided_iterator<const double>;  ///< Over const values.
 
 private:
   double *data_ = nullptr;
@@ -398,18 +417,24 @@ public:
   void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(),
               double lower = -1e4, double upper = 1e4);
 
-  /// The values through the stride (operator[]'s), first to last.
+  /// The first value (begin() to end(): operator[]'s values, through the
+  /// stride).
   inline iterator begin() noexcept { return iterator(data_, stride_, 0); }
+  /// Past the last value.
   inline iterator end() noexcept {
     return iterator(data_, stride_, static_cast<std::ptrdiff_t>(size_));
   }
+  /// The first value.
   inline const_iterator begin() const noexcept {
     return const_iterator(data_, stride_, 0);
   }
+  /// Past the last value.
   inline const_iterator end() const noexcept {
     return const_iterator(data_, stride_, static_cast<std::ptrdiff_t>(size_));
   }
+  /// The first value.
   inline const_iterator cbegin() const noexcept { return begin(); }
+  /// Past the last value.
   inline const_iterator cend() const noexcept { return end(); }
 };
 
