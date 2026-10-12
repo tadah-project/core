@@ -190,7 +190,12 @@ training, and a fit whose noise variance is undefined (no more
 observations than effective weights) is refused before the potential is
 written, saying what to change. Before 1.6.0 (and in 1.6.0 development
 builds before WCOV and WNOISE) the column was the diagonal of SIGMA, a
-transposed, unscaled matrix, headed "Uncertainty".
+transposed, unscaled matrix, headed "Uncertainty". A switch of the run, not
+part of the model: a potential does not record it, and the UNCERTAINTY true
+of a potential given as the configuration (tadah train -c pot.tadah: a file
+with WEIGHTS), which tadah 1.5.x and 1.6.0 development builds wrote into
+every potential trained with it, asks for nothing (a WARNING says so; give
+--uncertainty).
 """
 cli_long_flag    = "--uncertainty"
 cli_short_flag   = ""
