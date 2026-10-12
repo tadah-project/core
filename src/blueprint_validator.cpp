@@ -2,8 +2,13 @@
  *  @file blueprint_validator.cpp
  *  @brief Implementation of tadah::core::BlueprintValidator
  *
- *  – validate() now detects lines that are “just a long list of
- *    numbers” more reliably and skips std::regex for them.
+ *  The values of a list are separated by blanks, as CoreUserConfigParser
+ *  splits a configuration line into values at blanks only: a comma or a
+ *  '+' between two values is not a separator (a STRING word keeps them;
+ *  an index list, INDEX_PATTERN, takes commas between its entries, which
+ *  its readers split at). Lines of 2048 characters or more are checked
+ *  without std::regex, which overflows the stack on long input, by the
+ *  same rules.
  */
 
 #include <tadah/core/blueprint_validator.h>
@@ -36,8 +41,14 @@ static const std::unordered_map<std::string,std::string> g_primitiveMap = {
   {"STRING", "\\s*[^\\s]*[A-Za-z*][^\\s]*\\s*"},
   {"UINT",   "\\s*(?:0|[1-9]\\d*)\\s*"},
   {"BOOL",   "\\s*(?:true|false)\\s*"},
+  // An index list: entries i, a-b or a-b:step, separated by commas (blanks
+  // around a comma, '-' or ':' allowed); a list key's values ({...}) are
+  // separated by blanks, so "13,14", "13, 14" and "13 14" are one list, as
+  // parse_one_based_indices and parse_fixindex read them.
   {"INDEX_PATTERN",
-   "\\s*[+]?\\d+(?:\\s*-\\s*[-+]?\\d+(?:\\s*:\\s*[+]?\\d+)?){0,1}\\s*" }
+   "\\s*[+]?\\d+(?:\\s*-\\s*[-+]?\\d+(?:\\s*:\\s*[+]?\\d+)?){0,1}"
+   "(?:\\s*,\\s*[+]?\\d+(?:\\s*-\\s*[-+]?\\d+(?:\\s*:\\s*[+]?\\d+)?){0,1})*"
+   "\\s*" }
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -92,39 +103,65 @@ reorderAlternatives(std::vector<std::string> alts)
 static std::string buildTokenRegex(const std::string&);
 static std::string buildRegexFromBlueprint(const std::string&,bool);
 
+static bool isBlank(char c) { return std::isspace(static_cast<unsigned char>(c)) != 0; }
+
 // ──────────────────────────────────────────────────────────────
-// STACK-SAFE detector for “long numeric line”
+// Lines of 2048 characters or more: checked without std::regex
 // ──────────────────────────────────────────────────────────────
-static bool looksLikeLongNumericLine(const std::string& text)
+/* A line of numbers, split into values at blanks as the parser splits it.
+ * kValid: every word is one number (strtod reads the whole word; an
+ * underflow is a number, an overflow is not). kInvalid: every word is a
+ * number or several numbers joined by commas, by a sign or directly
+ * ('1.0,2.0', '1+2', '1-2', '1.5.2'), and one word is several: the parser
+ * would keep such a word as one value. Otherwise kNotApplicable (a word
+ * that is not numeric: the other checks decide). kValid takes no account
+ * of the blueprint (a long numeric line of any list key), as before. */
+static LongLineValidationResult validateLongNumericLine(const std::string& text)
 {
-  if (text.size() < 2048)             // only bother for long lines
-      return false;
+  if (text.size() < 2048)
+      return LongLineValidationResult::kNotApplicable;
 
   const char* p = text.c_str();
-  char* end    = nullptr;
   bool sawAtLeastOne = false;
+  bool joined = false;
 
   while (true)
   {
-    // skip any amount of white-space or commas
-    while (*p && (std::isspace((unsigned char)*p) || *p==',')) ++p;
+    while (*p && isBlank(*p)) ++p;
     if (*p == '\0') break;
 
-    errno = 0;
-    const double v = std::strtod(p, &end);
-    if (end == p)                     // not a valid double
-        return false;
-    // ERANGE: underflow (subnormal or flushed to 0, |v| < 1) is a valid
-    // number; overflow (+-HUGE_VAL) is not.
-    if (errno == ERANGE && !(std::fabs(v) < 1.0))
-        return false;
-
+    // One word: one number, or numbers joined by commas or a sign.
+    bool first = true;
+    while (*p && !isBlank(*p)) {
+      if (*p == ',') {                  // never a separator of the parser
+        joined = true;
+        ++p;
+        continue;
+      }
+      if (!first) joined = true;        // a number right after a number
+      char* end = nullptr;
+      errno = 0;
+      const double v = std::strtod(p, &end);
+      if (end == p)                     // not a number
+        return LongLineValidationResult::kNotApplicable;
+      // ERANGE: underflow (subnormal or flushed to 0, |v| < 1) is a valid
+      // number; overflow (+-HUGE_VAL) is not.
+      if (errno == ERANGE && !(std::fabs(v) < 1.0))
+        return LongLineValidationResult::kNotApplicable;
+      p = end;
+      first = false;
+    }
     sawAtLeastOne = true;
-    p = end;
   }
-  return sawAtLeastOne;
+  if (!sawAtLeastOne)
+      return LongLineValidationResult::kNotApplicable;
+  return joined ? LongLineValidationResult::kInvalid
+                : LongLineValidationResult::kValid;
 }
 
+/* A line of a {STRING} list: words split at blanks, as the parser splits
+ * them, each with a letter or a '*' (the STRING pattern; a word may hold a
+ * comma or a '+', which the parser keeps in it). */
 static LongLineValidationResult validateLongStringLine(const std::string& text)
 {
   if (text.size() < 2048)
@@ -134,8 +171,7 @@ static LongLineValidationResult validateLongStringLine(const std::string& text)
   std::size_t pos = 0;
 
   while (pos < text.size()) {
-    while (pos < text.size() &&
-           (std::isspace(static_cast<unsigned char>(text[pos])) || text[pos] == ',')) {
+    while (pos < text.size() && isBlank(text[pos])) {
       ++pos;
     }
 
@@ -144,9 +180,7 @@ static LongLineValidationResult validateLongStringLine(const std::string& text)
     }
 
     bool sawAlphaOrStar = false;
-    const std::size_t start = pos;
-    while (pos < text.size() &&
-           !std::isspace(static_cast<unsigned char>(text[pos])) && text[pos] != ',') {
+    while (pos < text.size() && !isBlank(text[pos])) {
       const unsigned char ch = static_cast<unsigned char>(text[pos]);
       if (std::isalpha(ch) || ch == '*') {
         sawAlphaOrStar = true;
@@ -154,7 +188,7 @@ static LongLineValidationResult validateLongStringLine(const std::string& text)
       ++pos;
     }
 
-    if (start == pos || !sawAlphaOrStar) {
+    if (!sawAlphaOrStar) {
       return LongLineValidationResult::kInvalid;
     }
 
@@ -163,6 +197,73 @@ static LongLineValidationResult validateLongStringLine(const std::string& text)
 
   return sawAtLeastOne ? LongLineValidationResult::kValid
                        : LongLineValidationResult::kInvalid;
+}
+
+/* A line of an {INDEX_PATTERN} list, by the grammar of the regex: entries
+ * i, a-b or a-b:step ([+]digits, '-', [+-]digits, ':', [+]digits; blanks
+ * around '-' and ':' allowed), separated by commas or blanks; no empty
+ * entry, no leading or trailing comma. */
+static LongLineValidationResult validateLongIndexLine(const std::string& text)
+{
+  if (text.size() < 2048)
+      return LongLineValidationResult::kNotApplicable;
+
+  // The text without the blanks next to '-' and ':', so that an entry is
+  // one word.
+  std::string list;
+  list.reserve(text.size());
+  char lastKept = '\0';  // the last non-blank character kept
+  for (std::size_t i = 0; i < text.size(); ++i) {
+    const char c = text[i];
+    if (isBlank(c)) {
+      std::size_t next = i;
+      while (next < text.size() && isBlank(text[next])) ++next;
+      const char after = next < text.size() ? text[next] : '\0';
+      if (lastKept == '-' || lastKept == ':' || after == '-' || after == ':')
+        continue;
+    } else {
+      lastKept = c;
+    }
+    list += c;
+  }
+
+  // [+]digits, or [+-]digits when `minus`; advances p.
+  auto digits = [](const char*& p, const char* e, bool minus) {
+    if (p < e && (*p == '+' || (minus && *p == '-'))) ++p;
+    const char* b = p;
+    while (p < e && std::isdigit(static_cast<unsigned char>(*p))) ++p;
+    return p > b;
+  };
+  auto entry = [&](const char* p, const char* e) {
+    if (!digits(p, e, false)) return false;
+    if (p == e) return true;
+    if (*p++ != '-' || !digits(p, e, true)) return false;
+    if (p == e) return true;
+    if (*p++ != ':' || !digits(p, e, false)) return false;
+    return p == e;
+  };
+
+  std::size_t pos = 0;
+  while (true) {
+    const std::size_t comma = list.find(',', pos);
+    const std::size_t stop = comma == std::string::npos ? list.size() : comma;
+    bool sawEntry = false;
+    std::size_t i = pos;
+    while (i < stop) {
+      while (i < stop && isBlank(list[i])) ++i;
+      if (i == stop) break;
+      const std::size_t b = i;
+      while (i < stop && !isBlank(list[i])) ++i;
+      if (!entry(list.data() + b, list.data() + i))
+        return LongLineValidationResult::kInvalid;
+      sawEntry = true;
+    }
+    if (!sawEntry)                      // an empty entry
+      return LongLineValidationResult::kInvalid;
+    if (comma == std::string::npos) break;
+    pos = comma + 1;
+  }
+  return LongLineValidationResult::kValid;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -176,13 +277,15 @@ static std::string buildTokenRegex(const std::string& tok)
     const std::string inner = trim(tok.substr(1,tok.size()-2));
     const auto subs = splitBlueprint(inner);
 
+    // The elements and the repetitions are separated by a blank, as the
+    // parser splits a line (the primitives' own \\s* take more blanks).
     std::string block; bool first=true;
     for(const auto& s:subs){
-      if(!first) block += "[,\\s+]";
+      if(!first) block += "\\s";
       block += buildTokenRegex(s);
       first=false;
     }
-    return "(?:"+block+")(?:[,\\s+]"+block+")*";
+    return "(?:"+block+")(?:\\s"+block+")*";
   }
 
   if (tok.front()=='[' && tok.back()==']') {
@@ -251,7 +354,13 @@ public:
                 const std::vector<std::string>& blueprints)
     : onlyRepeatedStringBlueprint(
         std::all_of(blueprints.begin(), blueprints.end(),
-                    [](const std::string& bp) { return trim(bp) == "{STRING}"; })) {
+                    [](const std::string& bp) { return trim(bp) == "{STRING}"; })),
+      onlyIndexListBlueprint(
+        !blueprints.empty() &&
+        std::all_of(blueprints.begin(), blueprints.end(),
+                    [](const std::string& bp) {
+                      return trim(bp) == "{INDEX_PATTERN}";
+                    })) {
     validateRegex.reserve(pats.size());
     for(auto& p:pats)
       validateRegex.emplace_back(p,
@@ -262,6 +371,7 @@ public:
     std::vector<std::regex>().swap(validateRegex);
   }
   bool onlyRepeatedStringBlueprint;
+  bool onlyIndexListBlueprint;
   std::vector<std::regex> validateRegex;
 };
 
@@ -293,8 +403,19 @@ BlueprintValidator::BlueprintValidator(const std::vector<std::string>& bps)
 // ──────────────────────────────────────────────────────────────
 bool BlueprintValidator::validate(const std::string& text) const
 {
-  if (looksLikeLongNumericLine(text))
-      return true;                        // skip regex, avoid recursion
+  // Long lines are decided without std::regex (its recursion overflows the
+  // stack on long input) where these checks can.
+  if (m_impl && m_impl->onlyIndexListBlueprint) {
+    const auto longIndexResult = validateLongIndexLine(text);
+    if (longIndexResult != LongLineValidationResult::kNotApplicable)
+      return longIndexResult == LongLineValidationResult::kValid;
+  }
+
+  const auto longNumericResult = validateLongNumericLine(text);
+  if (longNumericResult == LongLineValidationResult::kValid)
+      return true;
+  if (longNumericResult == LongLineValidationResult::kInvalid)
+      return false;
 
   if (m_impl && m_impl->onlyRepeatedStringBlueprint) {
     const auto longStringResult = validateLongStringLine(text);

@@ -4,6 +4,7 @@
 #include "tadah/core/key_notice.h"
 #include "tadah/core/logger.h"
 #include "tadah/core/utils.h"
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -197,6 +198,19 @@ namespace {
               "Invalid value for key " + uKey + " on " +
               lineOf(first_line + i, source) + ": '" + trim(val) +
               "' (allowed: " + joinAllowed(keyInfo.allowed_values) + ")");
+        }
+        // Values joined by a comma or a '+', which the line is not split
+        // at: name the line, the separator and the line to write.
+        std::string respaced;
+        const std::string seps =
+            CoreUserConfigParser::misusedSeparators(val, keyInfo, respaced);
+        if (!seps.empty()) {
+          throw std::runtime_error(
+              "Invalid value for key " + uKey + " on " +
+              lineOf(first_line + i, source) + ": '" + trim(val) +
+              "' separates values with " + seps +
+              ", which a configuration line is not split at (values are "
+              "separated by blanks: " + uKey + " " + respaced + ")");
         }
         throw std::runtime_error("Invalid schema for key: " + key);
       }
@@ -393,6 +407,52 @@ bool CoreUserConfigParser::validateSchemaOnly(const std::string &text,
 {
   BlueprintValidator validator(keyInfo.value_type);
   return validator.validate(text);
+}
+
+std::string CoreUserConfigParser::misusedSeparators(const std::string &text,
+                                                    const BlueprintKey &keyInfo,
+                                                    std::string &respaced)
+{
+  auto blank = [](char c) {
+    return std::isspace(static_cast<unsigned char>(c)) != 0;
+  };
+  // A '+' joined to the character before it: not a sign after a blank or a
+  // comma, nor an exponent's sign.
+  auto joining_plus = [&](std::size_t i) {
+    if (text[i] != '+' || i == 0) return false;
+    const char before = text[i - 1];
+    return !blank(before) && before != ',' && before != 'e' && before != 'E';
+  };
+  struct Attempt {
+    bool commas, pluses;
+    const char *name;
+  };
+  const Attempt attempts[] = {{true, false, "','"},
+                              {false, true, "'+'"},
+                              {true, true, "',' and '+'"}};
+  for (const Attempt &a : attempts) {
+    std::string candidate = text;
+    bool replaced_comma = false, replaced_plus = false;
+    for (std::size_t i = 0; i < text.size(); ++i) {
+      if (a.commas && text[i] == ',') {
+        candidate[i] = ' ';
+        replaced_comma = true;
+      } else if (a.pluses && joining_plus(i)) {
+        candidate[i] = ' ';
+        replaced_plus = true;
+      }
+    }
+    if (replaced_comma != a.commas || replaced_plus != a.pluses) continue;
+    if (!validateSchemaOnly(candidate, keyInfo) ||
+        !keyInfo.isAllowedValue(trim(candidate)))
+      continue;
+    std::istringstream words(candidate);
+    std::string word, joined;
+    while (words >> word) joined += (joined.empty() ? "" : " ") + word;
+    respaced = joined;
+    return a.name;
+  }
+  return "";
 }
 
 } // namespace core
