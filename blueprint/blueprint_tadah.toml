@@ -1193,7 +1193,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_basis]
 INHERIT = ["TYPES.STRING"]
-description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always verify with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localized C2 sawtooth degrades elastic constants vs pure Knot5 — prefer Knot5 unless E-V is your only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; hard-cutoff truncation leaves a value discontinuity at rcut; dense mode only — prefer any other family). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID* width entries are a pure gauge for the Knot* families (pinned 1.0) — do not add OPTIM blocks on them."
+description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always verify with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localized C2 sawtooth degrades elastic constants vs pure Knot5 — prefer Knot5 unless E-V is your only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; hard-cutoff truncation leaves a value discontinuity at rcut; dense mode only — prefer any other family). Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5, Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian, gaussian, BP, D2_BP. Another spelling names no family and is refused before the EAM file is read (it was fitted as Blip while a WARNING called it Gaussian). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID* width entries are a pure gauge for the Knot* families (pinned 1.0) — do not add OPTIM blocks on them."
 examples     = ["Blip", "Blip5", "Knot3", "Knot5", "KnotMix"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1201,7 +1201,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_level]
 INHERIT = ["TYPES.STRING"]
-description  = "Grid-accuracy preset for `tadah refit` (REFIT_MODE dense only; REFIT_MODE compact refuses it): coarse | balanced | fine | accurate. Default balanced."
+description  = "Grid-accuracy preset for `tadah refit` (REFIT_MODE dense only; REFIT_MODE compact refuses it): coarse | balanced | fine | accurate, in any letter case; another value is refused before the EAM file is read (it fitted the balanced preset). Default balanced."
 examples     = ["balanced", "fine"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1273,7 +1273,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_placement]
 INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` basis placement of the dense fit: 'window' (default; basis concentrated on the physically reachable pair-distance/density window, small uniform tail allocation) or 'uniform' (legacy single uniform grid over the full tabulated range). REFIT_MODE dense only; REFIT_MODE compact, which always fits on the reachable windows, refuses it."
+description  = "`tadah refit` basis placement of the dense fit: 'window' (default; basis concentrated on the physically reachable pair-distance/density window, small uniform tail allocation) or 'uniform' (legacy single uniform grid over the full tabulated range), in any letter case; another value is refused before the EAM file is read (it ran the window placement). REFIT_MODE dense only; REFIT_MODE compact, which always fits on the reachable windows, refuses it."
 examples     = ["window", "uniform"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1303,7 +1303,7 @@ INHERIT = ["TYPES.BOOL"]
 # sets the key. Without it the documented "Default true" was silently false at
 # runtime (contains() materialises the inherited false). See refit_compact_merge.
 default_value = ["true"]
-description  = "`tadah refit` (REFIT_MODE dense only; REFIT_MODE compact refuses it) under EMBF0 FREE: pin the raw embedding to the table's F(0) (isolated-atom reference) with a soft constraint row. Default true. Under the default EMBF0 ZERO the fit uses the zero-referenced embedding, so F(0) = 0 exactly by construction and this key has no effect."
+description  = "`tadah refit` (REFIT_MODE dense only; REFIT_MODE compact refuses it) under EMBF0 FREE: pin the raw embedding to the table's F(0) (isolated-atom reference) with a soft constraint row. Default true. Under the default EMBF0 ZERO the fit uses the zero-referenced embedding, so F(0) = 0 exactly by construction: the key has no effect there and is refused, true or false (it was accepted)."
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
