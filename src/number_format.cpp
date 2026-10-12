@@ -269,6 +269,25 @@ std::string reformat_double_token(std::string_view tok, int digits) {
   return n ? std::string(buf, n) : std::string(tok);
 }
 
+std::size_t reformat_double_token_exact(std::string_view tok, char *buf,
+                                        std::size_t cap) {
+  if (cap < kReformatBufferSize)
+    throw std::invalid_argument(
+        "reformat_double_token_exact: buffer too small");
+  if (is_integer_literal(tok)) return 0;
+  double v = 0.0;
+  if (!parse_decimal_finite(tok, v)) return 0;
+  return roundtrip_chars(v, buf, cap);
+}
+
+std::vector<std::string> exact_in_potential_keys() {
+  std::vector<std::string> keys;
+  for (const auto &kv : BlueprintParser::getKeysMapRef())
+    if (kv.second.exact_in_potential) keys.push_back(kv.first);
+  std::sort(keys.begin(), keys.end());
+  return keys;
+}
+
 PotDigits resolve_pot_digits(const Context &ctx) {
   const std::optional<std::string> s = ctx.stored_value("NUMERIC");
   if (!s) return PotDigits{};
@@ -296,9 +315,20 @@ PotDigits resolve_pot_digits(const Context &ctx) {
 std::string pot_digits_warning(const PotDigits &pd) {
   if (!pd.explicit_ || pd.digits >= kRoundTripDigits) return std::string();
   const std::string n = std::to_string(pd.digits);
+  // "CGRID2B, CGRIDMB, ... and SGRIDMB": the keys written exactly anyway.
+  const std::vector<std::string> exact = exact_in_potential_keys();
+  std::string listed;
+  for (std::size_t i = 0; i < exact.size(); ++i)
+    listed += (i == 0 ? "" : i + 1 == exact.size() ? " and " : ", ") +
+              exact[i];
+  const std::string exact_clause =
+      exact.empty() ? std::string()
+                    : ", and so are the numbers of " + listed +
+                          ", which a load checks exactly";
   return "NUMERIC " + n + " limits every non-integer number of the "
          "potential's key/value lines to " + n + " significant digits "
-         "(integers are written exactly): values do not round-trip exactly "
+         "(integers are written exactly" + exact_clause + "): the other "
+         "values do not round-trip exactly "
          "(a double needs " + std::to_string(kRoundTripDigits) +
          "), so a potential reloaded from this file differs from the one in "
          "memory. NUMERIC is never written into the potential: delete the "

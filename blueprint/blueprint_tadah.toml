@@ -257,6 +257,7 @@ examples     = ["Cut_Cos", "Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCUT2B]
 INHERIT = ["TYPES.DOUBLES"]
+exact_in_potential = true
 description  = "Specifies the cutoff distance(s) for two-body descriptor(s)."
 long_description = """
 Provide a single value for one descriptor or multiple values—one for each 
@@ -266,6 +267,7 @@ examples     = ["3.0", "3.0 7.5"]
 
 [ALLOWED_KEYS.RCUTMB]
 INHERIT = ["TYPES.DOUBLES"]
+exact_in_potential = true
 description  = "Specifies the cutoff distance(s) for many-body descriptor(s)."
 long_description = """
 Provide a single value for a standalone descriptor or multiple values
@@ -323,6 +325,7 @@ DM_Blip 0 6 6 Ti Nb Nb Nb"""
 
 [ALLOWED_KEYS.CGRID2B]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+exact_in_potential = true
 value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Controls the center positions for radial basis functions (two-body)."
@@ -343,6 +346,7 @@ examples     = [
 
 [ALLOWED_KEYS.SGRID2B]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+exact_in_potential = true
 value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for two-body radial basis functions."
@@ -362,6 +366,7 @@ GEOM 6 0.1 10"""
 
 [ALLOWED_KEYS.CGRIDMB]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+exact_in_potential = true
 value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
 description  = "Specifies the center positions for many-body radial basis functions."
@@ -380,6 +385,7 @@ examples     = [
 
 [ALLOWED_KEYS.SGRIDMB]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
+exact_in_potential = true
 value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for many-body radial basis functions."

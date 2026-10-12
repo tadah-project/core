@@ -182,9 +182,17 @@ void Context::print_NoLock(std::ostream &os, bool potential,
     int valN = bi->value_N[0];
 
     const bool reformat = potential && has_double_position(*bi);
+    // A key the loads check exactly (the blueprint's exact_in_potential:
+    // the cutoffs and radial grids) is written exactly whatever NUMERIC is:
+    // %.{N}g is exact from kRoundTripDigits on, and below it the shortest
+    // text that reads back as the same double is written instead.
+    const bool exact = reformat && bi->exact_in_potential &&
+                       sig_digits < kRoundTripDigits;
     auto put = [&](const std::string &v) {
       if (reformat) {
-        const size_t n = reformat_double_token(v, sig_digits, buf, sizeof buf);
+        const size_t n =
+            exact ? reformat_double_token_exact(v, buf, sizeof buf)
+                  : reformat_double_token(v, sig_digits, buf, sizeof buf);
         if (n) {
           os.write(buf, static_cast<std::streamsize>(n));
           return;

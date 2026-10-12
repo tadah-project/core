@@ -317,6 +317,27 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     }
   }
 
+  // Written exactly in a potential whatever NUMERIC is: governs the
+  // non-integer numbers Context::write_potential writes, so it needs a
+  // DOUBLE position (on another key it would govern nothing).
+  if (table.contains("exact_in_potential")) {
+    const toml::value &node = table.at("exact_in_potential");
+    if (!node.is_boolean()) {
+      throw std::runtime_error(
+          "'exact_in_potential' must be true or false in key: " + fullKey);
+    }
+    item.exact_in_potential = node.as_boolean();
+    bool has_double = false;
+    for (const auto &vt : item.value_type)
+      if (vt.find("DOUBLE") != std::string::npos) has_double = true;
+    if (item.exact_in_potential && !has_double) {
+      throw std::runtime_error(
+          fullKey + ": exact_in_potential = true needs a DOUBLE position in "
+          "value_type (it governs how a potential file writes the key's "
+          "non-integer numbers, and " + fullKey + " has none)");
+    }
+  }
+
   return item;
 }
 

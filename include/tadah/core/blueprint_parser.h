@@ -51,6 +51,20 @@ struct BlueprintKey {
    * key's default_value and examples must be allowed values.
    */
   std::vector<std::string> allowed_values;
+  /**
+   * True for a key whose numbers a potential file records exactly whatever
+   * NUMERIC is (blueprint field `exact_in_potential`): a load checks them
+   * exactly (the cutoffs RCUT2B/RCUTMB, which D2_EAM/DM_EAM compare with
+   * their setfl file and the knot families with their largest knot, and
+   * the radial grids CGRID2B, CGRIDMB, SGRID2B and SGRIDMB those checks
+   * relate them to).
+   * Context::write_potential writes each non-integer decimal literal of
+   * such a key with NUMERIC significant digits at NUMERIC 17 and above
+   * (exact), and below 17 as the shortest text that reads back as the same
+   * double (format_roundtrip()). The field must be a boolean, and a key that
+   * sets it true must have a DOUBLE position in its value_type.
+   */
+  bool exact_in_potential = false;
 
   BlueprintKey() : cli_required(false) {}
 

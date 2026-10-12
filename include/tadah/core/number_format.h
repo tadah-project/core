@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace tadah {
 namespace core {
@@ -154,6 +155,25 @@ std::string reformat_double_token(std::string_view tok, int digits);
  */
 std::size_t reformat_double_token(std::string_view tok, int digits,
                                   char *buf, std::size_t cap);
+
+/**
+ * @brief The exact counterpart of reformat_double_token(): writes a
+ * non-integer decimal literal @p tok as the shortest text that reads back
+ * as the same double (format_roundtrip()) into @p buf and returns its
+ * length, or returns 0 when the token must be written verbatim (the tokens
+ * reformat_double_token() leaves verbatim). @p cap must be at least
+ * kReformatBufferSize. Context::write_potential writes the keys the
+ * blueprint marks `exact_in_potential` with it below kRoundTripDigits.
+ */
+std::size_t reformat_double_token_exact(std::string_view tok, char *buf,
+                                        std::size_t cap);
+
+/**
+ * @brief The ALLOWED_KEYS keys whose numbers a potential file records
+ * exactly whatever NUMERIC is (BlueprintKey::exact_in_potential), in
+ * alphabetical order: CGRID2B, CGRIDMB, RCUT2B, RCUTMB, SGRID2B, SGRIDMB.
+ */
+std::vector<std::string> exact_in_potential_keys();
 
 /**
  * @brief Precision for numbers written into a potential file.
