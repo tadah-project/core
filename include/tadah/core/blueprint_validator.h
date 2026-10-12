@@ -33,8 +33,18 @@ namespace core {
 
 /**
  * @class BlueprintValidator
- * @brief Verifies if a given input matches a compiled blueprint-based regex,
- *        and retrieves token captures.
+ * @brief Verifies if a given input matches a blueprint, and retrieves token
+ *        captures.
+ *
+ * validate() splits the text into words at blanks, as a configuration line
+ * is split into values, and matches the words against the blueprint: a
+ * comma or a '+' between two values is not a separator (a STRING word keeps
+ * them; an INDEX_PATTERN list takes commas, and blanks around its ',', '-'
+ * and ':'). A line of any length is decided in time linear in its number of
+ * words, without std::regex. getPattern() and getCaptures() use the
+ * blueprint's anchored regex (std::regex), which takes the same lines but
+ * may backtrack for long before it refuses one and overflows the stack on a
+ * long one.
  */
 class BlueprintValidator {
 public:
@@ -50,7 +60,7 @@ public:
    */
   explicit BlueprintValidator(const std::string &blueprint);
 
-  /** @brief Destructor releases all compiled regex internally. */
+  /** @brief Destructor releases the compiled blueprints. */
   ~BlueprintValidator();
 
   /**

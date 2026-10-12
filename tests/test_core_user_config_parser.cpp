@@ -688,3 +688,169 @@ TEST_CASE("Config parser: a key written as a block has no examples",
   CHECK(blocks == std::set<std::string>{"EXPLORE", "FUSE", "INIT",
                                         "OPTIMIZER", "REFINE"});
 }
+
+namespace {
+/* The message parse() throws for `lines` (first line `first` of `source`),
+ * or "no exception". */
+std::string parse_refusal(const std::vector<std::string> &lines,
+                          std::size_t first = 1,
+                          const std::string &source = "") {
+  try {
+    (void)CoreUserConfigParser().parse(lines, first, source);
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "no exception";
+}
+}  // namespace
+
+/* Pins: a configuration line whose list values are joined by a comma or a
+ * '+' (which the parser does not split at: it splits a line at blanks) is
+ * refused when it is parsed, naming the line, the key, the value and the
+ * separator, and the line to write instead:
+ *   "Invalid value for key FIXWEIGHT on line 1: '0.1,0.2' separates values
+ *    with ',', which a configuration line is not split at (values are
+ *    separated by blanks: FIXWEIGHT 0.1 0.2)"
+ * also with the file and line of a task section (line 3 of run.task), for
+ * '+' ('MPARAMS 1.0+2.0'), for both ('CGRID2B 1.0,2.0+3.0': "',' and
+ * '+'"), with blanks around the comma ('SGRID2B 1.0, 2.0': SGRID2B 1.0
+ * 2.0), for a key of several single values ('MODEL M_BLR,BF_Linear'), for an
+ * index list joined by '+' ('FIXINDEX 13+14'), and for a line of 2048
+ * characters or more. A value that blanks would not make valid either keeps
+ * the generic refusal ('SBASIS 1,2': "Invalid schema for key: SBASIS").
+ * What the parser keeps as one value is accepted: an index list with commas
+ * ('FIXINDEX 13,14', its reader splits it), a path with a comma or a '+'
+ * ('DBFILE a,b.tadah', 'SETFL Ta+v2.eam.alloy'), an exponent's sign
+ * ('FIXWEIGHT 1e+5 2'). (Until the names keys this test pinned 'ATOM
+ * Ti+Nb' as the one value 'Ti+Nb'; ATOM's values are names, and the next
+ * test pins its refusal.)
+ * Before the fix: 'FIXWEIGHT 0.1,0.2', 'MPARAMS 1.0+2.0', 'CGRID2B
+ * 1.0,2.0+3.0', 'SGRID2B 1.0, 2.0', 'FIXINDEX 13+14' and the long line were
+ * accepted (one value per word, '0.1,0.2' refused only when read, and
+ * '13+14' by FIXINDEX's reader), and 'MODEL M_BLR,BF_Linear' was refused as
+ * "Invalid schema for key: MODEL". */
+TEST_CASE("Config parser: a comma or '+' between values is refused, naming "
+          "the line, the key and the separator",
+          "[config][separators]") {
+  const std::string tail = ", which a configuration line is not split at "
+                           "(values are separated by blanks: ";
+  struct Case {
+    std::string line, message;
+  };
+  const std::vector<Case> cases = {
+      {"FIXWEIGHT 0.1,0.2",
+       "Invalid value for key FIXWEIGHT on line 1: '0.1,0.2' separates "
+       "values with ','" + tail + "FIXWEIGHT 0.1 0.2)"},
+      {"MPARAMS 1.0+2.0",
+       "Invalid value for key MPARAMS on line 1: '1.0+2.0' separates values "
+       "with '+'" + tail + "MPARAMS 1.0 2.0)"},
+      {"CGRID2B 1.0,2.0+3.0",
+       "Invalid value for key CGRID2B on line 1: '1.0,2.0+3.0' separates "
+       "values with ',' and '+'" + tail + "CGRID2B 1.0 2.0 3.0)"},
+      {"SGRID2B 1.0, 2.0",
+       "Invalid value for key SGRID2B on line 1: '1.0, 2.0' separates "
+       "values with ','" + tail + "SGRID2B 1.0 2.0)"},
+      {"model M_BLR,BF_Linear",
+       "Invalid value for key MODEL on line 1: 'M_BLR,BF_Linear' separates "
+       "values with ','" + tail + "MODEL M_BLR BF_Linear)"},
+      {"FIXINDEX 13+14",
+       "Invalid value for key FIXINDEX on line 1: '13+14' separates values "
+       "with '+'" + tail + "FIXINDEX 13 14)"},
+      {"SBASIS 1,2", "Invalid schema for key: SBASIS"},
+  };
+  for (const Case &c : cases) {
+    INFO(c.line);
+    CHECK(parse_refusal({c.line}) == c.message);
+  }
+  // The file and line of a task section.
+  CHECK(parse_refusal({"# comment", "VERBOSE 1", "FIXWEIGHT 0.1,0.2"}, 1,
+                      "run.task") ==
+        "Invalid value for key FIXWEIGHT on line 3 of run.task: '0.1,0.2' "
+        "separates values with ','" + tail + "FIXWEIGHT 0.1 0.2)");
+  // A line of 2048 characters or more.
+  std::string long_line = "FIXWEIGHT 1.0";
+  while (long_line.size() < 2100) long_line += ",2.0";
+  const std::string long_msg = parse_refusal({long_line});
+  INFO(long_msg.substr(0, 80));
+  CHECK(long_msg.rfind("Invalid value for key FIXWEIGHT on line 1: "
+                       "'1.0,2.0,2.0,",
+                       0) == 0);
+  CHECK(long_msg.find("' separates values with ','" + tail +
+                      "FIXWEIGHT 1.0 2.0 2.0 ") != std::string::npos);
+
+  // One value per word, as the parser keeps it.
+  Context c;
+  REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
+                      "FIXINDEX 13,14", "DBFILE a,b.tadah",
+                      "SETFL Ta+v2.eam.alloy", "FIXWEIGHT 1e+5 2"}));
+  CHECK(c.size("FIXINDEX") == 1);
+  CHECK(c.get<std::string>("FIXINDEX") == "13,14");
+  CHECK(c.get<std::string>("DBFILE") == "a,b.tadah");
+  CHECK(c.get<std::string>("SETFL") == "Ta+v2.eam.alloy");
+  CHECK(c.size("FIXWEIGHT") == 2);
+  CHECK(c.get<double>("FIXWEIGHT") == 1e5);
+}
+
+/* Pins: a key whose STRING values are names (blueprint field names: ATOM,
+ * atompair, RCTYPE2B, RCTYPEMB, TYPE2B, TYPEMB, MODEL, WATOM, WNOISE)
+ * refuses a value with a comma, or a '+' joined to the character before
+ * it, which no name holds: the refusal names the line, the key, the value
+ * and the separator, and the line to write, as for a list of numbers:
+ *   "Invalid value for key ATOM on line 1: 'Ta,Nb' separates values with
+ *    ',', which a configuration line is not split at (values are separated
+ *    by blanks: ATOM Ta Nb)"
+ * likewise 'ATOM Ti+Nb', 'atompair Ta+Nb', 'RCTYPE2B Cut_Cos,Cut_Tanh',
+ * 'TYPE2B D2_Blip 4 4 Ta,Nb Nb,Ta' and 'WATOM Ta,Ta 0.5'. A names value
+ * that blanks would not make valid either is refused with the generic
+ * message ('WNOISE E,F 1e-3', 'MODEL M_KRR Kern,Linear 2': "Invalid schema
+ * for key: ..."). A '+' after a name or a word that ends in e is a
+ * separator too, not an exponent's sign: 'TYPE2B D2_Blip 4 4 Fe+Fe' (TYPE2B
+ * D2_Blip 4 4 Fe Fe), 'DIMER true+1.0 false' (DIMER true 1.0 false); the
+ * sign of an exponent stays in its number ('FIXWEIGHT 1e+5+2': FIXWEIGHT
+ * 1e+5 2).
+ * Before the fix: the names values were accepted, one value per word
+ * ('Ta,Nb', 'Ti+Nb', 'Cut_Cos,Cut_Tanh', ...; tadah failed later with a
+ * message that did not name the separator), and so were 'WNOISE E,F 1e-3'
+ * and 'MODEL M_KRR Kern,Linear 2' ("no exception"); 'TYPE2B D2_Blip 4 4
+ * Fe+Fe' and 'DIMER true+1.0 false' were refused as "Invalid schema for
+ * key: TYPE2B" and "... DIMER" (any '+' after an e or an E was taken for an
+ * exponent's sign); 'WATOM Ta,Ta 0.5' (its two names one word, short of a
+ * name pair and a weight) and 'FIXWEIGHT 1e+5+2' pass as well (pins). */
+TEST_CASE("Config parser: a comma or '+' in a name is refused as a "
+          "separator",
+          "[config][separators]") {
+  const std::string tail = ", which a configuration line is not split at "
+                           "(values are separated by blanks: ";
+  auto msg = [&](const std::string &key, const std::string &value,
+                 const std::string &seps, const std::string &line) {
+    return "Invalid value for key " + key + " on line 1: '" + value +
+           "' separates values with " + seps + tail + line + ")";
+  };
+  struct Case {
+    std::string line, message;
+  };
+  const std::vector<Case> cases = {
+      {"ATOM Ta,Nb", msg("ATOM", "Ta,Nb", "','", "ATOM Ta Nb")},
+      {"ATOM Ti+Nb", msg("ATOM", "Ti+Nb", "'+'", "ATOM Ti Nb")},
+      {"atompair Ta+Nb", msg("ATOMPAIR", "Ta+Nb", "'+'", "ATOMPAIR Ta Nb")},
+      {"RCTYPE2B Cut_Cos,Cut_Tanh",
+       msg("RCTYPE2B", "Cut_Cos,Cut_Tanh", "','",
+           "RCTYPE2B Cut_Cos Cut_Tanh")},
+      {"TYPE2B D2_Blip 4 4 Ta,Nb Nb,Ta",
+       msg("TYPE2B", "D2_Blip 4 4 Ta,Nb Nb,Ta", "','",
+           "TYPE2B D2_Blip 4 4 Ta Nb Nb Ta")},
+      {"WATOM Ta,Ta 0.5", msg("WATOM", "Ta,Ta 0.5", "','", "WATOM Ta Ta 0.5")},
+      {"WNOISE E,F 1e-3", "Invalid schema for key: WNOISE"},
+      {"MODEL M_KRR Kern,Linear 2", "Invalid schema for key: MODEL"},
+      {"TYPE2B D2_Blip 4 4 Fe+Fe",
+       msg("TYPE2B", "D2_Blip 4 4 Fe+Fe", "'+'", "TYPE2B D2_Blip 4 4 Fe Fe")},
+      {"DIMER true+1.0 false",
+       msg("DIMER", "true+1.0 false", "'+'", "DIMER true 1.0 false")},
+      {"FIXWEIGHT 1e+5+2",
+       msg("FIXWEIGHT", "1e+5+2", "'+'", "FIXWEIGHT 1e+5 2")},
+  };
+  for (const Case &c : cases) {
+    INFO(c.line);
+    CHECK(parse_refusal({c.line}) == c.message);
+  }
+}

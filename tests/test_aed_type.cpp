@@ -2,7 +2,12 @@
 #include "catch2/catch.hpp"
 #include <tadah/core/aed_type.h>
 #include <tadah/core/maths.h>
+#include <iterator>
+#include <numeric>
+#include <cstdlib>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -326,4 +331,108 @@ TEST_CASE("aed_type: an owner assigned from a view of its own values keeps "
   x = view;
   CHECK_FALSE(x.is_view());
   CHECK(indexed(x) == std::vector<double>{1.0, 2.0, 3.0});
+}
+
+/* Pins: begin() to end() of an aed_type visit its size() values through
+ * its stride, as operator[] does: a range-for, std::accumulate, the vector
+ * of begin() to end(), std::distance, end()[-1], begin()[2] and a reverse
+ * walk over Matrix::row(r) of a 3 x 4 matrix (4 values 3 apart) give
+ * M(r, 0 .. 3) for every row r, through the const and the non-const
+ * iterators; a range-for that writes through a row view writes the row
+ * (M(1, c) = -c) and nothing else; an owner made with a stride
+ * (aed_type(3, 2)) visits its 3 values; an empty aed_type has begin() ==
+ * end().
+ * Before the fix: begin() and end() were data() and data() + size(), so
+ * they walked size() consecutive doubles from the row's first value, the
+ * column-major neighbours: row 0 gave {0, 10, 20, 1}, row 1 {10, 20, 1, 11}
+ * and row 2 {20, 1, 11, 21}; the writing loop set M(1, 0), M(2, 0),
+ * M(0, 1) and M(1, 1); the strided owner gave {1, 0, 2}. */
+TEST_CASE("aed_type: iteration visits the values through the stride",
+          "[aed_type][column_view]") {
+  Matrix M = row_view_matrix();
+  const Matrix &cM = M;
+  for (size_t r = 0; r < 3; ++r) {
+    INFO("row " << r);
+    std::vector<double> row;
+    for (size_t c = 0; c < 4; ++c) row.push_back(10.0 * r + c);
+
+    aed_type view = M.row(r);
+    REQUIRE(view.is_view());
+    std::vector<double> walked;
+    for (double v : view) walked.push_back(v);
+    CHECK(walked == row);
+    CHECK(ranged(view) == row);
+    const aed_type &cview = view;
+    std::vector<double> cwalked;
+    for (double v : cview) cwalked.push_back(v);
+    CHECK(cwalked == row);
+    CHECK(std::accumulate(view.begin(), view.end(), 0.0) ==
+          40.0 * r + 6.0);
+    CHECK(std::distance(view.begin(), view.end()) == 4);
+    CHECK(view.end()[-1] == row[3]);
+    CHECK(view.begin()[2] == row[2]);
+    CHECK(*(cview.begin() + 1) == row[1]);
+    std::vector<double> reversed;
+    for (auto it = view.end(); it != view.begin();) reversed.push_back(*--it);
+    CHECK(reversed == std::vector<double>(row.rbegin(), row.rend()));
+  }
+
+  aed_type row1 = M.row(1);
+  double c = 0.0;
+  for (double &v : row1) v = -(c++);
+  for (size_t r = 0; r < 3; ++r)
+    for (size_t k = 0; k < 4; ++k) {
+      INFO("M(" << r << ", " << k << ")");
+      CHECK(cM(r, k) == (r == 1 ? -double(k) : 10.0 * r + k));
+    }
+
+  aed_type strided(3, 2);
+  strided[0] = 1.0;
+  strided[1] = 2.0;
+  strided[2] = 3.0;
+  CHECK(ranged(strided) == std::vector<double>{1.0, 2.0, 3.0});
+
+  aed_type empty;
+  CHECK(empty.begin() == empty.end());
+  const aed_type &cempty = empty;
+  CHECK(cempty.begin() == cempty.end());
+}
+
+/* Pins: the adopting constructor aed_type(arr, size, stride, true) owns a
+ * buffer of size * stride doubles from malloc (resize() reallocates size *
+ * stride, the destructor frees it): one with values reads and writes them
+ * through the stride and frees the buffer; a null buffer for size > 0
+ * cannot hold them and is refused (std::invalid_argument naming the size
+ * and the stride); a null buffer of no values is an empty owner.
+ * Before the fix: aed_type(nullptr, 3, 2, true) was constructed without
+ * an error (data() null, size() 3), so the message check failed against an
+ * empty string; the owner checks and the null buffer of no values passed
+ * as well (a pin of the buffer contract). */
+TEST_CASE("aed_type: the adopting constructor owns a malloc'ed buffer of "
+          "size * stride values", "[aed_type]") {
+  double *buf = static_cast<double *>(malloc(3 * 2 * sizeof(double)));
+  for (size_t i = 0; i < 6; ++i) buf[i] = double(i);
+  {
+    aed_type owner(buf, 3, 2, true);
+    CHECK_FALSE(owner.is_view());
+    CHECK(owner.size() == 3);
+    CHECK(indexed(owner) == std::vector<double>{0.0, 2.0, 4.0});
+    owner[1] = -1.0;
+    CHECK(buf[2] == -1.0);
+    owner.resize(4);
+    CHECK(owner.size() == 4);
+    CHECK(owner[3] == 0.0);
+    CHECK(owner[1] == -1.0);
+  }  // frees the buffer (AddressSanitizer: no leak, no double free)
+
+  std::string what;
+  try {
+    aed_type bad(static_cast<double *>(nullptr), 3, 2, true);
+  } catch (const std::invalid_argument &e) {
+    what = e.what();
+  }
+  CHECK(what == "aed_type: cannot own a null buffer of 3 values, 2 apart "
+                "(the adopting constructor takes a buffer of size * stride "
+                "doubles from malloc)");
+  CHECK_NOTHROW(aed_type(static_cast<double *>(nullptr), 0, 1, true));
 }

@@ -10,6 +10,9 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
+#include <cstddef>
+#include <iterator>
+#include <type_traits>
 
 namespace tadah {
 namespace core {
@@ -32,8 +35,126 @@ namespace core {
  * a strided source (Matrix::row, size() values rows() apart) holds only
  * the values it views, so a copy of size() * stride doubles from its first
  * value would read past them.
+ *
+ * begin() to end() visit the size() values through the stride, as
+ * operator[] does (random-access iterators); data() and ptr() are the
+ * first value only: of a strided aed_type the next value is not data()[1].
  */
 class aed_type {
+public:
+  /** A random-access iterator over values `stride` apart from `base`:
+   *  element i is base[i * stride]. It holds the base and an index, so an
+   *  end() of a strided view forms no pointer past the viewed storage. */
+  template <typename T>
+  class strided_iterator {
+  public:
+    using iterator_category = std::random_access_iterator_tag;  ///< Random access.
+    using value_type = std::remove_const_t<T>;  ///< double.
+    using difference_type = std::ptrdiff_t;     ///< A count of values.
+    using pointer = T*;                         ///< To a value.
+    using reference = T&;                       ///< To a value.
+
+    strided_iterator() = default;
+    /// Element @p index of the values @p stride apart from @p base.
+    strided_iterator(T* base, size_t stride, difference_type index) noexcept
+    : base_(base), stride_(static_cast<difference_type>(stride)),
+      index_(index) {}
+    /// An iterator over const values from one over the same values.
+    template <typename U,
+              typename = std::enable_if_t<std::is_same_v<const U, T>>>
+    strided_iterator(const strided_iterator<U>& o) noexcept
+    : base_(o.base_), stride_(o.stride_), index_(o.index_) {}
+
+    /// The value at the iterator.
+    reference operator*() const { return base_[index_ * stride_]; }
+    /// Its address.
+    pointer operator->() const { return base_ + index_ * stride_; }
+    /// The value @p n elements on.
+    reference operator[](difference_type n) const {
+      return base_[(index_ + n) * stride_];
+    }
+
+    /// The next element.
+    strided_iterator& operator++() noexcept { ++index_; return *this; }
+    /// The next element; returns this one.
+    strided_iterator operator++(int) noexcept {
+      strided_iterator t = *this; ++index_; return t;
+    }
+    /// The previous element.
+    strided_iterator& operator--() noexcept { --index_; return *this; }
+    /// The previous element; returns this one.
+    strided_iterator operator--(int) noexcept {
+      strided_iterator t = *this; --index_; return t;
+    }
+    /// @p n elements on.
+    strided_iterator& operator+=(difference_type n) noexcept {
+      index_ += n; return *this;
+    }
+    /// @p n elements back.
+    strided_iterator& operator-=(difference_type n) noexcept {
+      index_ -= n; return *this;
+    }
+    /// @p n elements on from @p it.
+    friend strided_iterator operator+(strided_iterator it,
+                                      difference_type n) noexcept {
+      return it += n;
+    }
+    /// @p n elements on from @p it.
+    friend strided_iterator operator+(difference_type n,
+                                      strided_iterator it) noexcept {
+      return it += n;
+    }
+    /// @p n elements back from @p it.
+    friend strided_iterator operator-(strided_iterator it,
+                                      difference_type n) noexcept {
+      return it -= n;
+    }
+    /// Iterators over the same values: the number of values between them.
+    friend difference_type operator-(const strided_iterator& a,
+                                     const strided_iterator& b) noexcept {
+      return a.index_ - b.index_;
+    }
+    /// The same element of the same values.
+    friend bool operator==(const strided_iterator& a,
+                           const strided_iterator& b) noexcept {
+      return a.base_ == b.base_ && a.index_ == b.index_;
+    }
+    /// Not the same element.
+    friend bool operator!=(const strided_iterator& a,
+                           const strided_iterator& b) noexcept {
+      return !(a == b);
+    }
+    /// An earlier element of the same values.
+    friend bool operator<(const strided_iterator& a,
+                          const strided_iterator& b) noexcept {
+      return a.index_ < b.index_;
+    }
+    /// A later element of the same values.
+    friend bool operator>(const strided_iterator& a,
+                          const strided_iterator& b) noexcept {
+      return b < a;
+    }
+    /// Not a later element of the same values.
+    friend bool operator<=(const strided_iterator& a,
+                           const strided_iterator& b) noexcept {
+      return !(b < a);
+    }
+    /// Not an earlier element of the same values.
+    friend bool operator>=(const strided_iterator& a,
+                           const strided_iterator& b) noexcept {
+      return !(a < b);
+    }
+
+  private:
+    template <typename> friend class strided_iterator;
+    T* base_ = nullptr;
+    difference_type stride_ = 1;
+    difference_type index_ = 0;
+  };
+  using iterator = strided_iterator<double>;              ///< Over the values.
+  using const_iterator = strided_iterator<const double>;  ///< Over const values.
+
+private:
   double *data_ = nullptr;
   size_t size_ = 0;
   size_t stride_ = 1;
@@ -82,10 +203,20 @@ public:
     allocated_(true) {}
 
   /// A view of @p size values of @p arr, @p stride apart (allocated
-  /// false), or, with allocated true, an owner of the malloc'ed @p arr.
+  /// false), or, with allocated true, an owner of @p arr: a buffer of
+  /// size * stride doubles from malloc (or calloc/realloc), which it frees
+  /// with free() and resize() reallocates to n * stride doubles. Only a
+  /// null buffer of size > 0 can be checked (std::invalid_argument); its
+  /// size and origin cannot be. No Tadah! module adopts a buffer.
   inline aed_type(double* arr, size_t size, size_t stride = 1, bool allocated = false)
   : data_(arr), size_(size), stride_(stride), allocated_(allocated),
-    view_(!allocated) {}
+    view_(!allocated) {
+    if (allocated && arr == nullptr && size > 0)
+      throw std::invalid_argument(
+          "aed_type: cannot own a null buffer of " + std::to_string(size) +
+          " values, " + std::to_string(stride) + " apart (the adopting "
+          "constructor takes a buffer of size * stride doubles from malloc)");
+  }
 
   /// An owning copy (stride 1), also of a view.
   inline aed_type(const aed_type& other)
@@ -286,10 +417,25 @@ public:
   void random(int seed = std::chrono::system_clock::now().time_since_epoch().count(),
               double lower = -1e4, double upper = 1e4);
 
-  inline double* begin() { return data_; }
-  inline double* end() { return data_ + size_; }
-  inline const double* begin() const { return data_; }
-  inline const double* end() const { return data_ + size_; }
+  /// The first value (begin() to end(): operator[]'s values, through the
+  /// stride).
+  inline iterator begin() noexcept { return iterator(data_, stride_, 0); }
+  /// Past the last value.
+  inline iterator end() noexcept {
+    return iterator(data_, stride_, static_cast<std::ptrdiff_t>(size_));
+  }
+  /// The first value.
+  inline const_iterator begin() const noexcept {
+    return const_iterator(data_, stride_, 0);
+  }
+  /// Past the last value.
+  inline const_iterator end() const noexcept {
+    return const_iterator(data_, stride_, static_cast<std::ptrdiff_t>(size_));
+  }
+  /// The first value.
+  inline const_iterator cbegin() const noexcept { return begin(); }
+  /// Past the last value.
+  inline const_iterator cend() const noexcept { return end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const aed_type& v) {

@@ -111,9 +111,36 @@ public:
   /**
    * @brief Whether @p text matches the key's value_type schema (the
    *        BlueprintValidator), without the allowed_values check; no log.
+   *        A value of a names key (BlueprintKey::names) that holds a comma,
+   *        or a '+' joined to the character before it (see
+   *        misusedSeparators), does not.
    */
   static bool validateSchemaOnly(const std::string &text,
                                  const BlueprintKey &keyInfo);
+
+  /**
+   * @brief The separators that join the values of @p text where only
+   *        blanks separate values: "','", "'+'" or "',' and '+'", or ""
+   *        when there are none.
+   *
+   * A configuration line (and a command-line option) is split into values
+   * at blanks only, and its key's types take a comma or a '+' between two
+   * values nowhere but inside the STRING word of a key that is not a names
+   * key (a path, an option string) and between the entries of an index
+   * list. For a @p text that fails the key's types (validateSchemaOnly),
+   * this returns the separator(s) whose replacement by blanks makes it a
+   * value of the key (types and allowed values): every comma, every '+'
+   * joined to the character before it (not after a blank or a comma, nor
+   * the sign of an exponent: an e or an E after a digit or a point, with a
+   * digit after the '+', as in 1e+5), or both, tried in that order;
+   * @p respaced is then that text with its words joined by one blank
+   * ("0.1,0.2" gives "','" and "0.1 0.2"; "Fe+Fe" gives "'+'" and
+   * "Fe Fe"). An empty result (and @p respaced untouched) when @p text holds
+   * neither, or when blanks would not make it valid either.
+   */
+  static std::string misusedSeparators(const std::string &text,
+                                       const BlueprintKey &keyInfo,
+                                       std::string &respaced);
 
 private:
   /**

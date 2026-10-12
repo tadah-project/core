@@ -66,6 +66,17 @@ struct BlueprintKey {
    */
   bool exact_in_potential = false;
 
+  /**
+   * True for a key whose STRING values are names (blueprint field `names`:
+   * element symbols, descriptor, cutoff and model names), which hold no
+   * comma and no '+'. CoreUserConfigParser::validateSchemaOnly (and so the
+   * parser and TaskFactory) refuses a value of such a key that holds a
+   * comma, or a '+' joined to the character before it, as a separator typo
+   * (ATOM Ta,Nb); the STRING values of other keys keep them (a path, an
+   * option string).
+   */
+  bool names = false;
+
   BlueprintKey() : cli_required(false) {}
 
   /// Whether `value` is one of allowed_values (without regard to case), or

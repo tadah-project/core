@@ -4,6 +4,7 @@
 #include "tadah/core/key_notice.h"
 #include "tadah/core/logger.h"
 #include "tadah/core/utils.h"
+#include <cctype>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -198,6 +199,19 @@ namespace {
               lineOf(first_line + i, source) + ": '" + trim(val) +
               "' (allowed: " + joinAllowed(keyInfo.allowed_values) + ")");
         }
+        // Values joined by a comma or a '+', which the line is not split
+        // at: name the line, the separator and the line to write.
+        std::string respaced;
+        const std::string seps =
+            CoreUserConfigParser::misusedSeparators(val, keyInfo, respaced);
+        if (!seps.empty()) {
+          throw std::runtime_error(
+              "Invalid value for key " + uKey + " on " +
+              lineOf(first_line + i, source) + ": '" + trim(val) +
+              "' separates values with " + seps +
+              ", which a configuration line is not split at (values are "
+              "separated by blanks: " + uKey + " " + respaced + ")");
+        }
         throw std::runtime_error("Invalid schema for key: " + key);
       }
       if (keyInfo.isDeprecated()) {
@@ -388,11 +402,78 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
   return false;
 }
 
+namespace {
+bool isBlankChar(char c) {
+  return std::isspace(static_cast<unsigned char>(c)) != 0;
+}
+bool isDigitChar(char c) { return c >= '0' && c <= '9'; }
+
+/* Whether text[i] is a '+' joined to the character before it, which no
+ * value of a configuration line holds: not a sign after a blank or a comma,
+ * nor an exponent's sign (an e or an E after a digit or a point, with a
+ * digit after the '+': 1e+5, 2.5E+3). */
+bool joiningPlus(const std::string &text, std::size_t i) {
+  if (text[i] != '+' || i == 0) return false;
+  const char before = text[i - 1];
+  if (isBlankChar(before) || before == ',') return false;
+  const bool exponent =
+      (before == 'e' || before == 'E') && i >= 2 &&
+      (isDigitChar(text[i - 2]) || text[i - 2] == '.') && i + 1 < text.size() &&
+      isDigitChar(text[i + 1]);
+  return !exponent;
+}
+
+/* Whether text holds a comma or a joining '+'. */
+bool holdsSeparator(const std::string &text) {
+  for (std::size_t i = 0; i < text.size(); ++i)
+    if (text[i] == ',' || joiningPlus(text, i)) return true;
+  return false;
+}
+}  // namespace
+
 bool CoreUserConfigParser::validateSchemaOnly(const std::string &text,
                                               const BlueprintKey &keyInfo)
 {
+  // A name holds no ',' and no '+': there they separate two names.
+  if (keyInfo.names && holdsSeparator(text)) return false;
   BlueprintValidator validator(keyInfo.value_type);
   return validator.validate(text);
+}
+
+std::string CoreUserConfigParser::misusedSeparators(const std::string &text,
+                                                    const BlueprintKey &keyInfo,
+                                                    std::string &respaced)
+{
+  struct Attempt {
+    bool commas, pluses;
+    const char *name;
+  };
+  const Attempt attempts[] = {{true, false, "','"},
+                              {false, true, "'+'"},
+                              {true, true, "',' and '+'"}};
+  for (const Attempt &a : attempts) {
+    std::string candidate = text;
+    bool replaced_comma = false, replaced_plus = false;
+    for (std::size_t i = 0; i < text.size(); ++i) {
+      if (a.commas && text[i] == ',') {
+        candidate[i] = ' ';
+        replaced_comma = true;
+      } else if (a.pluses && joiningPlus(text, i)) {
+        candidate[i] = ' ';
+        replaced_plus = true;
+      }
+    }
+    if (replaced_comma != a.commas || replaced_plus != a.pluses) continue;
+    if (!validateSchemaOnly(candidate, keyInfo) ||
+        !keyInfo.isAllowedValue(trim(candidate)))
+      continue;
+    std::istringstream words(candidate);
+    std::string word, joined;
+    while (words >> word) joined += (joined.empty() ? "" : " ") + word;
+    respaced = joined;
+    return a.name;
+  }
+  return "";
 }
 
 } // namespace core
