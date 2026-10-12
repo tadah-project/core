@@ -789,7 +789,9 @@ Context make_pot_fixture() {
   c.add("CGRID2B", "LIN 7 0.1 3.0");
   c.add("TYPEMB", "DM_Blip 0 4 4 Ta Ta");
   c.add("CGRIDMB", "GEOM 4 0.3 2.7");
+  c.add("RCUTMB", 4.51234567891234);
   c.add("SGRID2B", std::vector<double>{0.123456789012345678, 2.5, 7.0});
+  c.add("SGRIDMB", std::vector<double>{0.987654321098765, 1.5, 2.0, 2.5});
   c.add("WEIGHTS", std::vector<double>{0.1, 1e-20, -0.0, 3.0,
                                         0.123456789012345678, -2.0 / 3});
   c.add("SIGMA", "2 0.1 0.2 0.3 0.4");  // deprecated: written, not read back
@@ -904,11 +906,16 @@ TEST_CASE("Context write_potential: same layout as operator<<",
  * (CoreUserConfigParser) with every key but NUMERIC (never written) and
  * SIGMA (deprecated, not stored); integers and names verbatim; at 17 and 18
  * every number bit-exact; at 12 the numbers of the cutoff and grid keys
- * (RCUT2B, RCUTMB, CGRID2B, CGRIDMB, SGRID2B, SGRIDMB) bit-exact and every
- * other number exactly its %.12g rounding.
+ * (RCUT2B, RCUTMB, CGRID2B, CGRIDMB, SGRID2B, SGRIDMB, every one in the
+ * fixture) bit-exact and every other number exactly its %.12g rounding. Of
+ * those keys SGRID2B (0.123456789012345678), RCUTMB (4.51234567891234) and
+ * SGRIDMB (0.987654321098765) have a value that needs more than 12
+ * significant digits; the values of RCUT2B (5.3), CGRID2B (LIN 7 0.1 3) and
+ * CGRIDMB (GEOM 4 0.3 2.7) read back bit-exact at 12 digits either way.
  * Before the fix: at 12 digits the cutoff and grid keys were rounded like
  * every other number (SGRID2B 0.123456789012345678 read back as
- * 0.123456789012). */
+ * 0.123456789012, RCUTMB as 4.51234567891, SGRIDMB 0.987654321098765 as
+ * 0.987654321099). */
 TEST_CASE("Context write_potential: parse-back", "[context][pot]") {
   const Context c = make_pot_fixture();
   const std::set<std::string> exact_keys = {"CGRID2B", "CGRIDMB", "RCUT2B",
