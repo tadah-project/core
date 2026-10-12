@@ -29,6 +29,13 @@
 #   the key is not stored.
 #   A deprecated key must not have a default_value, a CLI flag or examples
 #   (`examples = []` overrides those of an inherited TYPES table).
+# - names: true for a key whose STRING values are names (element symbols,
+#   descriptor, cutoff and model names), which hold no comma and no '+'
+#   (optional). A value that holds a comma, or a '+' joined to the character
+#   before it (not an exponent's sign), is refused as a separator typo,
+#   naming the line, the key and the separator (ATOM Ta,Nb: write ATOM Ta Nb).
+#   The STRING values of the other keys keep them (a path such as
+#   DBFILE a,b.tadah, an option string such as --set 'CGRID2B(3)=2.1,2.4').
 
 # Some ALLOWED_KEYS keys can be set via CLI flags or options. These keys have additional fields:
 # CLI-specific fields:
@@ -241,6 +248,7 @@ examples = ["true"]
 
 [ALLOWED_KEYS.RCTYPE2B]
 INHERIT = ["TYPES.STRINGS"]
+names = true
 value_format = ["Cut_<name>"]
 description  = "Specifies the cutoff function type(s) for two-body descriptor(s)."
 long_description = """
@@ -251,6 +259,7 @@ examples     = ["Cut_Cos", "Cut_Cos Cut_Tanh"]
 
 [ALLOWED_KEYS.RCTYPEMB]
 INHERIT = ["TYPES.STRINGS"]
+names = true
 value_format = ["Cut_<name>"]
 description  = "Specifies the cutoff function type(s) for many-body descriptor(s)."
 long_description = """
@@ -290,6 +299,7 @@ underlying Gaussian basis is largest.
 examples     = ["1.5"]
 
 [ALLOWED_KEYS.TYPE2B]
+names = true
 value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}", "STRING"]
 #value_type   = ["STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {[INT]} {STRING STRING}", "STRING INT INT {STRING STRING}"]
 value_format = ["D2_<name> {[param]} {ELEMENT ELEMENT}"]
@@ -309,6 +319,7 @@ D2_Blip 6 6 Ti Nb Nb Nb"""
 ]
 
 [ALLOWED_KEYS.TYPEMB]
+names = true
 value_type   = ["STRING UINT {STRING STRING}", "STRING UINT UINT {STRING STRING}", "STRING UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT {STRING STRING}", "STRING UINT UINT UINT UINT UINT UINT UINT UINT {STRING STRING}", "STRING"]
 value_format = ["DM_<name> {[param]} {ELEMENT ELEMENT}"]
 formatting = ["DM_", "\n"]
@@ -624,6 +635,7 @@ and on the sigma of Kern_RBF with a box that is not positive.
 examples     = ["0.5", "3 0.5 1.0"]
 
 [ALLOWED_KEYS.MODEL]
+names = true
 value_type   = ["STRING STRING", "STRING STRING STRING",  "STRING STRING UINT"] 
 value_format = ["MODEL FUNCTION", "MODEL FUNCTION OPTION", "MODEL FUNCTION OPTION"]
 value_N      = [-3]
@@ -2035,6 +2047,7 @@ cli_required     = false
 
 [ALLOWED_KEYS.ATOM]
 INHERIT = ["TYPES.STRINGS"]
+names = true
 value_format = ["<element> ...>"]
 value_N      = [-118]
 description  = "Chemical elements."
@@ -2045,6 +2058,7 @@ cli_required     = false
 
 [ALLOWED_KEYS.atompair]
 INHERIT = ["TYPES.STRINGS"]
+names = true
 value_format = ["<element1> <element2>"]
 value_N      = [-2]
 description  = "Pair of chemical elements."
@@ -2054,6 +2068,7 @@ cli_short_flag = "-a"
 cli_required     = false
 
 [ALLOWED_KEYS.WATOM]
+names = true
 value_type   = ["{STRING STRING DOUBLE} ", "{DOUBLE}"]
 value_format = ["{<element> <element> <weight>}>", "{<weight>}"]
 value_N = [-118]
@@ -2255,6 +2270,7 @@ does not use them. Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote SI
 examples = ["2 0.5 0.1 0.1 0.25"]
 
 [ALLOWED_KEYS.WNOISE]
+names = true
 value_type = ["{STRING DOUBLE}"]
 value_format = ["<type> <variance> ..."]
 value_N = [-2147483647]

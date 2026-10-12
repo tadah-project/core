@@ -51,6 +51,16 @@ struct BlueprintKey {
    * key's default_value and examples must be allowed values.
    */
   std::vector<std::string> allowed_values;
+  /**
+   * True for a key whose STRING values are names (blueprint field `names`:
+   * element symbols, descriptor, cutoff and model names), which hold no
+   * comma and no '+'. CoreUserConfigParser::validateSchemaOnly (and so the
+   * parser and TaskFactory) refuses a value of such a key that holds a
+   * comma, or a '+' joined to the character before it, as a separator typo
+   * (ATOM Ta,Nb); the STRING values of other keys keep them (a path, an
+   * option string).
+   */
+  bool names = false;
 
   BlueprintKey() : cli_required(false) {}
 

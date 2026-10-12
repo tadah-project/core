@@ -402,9 +402,40 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
   return false;
 }
 
+namespace {
+bool isBlankChar(char c) {
+  return std::isspace(static_cast<unsigned char>(c)) != 0;
+}
+bool isDigitChar(char c) { return c >= '0' && c <= '9'; }
+
+/* Whether text[i] is a '+' joined to the character before it, which no
+ * value of a configuration line holds: not a sign after a blank or a comma,
+ * nor an exponent's sign (an e or an E after a digit or a point, with a
+ * digit after the '+': 1e+5, 2.5E+3). */
+bool joiningPlus(const std::string &text, std::size_t i) {
+  if (text[i] != '+' || i == 0) return false;
+  const char before = text[i - 1];
+  if (isBlankChar(before) || before == ',') return false;
+  const bool exponent =
+      (before == 'e' || before == 'E') && i >= 2 &&
+      (isDigitChar(text[i - 2]) || text[i - 2] == '.') && i + 1 < text.size() &&
+      isDigitChar(text[i + 1]);
+  return !exponent;
+}
+
+/* Whether text holds a comma or a joining '+'. */
+bool holdsSeparator(const std::string &text) {
+  for (std::size_t i = 0; i < text.size(); ++i)
+    if (text[i] == ',' || joiningPlus(text, i)) return true;
+  return false;
+}
+}  // namespace
+
 bool CoreUserConfigParser::validateSchemaOnly(const std::string &text,
                                               const BlueprintKey &keyInfo)
 {
+  // A name holds no ',' and no '+': there they separate two names.
+  if (keyInfo.names && holdsSeparator(text)) return false;
   BlueprintValidator validator(keyInfo.value_type);
   return validator.validate(text);
 }
@@ -413,16 +444,6 @@ std::string CoreUserConfigParser::misusedSeparators(const std::string &text,
                                                     const BlueprintKey &keyInfo,
                                                     std::string &respaced)
 {
-  auto blank = [](char c) {
-    return std::isspace(static_cast<unsigned char>(c)) != 0;
-  };
-  // A '+' joined to the character before it: not a sign after a blank or a
-  // comma, nor an exponent's sign.
-  auto joining_plus = [&](std::size_t i) {
-    if (text[i] != '+' || i == 0) return false;
-    const char before = text[i - 1];
-    return !blank(before) && before != ',' && before != 'e' && before != 'E';
-  };
   struct Attempt {
     bool commas, pluses;
     const char *name;
@@ -437,7 +458,7 @@ std::string CoreUserConfigParser::misusedSeparators(const std::string &text,
       if (a.commas && text[i] == ',') {
         candidate[i] = ' ';
         replaced_comma = true;
-      } else if (a.pluses && joining_plus(i)) {
+      } else if (a.pluses && joiningPlus(text, i)) {
         candidate[i] = ' ';
         replaced_plus = true;
       }

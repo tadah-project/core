@@ -274,6 +274,25 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     }
   }
 
+  // Names: the key's STRING values are names, which hold no ',' or '+'.
+  if (table.contains("names")) {
+    const toml::value &node = table.at("names");
+    if (!node.is_boolean()) {
+      throw std::runtime_error("'names' must be true or false in key: " +
+                               fullKey);
+    }
+    item.names = node.as_boolean();
+    if (item.names &&
+        std::none_of(item.value_type.begin(), item.value_type.end(),
+                     [](const std::string &t) {
+                       return t.find("STRING") != std::string::npos;
+                     })) {
+      throw std::runtime_error(
+          "'names' needs a key whose value_type has STRING values: " +
+          fullKey);
+    }
+  }
+
   // Allowed values: the only values of a single-string key. The default
   // and the examples are values users copy, so they must be allowed ones.
   if (table.contains("allowed_values")) {
