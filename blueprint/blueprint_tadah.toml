@@ -1817,7 +1817,10 @@ Fits per-element reference energies by least squares: minimise
 ||y - M beta||^2 where y[i] is the total energy of configuration i and
 M[i, k] is the count of species k in configuration i. The fitted beta_k
 becomes ESHIFT[Z(k)]. More robust than ESHIFT_ATOM when the dataset has no
-isolated-atom configs but does have compositional diversity.
+isolated-atom configs but does have compositional diversity. When the
+compositions do not determine the fit (every structure of one composition,
+say) the normal matrix is singular: every ESHIFT is then 0 and a WARNING
+says so.
 Mutually exclusive with explicit ESHIFT and ESHIFT_ATOM.
 """
 default_value = ["false"]
