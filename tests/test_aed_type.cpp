@@ -4,7 +4,10 @@
 #include <tadah/core/maths.h>
 #include <iterator>
 #include <numeric>
+#include <cstdlib>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -393,4 +396,41 @@ TEST_CASE("aed_type: iteration visits the values through the stride",
   CHECK(empty.begin() == empty.end());
   const aed_type &cempty = empty;
   CHECK(cempty.begin() == cempty.end());
+}
+
+/* Pins: the adopting constructor aed_type(arr, size, stride, true) owns a
+ * buffer of size * stride doubles from malloc (resize() reallocates size *
+ * stride, the destructor frees it): one with values reads and writes them
+ * through the stride and frees the buffer; a null buffer for size > 0
+ * cannot hold them and is refused (std::invalid_argument naming the size
+ * and the stride); a null buffer of no values is an empty owner.
+ * Before the fix: aed_type(nullptr, 3, 1, true) was constructed (data()
+ * null, size() 3), and its first read dereferenced null. */
+TEST_CASE("aed_type: the adopting constructor owns a malloc'ed buffer of "
+          "size * stride values", "[aed_type]") {
+  double *buf = static_cast<double *>(malloc(3 * 2 * sizeof(double)));
+  for (size_t i = 0; i < 6; ++i) buf[i] = double(i);
+  {
+    aed_type owner(buf, 3, 2, true);
+    CHECK_FALSE(owner.is_view());
+    CHECK(owner.size() == 3);
+    CHECK(indexed(owner) == std::vector<double>{0.0, 2.0, 4.0});
+    owner[1] = -1.0;
+    CHECK(buf[2] == -1.0);
+    owner.resize(4);
+    CHECK(owner.size() == 4);
+    CHECK(owner[3] == 0.0);
+    CHECK(owner[1] == -1.0);
+  }  // frees the buffer (AddressSanitizer: no leak, no double free)
+
+  std::string what;
+  try {
+    aed_type bad(static_cast<double *>(nullptr), 3, 2, true);
+  } catch (const std::invalid_argument &e) {
+    what = e.what();
+  }
+  CHECK(what == "aed_type: cannot own a null buffer of 3 values, 2 apart "
+                "(the adopting constructor takes a buffer of size * stride "
+                "doubles from malloc)");
+  CHECK_NOTHROW(aed_type(static_cast<double *>(nullptr), 0, 1, true));
 }
