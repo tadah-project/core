@@ -73,29 +73,25 @@ public:
   {
     return (row < rows_ && col < cols_);
   }
-  /** Provide a view of the r row of the matrix */
+  // row() and col() return their aed_type as a prvalue, which C++17 builds
+  // in the caller's object: a view stays a view. A named one would rely on
+  // NRVO, which no compiler must apply, and a move from a view copies.
+  /** Provide a view of the r row of the matrix (cols() values rows()
+   *  apart). */
   inline aed_type row(size_t r) {
-    size_t stride = rows();
-    aed_type temp(&m_[r], cols(), stride);
-    return temp;
+    return aed_type(&m_[r], cols(), rows());
   }
   /** Provide a view of the c column of the matrix */
   inline aed_type col(size_t c) {
-    size_t start = rows()*c;
-    aed_type temp(&m_[start], rows());
-    return temp;
+    return aed_type(&m_[rows()*c], rows());
   }
   /** Provide a copy of the c column of the matrix */
   inline aed_type col(size_t c) const {
-    size_t start = rows()*c;
-    aed_type temp(&m_[start], rows());
-    return temp;
+    return aed_type(&m_[rows()*c], rows());
   }
   /** Provide a copy of the r row of the matrix */
   inline aed_type row(size_t r) const {
-    size_t stride = rows();
-    aed_type temp(&m_[r], cols(), stride);
-    return temp;
+    return aed_type(&m_[r], cols(), rows());
   }
   inline void set_zero() {
     for (size_t i=0;i<m_.size();++i) {
