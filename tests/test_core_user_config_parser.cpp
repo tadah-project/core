@@ -688,3 +688,103 @@ TEST_CASE("Config parser: a key written as a block has no examples",
   CHECK(blocks == std::set<std::string>{"EXPLORE", "FUSE", "INIT",
                                         "OPTIMIZER", "REFINE"});
 }
+
+namespace {
+/* The message parse() throws for `lines` (first line `first` of `source`),
+ * or "no exception". */
+std::string parse_refusal(const std::vector<std::string> &lines,
+                          std::size_t first = 1,
+                          const std::string &source = "") {
+  try {
+    (void)CoreUserConfigParser().parse(lines, first, source);
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "no exception";
+}
+}  // namespace
+
+/* Pins: a configuration line whose list values are joined by a comma or a
+ * '+' (which the parser does not split at: it splits a line at blanks) is
+ * refused when it is parsed, naming the line, the key, the value and the
+ * separator, and the line to write instead:
+ *   "Invalid value for key FIXWEIGHT on line 1: '0.1,0.2' separates values
+ *    with ',', which a configuration line is not split at (values are
+ *    separated by blanks: FIXWEIGHT 0.1 0.2)"
+ * also with the file and line of a task section (line 3 of run.task), for
+ * '+' ('MPARAMS 1.0+2.0'), for both ('CGRID2B 1.0,2.0+3.0': "',' and
+ * '+'"), with blanks around the comma ('SGRID2B 1.0, 2.0': SGRID2B 1.0
+ * 2.0), for a key of several single values ('MODEL M_BLR,BF_Linear'), for an
+ * index list joined by '+' ('FIXINDEX 13+14'), and for a line of 2048
+ * characters or more. A value that blanks would not make valid either keeps
+ * the generic refusal ('SBASIS 1,2': "Invalid schema for key: SBASIS").
+ * What the parser keeps as one value is accepted: an index list with commas
+ * ('FIXINDEX 13,14', its reader splits it), a STRING word with a comma or a
+ * '+' ('DBFILE a,b.tadah', 'ATOM Ti+Nb'), an exponent's sign
+ * ('FIXWEIGHT 1e+5 2').
+ * Before the fix: 'FIXWEIGHT 0.1,0.2', 'MPARAMS 1.0+2.0', 'CGRID2B
+ * 1.0,2.0+3.0', 'SGRID2B 1.0, 2.0', 'FIXINDEX 13+14' and the long line were
+ * accepted (one value per word, '0.1,0.2' refused only when read, and
+ * '13+14' by FIXINDEX's reader), and 'MODEL M_BLR,BF_Linear' was refused as
+ * "Invalid schema for key: MODEL". */
+TEST_CASE("Config parser: a comma or '+' between values is refused, naming "
+          "the line, the key and the separator",
+          "[config][separators]") {
+  const std::string tail = ", which a configuration line is not split at "
+                           "(values are separated by blanks: ";
+  struct Case {
+    std::string line, message;
+  };
+  const std::vector<Case> cases = {
+      {"FIXWEIGHT 0.1,0.2",
+       "Invalid value for key FIXWEIGHT on line 1: '0.1,0.2' separates "
+       "values with ','" + tail + "FIXWEIGHT 0.1 0.2)"},
+      {"MPARAMS 1.0+2.0",
+       "Invalid value for key MPARAMS on line 1: '1.0+2.0' separates values "
+       "with '+'" + tail + "MPARAMS 1.0 2.0)"},
+      {"CGRID2B 1.0,2.0+3.0",
+       "Invalid value for key CGRID2B on line 1: '1.0,2.0+3.0' separates "
+       "values with ',' and '+'" + tail + "CGRID2B 1.0 2.0 3.0)"},
+      {"SGRID2B 1.0, 2.0",
+       "Invalid value for key SGRID2B on line 1: '1.0, 2.0' separates "
+       "values with ','" + tail + "SGRID2B 1.0 2.0)"},
+      {"model M_BLR,BF_Linear",
+       "Invalid value for key MODEL on line 1: 'M_BLR,BF_Linear' separates "
+       "values with ','" + tail + "MODEL M_BLR BF_Linear)"},
+      {"FIXINDEX 13+14",
+       "Invalid value for key FIXINDEX on line 1: '13+14' separates values "
+       "with '+'" + tail + "FIXINDEX 13 14)"},
+      {"SBASIS 1,2", "Invalid schema for key: SBASIS"},
+  };
+  for (const Case &c : cases) {
+    INFO(c.line);
+    CHECK(parse_refusal({c.line}) == c.message);
+  }
+  // The file and line of a task section.
+  CHECK(parse_refusal({"# comment", "VERBOSE 1", "FIXWEIGHT 0.1,0.2"}, 1,
+                      "run.task") ==
+        "Invalid value for key FIXWEIGHT on line 3 of run.task: '0.1,0.2' "
+        "separates values with ','" + tail + "FIXWEIGHT 0.1 0.2)");
+  // A line of 2048 characters or more.
+  std::string long_line = "FIXWEIGHT 1.0";
+  while (long_line.size() < 2100) long_line += ",2.0";
+  const std::string long_msg = parse_refusal({long_line});
+  INFO(long_msg.substr(0, 80));
+  CHECK(long_msg.rfind("Invalid value for key FIXWEIGHT on line 1: "
+                       "'1.0,2.0,2.0,",
+                       0) == 0);
+  CHECK(long_msg.find("' separates values with ','" + tail +
+                      "FIXWEIGHT 1.0 2.0 2.0 ") != std::string::npos);
+
+  // One value per word, as the parser keeps it.
+  Context c;
+  REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
+                      "FIXINDEX 13,14", "DBFILE a,b.tadah", "ATOM Ti+Nb",
+                      "FIXWEIGHT 1e+5 2"}));
+  CHECK(c.size("FIXINDEX") == 1);
+  CHECK(c.get<std::string>("FIXINDEX") == "13,14");
+  CHECK(c.get<std::string>("DBFILE") == "a,b.tadah");
+  CHECK(c.get<std::string>("ATOM") == "Ti+Nb");
+  CHECK(c.size("FIXWEIGHT") == 2);
+  CHECK(c.get<double>("FIXWEIGHT") == 1e5);
+}

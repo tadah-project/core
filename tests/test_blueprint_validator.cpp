@@ -622,3 +622,118 @@ TEST_CASE("Long numeric lines: fast path accepts underflow, rejects overflow",
     REQUIRE_FALSE(validator.validate(long_line("-1e400")));
   }
 }
+
+/* Pins: the values of a list (a repeated group {...}) are separated by
+ * blanks, as CoreUserConfigParser splits a configuration line into values
+ * at blanks only. A comma or a '+' between two numbers is refused, with or
+ * without blanks around the comma: {DOUBLE} '0.1,0.2', '0.1, 0.2',
+ * '0.1 ,0.2', '0.1+0.2'; {INT} and {UINT} '1,2', '1+2'; {BOOL}
+ * 'true,false'; the group {STRING INT DOUBLE DOUBLE} 'LIN 7,0.1 3' and
+ * 'LIN,7 0.1 3'; 'INT {DOUBLE}' '3 1.0,2.0'. Blanks (spaces, tabs, several)
+ * separate them, a '+' sign after a blank and an exponent's sign are part
+ * of a number ('0.1 +0.2', '1e+5 2'). A STRING value holds a comma or a
+ * '+' as part of its word ({STRING} 'a,b.tadah', 'Ti+Nb'), as the parser
+ * keeps the word whole. An index list {INDEX_PATTERN} (INDEX, FIXINDEX,
+ * whose readers split at commas and blanks) takes commas and blanks between
+ * entries ('1,3,5', '13 14', '13, 14', '13 ,14', '1 - 4, 7', '1-10:2,12')
+ * and refuses a '+' between two entries ('13+14'), an empty entry ('1,,2')
+ * and a leading or trailing comma.
+ * Before the fix: the elements of a repeated group were joined by the class
+ * [,\s+], so every comma and '+' form above was accepted (and '13+14'), and
+ * the parser stored '0.1,0.2' as one value, refused when read
+ * ('Conversion failed for key=..., value="0.1,0.2"'). */
+TEST_CASE("Blueprint lists are separated by blanks, as the parser splits a "
+          "line",
+          "[blueprint][separators]") {
+  struct Bp {
+    std::string blueprint;
+    std::vector<std::string> valid, invalid;
+  };
+  const std::vector<Bp> cases = {
+      {"{DOUBLE}",
+       {"0.1 0.2", "0.1  0.2", "0.1\t0.2", "0.1 +0.2", "1e+5 2", "-1.5e-3"},
+       {"0.1,0.2", "0.1, 0.2", "0.1 ,0.2", "0.1+0.2", "0.1 0.2,0.3",
+        "1,2,3"}},
+      {"{INT}", {"1 2", "-1 +2"}, {"1,2", "1+2", "1, 2"}},
+      {"{UINT}", {"1 2", "80 20"}, {"1,2", "1+2", "80,20"}},
+      {"{BOOL}", {"true false"}, {"true,false", "true+false"}},
+      {"{STRING INT DOUBLE DOUBLE}",
+       {"LIN 7 0.1 3", "LIN 7 0.1 3 LOG 5 0.2 4"},
+       {"LIN 7,0.1 3", "LIN,7 0.1 3", "LIN 7 0.1+3"}},
+      {"INT {DOUBLE}", {"3 1.0 2.0"}, {"3 1.0,2.0", "3,1.0 2.0"}},
+      {"{STRING}", {"a,b.tadah", "Ti+Nb", "x1,2 y", "a, b"}, {"1,2", "1+2"}},
+      {"{INDEX_PATTERN}",
+       {"1,3,5", "1-4,7,9", "1-10:2", "13 14", "13, 14", "13 ,14",
+        "1 - 4, 7", "1-10:2,12", "1 , 2 3"},
+       {"13+14", "1,,2", "1,3,", ",1", "1, ,2"}},
+  };
+  for (const Bp &bp : cases) {
+    tadah::core::BlueprintValidator v(bp.blueprint);
+    for (const std::string &text : bp.valid) {
+      INFO(bp.blueprint << " should take '" << text << "'");
+      CHECK(v.validate(text));
+    }
+    for (const std::string &text : bp.invalid) {
+      INFO(bp.blueprint << " should refuse '" << text << "'");
+      CHECK_FALSE(v.validate(text));
+    }
+  }
+}
+
+/* Pins: a line of 2048 characters or more (checked without std::regex,
+ * which overflows the stack on long input) is split into values at blanks
+ * as a short line is: a {DOUBLE} line of numbers joined by commas
+ * ('1.0,2.0,...'), by '+' or by '-' ('1.0+2.0', '1.0-2.0'), or with one
+ * comma among blank-separated numbers, also at about 40000 characters, is
+ * refused; one of blank-separated numbers is valid. A {STRING} line of
+ * words that hold commas ('x1,2') is valid, as each word is one STRING
+ * value. An {INDEX_PATTERN} line of comma-separated entries, ranges and
+ * steps ('1,2,...', '1-10:2, 12, ...') is valid; one with a '+' between two
+ * entries or an empty entry ('1,,2') is refused.
+ * Before the fix: the numeric shortcut skipped commas and read numbers
+ * glued by a sign, so the comma, '+' and '-' {DOUBLE} lines and the '+' and
+ * empty-entry index lines were valid; the {STRING} shortcut split at
+ * commas, so 'x1,2' was refused for its word '2'. */
+TEST_CASE("Long lines: values are separated by blanks, as on a short line",
+          "[blueprint][long][separators]") {
+  auto repeat = [](const std::string &first, const std::string &next,
+                   std::size_t size) {
+    std::string out = first;
+    while (out.size() < size) out += next;
+    return out;
+  };
+  tadah::core::BlueprintValidator doubles("{DOUBLE}");
+  CHECK(doubles.validate(repeat("1.0", " 2.0", 2100)));
+  for (const std::string &line :
+       {repeat("1.0", ",2.0", 2100), repeat("1.0", ", 2.0", 2100),
+        repeat("1.0", "+2.0", 2100), repeat("1.0", "-2.0", 2100),
+        repeat("1.0", " 2.0", 2100) + ",3.0",
+        repeat("1.0", " 2.0", 40000) + ",3.0"}) {
+    INFO("{DOUBLE} line of " << line.size() << " characters ending '"
+                             << line.substr(line.size() - 12) << "'");
+    REQUIRE(line.size() >= 2048);
+    CHECK_FALSE(doubles.validate(line));
+  }
+
+  tadah::core::BlueprintValidator strings("{STRING}");
+  const std::string comma_words = repeat("x1,2", " x1,2", 2100);
+  REQUIRE(comma_words.size() >= 2048);
+  CHECK(strings.validate(comma_words));
+
+  tadah::core::BlueprintValidator indices("{INDEX_PATTERN}");
+  for (const std::string &line :
+       {repeat("1", ",2", 2100), repeat("1-10:2", ", 12", 2100),
+        repeat("1 - 4", " 7,9", 2100), repeat("13", " 14", 2100)}) {
+    INFO("{INDEX_PATTERN} line starting '" << line.substr(0, 12) << "'");
+    REQUIRE(line.size() >= 2048);
+    CHECK(indices.validate(line));
+  }
+  for (const std::string &line :
+       {repeat("1", "+2", 2100), repeat("1", ",2", 2100) + ",,3",
+        repeat("1", ",2", 2100) + ","}) {
+    INFO("{INDEX_PATTERN} line ending '" << line.substr(line.size() - 6)
+                                         << "'");
+    REQUIRE(line.size() >= 2048);
+    CHECK_FALSE(indices.validate(line));
+  }
+}

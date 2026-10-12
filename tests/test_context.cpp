@@ -1135,15 +1135,18 @@ TEST_CASE("Context integer reads take exact integers in any spelling and "
  * ("inf", "-inf", "nan", "1e400"), and a float out of float's range
  * ("1e39" for get<float>). A bool read takes "true" or "false" whole
  * ("truex" is refused). A configuration line of 2048 characters or more
- * (the validator's numeric shortcut, which takes commas as separators)
- * with comma-separated numbers is stored as one token, and its read is
- * refused.
+ * with comma-separated numbers is refused by the parser, naming the
+ * separator (the validator's numeric shortcut splits a line at blanks, as
+ * the parser does), and such a token stored without the parser
+ * (storage_update) is refused when read.
  * Before the fix: the read took the longest numeric prefix the stream
  * read and ignored the rest: "1.5abc", "1.5.2", "0x10" and "1.0,2.0" gave
  * 1.5, 1.5, 0 and 1 (also as float and long double), "truex" was true, and
  * the long comma line gave 1.0, its first number; "2e", "abc", ".", "-",
  * "e3", "inf", "-inf", "nan", "1e400", "" and "1e39" for float were
- * refused (a stream failure) without the reason. */
+ * refused (a stream failure) without the reason. Until core hygiene 3 the
+ * parser accepted the long comma line as one token (the shortcut took
+ * commas as separators), whose read this test then pinned as refused. */
 TEST_CASE("Context floating reads take a finite decimal number, the whole "
           "token",
           "[context][floating]") {
@@ -1213,10 +1216,18 @@ TEST_CASE("Context floating reads take a finite decimal number, the whole "
         "Conversion failed for key=NORM, value=\"truex\": true or false is "
         "required");
 
-  // A long configuration line of comma-separated numbers.
+  // A long configuration line of comma-separated numbers: refused by the
+  // parser; the token, stored without it, refused when read.
   std::string line = "MPARAMS 1.0";
   while (line.size() < 2100) line += ",2.0";
-  const Context fc = CoreUserConfigParser().parse(std::vector<std::string>{line});
+  const std::string parse_msg = thrown_message(
+      [&] { (void)CoreUserConfigParser().parse(std::vector<std::string>{line}); });
+  CHECK(parse_msg.rfind("Invalid value for key MPARAMS on line 1: "
+                        "'1.0,2.0,2.0,",
+                        0) == 0);
+  CHECK(parse_msg.find("' separates values with ','") != std::string::npos);
+  Context fc;
+  fc.storage_update("MPARAMS", {line.substr(std::string("MPARAMS ").size())});
   REQUIRE(fc.size("MPARAMS") == 1);
   const std::string msg =
       thrown_message([&] { (void)fc.get<double>("MPARAMS"); });
@@ -1226,19 +1237,24 @@ TEST_CASE("Context floating reads take a finite decimal number, the whole "
          msg.compare(msg.size() - why.size(), why.size(), why) == 0));
 }
 
-/* Pins: a configuration line of usual length whose list value holds
- * commas (the blueprint validator's list patterns take a comma, or a '+',
- * between two values, but the parser splits a line at blanks only) is
- * accepted by CoreUserConfigParser as one token per blank-separated word,
- * and a number read of such a token is refused, naming the key and the
- * value: 'MPARAMS 1.0,2.0', 'CGRID2B 1.0,2.0,3.0' and 'FIXWEIGHT 0.1,0.2'
- * are one token each, 'SGRID2B 1.0,2.0 3.0' two ("1.0,2.0" and "3.0"), and
- * get<double> of a comma token gives "Conversion failed for key=<KEY>,
- * value=\"<token>\": a finite decimal number is required"; "3.0" reads.
- * Before the fix: the parser accepted the same lines, and each comma token
- * was read as its first number, 1, 1, 0.1 and 1, without an error. */
+/* Pins: a configuration line of usual length whose list values are joined
+ * by commas is refused by CoreUserConfigParser (the parser splits a line at
+ * blanks only, and the blueprint validator now splits it as the parser
+ * does), naming the key and the separator: 'MPARAMS 1.0,2.0', 'CGRID2B
+ * 1.0,2.0,3.0', 'FIXWEIGHT 0.1,0.2' and 'SGRID2B 1.0,2.0 3.0' each give
+ * "Invalid value for key <KEY> on line 1: '<value>' separates values with
+ * ','..."; a token with commas stored without the parser (storage_update,
+ * as a program may) is refused when a number is read, naming the key and
+ * the value: "Conversion failed for key=<KEY>, value=\"<token>\": a finite
+ * decimal number is required"; "3.0" reads.
+ * Before the fix: the parser accepted these lines (the validator's list
+ * patterns took a comma, or a '+', between two values), one token per
+ * blank-separated word ("1.0,2.0", "1.0,2.0,3.0", "0.1,0.2"; "1.0,2.0" and
+ * "3.0"), which this test pinned, and the read refusal above. Before input
+ * robustness each comma token was read as its first number, 1, 1, 0.1 and
+ * 1, without an error. */
 TEST_CASE("Context: a short configuration line with commas in a list is "
-          "refused when its number is read",
+          "refused by the parser, and a comma token when its number is read",
           "[context][floating]") {
   struct Line {
     std::string key, text, token;
@@ -1250,9 +1266,18 @@ TEST_CASE("Context: a short configuration line with commas in a list is "
                         {"SGRID2B", "SGRID2B 1.0,2.0 3.0", "1.0,2.0", 2}};
   for (const Line &l : lines) {
     INFO(l.text);
+    const std::string value = l.text.substr(l.key.size() + 1);
+    CHECK(thrown_message([&] {
+            (void)CoreUserConfigParser().parse(
+                std::vector<std::string>{l.text});
+          }).rfind("Invalid value for key " + l.key + " on line 1: '" +
+                       value + "' separates values with ','",
+                   0) == 0);
     Context c;
-    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(
-                        std::vector<std::string>{l.text}));
+    if (l.tokens == 1)
+      c.storage_update(l.key, {l.token});
+    else
+      c.storage_update(l.key, {l.token, "3.0"});
     REQUIRE(c.size(l.key) == l.tokens);
     CHECK(c.get<std::string>(l.key) == l.token);
     CHECK(thrown_message([&] { (void)c.get<double>(l.key); }) ==
