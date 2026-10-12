@@ -1,5 +1,9 @@
 #include "catch2/catch.hpp"
+#include <chrono>
 #include <vector>
+#include <sstream>
+#include <regex>
+#include <random>
 #include <string>
 #include <iostream> // For debug if needed
 
@@ -588,11 +592,17 @@ TEST_CASE("Additional edge coverage for partial matches", "[blueprint][extra]") 
 
 // More corner cases can go here if needed, especially focusing on invalid user input.
 
+/* Pins: a potential written losslessly can carry subnormal values: a
+ * {DOUBLE} line of 2048 characters or more whose first value is subnormal
+ * or underflows ('4.94065645841246544e-324', '1e-310', '-2.5e-320',
+ * '1e-400') is valid. A {INT} line of such values ('1e-310 0.1234...') is
+ * refused, long or short, and so is one starting with '1e400' or
+ * '-1e400': they are not integers.
+ * Before the fix: a line of 2048 characters or more of words strtod reads
+ * whole was valid whatever the blueprint, so the long {INT} '1e-310' line
+ * was valid (its section pinned that); the other checks passed as well. */
 TEST_CASE("Long numeric lines: fast path accepts underflow, rejects overflow",
           "[blueprint][long]") {
-  // A potential written losslessly can carry subnormal values (strtod reports
-  // them with ERANGE). The >= 2048-char numeric fast path must accept them
-  // instead of falling back to std::regex; overflow is still rejected.
   auto long_line = [](const std::string &first) {
     std::string out = first;
     while (out.size() < 4096) out += " 0.123456789012345677";
@@ -609,12 +619,11 @@ TEST_CASE("Long numeric lines: fast path accepts underflow, rejects overflow",
       REQUIRE(validator.validate(line));
     }
   }
-  SECTION("fast path taken: blueprint-independent, so a {INT} blueprint "
-          "accepts a subnormal-bearing numeric line") {
-    // The regex would reject the non-integer tokens outright; only the fast
-    // path accepts this line, which proves the subnormal did not reject it.
+  SECTION("a {INT} blueprint refuses a line of non-integers, long as "
+          "short") {
     tadah::core::BlueprintValidator validator("{INT}");
-    REQUIRE(validator.validate(long_line("1e-310")));
+    CHECK_FALSE(validator.validate("1e-310 0.123456789012345677"));
+    CHECK_FALSE(validator.validate(long_line("1e-310")));
   }
   SECTION("overflow is not a valid number") {
     tadah::core::BlueprintValidator validator("{INT}");
@@ -740,5 +749,194 @@ TEST_CASE("Long lines: values are separated by blanks, as on a short line",
                                          << "'");
     REQUIRE(line.size() >= 2048);
     CHECK_FALSE(indices.validate(line));
+  }
+}
+
+/* Pins: a line of 2048 characters or more is checked by the rules of a
+ * short line: for each blueprint and value, a line of the value repeated,
+ * one blank apart, to more than 2048 characters gets the verdict of the
+ * line of the value alone, and that verdict is: {STRING} '1e5,2e5',
+ * 'inf-1' and '0x1,0x2' valid (each one STRING word, which holds a letter
+ * and keeps its comma or sign); {[DOUBLE | STRING]} '10 1e3,5' valid;
+ * {DOUBLE} '1.0' and '-2.5e-3' valid, '.5', '5.', 'inf' and '0x10' refused
+ * (a DOUBLE has a digit before and after its point, no hex or inf form);
+ * {INT} '7' valid, '1.5' refused; 'INT {DOUBLE}' '3 1.0' valid;
+ * {INDEX_PATTERN} '1-4,7' valid.
+ * Before the fix: long lines took shortcuts that short lines do not: a
+ * line of words strtod reads whole was valid whatever the blueprint
+ * ({DOUBLE} '.5', '5.', 'inf' and '0x10', {INT} '1.5'), and one whose words
+ * are numbers joined by a comma or a sign was refused whatever the
+ * blueprint ({STRING} '1e5,2e5', 'inf-1' and '0x1,0x2', {[DOUBLE | STRING]}
+ * '10 1e3,5'). */
+TEST_CASE("Long lines are checked by the rules of a short line",
+          "[blueprint][long][separators]") {
+  struct Case {
+    std::string blueprint, value;
+    bool valid;
+  };
+  const std::vector<Case> cases = {
+      {"{STRING}", "1e5,2e5", true},
+      {"{STRING}", "inf-1", true},
+      {"{STRING}", "0x1,0x2", true},
+      {"{[DOUBLE | STRING]}", "10 1e3,5", true},
+      {"{DOUBLE}", "1.0", true},
+      {"{DOUBLE}", "-2.5e-3", true},
+      {"{DOUBLE}", ".5", false},
+      {"{DOUBLE}", "5.", false},
+      {"{DOUBLE}", "inf", false},
+      {"{DOUBLE}", "0x10", false},
+      {"{INT}", "7", true},
+      {"{INT}", "1.5", false},
+      {"INT {DOUBLE}", "3 1.0", true},
+      {"{INDEX_PATTERN}", "1-4,7", true},
+  };
+  for (const Case &c : cases) {
+    tadah::core::BlueprintValidator v(c.blueprint);
+    std::string long_line = c.value;
+    // 'INT {DOUBLE}' repeats its last value, the others the whole value.
+    const std::string unit =
+        c.blueprint == "INT {DOUBLE}" ? c.value.substr(c.value.find(' '))
+                                      : " " + c.value;
+    while (long_line.size() <= 2048) long_line += unit;
+    INFO(c.blueprint << " '" << c.value << "', and a line of "
+                     << long_line.size() << " characters of it");
+    CHECK(v.validate(c.value) == c.valid);
+    CHECK(v.validate(long_line) == c.valid);
+  }
+}
+
+/* Pins: a line that no blueprint of its key takes is refused in a time
+ * that grows with its length only, as one that a blueprint takes (each
+ * validation here in well under a second): CGRID2B's blueprints ({DOUBLE},
+ * {STRING INT DOUBLE DOUBLE}) and 16 values aligned 3 blanks apart, the
+ * last two joined by a comma ('16.0,9.0'); {DOUBLE} and 24 values 2 blanks
+ * apart, then 'x'; {STRING} and 12 words 'abcd', then '123'; TYPE2B's
+ * blueprints and 'D2_X', 22 numbers and one element ('Ta'); and
+ * {[DOUBLE | STRING]} and 24 '1e5' (each a DOUBLE and a STRING), then
+ * ','. Each is refused, and the same line with the fault removed is valid.
+ * Before the fix: std::regex tried, before refusing, every way of sharing
+ * each run of blanks between the primitives' \s* and the separator and
+ * every way of taking a word (a STRING at any of its letters, '1e5' as a
+ * DOUBLE or a STRING, a number as an INT or a DOUBLE), a number of tries
+ * exponential in the number of values: the refusals took 6.5 s (CGRID2B),
+ * 5.7 s ({DOUBLE}), 5.4 s ({STRING}), 4.1 s (TYPE2B) and 7.8 s
+ * ({[DOUBLE | STRING]}), each about twice as long or more for every
+ * further value; v1-dev, whose groups took a comma between values,
+ * accepted the CGRID2B line at once and was as slow on the others. */
+TEST_CASE("A line no blueprint takes is refused in linear time",
+          "[blueprint][separators][performance]") {
+  struct Case {
+    std::vector<std::string> blueprints;
+    std::string refused, valid;
+  };
+  auto values = [](int n, const std::string &gap) {
+    std::string out = "1.0";
+    for (int i = 2; i <= n; ++i) out += gap + std::to_string(i) + ".0";
+    return out;
+  };
+  auto repeat = [](const std::string &word, int n) {
+    std::string out;
+    for (int i = 0; i < n; ++i) out += (i ? " " : "") + word;
+    return out;
+  };
+  std::string numbers;
+  for (int i = 1; i <= 22; ++i) numbers += " " + std::to_string(i);
+  const std::vector<std::string> type2b = {
+      "STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}",
+      "STRING"};
+  const std::vector<Case> cases = {
+      {{"{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"},
+       values(16, "   ") + ",9.0", values(16, "   ") + "   9.0"},
+      {{"{DOUBLE}"}, values(24, "  ") + " x", values(24, "  ")},
+      {{"{STRING}"}, repeat("abcd", 12) + " 123", repeat("abcd", 12)},
+      {type2b, "D2_X" + numbers + " Ta", "D2_X" + numbers + " Ta Ta"},
+      {{"{[DOUBLE | STRING]}"}, repeat("1e5", 24) + " ,",
+       repeat("1e5", 24)},
+  };
+  for (const Case &c : cases) {
+    tadah::core::BlueprintValidator v(c.blueprints);
+    INFO("blueprint " << c.blueprints[0] << ", line '" << c.refused << "'");
+    const auto t0 = std::chrono::steady_clock::now();
+    const bool refused_ok = !v.validate(c.refused);
+    const double seconds = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - t0).count();
+    INFO("refused in " << seconds << " s");
+    CHECK(refused_ok);
+    CHECK(seconds < 1.0);
+    CHECK(v.validate(c.valid));
+  }
+}
+
+/* Pins: on short lines (up to 6 words) the validator gives the verdict of
+ * the blueprint's anchored regex (getPattern(), one per blueprint, matched
+ * with std::regex_match): for the blueprints of TYPE2B, TYPEMB, CGRID2B,
+ * MODEL, OALGO, SIGMA, WATOM, DIMER, pct, range, the header's example
+ * and of each list type: a line of each that both take, and 3000 lines per
+ * set drawn (std::mt19937, seed 20261012) from words that are and are not
+ * values of each primitive, joined by one or more blanks or tabs.
+ * Before the fix: passes as well (a pin: on lines of fewer than 2048
+ * characters validate() was that regex; the fix checks a line word by word
+ * and must take the same lines). */
+TEST_CASE("The validator takes the lines its blueprint regex takes",
+          "[blueprint][separators]") {
+  struct Set {
+    std::vector<std::string> blueprints;
+    std::string example;  // a line both take
+  };
+  const std::vector<Set> sets = {
+      {{"STRING {[INT | DOUBLE]} {STRING STRING}", "STRING {STRING STRING}",
+        "STRING"}, "D2_Blip 4 4 Ta Ta"},
+      {{"STRING UINT {STRING STRING}", "STRING UINT UINT {STRING STRING}",
+        "STRING"}, "DM_EAM 2 Ta Ta"},
+      {{"{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"}, "LIN 7 0.1 3"},
+      {{"STRING STRING", "STRING STRING STRING", "STRING STRING UINT"},
+       "M_KRR Kern_Linear 2"},
+      {{"INT", "INT DOUBLE"}, "2 1e-6"},
+      {{"INT {DOUBLE}"}, "2 0.5 1.5"},
+      {{"{STRING STRING DOUBLE} ", "{DOUBLE}"}, "Ta Ta 1.0"},
+      {{"BOOL DOUBLE BOOL"}, "true 1.5 false"},
+      {{"{[DOUBLE | STRING]}"}, "10 FIXWEIGHT=2"},
+      {{"DOUBLE DOUBLE INT"}, "1.0 2.0 3"},
+      {{"INT [DOUBLE] {STRING}"}, "10 3.14 hello"},
+      {{"{BOOL}"}, "true false"}, {{"{INT}"}, "-3 4"},
+      {{"{UINT}"}, "0 7"}, {{"{STRING}"}, "a,b.tadah Ta"},
+      {{"{INDEX_PATTERN}"}, "1 - 4, 7 9"},
+  };
+  const std::vector<std::string> words = {
+      "0", "7", "-3", "+4", "01", "1.5", "-2.5e-3", "1e5", "1E+5", ".5",
+      "5.", "inf", "0x10", "true", "false", "True", "Ta", "D2_Blip", "*",
+      "x1,2", "1,2", "1+2", "13,14", "1-4", "1-10:2", "1-4,7", ",", "-",
+      ":", "1,", ",2", "a,b", "Ti+Nb", "1e5,2e5", "/p/a.tadah", "#"};
+  const std::vector<std::string> gaps = {" ", "  ", "\t", " \t "};
+  std::mt19937 rng(20261012);
+  for (const Set &set : sets) {
+    const std::vector<std::string> &bps = set.blueprints;
+    tadah::core::BlueprintValidator v(bps);
+    std::vector<std::regex> res;
+    std::istringstream patterns(v.getPattern());
+    for (std::string line; std::getline(patterns, line);)
+      if (!line.empty()) res.emplace_back(line, std::regex::ECMAScript);
+    REQUIRE(res.size() == bps.size());
+    {
+      INFO("blueprint " << bps[0] << ", example '" << set.example << "'");
+      bool example_by_regex = false;
+      for (const auto &re : res)
+        example_by_regex =
+            example_by_regex || std::regex_match(set.example, re);
+      REQUIRE(example_by_regex);
+      CHECK(v.validate(set.example));
+    }
+    for (int k = 0; k < 3000; ++k) {
+      const int n = static_cast<int>(rng() % 7);
+      std::string text = rng() % 4 == 0 ? " " : "";
+      for (int i = 0; i < n; ++i) {
+        if (i) text += gaps[rng() % gaps.size()];
+        text += words[rng() % words.size()];
+      }
+      bool by_regex = false;
+      for (const auto &re : res) by_regex = by_regex || std::regex_match(text, re);
+      INFO("blueprint " << bps[0] << ", line '" << text << "'");
+      REQUIRE(v.validate(text) == by_regex);
+    }
   }
 }
