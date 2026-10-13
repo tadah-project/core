@@ -2444,7 +2444,12 @@ expanded a descending range to nothing, which tadah reported as a
 FIXWEIGHT count mismatch (tadah hpo as a weight 'not pinned by FIXINDEX'),
 and removed a repeated index with a warning. Without a training DBFILE,
 FIXINDEX must cover every model weight (there is no data to fit the
-rest). The pinned weights leave the fit; LAMBDA penalises every
+rest). With one, a FIXINDEX that covers every weight leaves tadah train
+nothing to fit: the potential it writes has the FIXWEIGHT values as its
+WEIGHTS, and it says so in a WARNING. A potential of tadah refit or
+tadah refit --edit pins every weight so (the seed of a tadah hpo
+coefficient search): delete its FIXINDEX and FIXWEIGHT lines to retrain
+it. The pinned weights leave the fit; LAMBDA penalises every
 other weight but the model's unpinned intercepts. M_KRR implementation 2
 (MODEL M_KRR <kernel> 2), whose solve fits every weight at once, pins none:
 FIXINDEX and FIXWEIGHT are refused with it (tadah train, tadah hpo at
