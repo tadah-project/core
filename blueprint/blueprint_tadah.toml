@@ -204,10 +204,13 @@ written, saying what to change. Before 1.6.0 the column was the diagonal
 of SIGMA, a transposed, unscaled matrix, headed "Uncertainty". A switch of the run, not
 part of the model: no potential has an UNCERTAINTY line (its training
 record, a comment block never read as keys, lists the UNCERTAINTY its run
-was given), and the UNCERTAINTY true line of a potential given as
-the configuration (tadah train -c pot.tadah: a file with WEIGHTS), which
-tadah 1.5.x wrote into every potential trained
-with it, asks for nothing (a WARNING says so; give --uncertainty).
+was given), and a run reads no UNCERTAINTY line of a potential (a file
+with WEIGHTS given as the configuration, tadah train -c pot.tadah, or
+included with CONFIG): the UNCERTAINTY true line tadah 1.5.x wrote into
+every potential trained with it asks for nothing (a WARNING says so). The
+run's own asks for weights.tadah: --uncertainty, or UNCERTAINTY true in a
+training configuration, in a task file or in a file that includes the
+potential.
 """
 cli_long_flag    = "--uncertainty"
 cli_short_flag   = ""
@@ -1906,7 +1909,9 @@ model. tadah predict subtracts them from the reference energies of the data
 it predicts (--eshift replaces them, --no-eshift subtracts none), and a
 retrain from the potential (tadah train -c pot.tadah, a tadah hpo -c seed)
 uses them; to derive ESHIFT from the data of the retrain, delete the line
-and set ESHIFT_ATOM or ESHIFT_DBATOM.
+and give the run ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
+--eshift-dbatom, or a line of the task file or of a file that includes the
+potential: a toggle line of the potential itself is not read).
 """
 examples     = ["0.5", "0.5 -0.1"]
 cli_long_flag  = "--eshift"
@@ -1931,12 +1936,12 @@ never read as keys, lists the ESHIFT_ATOM its run was given. tadah predict
 ignores it in a potential (one of an earlier version has it as a key line)
 and derives no shift from the data it predicts. A potential's ESHIFT_ATOM
 line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
--c, or included with CONFIG) is not read beside its ESHIFT line, which
-overrules it (a WARNING names it when it is true and the run gives none of
-its own); without an ESHIFT line ESHIFT_ATOM derives the shift from the data
-of the retrain. The run's own ESHIFT_ATOM (--eshift-atom, or a line of the
-task file or of a file that includes the potential) is read, and is overruled
-by the potential's ESHIFT as in any configuration.
+-c, or included with CONFIG) is not read, with or without its ESHIFT line (a
+WARNING names it when it is true and the run gives none of its own). The
+run's own ESHIFT_ATOM (--eshift-atom, or a line of the task file or of a file
+that includes the potential) is read, and is overruled by an ESHIFT line as
+in any configuration: to derive ESHIFT from the data of a retrain, delete
+the potential's ESHIFT line and give the run ESHIFT_ATOM.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -1965,12 +1970,12 @@ never read as keys, lists the ESHIFT_DBATOM its run was given. tadah predict
 ignores it in a potential (one of an earlier version has it as a key line)
 and derives no shift from the data it predicts. A potential's ESHIFT_DBATOM
 line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
--c, or included with CONFIG) is not read beside its ESHIFT line, which
-overrules it (a WARNING names it when it is true and the run gives none of
-its own); without an ESHIFT line ESHIFT_DBATOM derives the shift from the
-data of the retrain. The run's own ESHIFT_DBATOM (--eshift-dbatom, or a line
-of the task file or of a file that includes the potential) is read, and is
-overruled by the potential's ESHIFT as in any configuration.
+-c, or included with CONFIG) is not read, with or without its ESHIFT line (a
+WARNING names it when it is true and the run gives none of its own). The
+run's own ESHIFT_DBATOM (--eshift-dbatom, or a line of the task file or of a
+file that includes the potential) is read, and is overruled by an ESHIFT
+line as in any configuration: to derive ESHIFT from the data of a retrain,
+delete the potential's ESHIFT line and give the run ESHIFT_DBATOM.
 """
 default_value = ["false"]
 examples     = ["true"]
