@@ -158,7 +158,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.bias]
 INHERIT = ["TYPES.BOOL"]
-description  = "Per-species intercept. When true, every atom's descriptor starts with N=size(ATOM) one-hot intercept columns, in ATOM order (1 for the atom's species, 0 for the others), on every path (tadah train, predict and hpo, and pair_style tadah): the regression learns one constant energy per species (for BF_Linear and Kern_Linear weights 1 to N, the descriptor weights from N+1; for BF_Polynomial2 the products (k,k); for a dot-product kernel the weights of the intercept basis vectors, its weights 1 to N) and LAMMPS adds it back per atom. Requires ATOM; an atom of an element ATOM does not list is refused. Only energies determine the constants: the compositions of the training structures with an energy weight must determine them (not every structure of one composition, e.g. a fixed stoichiometry), or training is refused (tadah train, tadah hpo at startup; not M_KRR implementation 2, whose solve fits the basis vectors' targets), naming the model's intercept weights; FIXINDEX/FIXWEIGHT can pin some of them instead (the ridge still penalises every other weight). Required when NORM=true with MODEL=BF_Linear or Kern_Linear. A potential trained with BIAS true and two or more species by tadah 1.5.x or earlier (or a 1.6.0 development build without per-species intercepts) has one intercept column shared by all species; it is refused when it predicts (tadah predict, pair_style tadah): retrain it."
+description  = "Per-species intercept. When true, every atom's descriptor starts with N=size(ATOM) one-hot intercept columns, in ATOM order (1 for the atom's species, 0 for the others), on every path (tadah train, predict and hpo, and pair_style tadah): the regression learns one constant energy per species (for BF_Linear and Kern_Linear weights 1 to N, the descriptor weights from N+1; for BF_Polynomial2 the products (k,k); for a dot-product kernel the weights of the intercept basis vectors, its weights 1 to N) and LAMMPS adds it back per atom. Requires ATOM; an atom of an element ATOM does not list is refused. Only energies determine the constants: the compositions of the training structures with an energy weight must determine them (not every structure of one composition, e.g. a fixed stoichiometry), or training is refused (tadah train, tadah hpo at startup; not M_KRR implementation 2, whose solve fits the basis vectors' targets), naming the model's intercept weights; FIXINDEX/FIXWEIGHT can pin some of them instead (the ridge still penalises every other weight). Required when NORM=true with MODEL=BF_Linear or Kern_Linear. A potential trained with BIAS true and two or more species by tadah 1.5.x or earlier has one intercept column shared by all species; it is refused when it predicts (tadah predict, pair_style tadah): retrain it."
 
 [ALLOWED_KEYS.eamfast]
 INHERIT = ["TYPES.BOOL"]
@@ -200,14 +200,13 @@ or of M_KRR implementation 1 computes the covariance: any other OALGO, and
 M_KRR implementation 2 (MODEL M_KRR <kernel> 2), are refused before
 training, and a fit whose noise variance is undefined (no more
 observations than effective weights) is refused before the potential is
-written, saying what to change. Before 1.6.0 (and in 1.6.0 development
-builds before WCOV and WNOISE) the column was the diagonal of SIGMA, a
-transposed, unscaled matrix, headed "Uncertainty". A switch of the run, not
+written, saying what to change. Before 1.6.0 the column was the diagonal
+of SIGMA, a transposed, unscaled matrix, headed "Uncertainty". A switch of the run, not
 part of the model: no potential has an UNCERTAINTY line (its training
 record, a comment block never read as keys, lists the UNCERTAINTY its run
 was given), and the UNCERTAINTY true line of a potential given as
 the configuration (tadah train -c pot.tadah: a file with WEIGHTS), which
-tadah 1.5.x and 1.6.0 development builds wrote into every potential trained
+tadah 1.5.x wrote into every potential trained
 with it, asks for nothing (a WARNING says so; give --uncertainty).
 """
 cli_long_flag    = "--uncertainty"
@@ -238,9 +237,9 @@ and a potential of an earlier version has no record). To retrain one, add
 the DBFILE of the retrain to a copy of it (`tadah train -c pot.tadah` with a
 DBFILE line). tadah train refuses a configuration without DBFILE, saying
 so; tadah hpo trains without one only when FIXINDEX/FIXWEIGHT pin every
-weight. An M_BLR potential written by Tadah! 1.5.x or earlier, or a 1.6.0
-development build, has the DBFILE line it was trained on (tadah predict and
-pair_style tadah do not read it): remove that line before adding the DBFILE
+weight. An M_BLR potential written by Tadah! 1.5.x or earlier has the
+DBFILE line it was trained on (tadah predict and pair_style tadah do not
+read it): remove that line before adding the DBFILE
 of a retrain.
 """
 examples     = ["/path/to/dbfile", "/path/to/dbfile1 /path/to/dbfile2"]
@@ -848,9 +847,8 @@ approximation is used to estimate λ (OALGO 3): it iterates
 alpha = gamma/(w.w) and beta = (n_obs - gamma)/RSS, n_obs the observations
 (the rows of the design matrix with a non-zero weight) and gamma the
 effective number of weights over the singular directions the solve keeps,
-to lambda = alpha/beta. (Before 1.6.0, and in 1.6.0 development builds
-before WCOV and WNOISE, it counted the design matrix's ridge-augmentation
-rows, one per weight, and its rows of weight 0 as observations, which made
+to lambda = alpha/beta. (Before 1.6.0 it counted the design matrix's
+ridge-augmentation rows, one per weight, and its rows of weight 0 as observations, which made
 beta too large, so lambda and the weights of a LAMBDA -1 fit change.) For LAMBDA 0, you can provide a second 
 number (double) that sets the effective rank threshold (default 1e-8).
 
@@ -2157,16 +2155,15 @@ sqrt(phi_p^T WCOV phi_p), without the noise term (a part is not observed).
 A potential without WCOV and WNOISE is refused, saying why it has none:
 a fit other than OALGO 3 (retrain it with OALGO 3), M_KRR implementation 2
 (retrain it with implementation 1), or, with OALGO 3, a potential of
-Tadah! 1.0.0 to 1.5.0 or of a 1.6.0 development build, whose SIGMA is
+Tadah! 1.0.0 to 1.5.0, whose SIGMA is
 ignored (retrain it), a fit with no more observations than effective
 weights, whose noise variance is undefined (add data and retrain it), or
 weights set from FIXWEIGHT without a fit. Refused too: every prediction of
 a potential fitted without energies of a non-zero weight (EWEIGHT 0, or
 every structure's eweight 0: no WNOISE E; every prediction has an energy),
 and forces or stresses asked for that the fit had no rows of with a
-non-zero weight (no WNOISE F or S). Before 1.6.0 (and in 1.6.0
-development builds before WCOV and WNOISE) the errors were computed from
-SIGMA, a transposed and unscaled matrix, minus their mean, and most were
+non-zero weight (no WNOISE F or S). Before 1.6.0 the errors were computed
+from SIGMA, a transposed and unscaled matrix, minus their mean, and most were
 negative.
 """
 cli_long_flag    = "--error"
@@ -2270,10 +2267,10 @@ examples = ["0.12 1.2 0.3"]
 value_type = ["INT {DOUBLE}"]
 value_format = ["<integer> <double> ..."]
 value_N = [-2147483647]
-description = "The weight matrix Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote for an OALGO 3 fit (deprecated: replaced by WCOV and WNOISE)."
+description = "The weight matrix Tadah! 1.0.0 to 1.5.0 wrote for an OALGO 3 fit (deprecated: replaced by WCOV and WNOISE)."
 long_description = """
 N, then an N×N matrix in column-major order, which `tadah train` 1.0.0 to
-1.5.0 (and 1.6.0 development builds) wrote for an OALGO 3 fit as the
+1.5.0 wrote for an OALGO 3 fit as the
 covariance of the weights. It was
 computed with a transposed formula, V^T R V instead of V R V^T (V the
 right singular vectors of the design matrix, R the ridge factors
@@ -2287,7 +2284,7 @@ predict`, `tadah train -c`, `pair_style tadah`), with one notice, and is
 not stored. Retrain such a potential with OALGO 3 to write its weight
 covariance, WCOV and WNOISE.
 """
-deprecated = """Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE: retrain the potential with OALGO 3."""
+deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE: retrain the potential with OALGO 3."""
 examples = []
 
 [ALLOWED_KEYS.WCOV]
@@ -2320,7 +2317,7 @@ configuration's WCOV and WNOISE are not read: the fit writes its own.
 `tadah predict --error` reads both, and refuses a WCOV whose N is not the
 number of WEIGHTS or that does not hold N×N+1 values (and, see WNOISE, a
 potential whose WNOISE has no E). `pair_style tadah`
-does not use them. Tadah! 1.0.0 to 1.5.0 (and 1.6.0 development builds) wrote SIGMA instead (deprecated).
+does not use them. Tadah! 1.0.0 to 1.5.0 wrote SIGMA instead (deprecated).
 """
 examples = ["2 0.5 0.1 0.1 0.25"]
 
