@@ -2817,6 +2817,11 @@ stress tensor) is refused before predicting, and so, with or without them,
 is a dataset that the filters (EFILTER, FFILTER) leave without structures. The training-only weight keys a potential records
 (WDBFILE, WDBFILE_AUTO, EWEIGHT_TEMP) are not applied to the data predicted.
 """
+[TASKS.predict.keys.lscale]
+# No default for predict: the potential's LSCALE applies to the data
+# predicted, and --lscale replaces it. A default here would be the task's
+# own LSCALE (1.0), which replaced the potential's in PredictEngine's merge.
+default_value = []
 [TASKS.predict.keys.outfile]
 default_value = ["energy.pred", "forces.pred", "stress.pred"]
 value_N = [-3]
