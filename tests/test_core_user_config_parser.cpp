@@ -988,8 +988,8 @@ namespace {
 /* The keys that set up a run (its input files, verbosity, output,
  * pre-flight audit and health monitor), never a model, with a value each:
  * the key lines of a run setting a potential of an earlier version can
- * have (a 1.5.x best_pot.tadah has VALIDATION, HPOTARGET, VERBOSE and
- * NUMERIC). */
+ * have (a 1.5.x best_pot.tadah has HPOTARGET, VERBOSE and NUMERIC, and
+ * VALIDATION when its run had a validation file). */
 const char *const kRunSettingLines =
     "VALIDATION config.val\n"
     "HPOTARGET config.hpo\n"
@@ -1026,11 +1026,12 @@ bool select_none(const std::set<std::string> &, const std::string &) {
 // Pins: no parse stores a run setting of a potential: the lines of
 // VALIDATION, HPOTARGET, VERBOSE, NUMERIC, OUTFILE, AUDIT, AUDIT_SAMPLE and
 // HEALTH_LOG in a file whose own key lines have WEIGHTS (a potential of an
-// earlier version: a 1.5.x best_pot.tadah has VALIDATION, HPOTARGET,
-// VERBOSE and NUMERIC) are checked and not stored, so its VERBOSE 2 leaves
-// the Logger level where it was (WARNING) -- the level of the program that
-// loads the potential (tadah predict, pair_style tadah, refit --edit, a
-// retrain, tadah hpo -c) is its own:
+// earlier version: a 1.5.x best_pot.tadah has HPOTARGET, VERBOSE and
+// NUMERIC, and VALIDATION when its run had a validation file) are checked
+// and not stored, so its VERBOSE 2 leaves the Logger level where it was
+// (WARNING) -- the level of the program that loads the potential (tadah
+// predict, pair_style tadah, refit --edit, a retrain, tadah hpo -c) is its
+// own:
 //  - pot.cfg (ATOM, WEIGHTS and the eight lines): parse(file) stores ATOM
 //    and WEIGHTS and none of the eight, and the level stays WARNING;
 //  - the same lines without WEIGHTS (a training configuration): all eight

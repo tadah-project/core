@@ -152,10 +152,10 @@ keys, lists the VERBOSE its run was given. A VERBOSE line of a potential of
 an earlier version (every 1.5.x best_pot.tadah has one) is not read, like
 its other run settings (VALIDATION, HPOTARGET, NUMERIC, OUTFILE, AUDIT,
 AUDIT_SAMPLE, HEALTH_LOG): no program that loads the potential (tadah
-predict, pair_style tadah, tadah refit --edit, a retrain or tadah hpo -c)
-takes its verbosity or its model's from it, and a retrain or tadah hpo -c
-names the line in a WARNING when it is not 1 and the run gives no VERBOSE of
-its own.
+predict, pair_style tadah, tadah refit --edit, a retrain, tadah hpo -c or
+tadah analysis check_bounds -c) takes its verbosity or its model's from it,
+and a retrain, tadah hpo -c or tadah analysis check_bounds -c names the line
+in a WARNING when it is not 1 and the run gives no VERBOSE of its own.
 """
 examples     = ["2"]
 default_value = ["1"]
@@ -1033,9 +1033,13 @@ of the run: no potential has an HPOTARGET line (best_pot.tadah and the DUMP
 and BDUMP archives name the file in their training record, a comment block
 above their key lines that is never read as keys; the journal, hpo_run.log,
 names it too). The HPOTARGET line of a potential of an earlier version
-(every 1.5.x best_pot.tadah has one) is not read: tadah hpo -c takes the
-file from --hpotarget, a TASK hpo section that includes such a potential
-from its own HPOTARGET line (a run without one is refused, naming both).
+(every 1.5.x best_pot.tadah has one) is not read, and a WARNING names it:
+tadah hpo -c and tadah analysis check_bounds -c take the file from
+--hpotarget, a TASK hpo or TASK analysis check_bounds section that includes
+such a potential from an HPOTARGET line of its own or above the first TASK
+line of the task file (a run of a task file takes no command-line option).
+A run without one is refused, saying where it goes and naming the
+potential's line that was not read.
 """
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
@@ -1067,10 +1071,11 @@ An input of the run: no potential has a VALIDATION line (best_pot.tadah and
 the DUMP and BDUMP archives name the file in their training record, a
 comment block above their key lines that is never read as keys; the journal
 names it too, and the header of best_pot.tadah the validation datasets).
-The VALIDATION line of a potential of an earlier version (every 1.5.x
-best_pot.tadah has one) is not read: tadah hpo -c of it validates on the
---validation file of the run alone (a run with a validation metric and none
-is refused), and names the line in a WARNING.
+The VALIDATION line of a potential of an earlier version (a 1.5.x
+best_pot.tadah has one when its run had a validation file) is not read:
+tadah hpo -c of it validates on the --validation file of the run alone (a
+run with a validation metric and none is refused), and names the line in a
+WARNING.
 """
 examples     = ["valid.tadah"]
 cli_long_flag  = "--validation"
@@ -2641,7 +2646,9 @@ A task in a task file begins with the keyword 'TASK' followed by the task name.
 The task name is simply a command to be executed or both command and subcommand.
 The lines following the `TASK` keyword should contain parameters required for
 the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
-task file. Options above the first `TASK` line apply to every task, so a
+task file; --task takes no other command-line option (`tadah hpo --task
+run.task --hpotarget t.hpo` is refused: "--hpotarget excludes --task").
+Options above the first `TASK` line apply to every task, so a
 `TASK` line with no parameter lines after it runs with those alone. Every task
 name is checked, with or without parameters: an unknown one, or a command that
 needs a subcommand (`TASK data` instead of `TASK data convert`), is an error
@@ -3471,8 +3478,12 @@ cli_excludes   = ["task"]
 [TASKS.analysis.check_bounds]
 description      = "Validate HPO bounds: at every corner of the OPTIM box, run the pre-flight audit. Returns non-zero if any corner trips a FAIL finding. CI-friendly."
 long_description = """
-Phase 7 of the HPO bound-validation pipeline. Reads the HPOTARGET file
-referenced by the seed config, parses every `OPTIM <KEY> (range) <lo> <hi>`
+Phase 7 of the HPO bound-validation pipeline. Reads the hpotarget file of
+the run (--hpotarget, or an HPOTARGET line of the seed configuration: the
+HPOTARGET line of a seed potential of an earlier version, such as a 1.5.x
+best_pot.tadah, is not read, and a WARNING names it with the other lines of
+the potential check_bounds does not read; a run without an hpotarget file is
+refused, saying where it goes), parses every `OPTIM <KEY> (range) <lo> <hi>`
 line into a Bound, samples corners (full 2^k for k <= 12, otherwise a
 Latin-hypercube subsample of `min(2^k, ceil(k log2(k)))`), and runs the
 Phase 5 pre-flight audit (`run_preflight_from_db`) at each corner in the
@@ -3487,7 +3498,7 @@ density, SGRID2B of a D2_Blip or D2_Blip5 pair term).
 Returns exit code 0 if all corners pass and 1 if any corner produces a
 FAIL finding.
 """
-examples         = ["tadah analysis check_bounds -c train.tadah --hpo-target config.hpo"]
+examples         = ["tadah analysis check_bounds -c train.tadah --hpotarget config.hpo"]
 [TASKS.analysis.check_bounds.keys]
 INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.hpotarget"]
 [TASKS.analysis.check_bounds.groups.input]

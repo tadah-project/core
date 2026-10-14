@@ -24,8 +24,8 @@ namespace core {
  * retrain or tadah hpo -c of a copy of it) runs with its own settings.
  * tadah writes none of them as a key line (a potential's training record,
  * a comment block, lists the run's); a potential of an earlier version has
- * some (every 1.5.x best_pot.tadah has VALIDATION, HPOTARGET, VERBOSE and
- * NUMERIC).
+ * some (every 1.5.x best_pot.tadah has HPOTARGET, VERBOSE and NUMERIC, and
+ * VALIDATION when its run had a validation file).
  */
 const std::vector<std::string> &run_setting_keys();
 
