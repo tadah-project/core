@@ -383,7 +383,7 @@ std::string pot_digits_warning(const PotDigits &pd) {
          "(a double needs " + std::to_string(kRoundTripDigits) +
          "), so a potential reloaded from this file differs from the one in "
          "memory. NUMERIC is never written into the potential: delete the "
-         "NUMERIC line from the configuration or potential that set it "
+         "NUMERIC line from the configuration that set it "
          "(default " + std::to_string(kPotDigitsDefault) +
          ", exact) or set NUMERIC >= " + std::to_string(kRoundTripDigits) +
          ". Values loaded into memory are never limited by NUMERIC.";

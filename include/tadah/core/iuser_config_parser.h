@@ -13,7 +13,8 @@ namespace core {
 
 /**
  * @brief A key line that a parse read and did not store, because its
- *        KeyLineRule selected it.
+ *        KeyLineRule selected it or because it is a run setting of a
+ *        potential (CoreUserConfigParser: run_setting_keys()).
  */
 struct SkippedKeyLine {
   /** The file the line is in: as given to the parse, or as the CONFIG line
@@ -100,9 +101,10 @@ public:
    * Every line is read and checked as parse(lines, first_line, source)
    * reads it: an unknown key, an invalid value or a refused key is an error
    * at its line. A key line (not a CONFIG line, not a block) for which
-   * @p skip(file_keys, key) is true is then not stored: it is appended to
-   * @p skipped instead, in the order read. A file a CONFIG line includes is
-   * read under the same rule, with the keys of its own lines.
+   * @p skip(file_keys, key) is true, or that the parser does not store in
+   * any parse (CoreUserConfigParser: a run setting of a potential), is
+   * appended to @p skipped instead, in the order read. A file a CONFIG line
+   * includes is read under the same rule, with the keys of its own lines.
    *
    * @param lines      The lines of the block, blank and comment lines
    *                   included.

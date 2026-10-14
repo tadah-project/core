@@ -982,3 +982,154 @@ TEST_CASE("Config parser: a key line rule skips the lines it selects by the "
           std::vector<std::string>{"run.task:11 EFILTER 1 2"});
   }
 }
+
+namespace {
+
+/* The keys that set up a run (its input files, verbosity, output,
+ * pre-flight audit and health monitor), never a model, with a value each:
+ * the key lines of a run setting a potential of an earlier version can
+ * have (a 1.5.x best_pot.tadah has HPOTARGET, VERBOSE and NUMERIC, and
+ * VALIDATION when its run had a validation file). */
+const char *const kRunSettingLines =
+    "VALIDATION config.val\n"
+    "HPOTARGET config.hpo\n"
+    "VERBOSE 2\n"
+    "NUMERIC 12\n"
+    "OUTFILE old.tadah\n"
+    "AUDIT warn\n"
+    "AUDIT_SAMPLE 2\n"
+    "HEALTH_LOG full\n";
+const char *const kRunSettingKeys[] = {"VALIDATION", "HPOTARGET", "VERBOSE",
+                                       "NUMERIC",    "OUTFILE",   "AUDIT",
+                                       "AUDIT_SAMPLE", "HEALTH_LOG"};
+
+/* The Logger level at @p level while it lives, restored at its end. */
+struct LoggerAt {
+  LogLevel old_level;
+  explicit LoggerAt(LogLevel level)
+      : old_level(Logger::instance().getLogLevel()) {
+    Logger::instance().setLogLevel(level);
+  }
+  ~LoggerAt() { Logger::instance().setLogLevel(old_level); }
+  LoggerAt(const LoggerAt &) = delete;
+  LoggerAt &operator=(const LoggerAt &) = delete;
+};
+
+/* A rule that selects no line: parse(file, rule, skipped) then lists only
+ * the lines the parser itself does not read. */
+bool select_none(const std::set<std::string> &, const std::string &) {
+  return false;
+}
+
+} // namespace
+
+// Pins: no parse stores a run setting of a potential: the lines of
+// VALIDATION, HPOTARGET, VERBOSE, NUMERIC, OUTFILE, AUDIT, AUDIT_SAMPLE and
+// HEALTH_LOG in a file whose own key lines have WEIGHTS (a potential of an
+// earlier version: a 1.5.x best_pot.tadah has HPOTARGET, VERBOSE and
+// NUMERIC, and VALIDATION when its run had a validation file) are checked
+// and not stored, so its VERBOSE 2 leaves the Logger level where it was
+// (WARNING) -- the level of the program that loads the potential (tadah
+// predict, pair_style tadah, refit --edit, a retrain, tadah hpo -c) is its
+// own:
+//  - pot.cfg (ATOM, WEIGHTS and the eight lines): parse(file) stores ATOM
+//    and WEIGHTS and none of the eight, and the level stays WARNING;
+//  - the same lines without WEIGHTS (a training configuration): all eight
+//    stored as written, and VERBOSE 2 sets the level to INFO;
+//  - outer.cfg, no WEIGHTS, "VERBOSE 0", "CONFIG pot.cfg", "NUMERIC 9": its
+//    own VERBOSE 0 and NUMERIC 9 are stored and set the level (ERROR), none
+//    of pot.cfg's eight is (its VERBOSE 2 leaves the level at ERROR);
+//  - parse(file, rule, skipped) with a rule that selects nothing lists the
+//    eight lines of pot.cfg (line, key upper case, values as written: the
+//    lines 3 to 10), and ATOM and WEIGHTS are stored;
+//  - parse(lines) and parse(istream) of the potential's lines store none of
+//    the eight either, and leave the level at WARNING.
+// Before the fix: every parse stored the eight (a run setting of a
+// potential was read as the setting of the program that loaded it) and
+// the potential's VERBOSE 2 set the level to INFO: the has_stored, level
+// and skipped checks fail.
+TEST_CASE("Config parser: a potential's run setting lines are not stored, "
+          "and its VERBOSE sets no log level",
+          "[config][skip_key_lines][potential_run_settings]") {
+  RefuseScratch dir;
+  const std::string pot = dir.write("pot.cfg", std::string("ATOM Ta\n"
+                                                           "WEIGHTS 0.25 -0.5\n") +
+                                                   kRunSettingLines);
+  const CoreUserConfigParser parser;
+
+  SECTION("a potential: none of the eight stored, no level set") {
+    LoggerAt at(LogLevel::WARNING);
+    const Context c = parser.parse(pot);
+    CHECK(Logger::instance().getLogLevel() == LogLevel::WARNING);
+    CHECK(c.has_stored("ATOM"));
+    CHECK(c.has_stored("WEIGHTS"));
+    for (const char *key : kRunSettingKeys) {
+      INFO("key " << key);
+      CHECK_FALSE(c.has_stored(key));
+    }
+  }
+  SECTION("a training configuration: all eight stored, VERBOSE sets INFO") {
+    LoggerAt at(LogLevel::WARNING);
+    const std::string cfg =
+        dir.write("train.cfg", std::string("ATOM Ta\n") + kRunSettingLines);
+    const Context c = parser.parse(cfg);
+    CHECK(Logger::instance().getLogLevel() == LogLevel::INFO);
+    for (const char *key : kRunSettingKeys) {
+      INFO("key " << key);
+      CHECK(c.has_stored(key));
+    }
+    CHECK(c("NUMERIC") == std::vector<std::string>{"12"});
+    CHECK(c("OUTFILE") == std::vector<std::string>{"old.tadah"});
+  }
+  SECTION("a file that includes the potential with CONFIG") {
+    LoggerAt at(LogLevel::WARNING);
+    const std::string outer = dir.write("outer.cfg", "VERBOSE 0\n"
+                                                     "CONFIG " + pot + "\n"
+                                                     "NUMERIC 9\n");
+    const Context c = parser.parse(outer);
+    CHECK(Logger::instance().getLogLevel() == LogLevel::ERROR);
+    CHECK(c("VERBOSE") == std::vector<std::string>{"0"});
+    CHECK(c("NUMERIC") == std::vector<std::string>{"9"});
+    CHECK(c.has_stored("WEIGHTS"));
+    for (const char *key : {"VALIDATION", "HPOTARGET", "OUTFILE", "AUDIT",
+                            "AUDIT_SAMPLE", "HEALTH_LOG"}) {
+      INFO("key " << key);
+      CHECK_FALSE(c.has_stored(key));
+    }
+  }
+  SECTION("listed as lines not read") {
+    LoggerAt at(LogLevel::WARNING);
+    std::vector<SkippedKeyLine> skipped;
+    const Context c = parser.parse(pot, select_none, skipped);
+    CHECK(c.has_stored("ATOM"));
+    CHECK(c.has_stored("WEIGHTS"));
+    CHECK(described(skipped) ==
+          std::vector<std::string>{
+              pot + ":3 VALIDATION config.val", pot + ":4 HPOTARGET config.hpo",
+              pot + ":5 VERBOSE 2", pot + ":6 NUMERIC 12",
+              pot + ":7 OUTFILE old.tadah", pot + ":8 AUDIT warn",
+              pot + ":9 AUDIT_SAMPLE 2", pot + ":10 HEALTH_LOG full"});
+    CHECK(Logger::instance().getLogLevel() == LogLevel::WARNING);
+  }
+  SECTION("the lines and stream overloads") {
+    LoggerAt at(LogLevel::WARNING);
+    std::vector<std::string> lines = {"ATOM Ta", "WEIGHTS 0.25 -0.5"};
+    {
+      std::istringstream in(kRunSettingLines);
+      for (std::string l; std::getline(in, l);) lines.push_back(l);
+    }
+    const Context from_lines = parser.parse(lines);
+    std::ostringstream text;
+    for (const std::string &l : lines) text << l << "\n";
+    std::istringstream stream(text.str());
+    const Context from_stream = parser.parse(stream);
+    CHECK(Logger::instance().getLogLevel() == LogLevel::WARNING);
+    for (const char *key : kRunSettingKeys) {
+      INFO("key " << key);
+      CHECK_FALSE(from_lines.has_stored(key));
+      CHECK_FALSE(from_stream.has_stored(key));
+    }
+    CHECK(from_lines.has_stored("WEIGHTS"));
+    CHECK(from_stream.has_stored("WEIGHTS"));
+  }
+}

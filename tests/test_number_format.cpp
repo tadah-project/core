@@ -456,3 +456,22 @@ TEST_CASE("pot_digits_warning names the keys written exactly",
                "a load checks exactly): the other values do not round-trip "
                "exactly") != std::string::npos);
 }
+
+/* Pins: the NUMERIC warning's advice names the configuration as the source
+ * of an explicit NUMERIC: "NUMERIC is never written into the potential:
+ * delete the NUMERIC line from the configuration that set it (default 18,
+ * exact) or set NUMERIC >= 17." -- a potential's NUMERIC line (a 1.5.0
+ * tadah hpo best_pot.tadah has one) is never read (run_setting_keys()), so
+ * no potential sets it.
+ * Before the fix: "delete the NUMERIC line from the configuration or
+ * potential that set it": the CHECKs fail. */
+TEST_CASE("pot_digits_warning names the configuration as the source of "
+          "NUMERIC",
+          "[number_format][potential_run_settings]") {
+  const std::string w = pot_digits_warning(PotDigits{12, true});
+  INFO(w);
+  CHECK(w.find("NUMERIC is never written into the potential: delete the "
+               "NUMERIC line from the configuration that set it (default 18, "
+               "exact) or set NUMERIC >= 17.") != std::string::npos);
+  CHECK(w.find("potential that set it") == std::string::npos);
+}

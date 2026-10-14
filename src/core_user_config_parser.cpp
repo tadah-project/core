@@ -4,6 +4,7 @@
 #include "tadah/core/key_notice.h"
 #include "tadah/core/logger.h"
 #include "tadah/core/utils.h"
+#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <set>
@@ -128,6 +129,19 @@ namespace {
   }
 
   /**
+   * @brief Whether the line of @p key (upper case) of a file whose own key
+   *        lines give @p file_keys is a run setting of a potential: the
+   *        file has WEIGHTS and @p key is one of run_setting_keys(). No
+   *        parse stores it.
+   */
+  bool potentialRunSetting(const std::set<std::string> &file_keys,
+                           const std::string &key) {
+    if (!file_keys.count("WEIGHTS")) return false;
+    const std::vector<std::string> &keys = run_setting_keys();
+    return std::find(keys.begin(), keys.end(), key) != keys.end();
+  }
+
+  /**
    * @brief The key line rule of a parse and the list its skipped lines go
    *        to (both null: no rule).
    */
@@ -150,17 +164,18 @@ namespace {
    * in configChain. When a CONFIG line is encountered, the file is pushed
    * into configChain, parsed, then popped after the nested parse.
    *
-   * With a rule (@p skip), a key line the rule selects by the keys of
-   * @p lines (fileKeys) is checked, not stored, and appended to
-   * skip.skipped; a CONFIG include is read under the same rule.
+   * A run setting of a potential (potentialRunSetting, by the keys of
+   * @p lines: fileKeys) is checked and not stored, with or without a rule;
+   * with a rule (@p skip), so is a key line the rule selects, and both are
+   * appended to skip.skipped. A CONFIG include is read under the same
+   * rules, by the keys of its own lines.
    */
   void parseLines(const std::vector<std::string> &lines, Context &ctx,
                   std::size_t first_line, const std::string &source,
                   const std::map<std::string, std::string> &refused,
                   const LineSkip &skip = LineSkip()) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
-    const std::set<std::string> ownKeys =
-        skip.rule ? fileKeys(lines) : std::set<std::string>();
+    const std::set<std::string> ownKeys = fileKeys(lines);
     for (size_t i = 0; i < lines.size(); ++i) {
       std::string rawLine = trim(lines[i]);
       if (rawLine.empty() || rawLine[0] == '#') {
@@ -277,11 +292,17 @@ namespace {
         reportDeprecatedKey(uKey, keyInfo.deprecated);
         continue;
       }
-      // A line the caller's rule does not read (checked above as any line).
-      if (skip.rule && uKey != "CONFIG" && (*skip.rule)(ownKeys, uKey)) {
-        skip.skipped->push_back(SkippedKeyLine{
-            source, first_line + i, uKey,
-            std::vector<std::string>(tokens.begin() + 1, tokens.end())});
+      // A line no parse stores (a run setting of a potential: the program
+      // that loads the potential keeps its own; a potential's VERBOSE line
+      // would set the Logger level) or the caller's rule does not read
+      // (checked above as any line).
+      if (uKey != "CONFIG" &&
+          (potentialRunSetting(ownKeys, uKey) ||
+           (skip.rule && (*skip.rule)(ownKeys, uKey)))) {
+        if (skip.skipped)
+          skip.skipped->push_back(SkippedKeyLine{
+              source, first_line + i, uKey,
+              std::vector<std::string>(tokens.begin() + 1, tokens.end())});
         continue;
       }
       if (uKey == "CONFIG") {
@@ -353,6 +374,13 @@ namespace {
     return ctx;
   }
 } // end anonymous namespace
+
+const std::vector<std::string> &run_setting_keys() {
+  static const std::vector<std::string> keys = {
+      "VALIDATION", "HPOTARGET", "VERBOSE",      "NUMERIC",
+      "OUTFILE",    "AUDIT",     "AUDIT_SAMPLE", "HEALTH_LOG"};
+  return keys;
+}
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
   return parseFile(filename, refused_, LineSkip());
