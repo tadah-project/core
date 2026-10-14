@@ -10,6 +10,26 @@ namespace tadah {
 namespace core {
 
 /**
+ * @brief The keys that set up a run, never a model: VALIDATION and
+ *        HPOTARGET (the validation and target files of tadah hpo), VERBOSE
+ *        (the verbosity of the run: storing it sets the Logger level),
+ *        NUMERIC and OUTFILE (the writer's significant digits and output
+ *        file), AUDIT and AUDIT_SAMPLE (the pre-flight audit) and HEALTH_LOG
+ *        (the health monitor of tadah hpo).
+ *
+ * A potential -- a file (or TASK section) whose own key lines give WEIGHTS
+ * -- sets none of them: CoreUserConfigParser checks its lines of them as
+ * any line and does not store them, in every parse, so that a program that
+ * loads a potential (tadah predict, pair_style tadah, refit --edit, a
+ * retrain or tadah hpo -c of a copy of it) runs with its own settings.
+ * tadah writes none of them as a key line (a potential's training record,
+ * a comment block, lists the run's); a potential of an earlier version has
+ * some (every 1.5.x best_pot.tadah has VALIDATION, HPOTARGET, VERBOSE and
+ * NUMERIC).
+ */
+const std::vector<std::string> &run_setting_keys();
+
+/**
  * @brief Default “dumb” parser that reads key/value pairs from configuration input.
  *
  * This implementation assumes that the configuration file contains one key/value pair per line
@@ -24,6 +44,14 @@ namespace core {
  * returned Context. The notice bypasses the Logger, so neither the Logger
  * level nor VERBOSE suppresses it: pair_style tadah in LAMMPS, which leaves the Logger at
  * ERROR, shows it too.
+ *
+ * A line of a key of run_setting_keys() in a file (or block) whose own key
+ * lines give WEIGHTS -- a potential -- is checked and not stored, whatever
+ * the parse (no Logger level is set by a potential's VERBOSE line, the
+ * program that loads the potential keeps its own); the overloads with a
+ * KeyLineRule list it in their @c skipped list as a line the rule selects.
+ * A file a CONFIG line includes is judged by its own lines: the lines of a
+ * configuration file that includes a potential are stored as it gives them.
  */
 class CoreUserConfigParser : public IUserConfigParser {
 public:
