@@ -145,8 +145,10 @@ Verbosity level. 0: ERROR, 1: WARNING, 2: INFO. The verbosity level controls
 the amount of information printed during execution. Higher levels provide 
 more detailed output.
 
-A setting of the run, not of the model: no potential records it (tadah
-train, tadah hpo and tadah refit write none).
+A setting of the run, not of the model: no potential has a VERBOSE line
+(tadah train, tadah hpo and tadah refit write none). The training record of
+the potential, a comment block above its key lines that no reader of the
+file reads, lists the VERBOSE its run was given.
 """
 examples     = ["2"]
 default_value = ["1"]
@@ -201,11 +203,12 @@ observations than effective weights) is refused before the potential is
 written, saying what to change. Before 1.6.0 (and in 1.6.0 development
 builds before WCOV and WNOISE) the column was the diagonal of SIGMA, a
 transposed, unscaled matrix, headed "Uncertainty". A switch of the run, not
-part of the model: a potential does not record it, and the UNCERTAINTY true
-of a potential given as the configuration (tadah train -c pot.tadah: a file
-with WEIGHTS), which tadah 1.5.x and 1.6.0 development builds wrote into
-every potential trained with it, asks for nothing (a WARNING says so; give
---uncertainty).
+part of the model: no potential has an UNCERTAINTY line (its training
+record, a comment block no reader of the file reads, lists the UNCERTAINTY
+its run was given), and the UNCERTAINTY true line of a potential given as
+the configuration (tadah train -c pot.tadah: a file with WEIGHTS), which
+tadah 1.5.x and 1.6.0 development builds wrote into every potential trained
+with it, asks for nothing (a WARNING says so; give --uncertainty).
 """
 cli_long_flag    = "--uncertainty"
 cli_short_flag   = ""
@@ -227,13 +230,15 @@ it) is refused, naming both entries: its structures would be fitted twice.
 To give a dataset more weight, use WDBFILE. The validation file of tadah hpo
 (VALIDATION) that lists one file twice is refused likewise.
 
-A potential records no DBFILE (tadah train, tadah hpo and tadah refit write
-none), whichever the model: to retrain one, add the DBFILE of the retrain
-to a copy of it (`tadah train -c pot.tadah` with a DBFILE line). tadah train
-refuses a configuration without DBFILE, saying so; tadah hpo trains without
-one only when FIXINDEX/FIXWEIGHT pin every weight. An M_BLR
+A potential has no DBFILE line (tadah train, tadah hpo and tadah refit write
+none), whichever the model: the DBFILE of the run that wrote it is in its
+training record, a comment block above its key lines that no reader of the
+file reads (a retrain records its own). To retrain one, add the DBFILE of
+the retrain to a copy of it (`tadah train -c pot.tadah` with a DBFILE line).
+tadah train refuses a configuration without DBFILE, saying so; tadah hpo
+trains without one only when FIXINDEX/FIXWEIGHT pin every weight. An M_BLR
 potential written by Tadah! 1.5.x or earlier, or a 1.6.0 development build,
-records the DBFILE it was trained on (tadah predict and pair_style tadah do
+has the DBFILE line it was trained on (tadah predict and pair_style tadah do
 not read it): remove that line before adding the DBFILE of a retrain.
 """
 examples     = ["/path/to/dbfile", "/path/to/dbfile1 /path/to/dbfile2"]
@@ -991,8 +996,10 @@ description  = "HPO target file."
 long_description = """
 The hpotarget file: the OPTIMIZER block, loss terms and OPTIM search space
 of a `tadah hpo` run (`tadah analysis check_bounds` reads it too). An input
-of the run: no potential records it (best_pot.tadah and the DUMP and BDUMP
-archives have no HPOTARGET line; the journal, hpo_run.log, names the file).
+of the run: no potential has an HPOTARGET line (best_pot.tadah and the DUMP
+and BDUMP archives name the file in their training record, a comment block
+above their key lines that no reader of the file reads; the journal,
+hpo_run.log, names it too).
 """
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
@@ -1020,9 +1027,11 @@ dataset: one file listed twice (the same path, two spellings of it, or a link
 to it) is refused, naming both entries, since every validation metric
 averages over the validation datasets.
 
-An input of the run: no potential records it (best_pot.tadah and the DUMP and
-BDUMP archives have no VALIDATION line; the journal names the file, and the
-header of best_pot.tadah the validation datasets).
+An input of the run: no potential has a VALIDATION line (best_pot.tadah and
+the DUMP and BDUMP archives name the file in their training record, a
+comment block above their key lines that no reader of the file reads; the
+journal names it too, and the header of best_pot.tadah the validation
+datasets).
 """
 examples     = ["valid.tadah"]
 cli_long_flag  = "--validation"
@@ -1763,11 +1772,14 @@ cutoff), so the potential loads with the cutoffs and grids it was fitted with.
 Below 17 they are written as the shortest text that reads back as the same
 value (RCUT2B 5.58190742024 at NUMERIC 6); earlier versions rounded them with
 the other numbers.
-NUMERIC itself is never written into a potential file; a NUMERIC line found in
-a potential used as a configuration (or edited with refit --edit) is treated
-as an explicit setting. The '#' comment headers of a potential (e.g. the
-header tadah hpo writes) are annotations not governed by NUMERIC; its
-machine-read lines (# HPO_BEST_LOSS, # HOT) are always exact. The hpotarget
+NUMERIC itself is never a key line of a potential file (its training record,
+a comment block no reader of the file reads, lists the NUMERIC the run was
+given, as written); a NUMERIC line found in a potential used as a
+configuration (or edited with refit --edit, which moves it into the edit's
+training record) is treated as an explicit setting. The '#' comment lines of
+a potential (the header tadah hpo writes, the training record) are
+annotations not governed by NUMERIC; its machine-read lines (# HPO_BEST_LOSS,
+# HOT) are always exact. The hpotarget
 files of tadah refit (a refit, --edit and --retarget) are not governed by
 NUMERIC either: their OPTIM bounds are printed %.8e (9 significant digits)
 whatever NUMERIC is.
@@ -2249,7 +2261,7 @@ in a training configuration are replaced by the fit and not read: tadah train
 and tadah hpo build the model to be fitted without them (and without BASIS,
 NMEAN, NSTDEV, WCOV, WNOISE and SIGMA), so a potential retrains from its own file
 (`tadah train -c pot.tadah` with the DBFILE of the retrain added: a
-potential records none), also with another SBASIS.
+potential has no DBFILE line), also with another SBASIS.
 """
 examples = ["0.12 1.2 0.3"]
 
