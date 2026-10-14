@@ -66,6 +66,25 @@ public:
                 const std::string& source) const override;
 
   /**
+   * @brief parse(lines, first_line, source) that does not store the key
+   *        lines @p skip selects, and lists them in @p skipped
+   *        (IUserConfigParser: every line checked as any line; a file
+   *        included with CONFIG read under the same rule, by the keys of
+   *        its own lines).
+   */
+  Context parse(const std::vector<std::string>& lines, std::size_t first_line,
+                const std::string& source, const KeyLineRule& skip,
+                std::vector<SkippedKeyLine>& skipped) const override;
+
+  /**
+   * @brief parse(filename) that does not store the key lines @p skip
+   *        selects, and lists them in @p skipped (the rule of the overload
+   *        for lines).
+   */
+  Context parse(const std::string &filename, const KeyLineRule& skip,
+                std::vector<SkippedKeyLine>& skipped) const;
+
+  /**
    * @brief Refuses the keys of @p reasons (key -> why) in everything this
    *        parser reads.
    *
