@@ -854,3 +854,131 @@ TEST_CASE("Config parser: a comma or '+' in a name is refused as a "
     CHECK(parse_refusal({c.line}) == c.message);
   }
 }
+
+namespace {
+
+/* The rule of the [skip_key_lines] cases: in a file whose key lines give
+ * WEIGHTS, the lines of EFILTER and WDBFILE are skipped, and the line of
+ * ESHIFT_ATOM when the file's lines give ESHIFT too. */
+bool skip_in_weights_files(const std::set<std::string> &file_keys,
+                           const std::string &key) {
+  if (!file_keys.count("WEIGHTS")) return false;
+  if (key == "EFILTER" || key == "WDBFILE") return true;
+  return key == "ESHIFT_ATOM" && file_keys.count("ESHIFT") > 0;
+}
+
+/* "source:line KEY v1 v2" for each skipped line, to compare as a whole. */
+std::vector<std::string> described(const std::vector<SkippedKeyLine> &lines) {
+  std::vector<std::string> out;
+  for (const SkippedKeyLine &l : lines) {
+    std::string s = l.source + ":" + std::to_string(l.line) + " " + l.key;
+    for (const std::string &v : l.values) s += " " + v;
+    out.push_back(s);
+  }
+  return out;
+}
+
+} // namespace
+
+// Pins: parse(file, rule, skipped) reads every line as parse(file) does and
+// does not store a plain key line that the rule selects by the keys of the
+// lines of the file the line is in, listing it instead:
+//  - pot.cfg (ATOM, WEIGHTS, EFILTER 5 6, a blank line, "wdbfile 1 1" with
+//    an in-line comment, ESHIFT_ATOM true; no ESHIFT): EFILTER and WDBFILE
+//    are not stored, ESHIFT_ATOM true is; skipped is "pot.cfg:4 EFILTER 5
+//    6", "pot.cfg:6 WDBFILE 1 1" (the line of the file, comment and blank
+//    lines counted; the key upper case; the values as written); a parse
+//    without a rule stores all of them;
+//  - outer.cfg, which has no WEIGHTS line and includes pot.cfg with CONFIG
+//    between its EFILTER -9 -7 and WDBFILE 0.5 1 2 lines: its own EFILTER
+//    and WDBFILE are stored as it gives them (the include's, skipped,
+//    neither replaces the one before the CONFIG line nor comes before the
+//    one after it), WEIGHTS comes from pot.cfg, and skipped lists pot.cfg's
+//    two lines under the path the CONFIG line gives;
+//  - pot2.cfg with ESHIFT beside WEIGHTS: its ESHIFT_ATOM line is skipped;
+//  - a skipped line is checked as any line: "EFILTER five 6" in a file with
+//    WEIGHTS is refused, naming EFILTER;
+//  - the body of a block (INIT ... ENDINIT) is not a key line of the file: a
+//    WEIGHTS token inside it does not make the file's EFILTER skipped;
+//  - the lines overload names the line of its source: lines {"WEIGHTS 1",
+//    "EFILTER 1 2"} from line 10 of run.task give "run.task:11 EFILTER 1 2".
+// Before the fix: does not compile (no parse overload with a rule; no
+// SkippedKeyLine).
+TEST_CASE("Config parser: a key line rule skips the lines it selects by the "
+          "keys of the file they are in",
+          "[config][skip_key_lines]") {
+  RefuseScratch dir;
+  const std::string pot = dir.write("pot.cfg",
+                                    "# a potential\n"              // 1
+                                    "ATOM Ta\n"                    // 2
+                                    "WEIGHTS 0.25 -0.5\n"          // 3
+                                    "EFILTER 5 6\n"                // 4
+                                    "\n"                           // 5
+                                    "wdbfile 1 1   # two sets\n"   // 6
+                                    "ESHIFT_ATOM true\n");         // 7
+  const CoreUserConfigParser parser;
+  std::vector<SkippedKeyLine> skipped;
+
+  SECTION("a file with WEIGHTS") {
+    const Context c = parser.parse(pot, skip_in_weights_files, skipped);
+    CHECK_FALSE(c.has_stored("EFILTER"));
+    CHECK_FALSE(c.has_stored("WDBFILE"));
+    CHECK(c.has_stored("WEIGHTS"));
+    CHECK(c.get<bool>("ESHIFT_ATOM"));
+    CHECK(described(skipped) ==
+          std::vector<std::string>{pot + ":4 EFILTER 5 6",
+                                   pot + ":6 WDBFILE 1 1"});
+    const Context all = parser.parse(pot);
+    CHECK(all.has_stored("EFILTER"));
+    CHECK(all.has_stored("WDBFILE"));
+  }
+  SECTION("a file that includes it with CONFIG") {
+    const std::string outer = dir.write("outer.cfg",
+                                        "EFILTER -9 -7\n"           // 1
+                                        "CONFIG " + pot + "\n"      // 2
+                                        "WDBFILE 0.5 1 2\n");       // 3
+    const Context c = parser.parse(outer, skip_in_weights_files, skipped);
+    CHECK(c("EFILTER") == std::vector<std::string>{"-9", "-7"});
+    CHECK(c("WDBFILE") == std::vector<std::string>{"0.5", "1", "2"});
+    CHECK(c("WEIGHTS") == std::vector<std::string>{"0.25", "-0.5"});
+    CHECK(described(skipped) ==
+          std::vector<std::string>{pot + ":4 EFILTER 5 6",
+                                   pot + ":6 WDBFILE 1 1"});
+  }
+  SECTION("ESHIFT beside WEIGHTS") {
+    const std::string pot2 = dir.write("pot2.cfg",
+                                       "WEIGHTS 1\n"           // 1
+                                       "ESHIFT 0.5\n"          // 2
+                                       "ESHIFT_ATOM true\n");  // 3
+    const Context c = parser.parse(pot2, skip_in_weights_files, skipped);
+    CHECK_FALSE(c.has_stored("ESHIFT_ATOM"));
+    CHECK(described(skipped) ==
+          std::vector<std::string>{pot2 + ":3 ESHIFT_ATOM true"});
+  }
+  SECTION("a skipped line is checked") {
+    const std::string bad = dir.write("bad.cfg", "WEIGHTS 1\nEFILTER five 6\n");
+    const std::string msg = runtime_error_of(
+        [&] { return parser.parse(bad, skip_in_weights_files, skipped); },
+        "parse " + bad);
+    CHECK_THAT(msg, Catch::Matchers::Contains("EFILTER"));
+  }
+  SECTION("a block's body is not a key line of the file") {
+    const std::string blk = dir.write("blk.cfg",
+                                      "ATOM Ta\n"
+                                      "INIT\n"
+                                      "  WEIGHTS 1\n"
+                                      "ENDINIT\n"
+                                      "EFILTER 5 6\n");
+    const Context c = parser.parse(blk, skip_in_weights_files, skipped);
+    CHECK(c("EFILTER") == std::vector<std::string>{"5", "6"});
+    CHECK(skipped.empty());
+  }
+  SECTION("lines of a source from a line of it") {
+    const Context c = parser.parse(
+        std::vector<std::string>{"WEIGHTS 1", "EFILTER 1 2"}, 10, "run.task",
+        skip_in_weights_files, skipped);
+    CHECK_FALSE(c.has_stored("EFILTER"));
+    CHECK(described(skipped) ==
+          std::vector<std::string>{"run.task:11 EFILTER 1 2"});
+  }
+}

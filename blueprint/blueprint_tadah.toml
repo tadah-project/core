@@ -1898,7 +1898,15 @@ values must match the number of species (sorted by Z). At load time the total
 energy of each configuration is reduced by sum_Z N_Z * ESHIFT[Z], so an
 isolated-atom config with energy E_atom and ESHIFT[Z]=E_atom yields a
 post-shift energy of zero. Used by `tadah train`, `tadah predict`, `tadah hpo`,
-and `tadah data balance`. Persisted into pot.tadah for prediction round-trip.
+and `tadah data balance`.
+
+A potential has the ESHIFT values its training resolved (given, or derived
+by ESHIFT_ATOM or ESHIFT_DBATOM) as a key line: the energy reference of the
+model. tadah predict subtracts them from the reference energies of the data
+it predicts (--eshift replaces them, --no-eshift subtracts none), and a
+retrain from the potential (tadah train -c pot.tadah, a tadah hpo -c seed)
+uses them; to derive ESHIFT from the data of the retrain, delete the line
+and set ESHIFT_ATOM or ESHIFT_DBATOM.
 """
 examples     = ["0.5", "0.5 -0.1"]
 cli_long_flag  = "--eshift"
@@ -1915,6 +1923,20 @@ species has no isolated-atom config in the dataset, ESHIFT[Z] = 0 for that
 species and a WARNING is logged. If multiple isolated-atom configs of the same
 Z disagree by more than 1e-3 eV, an INFO line records the spread.
 Mutually exclusive with explicit ESHIFT and ESHIFT_DBATOM.
+
+A setting of the training data, not of the model: a potential has no
+ESHIFT_ATOM line. It has the ESHIFT values the toggle derived as its ESHIFT
+line, and its training record, a comment block above its key lines that is
+never read as keys, lists the ESHIFT_ATOM its run was given. tadah predict
+ignores it in a potential (one of an earlier version has it as a key line)
+and derives no shift from the data it predicts. A potential's ESHIFT_ATOM
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read beside its ESHIFT line, which
+overrules it (a WARNING names it when it is true and the run gives none of
+its own); without an ESHIFT line ESHIFT_ATOM derives the shift from the data
+of the retrain. The run's own ESHIFT_ATOM (--eshift-atom, or a line of the
+task file or of a file that includes the potential) is read, and is overruled
+by the potential's ESHIFT as in any configuration.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -1935,6 +1957,20 @@ compositions do not determine the fit (every structure of one composition,
 say) the normal matrix is singular: every ESHIFT is then 0 and a WARNING
 says so.
 Mutually exclusive with explicit ESHIFT and ESHIFT_ATOM.
+
+A setting of the training data, not of the model: a potential has no
+ESHIFT_DBATOM line. It has the ESHIFT values the toggle derived as its ESHIFT
+line, and its training record, a comment block above its key lines that is
+never read as keys, lists the ESHIFT_DBATOM its run was given. tadah predict
+ignores it in a potential (one of an earlier version has it as a key line)
+and derives no shift from the data it predicts. A potential's ESHIFT_DBATOM
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read beside its ESHIFT line, which
+overrules it (a WARNING names it when it is true and the run gives none of
+its own); without an ESHIFT line ESHIFT_DBATOM derives the shift from the
+data of the retrain. The run's own ESHIFT_DBATOM (--eshift-dbatom, or a line
+of the task file or of a file that includes the potential) is read, and is
+overruled by the potential's ESHIFT as in any configuration.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -1981,6 +2017,16 @@ Outlier filter applied at load time before any energy-shift derivation or
 training-weight assignment, so outliers do not poison ESHIFT_ATOM /
 ESHIFT_DBATOM / EWEIGHT_TEMP. The threshold is compared against E/N_atoms
 (per-atom energy). Both bounds must be supplied. To disable, omit the key.
+
+A setting of the training data, not of the model: a potential has no EFILTER
+line; its training record, a comment block above its key lines that is never
+read as keys, lists the EFILTER its run was given. tadah predict applies
+EFILTER to the data it predicts only when it is given it (--efilter), never
+the potential's (one of an earlier version has it as a key line: ignored). A
+potential's EFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
+run reads: given with -c, or included with CONFIG) is not read, with a
+WARNING when the run gives none of its own; the run's own EFILTER (--efilter,
+or a line of the task file or of a file that includes the potential) applies.
 """
 examples       = ["-12.0 -2.0"]
 cli_long_flag  = "--efilter"
@@ -1994,6 +2040,16 @@ long_description = """
 Outlier filter applied at load time. A configuration is dropped if any single
 atom has ‖F‖ > FFILTER. Useful for catching unconverged SCF or otherwise
 broken DFT runs.
+
+A setting of the training data, not of the model: a potential has no FFILTER
+line; its training record, a comment block above its key lines that is never
+read as keys, lists the FFILTER its run was given. tadah predict applies
+FFILTER to the data it predicts only when it is given it (--ffilter), never
+the potential's (one of an earlier version has it as a key line: ignored). A
+potential's FFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
+run reads: given with -c, or included with CONFIG) is not read, with a
+WARNING when the run gives none of its own; the run's own FFILTER (--ffilter,
+or a line of the task file or of a file that includes the potential) applies.
 """
 examples       = ["20.0"]
 cli_long_flag  = "--ffilter"
@@ -2007,6 +2063,16 @@ long_description = """
 Multiplies eweight, fweight, and sweight of every configuration in the
 corresponding DBFILE by the given factor. Use to bias training toward or away
 from particular datasets. Composes multiplicatively with WDBFILE_AUTO.
+
+A setting of the training data, not of the model: a potential has no WDBFILE
+line; its training record, a comment block above its key lines that is never
+read as keys, lists the WDBFILE its run was given. tadah predict does not
+apply it (the data predicted keep their own weights), also not one an earlier
+version wrote as a key line. A potential's WDBFILE line (a file with WEIGHTS
+that a retrain or a tadah hpo run reads: given with -c, or included with
+CONFIG) is not read, with a WARNING when the run gives none of its own, so a
+retrain may list any datasets; the run's own WDBFILE (--wdbfile, or a line of
+the task file or of a file that includes the potential) applies.
 """
 examples       = ["1.0 0.5 0.1"]
 cli_long_flag  = "--wdbfile"
@@ -2023,6 +2089,17 @@ filter) configurations in dataset i. alpha=0 disables (default). alpha=0.5
 is the recommended starting point (sqrt-inverse, soft balance). alpha=1
 fully equalises aggregate dataset contribution. Composes multiplicatively
 with user-given WDBFILE.
+
+A setting of the training data, not of the model: a potential has no
+WDBFILE_AUTO line; its training record, a comment block above its key lines
+that is never read as keys, lists the WDBFILE_AUTO its run was given. tadah
+predict does not apply it (the data predicted keep their own weights), also
+not one an earlier version wrote as a key line. A potential's WDBFILE_AUTO
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read (a WARNING names it when it is not 0
+and the run gives none of its own); the run's own WDBFILE_AUTO
+(--wdbfile-auto, or a line of the task file or of a file that includes the
+potential) applies.
 """
 default_value  = ["0.0"]
 examples       = ["0.5", "1.0"]
@@ -2039,6 +2116,16 @@ exp(-(E/N - E_min)/(kB * T)) where E_min is the minimum per-atom energy in
 the dataset and kB = 8.617333262e-5 eV/K. Emphasises low-energy
 configurations. Composes multiplicatively with the per-structure eweight
 already in the dataset file. Omit the key to disable.
+
+A setting of the training data, not of the model: a potential has no
+EWEIGHT_TEMP line; its training record, a comment block above its key lines
+that is never read as keys, lists the EWEIGHT_TEMP its run was given. tadah
+predict does not apply it (the data predicted keep their own weights), also
+not one an earlier version wrote as a key line. A potential's EWEIGHT_TEMP
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read, with a WARNING when the run gives
+none of its own; the run's own EWEIGHT_TEMP (--eweight-temp, or a line of the
+task file or of a file that includes the potential) applies.
 """
 examples       = ["300", "1000"]
 cli_long_flag  = "--eweight-temp"
@@ -2052,6 +2139,17 @@ long_description = """
 Per configuration, subtracts the mean force from each atom so that the sum of
 forces over the configuration is exactly zero. Standard DFT post-processing
 trick to remove residual translational forces from incomplete relaxation/SCF.
+
+A setting of the training data, not of the model: a potential has no
+ZERO_COM_FORCE line; its training record, a comment block above its key lines
+that is never read as keys, lists the ZERO_COM_FORCE its run was given. tadah
+predict applies ZERO_COM_FORCE to the data it predicts only when it is given
+it (--zero-com-force), never the potential's (one of an earlier version has
+it as a key line: ignored). A potential's ZERO_COM_FORCE line (a file with
+WEIGHTS that a retrain or a tadah hpo run reads: given with -c, or included
+with CONFIG) is not read (a WARNING names it when it is true and the run
+gives none of its own); the run's own ZERO_COM_FORCE (--zero-com-force, or a
+line of the task file or of a file that includes the potential) applies.
 """
 default_value  = ["false"]
 examples       = ["true"]
@@ -2061,11 +2159,16 @@ cli_required   = false
 
 [ALLOWED_KEYS.no_eshift]
 INHERIT = ["TYPES.BOOL"]
-description  = "(predict) Ignore any ESHIFT recorded in the loaded potential file."
+description  = "(predict) Subtract no ESHIFT from the reference energies of the data predicted."
 long_description = """
-At predict time, override the ESHIFT values stored in pot.tadah. Use when
-the dataset you are predicting on is already at the shifted baseline (or you
-just want raw model output without any reference energy subtraction).
+At predict time, subtract no ESHIFT from the reference energies of the data
+predicted: neither the potential's ESHIFT values nor any other (tadah
+predict derives no shift from the data it predicts, also not for a potential
+of an earlier version with an ESHIFT_ATOM or ESHIFT_DBATOM line).
+energy.pred then compares the model's energies, which do not change, with
+the reference energies as they are. Use when the dataset you are predicting
+on is already at the model's baseline, or to see the raw references beside
+the model.
 """
 default_value  = ["false"]
 examples       = ["true"]
@@ -2809,8 +2912,24 @@ stores zeros in their place). A dataset in which every structure has force
 (stress) weight 0 is not measured: nan in its column, left out of the mean,
 and a note names it. With -F (-S), a run in which no dataset has forces (a
 stress tensor) is refused before predicting, and so, with or without them,
-is a dataset that the filters (EFILTER, FFILTER) leave without structures. The training-only weight keys a potential records
-(WDBFILE, WDBFILE_AUTO, EWEIGHT_TEMP) are not applied to the data predicted.
+is a dataset that the filters predict is given (--efilter, --ffilter) leave
+without structures. The keys that prepared the training data of the potential
+(EFILTER, FFILTER, ZERO_COM_FORCE, ESHIFT_ATOM, ESHIFT_DBATOM, WDBFILE,
+WDBFILE_AUTO, EWEIGHT_TEMP; a potential of an earlier version has them as key
+lines) are not applied to the data predicted.
+"""
+[TASKS.predict.keys.lscale]
+# No default for predict: the potential's LSCALE applies to the data
+# predicted, and --lscale replaces it. A default here would be the task's
+# own LSCALE (1.0), which replaced the potential's in PredictEngine's merge.
+default_value = []
+description  = "(predict) Length rescale of the data predicted: the potential's LSCALE unless given."
+long_description = """
+The positions and cell of the data predicted are multiplied by this factor,
+the forces divided by it and the stresses by its cube (see LSCALE). Without
+it the potential's LSCALE applies, the length scale of the model (a
+potential without an LSCALE line: none); --lscale replaces it and
+--no-lscale cancels it.
 """
 [TASKS.predict.keys.outfile]
 default_value = ["energy.pred", "forces.pred", "stress.pred"]

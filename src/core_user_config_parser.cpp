@@ -6,6 +6,7 @@
 #include "tadah/core/utils.h"
 #include <cctype>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
@@ -89,6 +90,57 @@ namespace {
   }
 
   /**
+   * @brief The keys whose lines open a verbatim multi-line block (closed by
+   *        END<key>), whose body is not made of key lines.
+   */
+  const std::unordered_set<std::string> &verbatimBlocks() {
+    static const std::unordered_set<std::string> blocks = {
+        "OPTIMIZER", "INIT", "EXPLORE", "REFINE", "FUSE"};
+    return blocks;
+  }
+
+  /**
+   * @brief The keys of the key lines of @p lines (KeyLineRule's file_keys):
+   *        the first word, upper case, of each line that is neither blank
+   *        nor a comment, the lines inside a verbatim block excepted (the
+   *        block's own name is one of them).
+   */
+  std::set<std::string> fileKeys(const std::vector<std::string> &lines) {
+    std::set<std::string> keys;
+    std::string blockEnd;  // the END<block> awaited; empty outside a block
+    for (const std::string &raw : lines) {
+      std::string line = trim(raw);
+      if (line.empty() || line[0] == '#') continue;
+      line = trim(line.substr(0, line.find('#')));
+      if (line.empty()) continue;
+      if (!blockEnd.empty()) {
+        if (to_upper(line) == blockEnd) blockEnd.clear();
+        continue;
+      }
+      std::istringstream iss(line);
+      std::string first;
+      iss >> first;
+      const std::string uKey = to_upper(first);
+      keys.insert(uKey);
+      if (verbatimBlocks().count(uKey)) blockEnd = "END" + uKey;
+    }
+    return keys;
+  }
+
+  /**
+   * @brief The key line rule of a parse and the list its skipped lines go
+   *        to (both null: no rule).
+   */
+  struct LineSkip {
+    const KeyLineRule *rule = nullptr;
+    std::vector<SkippedKeyLine> *skipped = nullptr;
+  };
+
+  Context parseFile(const std::string &filename,
+                    const std::map<std::string, std::string> &refused,
+                    const LineSkip &skip);
+
+  /**
    * @brief Parse lines into an existing Context object.
    *
    * lines[i] is line first_line + i of source (empty: no name), which the
@@ -97,11 +149,18 @@ namespace {
    * Circular dependency detection is handled by tracking CONFIG filenames
    * in configChain. When a CONFIG line is encountered, the file is pushed
    * into configChain, parsed, then popped after the nested parse.
+   *
+   * With a rule (@p skip), a key line the rule selects by the keys of
+   * @p lines (fileKeys) is checked, not stored, and appended to
+   * skip.skipped; a CONFIG include is read under the same rule.
    */
   void parseLines(const std::vector<std::string> &lines, Context &ctx,
                   std::size_t first_line, const std::string &source,
-                  const std::map<std::string, std::string> &refused) {
+                  const std::map<std::string, std::string> &refused,
+                  const LineSkip &skip = LineSkip()) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
+    const std::set<std::string> ownKeys =
+        skip.rule ? fileKeys(lines) : std::set<std::string>();
     for (size_t i = 0; i < lines.size(); ++i) {
       std::string rawLine = trim(lines[i]);
       if (rawLine.empty() || rawLine[0] == '#') {
@@ -144,9 +203,7 @@ namespace {
       //                OPTIMIZER...ENDOPTIMIZER is captured as body tokens
       //                because each opener closes ONLY on its own END<opener>
       //                (distinct end tokens => no depth counter needed).
-      static const std::unordered_set<std::string> kVerbatimBlocks = {
-          "OPTIMIZER", "INIT", "EXPLORE", "REFINE", "FUSE"};
-      if (kVerbatimBlocks.find(uKey) != kVerbatimBlocks.end()) {
+      if (verbatimBlocks().count(uKey)) {
         const std::string endTok = "END" + uKey;
         std::string body;
         bool closed = false;
@@ -220,6 +277,13 @@ namespace {
         reportDeprecatedKey(uKey, keyInfo.deprecated);
         continue;
       }
+      // A line the caller's rule does not read (checked above as any line).
+      if (skip.rule && uKey != "CONFIG" && (*skip.rule)(ownKeys, uKey)) {
+        skip.skipped->push_back(SkippedKeyLine{
+            source, first_line + i, uKey,
+            std::vector<std::string>(tokens.begin() + 1, tokens.end())});
+        continue;
+      }
       if (uKey == "CONFIG") {
         // CONFIG is a special case; check for circular dependency
         if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
@@ -233,12 +297,10 @@ namespace {
         // Push config name before nested parse
         configChain.push_back(val);
 
-        // Perform nested parse, under the same refusal
-        tadah::core::CoreUserConfigParser parser;
-        parser.refuse_keys(refused);
+        // Perform nested parse, under the same refusal and rule
         Context configCtx;
         try {
-          configCtx = parser.parse(val);
+          configCtx = parseFile(val, refused, skip);
         } catch (...) {
           // Clean up the chain if parsing fails
           configChain.pop_back();
@@ -258,31 +320,49 @@ namespace {
       }
     }
   }
+
+  /**
+   * @brief One parse of the file @p filename: its lines, under the
+   *        refusal @p refused and the rule @p skip (a top-level parse, or
+   *        the file of a CONFIG line).
+   */
+  Context parseFile(const std::string &filename,
+                    const std::map<std::string, std::string> &refused,
+                    const LineSkip &skip) {
+    ParseScope scope;
+
+    std::ifstream infile(filename.c_str());
+    if (!infile.is_open()) {
+      Logger::instance().log(
+          LogLevel::ERROR,
+          "CoreUserConfigParser::parse -> Failed to open file: ", filename);
+      throw std::runtime_error("Failed to open config file: " + filename);
+    }
+
+    std::vector<std::string> lines;
+    {
+      std::string line;
+      while (std::getline(infile, line)) {
+        lines.push_back(line);
+      }
+    }
+    infile.close();
+
+    Context ctx;
+    parseLines(lines, ctx, 1, filename, refused, skip);
+    return ctx;
+  }
 } // end anonymous namespace
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
-  ParseScope scope;
+  return parseFile(filename, refused_, LineSkip());
+}
 
-  std::ifstream infile(filename.c_str());
-  if (!infile.is_open()) {
-    Logger::instance().log(
-        LogLevel::ERROR,
-        "CoreUserConfigParser::parse -> Failed to open file: ", filename);
-    throw std::runtime_error("Failed to open config file: " + filename);
-  }
-
-  std::vector<std::string> lines;
-  {
-    std::string line;
-    while (std::getline(infile, line)) {
-      lines.push_back(line);
-    }
-  }
-  infile.close();
-
-  Context ctx;
-  parseLines(lines, ctx, 1, filename, refused_);
-  return ctx;
+Context CoreUserConfigParser::parse(const std::string &filename,
+                                    const KeyLineRule &skip,
+                                    std::vector<SkippedKeyLine> &skipped) const {
+  return parseFile(filename, refused_,
+                   skip ? LineSkip{&skip, &skipped} : LineSkip());
 }
 
 Context CoreUserConfigParser::parse(std::istream &in) const {
@@ -317,6 +397,19 @@ Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
 
   Context ctx;
   parseLines(lines, ctx, first_line, source, refused_);
+  return ctx;
+}
+
+Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
+                                    std::size_t first_line,
+                                    const std::string &source,
+                                    const KeyLineRule &skip,
+                                    std::vector<SkippedKeyLine> &skipped) const {
+  ParseScope scope;
+
+  Context ctx;
+  parseLines(lines, ctx, first_line, source, refused_,
+             skip ? LineSkip{&skip, &skipped} : LineSkip());
   return ctx;
 }
 
