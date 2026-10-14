@@ -1933,11 +1933,14 @@ ESHIFT_ATOM line. It has the ESHIFT values the toggle derived as its ESHIFT
 line, and its training record, a comment block above its key lines that is
 never read as keys, lists the ESHIFT_ATOM its run was given. tadah predict
 ignores it in a potential (one of an earlier version has it as a key line)
-and derives no shift from the data it predicts. A configuration that is a
-potential (it has WEIGHTS: a retrain, a tadah hpo -c seed) has its
-ESHIFT_ATOM line ignored beside its ESHIFT line, which overrules it (a
-WARNING names it when it is true); without an ESHIFT line ESHIFT_ATOM
-derives the shift from the data of the retrain.
+and derives no shift from the data it predicts. A potential's ESHIFT_ATOM
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read beside its ESHIFT line, which
+overrules it (a WARNING names it when it is true and the run gives none of
+its own); without an ESHIFT line ESHIFT_ATOM derives the shift from the data
+of the retrain. The run's own ESHIFT_ATOM (--eshift-atom, or a line of the
+task file or of a file that includes the potential) is read, and is overruled
+by the potential's ESHIFT as in any configuration.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -1960,15 +1963,18 @@ says so.
 Mutually exclusive with explicit ESHIFT and ESHIFT_ATOM.
 
 A setting of the training data, not of the model: a potential has no
-ESHIFT_DBATOM line. It has the ESHIFT values the toggle derived as its
-ESHIFT line, and its training record, a comment block above its key lines
-that is never read as keys, lists the ESHIFT_DBATOM its run was given. tadah
-predict ignores it in a potential (one of an earlier version has it as a key
-line) and derives no shift from the data it predicts. A configuration that
-is a potential (it has WEIGHTS: a retrain, a tadah hpo -c seed) has its
-ESHIFT_DBATOM line ignored beside its ESHIFT line, which overrules it (a
-WARNING names it when it is true); without an ESHIFT line ESHIFT_DBATOM
-derives the shift from the data of the retrain.
+ESHIFT_DBATOM line. It has the ESHIFT values the toggle derived as its ESHIFT
+line, and its training record, a comment block above its key lines that is
+never read as keys, lists the ESHIFT_DBATOM its run was given. tadah predict
+ignores it in a potential (one of an earlier version has it as a key line)
+and derives no shift from the data it predicts. A potential's ESHIFT_DBATOM
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read beside its ESHIFT line, which
+overrules it (a WARNING names it when it is true and the run gives none of
+its own); without an ESHIFT line ESHIFT_DBATOM derives the shift from the
+data of the retrain. The run's own ESHIFT_DBATOM (--eshift-dbatom, or a line
+of the task file or of a file that includes the potential) is read, and is
+overruled by the potential's ESHIFT as in any configuration.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -2021,9 +2027,10 @@ line; its training record, a comment block above its key lines that is never
 read as keys, lists the EFILTER its run was given. tadah predict applies
 EFILTER to the data it predicts only when it is given it (--efilter), never
 the potential's (one of an earlier version has it as a key line: ignored). A
-configuration that is a potential (it has WEIGHTS: a retrain, a tadah hpo -c
-seed) has its EFILTER line ignored, with a WARNING: give --efilter for the
-run.
+potential's EFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
+run reads: given with -c, or included with CONFIG) is not read, with a
+WARNING when the run gives none of its own; the run's own EFILTER (--efilter,
+or a line of the task file or of a file that includes the potential) applies.
 """
 examples       = ["-12.0 -2.0"]
 cli_long_flag  = "--efilter"
@@ -2043,9 +2050,10 @@ line; its training record, a comment block above its key lines that is never
 read as keys, lists the FFILTER its run was given. tadah predict applies
 FFILTER to the data it predicts only when it is given it (--ffilter), never
 the potential's (one of an earlier version has it as a key line: ignored). A
-configuration that is a potential (it has WEIGHTS: a retrain, a tadah hpo -c
-seed) has its FFILTER line ignored, with a WARNING: give --ffilter for the
-run.
+potential's FFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
+run reads: given with -c, or included with CONFIG) is not read, with a
+WARNING when the run gives none of its own; the run's own FFILTER (--ffilter,
+or a line of the task file or of a file that includes the potential) applies.
 """
 examples       = ["20.0"]
 cli_long_flag  = "--ffilter"
@@ -2063,11 +2071,12 @@ from particular datasets. Composes multiplicatively with WDBFILE_AUTO.
 A setting of the training data, not of the model: a potential has no WDBFILE
 line; its training record, a comment block above its key lines that is never
 read as keys, lists the WDBFILE its run was given. tadah predict does not
-apply it (the data predicted keep their own weights), also not one an
-earlier version wrote as a key line. A configuration that is a potential (it
-has WEIGHTS: a retrain, a tadah hpo -c seed) has its WDBFILE line ignored,
-with a WARNING, so a retrain may list any datasets: give --wdbfile for the
-run.
+apply it (the data predicted keep their own weights), also not one an earlier
+version wrote as a key line. A potential's WDBFILE line (a file with WEIGHTS
+that a retrain or a tadah hpo run reads: given with -c, or included with
+CONFIG) is not read, with a WARNING when the run gives none of its own, so a
+retrain may list any datasets; the run's own WDBFILE (--wdbfile, or a line of
+the task file or of a file that includes the potential) applies.
 """
 examples       = ["1.0 0.5 0.1"]
 cli_long_flag  = "--wdbfile"
@@ -2089,10 +2098,12 @@ A setting of the training data, not of the model: a potential has no
 WDBFILE_AUTO line; its training record, a comment block above its key lines
 that is never read as keys, lists the WDBFILE_AUTO its run was given. tadah
 predict does not apply it (the data predicted keep their own weights), also
-not one an earlier version wrote as a key line. A configuration that is a
-potential (it has WEIGHTS: a retrain, a tadah hpo -c seed) has its
-WDBFILE_AUTO line ignored (a WARNING names it when it is not 0): give
---wdbfile-auto for the run.
+not one an earlier version wrote as a key line. A potential's WDBFILE_AUTO
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read (a WARNING names it when it is not 0
+and the run gives none of its own); the run's own WDBFILE_AUTO
+(--wdbfile-auto, or a line of the task file or of a file that includes the
+potential) applies.
 """
 default_value  = ["0.0"]
 examples       = ["0.5", "1.0"]
@@ -2114,9 +2125,11 @@ A setting of the training data, not of the model: a potential has no
 EWEIGHT_TEMP line; its training record, a comment block above its key lines
 that is never read as keys, lists the EWEIGHT_TEMP its run was given. tadah
 predict does not apply it (the data predicted keep their own weights), also
-not one an earlier version wrote as a key line. A configuration that is a
-potential (it has WEIGHTS: a retrain, a tadah hpo -c seed) has its
-EWEIGHT_TEMP line ignored, with a WARNING: give --eweight-temp for the run.
+not one an earlier version wrote as a key line. A potential's EWEIGHT_TEMP
+line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
+-c, or included with CONFIG) is not read, with a WARNING when the run gives
+none of its own; the run's own EWEIGHT_TEMP (--eweight-temp, or a line of the
+task file or of a file that includes the potential) applies.
 """
 examples       = ["300", "1000"]
 cli_long_flag  = "--eweight-temp"
@@ -2132,14 +2145,15 @@ forces over the configuration is exactly zero. Standard DFT post-processing
 trick to remove residual translational forces from incomplete relaxation/SCF.
 
 A setting of the training data, not of the model: a potential has no
-ZERO_COM_FORCE line; its training record, a comment block above its key
-lines that is never read as keys, lists the ZERO_COM_FORCE its run was
-given. tadah predict applies ZERO_COM_FORCE to the data it predicts only
-when it is given it (--zero-com-force), never the potential's (one of an
-earlier version has it as a key line: ignored). A configuration that is a
-potential (it has WEIGHTS: a retrain, a tadah hpo -c seed) has its
-ZERO_COM_FORCE line ignored (a WARNING names it when it is true): give
---zero-com-force for the run.
+ZERO_COM_FORCE line; its training record, a comment block above its key lines
+that is never read as keys, lists the ZERO_COM_FORCE its run was given. tadah
+predict applies ZERO_COM_FORCE to the data it predicts only when it is given
+it (--zero-com-force), never the potential's (one of an earlier version has
+it as a key line: ignored). A potential's ZERO_COM_FORCE line (a file with
+WEIGHTS that a retrain or a tadah hpo run reads: given with -c, or included
+with CONFIG) is not read (a WARNING names it when it is true and the run
+gives none of its own); the run's own ZERO_COM_FORCE (--zero-com-force, or a
+line of the task file or of a file that includes the potential) applies.
 """
 default_value  = ["false"]
 examples       = ["true"]

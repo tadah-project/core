@@ -104,8 +104,15 @@ public:
    * @p skipped instead, in the order read. A file a CONFIG line includes is
    * read under the same rule, with the keys of its own lines.
    *
-   * @param skip    The rule (KeyLineRule).
-   * @param skipped The lines not stored are appended to it.
+   * @param lines      The lines of the block, blank and comment lines
+   *                   included.
+   * @param first_line The line number (1-based) of @p lines[0] in @p source.
+   * @param source     The name of the source (a file name), or empty when
+   *                   it has none.
+   * @param skip       The rule (KeyLineRule).
+   * @param skipped    The lines not stored are appended to it.
+   * @return A Context holding the key/value pairs stored.
+   * @throws std::runtime_error on any parsing or validation error.
    */
   virtual Context parse(const std::vector<std::string>& lines,
                         std::size_t first_line,
