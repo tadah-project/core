@@ -1937,8 +1937,9 @@ ignores it in a potential (one of an earlier version has it as a key line)
 and derives no shift from the data it predicts. A potential's ESHIFT_ATOM
 line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
 -c, or included with CONFIG) is not read, with or without its ESHIFT line (a
-WARNING names it when it is true and the run gives none of its own). The
-run's own ESHIFT_ATOM (--eshift-atom, or a line of the task file or of a file
+WARNING names it when it is true, unless the run gives ESHIFT_ATOM itself or
+sets ESHIFT_DBATOM true: the two choose the source of the shift and exclude
+each other, so the run's own toggle is its choice). The run's own ESHIFT_ATOM (--eshift-atom, or a line of the task file or of a file
 that includes the potential) is read, and is overruled by an ESHIFT line as
 in any configuration: to derive ESHIFT from the data of a retrain, delete
 the potential's ESHIFT line and give the run ESHIFT_ATOM.
@@ -1971,8 +1972,10 @@ ignores it in a potential (one of an earlier version has it as a key line)
 and derives no shift from the data it predicts. A potential's ESHIFT_DBATOM
 line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
 -c, or included with CONFIG) is not read, with or without its ESHIFT line (a
-WARNING names it when it is true and the run gives none of its own). The
-run's own ESHIFT_DBATOM (--eshift-dbatom, or a line of the task file or of a
+WARNING names it when it is true, unless the run gives ESHIFT_DBATOM itself
+or sets ESHIFT_ATOM true: the two choose the source of the shift and exclude
+each other, so the run's own toggle is its choice). The run's own
+ESHIFT_DBATOM (--eshift-dbatom, or a line of the task file or of a
 file that includes the potential) is read, and is overruled by an ESHIFT
 line as in any configuration: to derive ESHIFT from the data of a retrain,
 delete the potential's ESHIFT line and give the run ESHIFT_DBATOM.
