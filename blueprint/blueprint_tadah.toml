@@ -148,7 +148,14 @@ more detailed output.
 A setting of the run, not of the model: no potential has a VERBOSE line
 (tadah train, tadah hpo and tadah refit write none). The training record of
 the potential, a comment block above its key lines that is never read as
-keys, lists the VERBOSE its run was given.
+keys, lists the VERBOSE its run was given. A VERBOSE line of a potential of
+an earlier version (every 1.5.x best_pot.tadah has one) is not read, like
+its other run settings (VALIDATION, HPOTARGET, NUMERIC, OUTFILE, AUDIT,
+AUDIT_SAMPLE, HEALTH_LOG): no program that loads the potential (tadah
+predict, pair_style tadah, tadah refit --edit, a retrain or tadah hpo -c)
+takes its verbosity or its model's from it, and a retrain or tadah hpo -c
+names the line in a WARNING when it is not 1 and the run gives no VERBOSE of
+its own.
 """
 examples     = ["2"]
 default_value = ["1"]
@@ -693,18 +700,42 @@ examples     = [
 [ALLOWED_KEYS.AUDIT]
 INHERIT = ["TYPES.STRING"]
 description = "Pre-flight audit mode. 'off' (default) skips the audit. 'warn' emits diagnostics but proceeds. 'error' makes any FAIL-level finding fatal. The audit's data scan is sampled by default (see AUDIT_SAMPLE)."
+long_description = """
+Pre-flight audit mode of tadah train and tadah hpo: 'off' (default) skips
+the audit, 'warn' emits diagnostics but proceeds, 'error' makes any
+FAIL-level finding fatal. The audit's data scan is sampled by default (see
+AUDIT_SAMPLE). A setting of the run: no potential has an AUDIT line (its
+training record lists the run's), and an AUDIT line of a potential of an
+earlier version is not read by a retrain or tadah hpo -c of it.
+"""
 default_value = ["off"]
 examples = ["off", "warn", "error"]
 
 [ALLOWED_KEYS.AUDIT_SAMPLE]
 INHERIT = ["TYPES.INT"]
 description = "Number of training structures sampled (deterministic random) for the pre-flight audit's dataset stats. 0 means use the entire StructureDB. Has no effect when AUDIT is 'off'."
+long_description = """
+Number of training structures sampled (deterministic random) for the
+pre-flight audit's dataset stats; 0 means the entire StructureDB. Has no
+effect when AUDIT is 'off'. A setting of the run: no potential has an
+AUDIT_SAMPLE line (its training record lists the run's), and an
+AUDIT_SAMPLE line of a potential of an earlier version is not read by a
+retrain or tadah hpo -c of it.
+"""
 default_value = ["256"]
 examples = ["256", "1024", "0"]
 
 [ALLOWED_KEYS.HEALTH_LOG]
 INHERIT = ["TYPES.STRING"]
 description = "HPO per-iter health monitor verbosity. 'summary' (default) rate-limits warnings to ~1 per 100 evals per (block, kind). 'full' emits every offending iter. 'off' disables the monitor."
+long_description = """
+Verbosity of the per-evaluation health monitor of tadah hpo: 'summary'
+(default) rate-limits warnings to about 1 per 100 evaluations per (block,
+kind), 'full' emits every offending evaluation, 'off' disables the monitor.
+A setting of the run: no potential has a HEALTH_LOG line (its training
+record lists the run's), and a HEALTH_LOG line of a potential of an earlier
+version is not read by tadah hpo -c of it.
+"""
 default_value = ["summary"]
 examples = ["summary", "full", "off"]
 
@@ -1001,7 +1032,10 @@ of a `tadah hpo` run (`tadah analysis check_bounds` reads it too). An input
 of the run: no potential has an HPOTARGET line (best_pot.tadah and the DUMP
 and BDUMP archives name the file in their training record, a comment block
 above their key lines that is never read as keys; the journal, hpo_run.log,
-names it too).
+names it too). The HPOTARGET line of a potential of an earlier version
+(every 1.5.x best_pot.tadah has one) is not read: tadah hpo -c takes the
+file from --hpotarget, a TASK hpo section that includes such a potential
+from its own HPOTARGET line (a run without one is refused, naming both).
 """
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
@@ -1033,6 +1067,10 @@ An input of the run: no potential has a VALIDATION line (best_pot.tadah and
 the DUMP and BDUMP archives name the file in their training record, a
 comment block above their key lines that is never read as keys; the journal
 names it too, and the header of best_pot.tadah the validation datasets).
+The VALIDATION line of a potential of an earlier version (every 1.5.x
+best_pot.tadah has one) is not read: tadah hpo -c of it validates on the
+--validation file of the run alone (a run with a validation metric and none
+is refused), and names the line in a WARNING.
 """
 examples     = ["valid.tadah"]
 cli_long_flag  = "--validation"
@@ -1058,6 +1096,11 @@ description  = "Output file."
 long_description = """
 The output file to be written. Multiple files can be specified if the command 
 produces more than one output.
+
+A setting of the run: no potential has an OUTFILE line (its training record
+lists the OUTFILE of the run that wrote it), and an OUTFILE line of a
+potential of an earlier version is not read: a run writes to its own OUTFILE
+(a retrain of the potential names the line in a WARNING).
 """
 examples     = ["output.tadah"]
 cli_long_flag  = "--outfile"
@@ -1180,12 +1223,12 @@ Insert one basis function into the curve selected by --func, centred at the
 given position. The new coefficient (weight for phi/F, density amplitude for
 rho) is 0, so the edited potential predicts EXACTLY like the input — the new
 basis function only adds capacity for a subsequent `tadah hpo` run (its
-OPTIM line is emitted in the regenerated hpotarget). Exact unless the input
-potential carries NUMERIC < 17 (every 1.5.0 `tadah hpo` pot has an
-auto-inserted NUMERIC 12) or one is set for the run: the edited file's numbers
-are then written with that many significant digits, with a WARNING (the
-cutoffs and grids, RCUT2B/RCUTMB and CGRID*/SGRID*, exactly); delete the line
-for an exact edit.
+OPTIM line is emitted in the regenerated hpotarget). Exact unless a NUMERIC
+below 17 is set for the run (a NUMERIC line of the input, such as the
+auto-inserted NUMERIC 12 of a 1.5.0 `tadah hpo` potential, is not read): the
+edited file's numbers are then written with that many significant digits,
+with a WARNING (the cutoffs and grids, RCUT2B/RCUTMB and CGRID*/SGRID*,
+exactly); omit NUMERIC for an exact edit.
 
 Knot families (Knot5/Knot3): the knot position is the only shape parameter
 (--eta is rejected; widths are a pure gauge). --deg 3|5 selects the knot
@@ -1774,9 +1817,11 @@ Below 17 they are written as the shortest text that reads back as the same
 value (RCUT2B 5.58190742024 at NUMERIC 6).
 NUMERIC itself is never a key line of a potential file (its training record,
 a comment block never read as keys, lists the NUMERIC the run was given, as
-written); a NUMERIC line found in a potential used as a
-configuration (or edited with refit --edit, which moves it into the edit's
-training record) is treated as an explicit setting. The '#' comment lines of
+written). A NUMERIC line of a potential of an earlier version (every
+best_pot.tadah of tadah 1.5.0 hpo has an auto-inserted NUMERIC 12) is not
+read: a retrain, tadah hpo -c and tadah refit --edit of it write with their
+own NUMERIC (a retrain and tadah hpo -c name the line in a WARNING, refit
+--edit moves it into the edit's training record). The '#' comment lines of
 a potential (the header tadah hpo writes, the training record) are
 annotations not governed by NUMERIC; its machine-read lines (# HPO_BEST_LOSS,
 # HOT) are always exact. The hpotarget
@@ -2815,8 +2860,8 @@ tabulated EAM file:
 - --edit <pot.tadah>: add or remove one basis function of one curve
   (--func {phi|rho|F} with --add <centre> or --remove <centre>). Adding
   uses a zero coefficient, so the potential is unchanged until `tadah hpo`
-  varies the new dimension (exact unless the input potential carries
-  NUMERIC < 17, e.g. the NUMERIC 12 of 1.5.0 hpo pots); removing compensates
+  varies the new dimension (exact unless a NUMERIC below 17 is set for the
+  run; a NUMERIC line of the input is not read); removing compensates
   via the neighbouring coefficients (under RHOFORM NONNEG or MONOTONE
   they stay >= 0). The input potential must declare RHOFORM, which the
   edited potential keeps. Writes an edited potential and a regenerated
