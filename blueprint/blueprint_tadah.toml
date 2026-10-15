@@ -957,7 +957,12 @@ a table reads its third point), drho, dr or rcut not a positive finite
 number, a header line with a word too many or too few, a table value that is
 not a finite decimal number, a short table, or a table whose last line holds
 values of the next (LAMMPS drops them). Lines after the last table are not
-read.
+read. The r tables hold r = 0, dr, ..., (nr - 1) dr, and LAMMPS and tadah
+take a table's last value at every r past its last point, so the grid line
+must put the cutoff at most one step past it: nr x dr at least rcut (to 1e-4
+of rcut, for the rounding of the decimals), and rcut / dr at most 2147483647
+(the spline index of a distance is an int); another grid is refused, naming
+the numbers.
 
 A configuration with both descriptors and one setfl file::
 
