@@ -2,8 +2,8 @@
 #define TADAH_CORE_STATS_DATA_STATS_IO_H
 
 // Header-only text-format save/load for DataStats. Versioned with a
-// leading magic line so we can evolve the schema without silently
-// corrupting Phase-3 outputs that downstream phases consume.
+// leading magic line so the schema can evolve without silently
+// corrupting the saved statistics that a later load() reads.
 
 #include <iomanip>
 #include <iostream>

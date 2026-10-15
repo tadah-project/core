@@ -370,7 +370,7 @@ TEST_CASE("Matrix3d_T basic usage", "[matrix3d][new]") {
 
     SECTION("Set and get elements") {
         // col-major => index = i + 3*j
-        // Let's fill in [1..9]
+        // Fill in [1..9]
         for (size_t j = 0; j < 3; ++j) {
             for (size_t i = 0; i < 3; ++i) {
                 m(i, j) = (double)(1 + i + j * 3);
@@ -427,7 +427,7 @@ TEST_CASE("Matrix3d_T inverse()", "[matrix3d][new]") {
         // Let A = [1 2 3
         //          0 1 4
         //          5 6 0]
-        // We'll compute A^-1 manually or check numeric result
+        // A^-1 computed manually or the numeric result checked
         Matrix3d A;
         A(0,0) = 1; A(1,0) = 0; A(2,0) = 5;
         A(0,1) = 2; A(1,1) = 1; A(2,1) = 6;
@@ -437,7 +437,7 @@ TEST_CASE("Matrix3d_T inverse()", "[matrix3d][new]") {
         // We can check that invA * A = Identity, within a margin
         [[maybe_unused]] auto checkMat = invA * A.row(0); // but note the operator*(const Vec3d&)
         // or do matrix multiply using some known function. 
-        // For a simpler approach, we'll do a quick identity check entry by entry:
+        // A simpler approach: a quick identity check entry by entry:
         Matrix3d product;
         for (size_t i = 0; i < 3; ++i) {
             for (size_t j = 0; j < 3; ++j) {
@@ -468,9 +468,9 @@ TEST_CASE("Matrix3d_T inverse()", "[matrix3d][new]") {
 
         // This matrix is singular -> determinant = 0
         // The code doesn't handle that explicitly (no throw).
-        // We'll just verify that dividing by zero occurs => INF or NaN in many compilers.
+        // Dividing by zero occurs => INF or NaN in many compilers.
         REQUIRE_NOTHROW(S.inverse());
-        // The result may be Inf/NaN. We won't do a strict check, just acknowledge it:
+        // The result may be Inf/NaN; it is not checked strictly:
         [[maybe_unused]] auto Sinv = S.inverse();
         SUCCEED("S.inverse() called on singular matrix. Typically produces Inf or NaN.");
     }

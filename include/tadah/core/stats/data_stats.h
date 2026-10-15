@@ -2,9 +2,9 @@
 #define TADAH_CORE_STATS_DATA_STATS_H
 
 // DataStats — canonical snapshot of dataset statistics consumed by the
-// HPO bound-validation pipeline. Producer engine (`tadah analysis
-// dataset_stats`) lands in Phase 3; the SCHEMA itself is defined here so
-// Phase 1 metadata closures, Phase 4 suggester, and Phase 5 audit can
+// HPO bound-validation pipeline. The producer engine is `tadah analysis
+// dataset_stats`; the SCHEMA itself is defined here so the descriptors'
+// metadata closures, the bound suggester and the pre-flight audit can
 // all compile against a stable type.
 
 #include <array>
@@ -45,9 +45,10 @@ constexpr std::size_t IDX_STD  = 10;
 
 /** \brief Per-element-pair pair-distance statistics.
  *
- *  Populated by the `analysis dataset_stats` engine (Phase 3) over all
+ *  Populated by the `analysis dataset_stats` engine over all
  *  i,j atom pairs (i != j) within the audit cutoff RCUT_AUDIT (also
- *  determined by Phase 3, currently the max of all configured RCUTxB).
+ *  determined by that engine, currently the max of all configured
+ *  RCUTxB).
  */
 struct PerPairStats {
   /** Element symbols, lex-ordered: elements.first <= elements.second. */
@@ -67,7 +68,7 @@ struct PerPairStats {
 /** \brief Whole-dataset statistics consumed by the metadata pipeline.
  *
  *  All fields are POD-like and trivially copyable / serializable. The
- *  serializer pair save/load lands in Phase 3 (forward-declared here).
+ *  serializer pair save/load is in `data_stats_io.h`.
  */
 struct DataStats {
   std::size_t n_atoms{0};
@@ -79,21 +80,22 @@ struct DataStats {
   std::array<double, 11> e_per_atom_percentiles{};
   std::array<double, 11> f_norm_percentiles{};
 
-  /** Material-class label produced by Phase 3's classifier
+  /** Material-class label produced by the dataset_stats classifier
    *  ("bcc_metal", "covalent", "molecular_crystal", "dimer", ...).
    *  Empty string when not classified. */
   std::string class_label{};
 
-  /** Per-descriptor ρ percentiles (filled when Phase 3 is invoked with
-   *  `--with-descriptor-stats`; default empty). Map key is the
-   *  descriptor's registered label, e.g. "DM_mBlipEnv". */
+  /** Per-descriptor ρ percentiles (left to a caller of MLIP's
+   *  `compute_data_stats` with `with_descriptor_stats` true; default
+   *  empty). Map key is the descriptor's registered label, e.g.
+   *  "DM_mBlipEnv". */
   std::map<std::string, std::array<double, 11>>
       rho_percentiles_per_descriptor{};
 };
 
-// NOTE: serialisation (DataStats::save/load) lands in Phase 3 in a
-// dedicated header (`data_stats_io.h`) so the schema stays
-// dependency-free for Phase 1 metadata closures.
+// NOTE: serialisation (save/load) is in a dedicated header
+// (`data_stats_io.h`) so the schema stays dependency-free for the
+// descriptors' metadata closures.
 
 }  // namespace stats
 }  // namespace core

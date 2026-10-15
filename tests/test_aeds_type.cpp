@@ -114,7 +114,7 @@ TEST_CASE("aeds_type2 self-assignment move operator=", "[aeds_type2][new]") {
     arr(1,1) = 7.7;
 
     // Self move assignment is generally ill-defined, 
-    // but let's ensure it doesn't crash.
+    // but it must not crash.
     aeds_type2 &ref = arr;
     REQUIRE_NOTHROW(arr = std::move(ref));
     REQUIRE(arr.size() == 6);
@@ -123,7 +123,7 @@ TEST_CASE("aeds_type2 self-assignment move operator=", "[aeds_type2][new]") {
 
 TEST_CASE("aeds_type2 operator()(r,c) potential out-of-bounds", "[aeds_type2][new]") {
     // There's no built-in boundary check => can cause undefined behavior 
-    // if we do arr(rows(), anyCol). We'll just show that it doesn't throw 
+    // for arr(rows(), anyCol). The test only shows that it doesn't throw
     // because there's no check. 
     aeds_type2 arr(2, 2);
     REQUIRE_NOTHROW(arr(2, 0));
@@ -133,7 +133,7 @@ TEST_CASE("aeds_type2 operator()(r,c) potential out-of-bounds", "[aeds_type2][ne
 }
 
 TEST_CASE("aeds_type2 operator[] access columns", "[aeds_type2][new]") {
-    // We'll test retrieving columns as aed_type references
+    // Retrieves columns as aed_type references
     size_t dim = 3;
     size_t natoms = 2;
     aeds_type2 arr(dim, natoms);

@@ -81,7 +81,7 @@ TEST_CASE( "Testing Context add", "[config]" ) {
   }
 }
 TEST_CASE("read() with empty lines and comments") {
-    // We'll create a temporary file containing some blank lines and commented lines
+    // A temporary file containing some blank lines and commented lines
     const char* filename = "test_empty_comment.cfg";
     {
         std::ofstream ofs(filename);

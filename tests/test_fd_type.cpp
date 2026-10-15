@@ -240,7 +240,7 @@ TEST_CASE("fd_type: a moved-from fd_type has three empty columns",
 
 TEST_CASE("fd_type operator*(const T&) with small vector", "[fd_type][new]") {
     // Suppose we multiply each column vector by a small coefficient vector.
-    // fd_type is 3 rows -> each row's x,y,z. We'll multiply by a 3-element vector.
+    // fd_type is 3 rows -> each row's x,y,z. Multiplied by a 3-element vector.
     fd_type fd(3);
     // Fill columns:
     // X-coordinates
@@ -286,7 +286,7 @@ TEST_CASE("fd_type operator<<(std::ostream& os, const fd_type&)", "[fd_type][new
 
     // The operator<< prints each aed_type in a row. 
     // By default, aed_type uses indices in the same order as stored.
-    // We'll just check that the stream is non-empty and has numeric data.
+    // Checks only that the stream is non-empty and has numeric data.
     REQUIRE_FALSE(ss.str().empty());
 
     // Basic pattern check. 
@@ -374,7 +374,7 @@ TEST_CASE("fd_type: operations on fd_types of one size are elementwise",
 }
 
 TEST_CASE("fd_type dimension changes: copy from different sized fd_type", "[fd_type][improved]") {
-    // We'll create from dimension=5, then dimension=3, and copy.
+    // Created with dimension=5, then dimension=3, and copied.
     fd_type fdBig(5);
     fdBig(4, 2) = 99.0; // use last row, z-col
 
@@ -387,7 +387,7 @@ TEST_CASE("fd_type dimension changes: copy from different sized fd_type", "[fd_t
     REQUIRE(fdBig(1, 1) == 1.23); // data is from fdSmall now
 
     // Next copy big -> small
-    // Let’s re-fill fdBig to dimension=4 so it’s not the same as fdSmall
+    // Re-fill fdBig to dimension=4 so it’s not the same as fdSmall
     fd_type fdMid(4);
     fdMid(3, 2) = 7.89;
     fdSmall = fdMid;
@@ -423,7 +423,7 @@ TEST_CASE("fd_type borderline differences for isApprox()", "[fd_type][improved]"
     // They should be approx
     REQUIRE(fd1.isApprox(fd2, 1e-9) == true);
 
-    // Now let's exceed the EPS a bit
+    // Now exceed the EPS a bit
     fd2(1,2) = 10.00001; 
     REQUIRE(fd1.isApprox(fd2, 1e-12) == false); 
     // because difference is 1e-5 which is >> 1e-12

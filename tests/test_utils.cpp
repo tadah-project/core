@@ -241,7 +241,7 @@ TEST_CASE("Testing generate_2d_histogram()", "[utils][new]") {
 }
 
 TEST_CASE("Testing move_columns_in_place() and reverse_columns()", "[utils][new]") {
-    // We'll create a 2x4 matrix, stored in col-major order for Matrix_Base.
+    // A 2x4 matrix, stored in col-major order for Matrix_Base.
     // col0 => [1, 3], col1 => [2, 4], col2 => [5, 7], col3 => [6, 8].
     // So m_[0] = 1, m_[1] = 3, m_[2] = 2, ...
     std::vector<double> matData = {
@@ -305,11 +305,11 @@ TEST_CASE("Testing reverse_vector()", "[utils][new]") {
     // Suppose we rearranged it to {30, 10, 40, 20},
     // and the "original_map" tells us how to revert to original.
     // If index 0 -> index 1, index 1 -> index 3, index 2 -> index 0, index 3 -> index 2, etc.
-    // Let's just define a plausible mapping.
+    // A plausible mapping:
     t_type rearranged = {30, 10, 40, 20};
     std::vector<size_t> map = {2, 0, 3, 1}; 
     // means rearranged[0] should go to originalVec[2], rearranged[1] -> originalVec[0], etc.
-    // We'll now call reverse_vector to re-order "rearranged" back.
+    // reverse_vector re-orders "rearranged" back.
     
     reverse_vector(rearranged, map);
 
@@ -322,7 +322,7 @@ TEST_CASE("Testing reverse_vector()", "[utils][new]") {
 // 1) Testing geomspace with stop < start and base < 1, etc.
 TEST_CASE("Testing geomspace() - stop < start and base < 1", "[utils][improvements]") {
     // Expect a possibly incorrect or unexpected result if we do not handle "stop < start" in geomspace.
-    // If the underlying implementation doesn't handle it, it may not throw. We'll simply confirm it doesn't crash.
+    // If the underlying implementation doesn't handle it, it may not throw. The test only confirms it doesn't crash.
     // The user can decide if a throw or normal return is desired.
     REQUIRE_NOTHROW(geomspace(10, 1, 5, 10)); // Larger start, smaller stop
 
@@ -403,7 +403,7 @@ TEST_CASE("generate_2d_histogram() invalid min/max and empty data", "[utils][mis
         REQUIRE(hist.empty());
     }
     SECTION("x_min >= x_max or y_min >= y_max -> returns empty") {
-        // We'll pass data that leads to same min==max
+        // Data that leads to same min==max
         std::vector<std::pair<double,double>> data = {
             {2.0, 2.0}, {2.0, 2.0}, {2.0, 2.0}
         };
@@ -415,7 +415,7 @@ TEST_CASE("generate_2d_histogram() invalid min/max and empty data", "[utils][mis
 // 3) Testing geomspace() with additional invalid or edge scenarios
 TEST_CASE("geomspace() with invalid/edge scenarios", "[utils][missing_tests]") {
     SECTION("start <= 0 => throws") {
-        // Already tested for start==0. Let's confirm negative start throws
+        // Already tested for start==0. A negative start throws as well
         REQUIRE_THROWS_WITH(
             geomspace(-1, 10, 5, 10),
             Catch::Matchers::Contains("geomspace() start must be > 0")
@@ -429,8 +429,8 @@ TEST_CASE("geomspace() with invalid/edge scenarios", "[utils][missing_tests]") {
         REQUIRE(result[0] == Approx(1.0));
     }
     SECTION("stop < start => might produce decreasing exponent range") {
-        // The function won't throw in your code; it just yields something.
-        // We'll confirm it doesn't crash
+        // The function does not throw; it just yields something.
+        // The test confirms it doesn't crash
         REQUIRE_NOTHROW(geomspace(10, 1, 5, 10));
     }
 }
@@ -440,8 +440,8 @@ TEST_CASE("random() with extreme bounds", "[utils][missing_tests]") {
     SECTION("range_from > range_to => distribution might invert or throw?") {
         // The code does not explicitly handle if range_from > range_to.
         // Typically uniform_real_distribution will allow from>to and produce invalid results.
-        // We'll see if it throws or not. Usually it doesn't throw but
-        // we can do a REQUIRE_NOTHROW check just for coverage.
+        // Usually it doesn't throw; the REQUIRE_NOTHROW check is just for
+        // coverage.
         REQUIRE_NOTHROW(random(10.0, -5.0));
     }
     SECTION("range_from == range_to => always returns that value") {
