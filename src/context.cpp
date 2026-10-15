@@ -10,6 +10,87 @@
 namespace tadah {
 namespace core {
 
+namespace {
+// A whitespace-free, lossless record keeps existing Context transports
+// (including per-key PC deltas) complete without interpreting block fields.
+std::string hex_encode(const std::string &s) {
+  constexpr char digits[] = "0123456789abcdef";
+  std::string out; out.reserve(2 * s.size());
+  for (unsigned char c : s) { out += digits[c >> 4]; out += digits[c & 15]; }
+  return out;
+}
+std::string hex_decode(const std::string &s) {
+  if (s.size() % 2) throw std::runtime_error("Malformed structured block record");
+  auto digit = [](char c) -> unsigned {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    throw std::runtime_error("Malformed structured block record");
+  };
+  std::string out; out.reserve(s.size() / 2);
+  for (std::size_t i = 0; i < s.size(); i += 2)
+    out += static_cast<char>(digit(s[i]) * 16 + digit(s[i + 1]));
+  return out;
+}
+std::string encode_block(const ConfigBlock &b) {
+  std::string body;
+  for (const auto &line : b.lines) body += line + "\n";
+  return hex_encode(b.kind) + ":" + hex_encode(b.source) + ":" +
+         std::to_string(b.first_line) + ":" + hex_encode(body);
+}
+ConfigBlock decode_block(const std::string &s) {
+  const auto a = s.find(':'), b = s.find(':', a + 1), c = s.find(':', b + 1);
+  if (a == std::string::npos || b == std::string::npos || c == std::string::npos)
+    throw std::runtime_error("Malformed structured block record");
+  ConfigBlock out;
+  out.kind = hex_decode(s.substr(0, a));
+  out.source = hex_decode(s.substr(a + 1, b - a - 1));
+  out.first_line = std::stoull(s.substr(b + 1, c - b - 1));
+  std::istringstream body(hex_decode(s.substr(c + 1)));
+  std::string line;
+  while (std::getline(body, line)) out.lines.push_back(line);
+  return out;
+}
+} // namespace
+
+void Context::append_block(const ConfigBlock &b) {
+  if (b.kind.empty() || b.lines.size() < 2)
+    throw std::runtime_error("A structured block needs a header and boundary");
+  const auto record = encode_block(b);
+  std::lock_guard<std::mutex> lock(mtx_);
+  storage_["@BLOCKS"].push_back(record);
+}
+
+std::vector<ConfigBlock> Context::blocks(const std::string &kind) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<ConfigBlock> out;
+  const auto it = storage_.find("@BLOCKS");
+  if (it == storage_.end()) return out;
+  for (const auto &record : it->second) {
+    auto b = decode_block(record);
+    if (kind.empty() || b.kind == to_upper(kind)) out.push_back(std::move(b));
+  }
+  return out;
+}
+
+void Context::replace_blocks(const std::vector<ConfigBlock> &blocks) {
+  std::vector<std::string> records;
+  for (const auto &b : blocks) records.push_back(encode_block(b));
+  storage_update("@BLOCKS", records);
+}
+
+void Context::set_component_cutoffs(const std::vector<double> &radii) {
+  std::vector<std::string> values;
+  for(double radius:radii) {
+    if(!(radius>0) || !std::isfinite(radius))
+      throw std::runtime_error("Component spatial radii must be finite and positive");
+    values.push_back(format_roundtrip(radius));
+  }
+  std::lock_guard<std::mutex> lock(mtx_);
+  if(values.empty()) storage_.erase("COMPONENT_RCUTMB");
+  else storage_["COMPONENT_RCUTMB"]=std::move(values);
+  updateInternalKeys();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Constructors / Move
 ///////////////////////////////////////////////////////////////////////////////
@@ -168,6 +249,12 @@ void Context::print_NoLock(std::ostream &os, bool potential,
   for (auto const &pair : storage_) {
     const std::string &key = pair.first;
     const std::vector<std::string> &vals = pair.second;
+    if (key == "@BLOCKS") {
+      // Component coordinates retain full precision regardless of NUMERIC.
+      for (const auto &record : vals)
+        for (const auto &line : decode_block(record).lines) os << line << '\n';
+      continue;
+    }
 
     // NUMERIC is a writer setting, never part of a potential file.
     if (potential && key == "NUMERIC") continue;

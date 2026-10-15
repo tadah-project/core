@@ -39,6 +39,16 @@
 namespace tadah {
 namespace core {
 
+/** A structured declaration, including its header, nested boundaries and
+ * source lines. CORE captures syntax; the owning module validates semantics.
+ * Values are owned by the Context, including copies used for candidates. */
+struct ConfigBlock {
+  std::string kind;
+  std::string source;
+  std::size_t first_line = 1;
+  std::vector<std::string> lines;
+};
+
 /**
  * @class Context
  * @brief Thread-safe key-value container that consults the blueprint for
@@ -53,6 +63,13 @@ namespace core {
  */
 class Context {
 public:
+  void append_block(const ConfigBlock &block);
+  std::vector<ConfigBlock> blocks(const std::string &kind = "") const;
+  void replace_blocks(const std::vector<ConfigBlock> &blocks);
+  /** Spatial radii derived by a component owner. They participate in the
+   * ordinary RCUT*MAX refresh, so adding an unrelated key cannot erase them.
+   * These are evaluation metadata, regenerated from blocks on model load. */
+  void set_component_cutoffs(const std::vector<double> &radii);
   /**
    * @brief Constructs an empty Context referencing the static blueprint map.
    */
@@ -460,6 +477,15 @@ public:
 
     for (const auto &pair : ctx2_snapshot) {
       const std::string &key = pair.first;
+      // Repeatable structured declarations compose across CONFIG includes.
+      // The opaque records also travel through storage_snapshot/update and
+      // serialize/deserialize (PC workers and optimizer checkpoints).
+      if (key == "@BLOCKS") {
+        std::lock_guard<std::mutex> lock(merged.mtx_);
+        auto &dest = merged.storage_[key];
+        dest.insert(dest.end(), pair.second.begin(), pair.second.end());
+        continue;
+      }
       // only copy allowed keys
       if (ctx1.allowedKeys_.find(key) == ctx1.allowedKeys_.end()) {
         continue;
@@ -775,7 +801,8 @@ private:
       throw std::runtime_error("RCUT2B or RCUTMB has negative values.");
     }
     double maxVal2B = findMaxValue("RCUT2B");
-    double maxValMB = findMaxValue("RCUTMB");
+    double maxValMB = std::max(findMaxValue("RCUTMB"),
+                               findMaxValue("COMPONENT_RCUTMB"));
     storage_["RCUT2BMAX"] = {format_roundtrip(maxVal2B)};
     storage_["RCUTMBMAX"] = {format_roundtrip(maxValMB)};
     storage_["RCUTMAX"] = {format_roundtrip(std::max(maxVal2B, maxValMB))};
