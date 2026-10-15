@@ -173,7 +173,7 @@ INHERIT = ["TYPES.BOOL"]
 # the Context injects it on first query, so pair_tadah reads true unless the
 # user sets EAMFAST false. Same mechanism as refit_constrain_f0 above.
 default_value = ["true"]
-description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah. For a single-species linear model the potential collapses exactly to scalar radial functions: a radial two-body block alone (INITMB false, any radial D2 descriptor) collapses to a pair function phi(r); a two-body block plus a DM_REAM many-body block (the tadah refit family, e.g. D2_Knot5 + DM_REAM; DM_REAM is the only many-body descriptor for which this EAM collapse is implemented) additionally collapses to density and embedding functions. The pair style then evaluates cubic-Hermite tables sampled from the descriptors themselves (plus the analytic embedding and scalar ghost communication in the EAM case; the pure two-body case needs no ghost communication at all), which makes force calls faster; the gain grows with the cost of the descriptors (MD of 250 atoms: 1.6x for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy), 3.4x for D2_LJ + DM_REAM, 4.5x for a 21-knot D2_Knot5 pair term). Each table is certified when the potential is loaded: scanning down from the cutoff, the pair style bounds the error of every table segment from 31 check points and finds the smallest distance r_lo above which every segment meets a relative tolerance of 1e-9 for the value and the derivative (energy and force, relative to the function's own scale above that distance, and at least its scale over the outer half of the cutoff). Below r_lo it evaluates the analytic function, at the cost of the generic kernel. The fast path therefore agrees with the generic kernel to 1e-9 relative accuracy inside the certified range and exactly below it; the bound assumes the function is smooth on the scale of 1/32 of the table spacing apart from isolated knots and cutoff junctions. The certified range is one interval ending at the cutoff, so a single segment that misses the tolerance, for example at a knot of a C2 basis such as Blip or at the inner radius of a switching cutoff such as Cut_PolyS, sets r_lo there even where the table is accurate further in. The LAMMPS log states each certified range, the tolerance, the error bounds and where the analytic evaluation takes over, e.g. for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy): Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125. Distances are in the potential's units. A table that misses the tolerance already in its top segment, just below the cutoff, has no certified range: the log gives the reason and the generic kernel is used. Set false for bitwise comparison against the generic kernel or for drivers that capture adjoint state on EAM-form models (pure two-body adjoint capture works under the fast path via the generic kernel). Silently ignored, generic kernel used, for models that do not collapse: nonlinear or normalised models, per-species bias, multi-species, dimers, or a many-body descriptor other than DM_REAM (DM_mBlipEnv, for example)."
+description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah. For a single-species linear model the potential collapses exactly to scalar radial functions: a radial two-body block alone (INITMB false, any radial D2 descriptor) collapses to a pair function phi(r); a two-body block plus one EAM-form many-body block, a DM_Embed component (what tadah refit writes, e.g. D2_Knot5 + DM_Embed) or DM_REAM (what it wrote before 1.6.0), the many-body descriptors for which this EAM collapse is implemented, additionally collapses to density and embedding functions. The pair style then evaluates cubic-Hermite tables sampled from the descriptors themselves (plus the analytic embedding and scalar ghost communication in the EAM case; the pure two-body case needs no ghost communication at all), which makes force calls faster; the gain grows with the cost of the descriptors (MD of 250 atoms: 1.6x for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy), 3.4x for D2_LJ + DM_REAM, 4.5x for a 21-knot D2_Knot5 pair term). Each table is certified when the potential is loaded: scanning down from the cutoff, the pair style bounds the error of every table segment from 31 check points and finds the smallest distance r_lo above which every segment meets a relative tolerance of 1e-9 for the value and the derivative (energy and force, relative to the function's own scale above that distance, and at least its scale over the outer half of the cutoff). Below r_lo it evaluates the analytic function, at the cost of the generic kernel. The fast path therefore agrees with the generic kernel to 1e-9 relative accuracy inside the certified range and exactly below it; the bound assumes the function is smooth on the scale of 1/32 of the table spacing apart from isolated knots and cutoff junctions. The certified range is one interval ending at the cutoff, so a single segment that misses the tolerance, for example at a knot of a C2 basis such as Blip or at the inner radius of a switching cutoff such as Cut_PolyS, sets r_lo there even where the table is accurate further in. The LAMMPS log states each certified range, the tolerance, the error bounds and where the analytic evaluation takes over, e.g. for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy): Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125. Distances are in the potential's units. A table that misses the tolerance already in its top segment, just below the cutoff, has no certified range: the log gives the reason and the generic kernel is used. Set false for bitwise comparison against the generic kernel or for drivers that capture adjoint state on EAM-form models (pure two-body adjoint capture works under the fast path via the generic kernel). Silently ignored, generic kernel used, for models that do not collapse: nonlinear or normalised models, per-species bias, multi-species, dimers, or a many-body descriptor other than one DM_Embed component or DM_REAM (DM_mBlipEnv, for example)."
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1213,7 +1213,7 @@ cli_required   = false
 [ALLOWED_KEYS.func]
 INHERIT = ["TYPES.STRING"]
 value_format = ["{phi|rho|F}"]
-description  = "Curve selector for `tadah refit --edit`: phi (pair, CGRID2B), rho (density, CGRIDMB/AMPGRIDMB) or F (embedding, CEMBFUNC)."
+description  = "Curve selector for `tadah refit --edit`: phi (pair, CGRID2B), rho (density: a DM_Embed component's DENSITY functions, or a DM_REAM potential's CGRIDMB/AMPGRIDMB) or F (embedding: the component's EMBEDDING functions, or CEMBFUNC)."
 examples     = ["phi", "rho", "F"]
 cli_long_flag  = "--func"
 cli_short_flag = ""
@@ -1311,7 +1311,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.retarget_rcutmb]
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit --retarget`: the density channel's twin of --rcut2b — recentre the OPTIM RCUTMB reference and truncate the CGRIDMB/SGRIDMB boxes to the declared cutoff."
+description  = "`tadah refit --retarget`: the density channel's twin of --rcut2b — recentre the OPTIM RCUTMB reference and truncate the CGRIDMB/SGRIDMB boxes to the declared cutoff. A target whose many-body parameters are DM_Embed component paths only (no CGRIDMB, SGRIDMB or RCUTMB group: every target tadah refit writes) refuses it: a component's radius is the RADIUS of its CUTOFF block, the path <ID>.DENSITY.CUTOFF.RADIUS."
 examples     = ["6.0"]
 cli_long_flag  = "--rcutmb"
 cli_short_flag = ""
@@ -1321,7 +1321,7 @@ cli_required   = false
 INHERIT = ["TYPES.STRING"]
 allowed_values = ["SIGNED", "NONNEG", "MONOTONE"]
 value_format = ["SIGNED|NONNEG|MONOTONE"]
-description  = "`tadah refit --retarget`: the DM_REAM density form (RHOFORM) of the potential the hpotarget searches around. Under NONNEG or MONOTONE the rewritten AMPGRIDMB boxes are non-negative (lo = max(0, v - d), the rule of the refit hpotarget writer) and the file gets the parsed header line '# RHOFORM <form>: AMPGRIDMB bounds are non-negative (lo = max(0, v - d))', which later retargets read; SIGNED adds no header. A header that names another form is an error. For an hpotarget written before its potential declared a positive form. RHOFORM itself is not accepted with --retarget (an hpotarget carries no potential)."
+description  = "`tadah refit --retarget`: the DM_REAM density form (RHOFORM) of the potential the hpotarget searches around. Under NONNEG or MONOTONE the rewritten AMPGRIDMB boxes are non-negative (lo = max(0, v - d), the rule of the refit hpotarget writer) and the file gets the parsed header line '# RHOFORM <form>: AMPGRIDMB bounds are non-negative (lo = max(0, v - d))', which later retargets read; SIGNED adds no header. A header that names another form is an error. For an hpotarget written before its potential declared a positive form. RHOFORM itself is not accepted with --retarget (an hpotarget carries no potential). A target whose many-body parameters are DM_Embed component paths only (COMPONENT_PARAMETER lines and no AMPGRIDMB group: every target tadah refit writes) refuses --rhoform: a component's form is its potential's FORM, recorded in the COMPONENT_PARAMETER rule of <ID>.DENSITY.AMPLITUDES (NONNEG for FORM NONNEG or MONOTONE)."
 examples     = ["NONNEG", "MONOTONE", "SIGNED"]
 cli_long_flag  = "--rhoform"
 cli_short_flag = ""
@@ -1330,7 +1330,7 @@ cli_required   = false
 [ALLOWED_KEYS.set]
 INHERIT = ["TYPES.STRINGS"]
 value_format = ["'<KEY>(<i>)=<lo>,<hi>' [...]"]
-description  = "`tadah refit --retarget`: absolute bounds for one OPTIM parameter, e.g. --set 'CGRID2B(3)=2.1,2.4' (repeatable; applied after --pct; comment state preserved)."
+description  = "`tadah refit --retarget`: absolute bounds for one OPTIM parameter, e.g. --set 'CGRID2B(3)=2.1,2.4', or of a DM_Embed component path, --set 'EAM.DENSITY.CENTRES(2)=2.4,2.6' (repeatable; applied after --pct; comment state preserved)."
 examples     = ["'CGRID2B(3)=2.1,2.4'", "'FIXWEIGHT(7)=-50,-10'"]
 cli_long_flag  = "--set"
 cli_short_flag = ""
@@ -1351,7 +1351,7 @@ examples = ["Blip5"]
 
 [ALLOWED_KEYS.refit_basis]
 INHERIT = ["TYPES.STRING"]
-description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always verify with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localized C2 sawtooth degrades elastic constants vs pure Knot5 — prefer Knot5 unless E-V is your only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; hard-cutoff truncation leaves a value discontinuity at rcut; dense mode only — prefer any other family). Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5, Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian, gaussian, BP, D2_BP. Another spelling names no family and is refused before the EAM file is read (it was fitted as Blip while a WARNING called it Gaussian). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID* width entries are a pure gauge for the Knot* families (pinned 1.0) — do not add OPTIM blocks on them."
+description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always verify with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localized C2 sawtooth degrades elastic constants vs pure Knot5 — prefer Knot5 unless E-V is your only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; a Gaussian never vanishes, so without DESCRIPTOR blocks the refit fits and writes the pair function and the density with the smooth cutoff Cut_Poly at the table's rcut (RCTYPE2B Cut_Poly, the density's CUTOFF TYPE Cut_Poly): a DM_Embed Gaussian density needs a real smooth cutoff; dense mode only — prefer any other family). Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5, Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian, gaussian, BP, D2_BP. Another spelling names no family and is refused before the EAM file is read (it was fitted as Blip while a WARNING called it Gaussian). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID2B width entries are a pure gauge for the Knot* families (pinned 1.0) — do not add OPTIM blocks on them; the knot density and embedding of the written DM_Embed component have no widths."
 examples     = ["Blip", "Blip5", "Knot3", "Knot5", "KnotMix"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1423,7 +1423,7 @@ cli_required   = false
 
 [ALLOWED_KEYS.refit_max_escalations]
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` maximum automatic basis-escalation rounds of the dense fit when the self-test is above tolerance, an integer from 0 (0 disables escalation). Default 4. REFIT_MODE dense only; REFIT_MODE compact refuses it."
+description  = "`tadah refit` maximum automatic basis-escalation rounds of the dense fit when the self-test is above tolerance, an integer from 0 (0 disables escalation). Default 4. REFIT_MODE dense only; REFIT_MODE compact refuses it, and so does a configuration with DESCRIPTOR blocks: a component fit has the basis its block declares and does not escalate it (give the component more functions, CENTRES AUTO <count>)."
 examples     = ["4", "0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -2805,19 +2805,29 @@ directly or tuned further with `tadah hpo`.
 
 Output files (default name, config key):
 - pot.tadah (OUTFILE, -o): the fitted Tadah potential, for `tadah predict`,
-  LAMMPS pair_style tadah, and as the seed for `tadah hpo`.
+  LAMMPS pair_style tadah, and as the seed for `tadah hpo`. Its many-body
+  term is a DM_Embed component (DESCRIPTOR eam DM_Embed ... ENDDESCRIPTOR,
+  referenced as @eam; the ID of the configuration's block when it declares
+  one), whose DENSITY block has the density form (FORM) and whose
+  EMBEDDING block the embedding reference (REFERENCE). Before 1.6.0 it
+  was a DM_REAM term (AMPGRIDMB, RHOFORM, EMBF0 and the other DM_REAM key
+  lines); such potentials still load, and --edit edits them.
 - refit.eam (SETFL_OUT): setfl table rebuilt from the fitted functions, for
   side-by-side comparison with the input potential in LAMMPS.
 - refit.hpotarget (HPOFILEOUT, --hpofileout): ready-to-run `tadah hpo` target
-  file with search bounds around the fitted parameters.
+  file with search bounds around the fitted parameters; the many-body
+  parameters are named by component path (EAM.DENSITY.CENTRES, ...).
 - refit_opt.log (REFIT_LOG): live fit log, updated during the run.
 - refit_curve_{phi,rho,F}.dat, refit_compare.dat, refit_range_report.dat:
   diagnostics with fitted vs original curves, residuals, fit windows.
 
-Config-file options (EAM and RHOFORM are required):
+Config-file options (EAM is required, and RHOFORM without DESCRIPTOR
+blocks; a configuration with a DM_Embed block declares the density and
+embedding in it, see the DM_Embed page of the documentation):
 - EAM <file>: input setfl potential to refit (required).
-- RHOFORM SIGNED|NONNEG|MONOTONE (required): the density form of the
-  written DM_REAM potential. SIGNED is the density of every tadah before
+- RHOFORM SIGNED|NONNEG|MONOTONE (required without DESCRIPTOR blocks): the
+  density form of the written potential (its component's FORM). SIGNED is
+  the density of every tadah before
   1.6.0; NONNEG fits non-negative amplitudes (rho >= 0); MONOTONE fits
   integrated-bump steps with non-negative amplitudes (rho >= 0 and
   non-increasing). Every form fits in both REFIT_MODEs. MONOTONE needs a
@@ -2867,8 +2877,9 @@ Config-file options (EAM and RHOFORM are required):
   Omit any block to use its defaults (default EXPLORE = global MLSL + inner
   SBPLX). The Refitting page of the documentation has examples (Stage
   blocks).
-- Embedding reference: EMBF0 ZERO|FREE (default ZERO) — the written
-  potential's DM_REAM embedding reference. ZERO fits the zero-referenced
+- Embedding reference: EMBF0 ZERO|FREE (default ZERO; without DESCRIPTOR
+  blocks) — the written potential's embedding reference (its component's
+  REFERENCE). ZERO fits the zero-referenced
   embedding F(rho) - F(0) against F_tab(rho) - F_tab(0) (refit.eam F[0] = 0);
   FREE fits the raw embedding of tadah 1.5.0. `--edit` edits F in the
   input potential's reference and writes it.
@@ -2882,15 +2893,18 @@ tabulated EAM file:
   varies the new dimension (exact unless a NUMERIC below 17 is set for the
   run; a NUMERIC line of the input is not read); removing compensates
   via the neighbouring coefficients (under RHOFORM NONNEG or MONOTONE
-  they stay >= 0). The input potential must declare RHOFORM, which the
-  edited potential keeps. Writes an edited potential and a regenerated
+  they stay >= 0). A DM_REAM input must declare RHOFORM, which the edited
+  potential keeps; a DM_Embed input keeps its component's FORM, REFERENCE,
+  families and coordinates. Writes an edited potential and a regenerated
   hpotarget.
 - --retarget <file.hpotarget>: rewrite the OPTIM search bounds of an
   existing hpotarget (--pct global or KEY=N per-key percentages,
   --set 'KEY(i)=lo,hi' absolute overrides, --in-place, and --rhoform
-  SIGNED|NONNEG|MONOTONE for the density form of the potential the file
-  searches around: non-negative AMPGRIDMB boxes and the RHOFORM header line
-  under NONNEG/MONOTONE). A configuration may not set RHOFORM or EMBF0 for
+  SIGNED|NONNEG|MONOTONE for the density form of a DM_REAM potential the
+  file searches around: non-negative AMPGRIDMB boxes and the RHOFORM header
+  line under NONNEG/MONOTONE; a target of DM_Embed component paths only
+  refuses --rhoform and --rcutmb, the component's FORM and CUTOFF RADIUS
+  being its potential's). A configuration may not set RHOFORM or EMBF0 for
   --retarget (no effect on an hpotarget); for --edit it may set them only to
   the potential's own values.
 A configuration for --edit or --retarget may not set a key that only a
@@ -3538,7 +3552,14 @@ value_N = [-2]
 description  = "Basis function type. \"2b Y\" or \"mb N\"."
 long_description  = """
 Choice of basis function. For example: \"2b Y\" or \"mb N\".
-Where Y/N controls computation of the cutoff function.
+Where Y/N controls computation of the cutoff function: with Y the
+functions are followed by a block with the cutoff function (its
+derivative with --derivative); --rescale multiplies the functions by it.
+For a many-body descriptor with component channels (DM_Embed, DM_REAM),
+\"mb DENSITY\" (the same as \"mb N\") prints the density functions in
+the density's form and \"mb EMBEDDING\" the embedding functions, which
+have no spatial cutoff (--rescale is refused for them); \"mb Y\" prints
+the density functions and their cutoff.
 """
 [TASKS.analysis.bfunc.keys.index]
 description = "Basis-function indices."
