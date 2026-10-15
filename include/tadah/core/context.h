@@ -39,6 +39,16 @@
 namespace tadah {
 namespace core {
 
+/** A structured declaration, including its header, nested boundaries and
+ * source lines. CORE captures syntax; the owning module validates semantics.
+ * Values are owned by the Context, including copies used for candidates. */
+struct ConfigBlock {
+  std::string kind;
+  std::string source;
+  std::size_t first_line = 1;
+  std::vector<std::string> lines;
+};
+
 /**
  * @class Context
  * @brief Thread-safe key-value container that consults the blueprint for
@@ -53,6 +63,9 @@ namespace core {
  */
 class Context {
 public:
+  void append_block(const ConfigBlock &block);
+  std::vector<ConfigBlock> blocks(const std::string &kind = "") const;
+  void replace_blocks(const std::vector<ConfigBlock> &blocks);
   /**
    * @brief Constructs an empty Context referencing the static blueprint map.
    */
@@ -460,6 +473,15 @@ public:
 
     for (const auto &pair : ctx2_snapshot) {
       const std::string &key = pair.first;
+      // Repeatable structured declarations compose across CONFIG includes.
+      // The opaque records also travel through storage_snapshot/update and
+      // serialize/deserialize (PC workers and optimizer checkpoints).
+      if (key == "@BLOCKS") {
+        std::lock_guard<std::mutex> lock(merged.mtx_);
+        auto &dest = merged.storage_[key];
+        dest.insert(dest.end(), pair.second.begin(), pair.second.end());
+        continue;
+      }
       // only copy allowed keys
       if (ctx1.allowedKeys_.find(key) == ctx1.allowedKeys_.end()) {
         continue;
