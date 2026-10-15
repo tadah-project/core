@@ -451,15 +451,36 @@ public:
     return os;
   }
 
+  /** How Context::merge treats the structured blocks (DESCRIPTOR ...) of
+   *  the overriding context. */
+  enum class BlockMerge {
+    /** Key precedence: when ctx2 declares blocks of a kind, the merged
+     *  context holds ctx2's blocks of that kind and none of ctx1's (with
+     *  allowOverwrite; without it they are appended, as flat values are). */
+    Replace,
+    /** Composition: ctx2's blocks follow ctx1's (a CONFIG include adds its
+     *  declarations to those of the including file). */
+    Append
+  };
+
   /**
    * @brief Merges two contexts, add/override ALLOWED_KEYS keys from ctx2 into ctx1.
    *
+   * A key of ctx2 replaces ctx1's values (allowOverwrite) or is appended to
+   * them. Structured blocks follow @p blocks: by default a kind of block
+   * ctx2 declares replaces ctx1's blocks of that kind, as a key would (a
+   * TASK section's DESCRIPTOR over the GLOBAL one, a task's model over the
+   * potential's); BlockMerge::Append composes them (CONFIG includes).
+   *
    * @param ctx1 The first context (base).
    * @param ctx2 The second context (overrides).
+   * @param allowOverwrite Replace ctx1's values of a key ctx2 has (else append).
+   * @param blocks How ctx2's structured blocks combine with ctx1's.
    * @return A new Context object with merged values.
    */
   static Context merge(const Context &ctx1,
-                       const Context &ctx2, bool allowOverwrite = true) {
+                       const Context &ctx2, bool allowOverwrite = true,
+                       BlockMerge blocks = BlockMerge::Replace) {
     /* `merged = ctx1` copies under ctx1.mtx_ (copy ctor). ctx2's storage is
      * snapshotted under ctx2.mtx_ and iterated WITHOUT any lock held, so the
      * merged.contains()/remove()/add() calls below (which take merged.mtx_
@@ -477,10 +498,23 @@ public:
 
     for (const auto &pair : ctx2_snapshot) {
       const std::string &key = pair.first;
-      // Repeatable structured declarations compose across CONFIG includes.
-      // The opaque records also travel through storage_snapshot/update and
-      // serialize/deserialize (PC workers and optimizer checkpoints).
+      // Structured declarations: replaced kind by kind with key precedence,
+      // or composed (CONFIG includes, no overwrite). The opaque records also
+      // travel through storage_snapshot/update and serialize/deserialize
+      // (PC workers and optimizer checkpoints).
       if (key == "@BLOCKS") {
+        if (allowOverwrite && blocks == BlockMerge::Replace) {
+          std::vector<ConfigBlock> kept;
+          const auto over = ctx2.blocks();
+          for (auto &b : merged.blocks()) {
+            bool replaced = false;
+            for (const auto &o : over) replaced = replaced || o.kind == b.kind;
+            if (!replaced) kept.push_back(std::move(b));
+          }
+          kept.insert(kept.end(), over.begin(), over.end());
+          merged.replace_blocks(kept);
+          continue;
+        }
         std::lock_guard<std::mutex> lock(merged.mtx_);
         auto &dest = merged.storage_[key];
         dest.insert(dest.end(), pair.second.begin(), pair.second.end());

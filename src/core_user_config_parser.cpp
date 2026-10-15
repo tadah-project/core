@@ -365,8 +365,10 @@ namespace {
         // Pop config name after nested parse
         configChain.pop_back();
         
-        // Merge the nested context
-        ctx = tadah::core::Context::merge(ctx, configCtx);
+        // Merge the nested context: its keys override, its structured
+        // blocks follow the declarations made so far.
+        ctx = tadah::core::Context::merge(ctx, configCtx, true,
+                                          tadah::core::Context::BlockMerge::Append);
         continue; // Skip adding "CONFIG" key or its value to the context
       }
       // Other keys store their values
