@@ -139,10 +139,9 @@ TEST_CASE("Testing Vec3d operator/(double) edge cases", "[maths][new]") {
         Vec3d v(1, 2, 3);
         double zeroVal = 0.0;
         // This leads to infinity or NaN in most implementations:
-        // Though undefined, let's just see if it compiles and runs:
-        // (You can remove or handle it differently if desired.)
+        // Though undefined, the test only checks that it compiles and runs:
         [[maybe_unused]] Vec3d result = v / zeroVal;
-        // We won't REQUIRE anything specific here due to UB.
+        // Nothing specific is REQUIREd here due to UB.
         SUCCEED("Division by zero executed, result may be Inf or NaN.");
     }
 }

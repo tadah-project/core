@@ -268,8 +268,8 @@ TEST_CASE("Config parser: a CONFIG include chain reports a deprecated key once",
 TEST_CASE("Config parser: a deprecated key is reported once per process, "
           "however many parses read it, a failed one included",
           "[config][deprecated]") {
-  /* Owner decision (2026-09-29): one rule for every ignored key, deprecated
-   * or without effect: one stderr notice per key and process. */
+  /* One rule for every ignored key, deprecated or without effect: one
+   * stderr notice per key and process. */
   const std::vector<std::string> ok = {"ATOM Ta", "MBLOCK 64"};
   const std::size_t first = expected_notices("MBLOCK");
   StreamCapture cap(LogLevel::WARNING);

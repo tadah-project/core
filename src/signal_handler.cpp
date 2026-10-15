@@ -77,7 +77,7 @@ extern "C" void tadah_signal_handler(int signo) noexcept
         end_now(signo);
     }
     /* Only record the first signal -- later signals don't downgrade the
-     * reason text we'll show the user. */
+     * reason text shown to the user. */
     if (g_signal_seen == 0) g_signal_seen = signo;
     g_stop_flag = 1;
     /* The first of its kind is announced at once: the loops notice the

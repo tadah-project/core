@@ -567,7 +567,7 @@ TEST_CASE("Extended TYPE2B checks", "[blueprint][extra]") {
     // The blueprint pattern has “{STRING STRING},” meaning 1 block is 2 strings, can be repeated:
     // repeated block => (STRING STRING)( (STRING STRING))* 
     // e.g. "Ti Nb Al Ni Cu Fe", that’s 3 pairs => 6 tokens
-    // This is valid if your code truly allows indefinite repetition
+    // Valid, as the blueprint allows indefinite repetition
     REQUIRE(val.validate("MyDescriptor 1 -1 Ti Nb Al Cu X Y Qp Qm XEnd YEnd"));
   }
 }

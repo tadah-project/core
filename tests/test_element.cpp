@@ -59,7 +59,7 @@ TEST_CASE("Element constructor with only symbol uses PeriodicTable lookup", "[el
   // Adjust the symbol to something your PeriodicTable is guaranteed to know
   REQUIRE_NOTHROW(Element("He"));
 
-  // If your PeriodicTable throws for unknown symbols, test that as well:
+  // PeriodicTable throws for unknown symbols:
   REQUIRE_THROWS_AS(Element("UnknownSymbol"), std::runtime_error);
 }
 
@@ -69,7 +69,7 @@ TEST_CASE("Element constructor with only int uses PeriodicTable lookup", "[eleme
   // Provide a known atomic number
   REQUIRE_NOTHROW(Element(2));
 
-  // If your PeriodicTable throws for out-of-range or missing Z, test that as well:
+  // PeriodicTable throws for out-of-range or missing Z:
   REQUIRE_THROWS_AS(Element(999), std::runtime_error); 
 }
 
@@ -264,15 +264,15 @@ TEST_CASE("Enhanced streaming test with exact format checks", "[element][ostream
   ss << e;
   std::string output = ss.str();
 
-  // If your format is strictly lines like:
+  // The output has lines like:
   //   Symbol: Ne
   //   Atomic Number: 10
-  // you can check line-by-line. For example:
+  // checked line by line:
   CHECK_THAT(output, Catch::Matchers::Contains("Symbol: Ne"));
   CHECK_THAT(output, Catch::Matchers::Contains("Atomic Number: 10"));
 
-  // If you want to ensure there are newlines in specific places:
-  // (Adjust your checks depending on how the line breaks are done.)
+  // A check of the newlines in specific places (it depends on how the
+  // line breaks are done):
   // CHECK_THAT(output, Catch::Matchers::EndsWith("\n"));
 }
 
@@ -306,7 +306,7 @@ TEST_CASE("Extended hashing collision test", "[element][hash][collision]") {
   // but operator== ensures they are distinct entries in the set?
   // Actually, since operator== compares both symbol and Z, eFakeF != eF.
   // But in a std::unordered_set, hashing + equality determines uniqueness.
-  // So let's see if eFakeF successfully inserts:
+  // So: is eFakeF inserted?
   auto result = elements.insert(eFakeF);
 
   // 'true' if eFakeF was inserted, 'false' if it was deemed a duplicate

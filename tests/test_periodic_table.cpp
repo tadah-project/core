@@ -80,7 +80,7 @@ TEST_CASE("PeriodicTable::initialize() coverage") {
     // but the code path is still visited at least once per suite.
 
     // We manually clear the static maps to ensure a fresh state for coverage.
-    // This is optional if your test harness is re-run from scratch each time.
+    // This is optional when the test harness is re-run from scratch each time.
     PeriodicTable::symbol.clear();
     PeriodicTable::name.clear();
     PeriodicTable::Z.clear();
@@ -151,7 +151,7 @@ TEST_CASE("PeriodicTable::get_mass(Element) coverage with large Z in test", "[Pe
 
     // Suppose we forcibly patch an Element’s Z after creation:
     Element e("U", 92); // valid Uranium
-    // Then forcibly hack e.Z = 9999 (only if you have access and no const protections!)
+    // Then forcibly set e.Z = 9999 (Z is a public, non-const member)
     e.Z = 9999;
 
     REQUIRE_THROWS_AS(

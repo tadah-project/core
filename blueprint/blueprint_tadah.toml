@@ -749,11 +749,11 @@ This key controls the optimization algorithm used to train the model. The **defa
 
 Available options:
 
-**1** - **GELSD**: Utilizes the LAPACK routine :code:`DGELSD` to solve linear least squares problems using the Singular Value Decomposition (SVD). This method is robust and can handle rank-deficient systems. It computes the minimum-norm solution and is suitable for ill-conditioned problems. The parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`). It defaults to :math:`1 \times 10^{-8}` if not specified. Setting :code:`M = -1` uses machine precision, which may be unstable for ill-conditioned problems.
+**1** - **GELSD**: Uses the LAPACK routine :code:`DGELSD` to solve linear least squares problems using the Singular Value Decomposition (SVD). This method is robust and can handle rank-deficient systems. It computes the minimum-norm solution and is suitable for ill-conditioned problems. The parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`). It defaults to :math:`1 \times 10^{-8}` if not specified. Setting :code:`M = -1` uses machine precision, which may be unstable for ill-conditioned problems.
 
 **2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorization. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
 
-**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but utilizes SVD. This method allows the use of the evidence approximation algorithm and computes the covariance of the weights (:ref:`WCOV`, :ref:`WNOISE`), providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but uses SVD. This method allows the use of the evidence approximation algorithm and computes the covariance of the weights (:ref:`WCOV`, :ref:`WNOISE`), providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
 
 **4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It does not require additional parameters.
 
@@ -807,7 +807,7 @@ Available options:
 
   - Use **Option 1 (GELSD)** when you need robustness against rank deficiency and moderate performance.
   - Use **Option 2 (GELS)** for the fastest performance on well-conditioned, full-rank matrices where robustness is less of a concern.
-  - Use **Option 3 (Custom SVD Implementation)** when you require additional outputs like the covariance matrix and are willing to trade off performance for more comprehensive results.
+  - Use **Option 3 (Custom SVD Implementation)** when you require additional outputs like the covariance matrix and are willing to trade off performance for them.
   - Use **Option 4 (Cholesky Decomposition)** when you have a well-conditioned, full-rank matrix and need an efficient solution, but be cautious of potential numerical instability in ill-conditioned or rank-deficient problems.
 
 '''
@@ -3052,7 +3052,7 @@ and energy-focused methods. By evaluating trial potentials with LAMMPS
 scripts, this framework allows you to incorporate performance constraints
 such as surface energies or phase stability, significantly enhancing model
 transferability. The global optimization algorithm systematically explores
-the parameter space, producing a robust interatomic potential tailored to
+the parameter space, producing an interatomic potential tailored to
 your priorities for accuracy, speed, and other metrics. This flexible
 workflow enables users to define search space constraints, assign weights
 to different objectives, and tune performance for a wide range of
@@ -3495,7 +3495,7 @@ Reads the user's training config (DBFILEs + TYPE2B / TYPEMB), computes
 dataset statistics (per-pair r_ij percentiles + KDE peaks), then walks
 each configured descriptor's `meta()` and proposes one OPTIM bound per
 parameter. Writes a compilable OPTIM block (or to stdout if --outfile
-is omitted). Phase 4 of the HPO bound-validation pipeline.
+is omitted).
 """
 examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
 [TASKS.analysis.suggest_bounds.keys]
@@ -3513,7 +3513,7 @@ cli_excludes   = ["task"]
 [TASKS.analysis.check_bounds]
 description      = "Validate HPO bounds: at every corner of the OPTIM box, run the pre-flight audit. Returns non-zero if any corner trips a FAIL finding. CI-friendly."
 long_description = """
-Phase 7 of the HPO bound-validation pipeline. Reads the hpotarget file of
+Reads the hpotarget file of
 the run (--hpotarget, or an HPOTARGET line of the seed configuration: the
 HPOTARGET line of a seed potential of an earlier version, such as a 1.5.x
 best_pot.tadah, is not read, and a WARNING names it with the other lines of
@@ -3521,7 +3521,7 @@ the potential check_bounds does not read; a run without an hpotarget file is
 refused, saying where it goes), parses every `OPTIM <KEY> (range) <lo> <hi>`
 line into a Bound, samples corners (full 2^k for k <= 12, otherwise a
 Latin-hypercube subsample of `min(2^k, ceil(k log2(k)))`), and runs the
-Phase 5 pre-flight audit (`run_preflight_from_db`) at each corner in the
+pre-flight audit (`run_preflight_from_db`) at each corner in the
 context tadah hpo evaluates: the seed with each bound's value in its own
 entry of the key (OPTIM KEY (i) sets entry i; the other entries keep the
 seed's values). A corner below the low bound tadah hpo refuses a box by

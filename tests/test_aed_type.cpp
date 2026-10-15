@@ -170,7 +170,7 @@ TEST_CASE("aed_type operator*(T) with size mismatch (potential UB)", "[aed_type]
     aed_type vec2({3.0});
     
     // Because there's no check, we can't guarantee a result.
-    // We'll show the call in a REQUIRE_NOTHROW if the implementation doesn't throw:
+    // The call goes in a REQUIRE_NOTHROW, as the implementation doesn't throw:
     REQUIRE_NOTHROW(static_cast<void>(vec1 * vec2));
     // The result is likely out-of-bounds for the second element. 
 }

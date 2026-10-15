@@ -272,7 +272,7 @@ TEST_CASE("Testing Context operator== - partial differences", "[config][new]") {
 }
 
 TEST_CASE("Testing Context with multi-token lines (simulation)", "[config][new]") {
-    // We’ll simulate reading lines like "TOKEN val1 val2 val3" by calling add() multiple times.
+    // Simulates reading lines like "TOKEN val1 val2 val3" by calling add() multiple times.
     // The existing read() method already handles line input, but we can mimic it directly here.
 
     Context c;
@@ -287,10 +287,10 @@ TEST_CASE("Testing Context with multi-token lines (simulation)", "[config][new]"
     REQUIRE(c("DBFILE")[1] == "val2");
     REQUIRE(c("DBFILE")[2] == "val3");
 
-    // If you want to confirm that read() also handles multiple tokens on one line,
-    // place an actual test config file under valid_configs or invalid_configs containing:
+    // A check that read() also handles multiple tokens on one line needs an
+    // actual test config file under valid_configs or invalid_configs containing:
     //   DBFILE val1 val2 val3
-    // and run your existing "Testing Context read()".
+    // read by the existing "Testing Context read()".
 }
 
 
@@ -299,7 +299,7 @@ TEST_CASE("Context get<T>(key, T&) - parsing failure triggers catch(...) ", "[co
     // 1) Add a user key that can hold multiple values, e.g. "DBFILE"
     //    so we can store more than one string in it.
     c.add("DBFILE", "valid1");
-    c.add("DBFILE", "invalid_data"); // We'll parse this as double => fail
+    c.add("DBFILE", "invalid_data"); // Parsed as double => fail
 
     std::vector<double> arr(2);
 
@@ -331,7 +331,7 @@ TEST_CASE("Context deserialize() - partial/truncated buffer ", "[config][coverag
 
 TEST_CASE("Context RCUTMAX=0 if all cutoffs are zero [line 312]", "[config][coverage]") {
     // postprocess() sets RCUTMAX only if there's a non-zero c2b/cmb
-    // We'll ensure all are zero => no RCUTMAX in the map
+    // All are zero => no RCUTMAX in the map
     Context c;
     // Remove any defaults that might set INIT2B or RCUT2B
     c.remove("INIT2B");
@@ -345,7 +345,7 @@ TEST_CASE("Context RCUTMAX=0 if all cutoffs are zero [line 312]", "[config][cove
     // Now confirm that RCUTMAX was NOT set
     REQUIRE(c.get<double>("RCUTMAX")==Approx(0));
 
-    // Then let's set some partial keys but keep them effectively zero
+    // Then some partial keys are set but kept effectively zero
     c.add("INIT2B", false);  // key exist, but false => won't read RCUT2B
     c.add("INITMB", false);
 
@@ -361,13 +361,13 @@ TEST_CASE("Context deserialize() unusual buffer") {
     // c1.add("INIT2B", true);
 
     std::vector<char> buf = c1.serialize();
-    // Now let's cut the buffer in half to cause partial data
+    // Cut the buffer in half to cause partial data
     buf.resize(buf.size() / 2);
 
     // Make a new config, call deserialize
     Context c2;
     REQUIRE_NOTHROW(c2.deserialize(buf));
-    // We won't necessarily expect c2 to match c1, but it's a coverage scenario for the loop in deserialize
+    // c2 need not match c1; it's a coverage scenario for the loop in deserialize
 }
 TEST_CASE("Context: Internal key updates via add()", "[context_internal_update]") {
   // Create a context instance.
@@ -1187,7 +1187,7 @@ TEST_CASE("Context get(key, container) refuses more values than the "
 
 /* Pins: a key with fewer stored values than the container holds fills
  * those values and leaves the rest of the container as it was (the
- * documented behaviour, owner decision D6 of the trainer-reuse fix).
+ * documented behaviour).
  * Before the fix: passes as well (a pin of the behaviour the size check
  * keeps). */
 TEST_CASE("Context get(key, container) fills a larger container with the "

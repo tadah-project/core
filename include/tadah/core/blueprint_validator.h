@@ -122,7 +122,7 @@ public:
 private:
   std::string m_patterns;  ///< Holds the final anchored pattern.
   // Implementation detail: store the compiled regex as well.
-  // We omit <regex> from this header, so we'll hide it behind a pointer-like approach.
+  // <regex> is kept out of this header, so the regex is hidden behind a pointer.
   // The actual object is defined in the .cpp.
   class Impl;             ///< Forward declaration for pImpl idiom
   Impl* m_impl;           ///< Private pointer to the compiled regex and helper data.
