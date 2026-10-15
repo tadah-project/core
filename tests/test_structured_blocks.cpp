@@ -62,3 +62,13 @@ TEST_CASE("Structured blocks reject missing and mismatched boundaries",
     REQUIRE_THROWS(CoreUserConfigParser().parse(input));
   }
 }
+
+TEST_CASE("Component radii survive ordinary context updates and copies", "[unified-dm][config]") {
+  Context c;c.set_component_cutoffs({6.25,4.0});c.add("VERBOSE",0);
+  REQUIRE(c.get<double>("RCUTMAX")==6.25);
+  auto candidate=c;candidate.set_component_cutoffs({5.5});candidate.add("NUMERIC",12);
+  REQUIRE(candidate.get<double>("RCUTMAX")==5.5);
+  REQUIRE(c.get<double>("RCUTMAX")==6.25);
+  candidate.set_component_cutoffs({});candidate.add("VERBOSE",1);
+  REQUIRE(candidate.get<double>("RCUTMAX")==0);
+}
