@@ -72,3 +72,55 @@ TEST_CASE("Component radii survive ordinary context updates and copies", "[unifi
   candidate.set_component_cutoffs({});candidate.add("VERBOSE",1);
   REQUIRE(candidate.get<double>("RCUTMAX")==0);
 }
+
+/* Pins: outside a CONFIG include, Context::merge gives the structured blocks
+ * of the overriding context the precedence a key has: when ctx2 declares
+ * blocks of a kind, the merged context holds ctx2's blocks of that kind and
+ * none of ctx1's (a TASK section's DESCRIPTOR replaces the GLOBAL one; a
+ * task's model replaces the potential's in tadah predict); when ctx2 has no
+ * block of that kind, ctx1's are kept; without overwrite (allowOverwrite
+ * false) and across a CONFIG include they are appended, as repeated
+ * declarations compose. Before the fix every merge appended, so a
+ * task file whose GLOBAL section and TASK predict potential both declared
+ * DESCRIPTOR cu failed with "duplicate descriptor ID 'cu'". */
+TEST_CASE("Context::merge gives structured blocks the precedence of a key",
+          "[unified-dm][config]") {
+  auto parse = [](const std::string &text) {
+    std::istringstream in(text);
+    return CoreUserConfigParser().parse(in);
+  };
+  const std::string other =
+      "DESCRIPTOR ta DM_Embed\n PAIRS Ta Ta\n DENSITY\n  BASIS Blip5\n"
+      "  FORM SIGNED\n  CENTRES 1.5 2\n  WIDTHS 0.4 0.5\n  AMPLITUDES 3 4\n"
+      "  CUTOFF\n   TYPE Cut_Poly\n   RADIUS 5\n  ENDCUTOFF\n ENDDENSITY\n"
+      " EMBEDDING\n  BASIS Gaussian\n  CENTRES 0 1\n  ETA 2 2\n"
+      " ENDEMBEDDING\nENDDESCRIPTOR\n";
+  const Context base = parse(block + "VERBOSE 1\n");
+  const Context over = parse(other + "VERBOSE 2\n");
+  const Context flat = parse("VERBOSE 3\n");
+
+  const Context merged = Context::merge(base, over);
+  REQUIRE(merged.blocks("DESCRIPTOR").size() == 1);
+  REQUIRE(merged.blocks("DESCRIPTOR")[0].lines == over.blocks("DESCRIPTOR")[0].lines);
+  REQUIRE(merged.get<int>("VERBOSE") == 2);
+
+  const Context kept = Context::merge(base, flat);
+  REQUIRE(kept.blocks("DESCRIPTOR").size() == 1);
+  REQUIRE(kept.blocks("DESCRIPTOR")[0].lines == base.blocks("DESCRIPTOR")[0].lines);
+  REQUIRE(kept.get<int>("VERBOSE") == 3);
+
+  REQUIRE(Context::merge(flat, base).blocks("DESCRIPTOR").size() == 1);
+
+  REQUIRE(Context::merge(base, over, false).blocks("DESCRIPTOR").size() == 2);
+
+  // A CONFIG include after a block of the including file composes with it.
+  const auto path = std::filesystem::temp_directory_path() /
+                    "tadah-unified-block-merge.config";
+  { std::ofstream f(path); f << block; }
+  struct Cleanup { std::filesystem::path p; ~Cleanup() { std::filesystem::remove(p); } } cleanup{path};
+  const Context composed =
+      parse("DESCRIPTOR tb Future\nENDDESCRIPTOR\nCONFIG " + path.string() + "\n");
+  REQUIRE(composed.blocks("DESCRIPTOR").size() == 2);
+  REQUIRE(composed.blocks("DESCRIPTOR")[0].lines[0] == "DESCRIPTOR tb Future");
+  REQUIRE(composed.blocks("DESCRIPTOR")[1].lines == base.blocks("DESCRIPTOR")[0].lines);
+}
