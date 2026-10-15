@@ -24,3 +24,12 @@ catch_discover_tests(test_core)
 # check was added).
 tadah_add_header_check(tadah.core HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/generated)
+
+# tadah.core_text (ctest -L text): no line of the repository's text files
+# carries a person's initials, a reference to co-workers, a decision
+# attributed to the code's owner, the name of an AI tool, a note kept
+# outside the repository or filler wording (cmake-tools'
+# tadah_add_text_check). Before the fix: fails, 22 lines: 18 with a person's
+# initials, 3 decision notes and .gitignore's entry for an AI tool's state
+# directory.
+tadah_add_text_check(tadah.core)
