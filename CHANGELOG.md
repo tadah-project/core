@@ -6,6 +6,10 @@ versioning follows the umbrella project (Tadah.MLIP).
 
 ## [Unreleased]
 
+### Added
+- Capture repeatable `DESCRIPTOR … ENDDESCRIPTOR` blocks, including nested boundaries and source locations, across `CONFIG` includes and Context transports.
+- Preserve component spatial radii when ordinary keys refresh neighbor-range metadata. Add the `REFIT_PAIR_BASIS` configuration key.
+
 ## [1.6.0] — unreleased
 
 ### Added
