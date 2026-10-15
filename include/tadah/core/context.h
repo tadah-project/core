@@ -66,6 +66,10 @@ public:
   void append_block(const ConfigBlock &block);
   std::vector<ConfigBlock> blocks(const std::string &kind = "") const;
   void replace_blocks(const std::vector<ConfigBlock> &blocks);
+  /** Spatial radii derived by a component owner. They participate in the
+   * ordinary RCUT*MAX refresh, so adding an unrelated key cannot erase them.
+   * These are evaluation metadata, regenerated from blocks on model load. */
+  void set_component_cutoffs(const std::vector<double> &radii);
   /**
    * @brief Constructs an empty Context referencing the static blueprint map.
    */
@@ -797,7 +801,8 @@ private:
       throw std::runtime_error("RCUT2B or RCUTMB has negative values.");
     }
     double maxVal2B = findMaxValue("RCUT2B");
-    double maxValMB = findMaxValue("RCUTMB");
+    double maxValMB = std::max(findMaxValue("RCUTMB"),
+                               findMaxValue("COMPONENT_RCUTMB"));
     storage_["RCUT2BMAX"] = {format_roundtrip(maxVal2B)};
     storage_["RCUTMBMAX"] = {format_roundtrip(maxValMB)};
     storage_["RCUTMAX"] = {format_roundtrip(std::max(maxVal2B, maxValMB))};

@@ -78,6 +78,19 @@ void Context::replace_blocks(const std::vector<ConfigBlock> &blocks) {
   storage_update("@BLOCKS", records);
 }
 
+void Context::set_component_cutoffs(const std::vector<double> &radii) {
+  std::vector<std::string> values;
+  for(double radius:radii) {
+    if(!(radius>0) || !std::isfinite(radius))
+      throw std::runtime_error("Component spatial radii must be finite and positive");
+    values.push_back(format_roundtrip(radius));
+  }
+  std::lock_guard<std::mutex> lock(mtx_);
+  if(values.empty()) storage_.erase("COMPONENT_RCUTMB");
+  else storage_["COMPONENT_RCUTMB"]=std::move(values);
+  updateInternalKeys();
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Constructors / Move
 ///////////////////////////////////////////////////////////////////////////////
