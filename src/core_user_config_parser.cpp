@@ -123,7 +123,8 @@ namespace {
       iss >> first;
       const std::string uKey = to_upper(first);
       keys.insert(uKey);
-      if (verbatimBlocks().count(uKey)) blockEnd = "END" + uKey;
+      if (verbatimBlocks().count(uKey) || uKey == "DESCRIPTOR")
+        blockEnd = "END" + uKey;
     }
     return keys;
   }
@@ -206,6 +207,39 @@ namespace {
         throw std::runtime_error("Key " + uKey + " on " +
                                  lineOf(first_line + i, source) +
                                  " is not accepted here: " + r->second);
+      }
+
+      if (uKey == "DESCRIPTOR") {
+        ConfigBlock block{uKey, source, first_line + i, {lines[i]}};
+        std::vector<std::string> ends{"ENDDESCRIPTOR"};
+        std::size_t k = i + 1;
+        for (; k < lines.size(); ++k) {
+          block.lines.push_back(lines[k]);
+          const auto line = trim(lines[k].substr(0, lines[k].find('#')));
+          if (line.empty()) continue;
+          std::istringstream words(line);
+          std::string word, extra;
+          words >> word;
+          word = to_upper(word);
+          const bool has_extra = static_cast<bool>(words >> extra);
+          if (word.rfind("END", 0) == 0) {
+            if (has_extra || word != ends.back())
+              throw std::runtime_error("Mismatched " + word + " on " +
+                                       lineOf(first_line + k, source) +
+                                       "; expected " + ends.back());
+            ends.pop_back();
+            if (ends.empty()) break;
+          } else if (!has_extra) {
+            ends.push_back("END" + word);
+          }
+        }
+        if (!ends.empty())
+          throw std::runtime_error("DESCRIPTOR on " +
+                                   lineOf(first_line + i, source) +
+                                   " is not closed; expected " + ends.back());
+        ctx.append_block(block);
+        i = k;
+        continue;
       }
 
       // Verbatim multi-line blocks (not flat keys). Slurp every token between
