@@ -1133,3 +1133,60 @@ TEST_CASE("Config parser: a potential's run setting lines are not stored, "
     CHECK(from_stream.has_stored("WEIGHTS"));
   }
 }
+
+// Pins: CHECK, the check instruction of tadah hpo (`tadah hpo --check`), is a
+// run setting as HPOTARGET is: run_setting_keys() lists it, so no parse
+// stores the CHECK line of a potential -- `tadah hpo -c` of a potential
+// with a CHECK true line is a run, not a check -- and the line is still
+// checked as any line (CHECK maybe is refused):
+//  - pot.cfg (ATOM, WEIGHTS, CHECK true): parse(file) stores ATOM and
+//    WEIGHTS and no CHECK; parse(file, rule, skipped) with a rule that
+//    selects nothing lists "pot.cfg:3 CHECK true";
+//  - the same lines without WEIGHTS (a training configuration) store CHECK
+//    true;
+//  - a potential with CHECK maybe is refused, naming the key.
+// Before the fix: run_setting_keys() has no CHECK, and the potential's
+// CHECK true is stored and not listed: the list, has_stored and skipped
+// checks fail.
+TEST_CASE("Config parser: a potential's CHECK line is not stored, a training "
+          "configuration's is",
+          "[config][skip_key_lines][potential_run_settings][check]") {
+  const std::vector<std::string> &settings = run_setting_keys();
+  CHECK(std::find(settings.begin(), settings.end(), "CHECK") !=
+        settings.end());
+
+  RefuseScratch dir;
+  const CoreUserConfigParser parser;
+  const std::string pot =
+      dir.write("pot.cfg", "ATOM Ta\nWEIGHTS 0.25 -0.5\nCHECK true\n");
+  {
+    const Context c = parser.parse(pot);
+    CHECK(c.has_stored("ATOM"));
+    CHECK(c.has_stored("WEIGHTS"));
+    CHECK_FALSE(c.has_stored("CHECK"));
+  }
+  {
+    std::vector<SkippedKeyLine> skipped;
+    const Context c = parser.parse(pot, select_none, skipped);
+    CHECK_FALSE(c.has_stored("CHECK"));
+    CHECK(described(skipped) == std::vector<std::string>{pot + ":3 CHECK true"});
+  }
+  {
+    const std::string cfg = dir.write("train.cfg", "ATOM Ta\nCHECK true\n");
+    const Context c = parser.parse(cfg);
+    REQUIRE(c.has_stored("CHECK"));
+    CHECK(c("CHECK") == std::vector<std::string>{"true"});
+  }
+  {
+    const std::string bad =
+        dir.write("bad.cfg", "ATOM Ta\nWEIGHTS 0.25 -0.5\nCHECK maybe\n");
+    std::string what;
+    try {
+      (void)parser.parse(bad);
+    } catch (const std::exception &e) {
+      what = e.what();
+    }
+    INFO("thrown: " << what);
+    CHECK(what.find("CHECK") != std::string::npos);
+  }
+}
