@@ -366,14 +366,16 @@ value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
 value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
-description  = "Controls the center positions for radial basis functions (two-body)."
+description  = "Controls the centre positions for radial basis functions (two-body)."
 long_description = """
-The parameter list may be provided manually or generated automatically. When 
-using the meta descriptor D2_mJoin, specify one or more lists of centers 
-corresponding to each descriptor. The number of centers should typically match 
-the number of width parameters (SGRID2B) and remain below the cutoff distance. 
-Alternatively, use the algorithm keyword followed by parameters to generate 
-centers automatically (e.g., LOG or LIN).
+The number of centres typically matches the number of widths (SGRID2B), and
+the centres lie below the cutoff distance. With the meta descriptor D2_mJoin,
+the key holds one list of centres for each joined descriptor, one per line.
+A line gives the values, or one generator in their place:
+LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
+and GEOM <n> <start> <stop> gives n values in a geometric progression
+from start to stop (both above 0). The number n is a whole number from 1
+to 1000000.
 """
 examples     = [
     "LIN 10 0 6",
@@ -389,11 +391,14 @@ value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [.
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for two-body radial basis functions."
 long_description = """
-These widths can be supplied manually or auto-generated. When using the meta 
-descriptor D2_mJoin, provide one or more lists of width values for each 
-concatenated descriptor. The number of widths must match the number of centers 
-(CGRID2B). Alternatively, specify the algorithm keyword with parameters to 
-generate widths automatically (e.g., LOG or LIN).
+The number of widths matches the number of centres (CGRID2B). With the meta
+descriptor D2_mJoin, the key holds one list of widths for each joined
+descriptor, one per line.
+A line gives the values, or one generator in their place:
+LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
+and GEOM <n> <start> <stop> gives n values in a geometric progression
+from start to stop (both above 0). The number n is a whole number from 1
+to 1000000.
 """
 examples     = [
     "LIN 3 0 1.0",
@@ -407,12 +412,15 @@ value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
 value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
-description  = "Specifies the center positions for many-body radial basis functions."
+description  = "Specifies the centre positions for many-body radial basis functions."
 long_description = """
-Centers may be provided manually or generated automatically. When using the 
-DM_mJoin meta descriptor, supply one or more lists of centers for each 
-concatenated descriptor. Alternatively, include an algorithm such as 'L' 
-(logarithmic) or 'U' (uniform spacing) followed by parameters.
+With the meta descriptor DM_mJoin, the key holds one list of centres for each
+joined descriptor, one per line.
+A line gives the values, or one generator in their place:
+LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
+and GEOM <n> <start> <stop> gives n values in a geometric progression
+from start to stop (both above 0). The number n is a whole number from 1
+to 1000000.
 """
 examples     = [
     "LIN 4 0 6.2",
@@ -428,11 +436,14 @@ value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for many-body radial basis functions."
 long_description = """
-Values may be provided manually or generated automatically. When using the 
-DM_mJoin meta descriptor, provide one or more lists of widths for each 
-descriptor. Ensure consistency with the centers defined in CGRIDMB. Alternatively,
-use an algorithm (e.g., LOG or LIN) and its parameters to generate widths 
-automatically.
+The number of widths matches the number of centres (CGRIDMB). With the meta
+descriptor DM_mJoin, the key holds one list of widths for each joined
+descriptor, one per line.
+A line gives the values, or one generator in their place:
+LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
+and GEOM <n> <start> <stop> gives n values in a geometric progression
+from start to stop (both above 0). The number n is a whole number from 1
+to 1000000.
 """
 examples     = [
     "LIN 3 0 1.0",
