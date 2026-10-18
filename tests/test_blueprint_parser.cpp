@@ -147,6 +147,46 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
   }
 }
 
+/* Pins: CHECK (`tadah hpo --check`, CHECK true in a TASK hpo section) is a
+ * boolean key with default false and the CLI flag --check, without a short
+ * flag, and the only blueprint task with it is hpo: the CLI builds the
+ * option of `tadah hpo` from it, and the CLI reference and the
+ * configuration-keys page describe it from its description.
+ * Before the key: the blueprint has no CHECK. */
+TEST_CASE("BlueprintParser: CHECK is the --check flag of tadah hpo alone",
+          "[BlueprintParser]")
+{
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  const auto it = keys.find("CHECK");
+  REQUIRE(it != keys.end());
+  const BlueprintKey &k = it->second;
+  CHECK(k.value_type == std::vector<std::string>{"BOOL"});
+  CHECK(k.value_N == std::vector<int>{1});
+  CHECK(k.default_value == std::vector<std::string>{"false"});
+  CHECK(k.cli_long_flag == "--check");
+  CHECK(k.cli_short_flag.empty());
+  CHECK_FALSE(k.description.empty());
+  CHECK_FALSE(k.longDescription.empty());
+
+  std::vector<std::string> tasks_with_check;
+  for (const auto &kv : BlueprintParser::getTasksMapRef()) {
+    for (const auto &key : kv.second.blueprintKeys) {
+      const auto dot = key.keyName.rfind('.');
+      const std::string name =
+          dot == std::string::npos ? key.keyName : key.keyName.substr(dot + 1);
+      std::string upper;
+      for (char c : name)
+        upper += static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+      if (upper == "CHECK") {
+        tasks_with_check.push_back(kv.first);
+        CHECK(key.cli_long_flag == "--check");
+        CHECK(key.default_value == std::vector<std::string>{"false"});
+      }
+    }
+  }
+  CHECK(tasks_with_check == std::vector<std::string>{"HPO"});
+}
+
 /**
  * @brief Tests that an empty map returns an empty string when searching for a closest key.
  */
