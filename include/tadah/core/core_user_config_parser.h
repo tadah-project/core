@@ -11,7 +11,8 @@ namespace core {
 
 /**
  * @brief The keys that set up a run, never a model: VALIDATION and
- *        HPOTARGET (the validation and target files of tadah hpo), VERBOSE
+ *        HPOTARGET (the validation and target files of tadah hpo), CHECK
+ *        (tadah hpo --check: the startup checks of the run alone), VERBOSE
  *        (the verbosity of the run: storing it sets the Logger level),
  *        NUMERIC and OUTFILE (the writer's significant digits and output
  *        file), AUDIT and AUDIT_SAMPLE (the pre-flight audit) and HEALTH_LOG
