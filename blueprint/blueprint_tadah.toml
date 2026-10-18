@@ -1058,17 +1058,27 @@ long_description = """
 tadah hpo --check reads the training configuration (-c), the target file
 (--hpotarget) and the validation configuration (--validation) and makes
 every check that tadah hpo makes before its first evaluation: the keys and
-blocks of the target file, the optimiser of each search and its settings,
-the search space, the LAMMPS scripts of the PC_LAMMPS and PC_FAILPROBE
-lines, and the training and validation datasets, which it loads. It then
-prints the search parameters with their boxes, the optimiser of each search
-with its stops, the loss terms and the numbers of training and validation
-structures, and exits with status 0. It evaluates no candidate, starts no
-worker process and writes no file: no journal, no result file and no DUMP
-or BDUMP directory.
+blocks of the target file and its DUMP and BDUMP directories, the
+optimiser of each search and its settings, the search space, the LAMMPS
+scripts of the PC_LAMMPS and PC_FAILPROBE lines, and the training and
+validation datasets, which it loads. It then prints the search parameters
+with their boxes, the optimiser of each search with its stops, the loss
+terms, the numbers of training and validation structures, and the warnings
+and hints that tadah hpo writes to its journal, hpo_run.log, at startup.
+It exits with status 0. It evaluates no candidate, starts no worker
+process and writes no file: no journal, no result file and no DUMP or
+BDUMP directory.
 
-An error ends it with the message and the exit status of tadah hpo. In a
-task file, write CHECK true in the TASK hpo section.
+An error ends it with the message and the exit status of tadah hpo; the
+warnings and hints that came before the error are on standard error. In a
+task file, CHECK true in the TASK hpo section makes the same check.
+
+A setting of the run, as HPOTARGET is: a CHECK true line in a training
+configuration that is not a potential (it has no WEIGHTS line) also makes
+tadah hpo -c a check, and tadah train reads no CHECK. No potential has a
+CHECK line (its training record lists the CHECK its run was given), and
+the CHECK line of a potential is not read: tadah hpo -c of it runs, and a
+WARNING names the line.
 """
 default_value  = ["false"]
 cli_long_flag  = "--check"
