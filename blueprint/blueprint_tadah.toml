@@ -372,8 +372,9 @@ the centres lie below the cutoff distance.
 The values of all lines form one list. With the meta descriptor D2_mJoin,
 each joined descriptor takes as many centres as its TYPE2B line asks for,
 in the order of the TYPE2B lines, and more or fewer values are refused.
-One line per descriptor is a convention for reading. A line holds values,
-generators or both:
+One line per descriptor is a convention for reading.
+A line holds values or generators (one or more), and lines of each kind
+may follow one another:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
@@ -397,8 +398,9 @@ The number of widths matches the number of centres (CGRID2B).
 The values of all lines form one list. With the meta descriptor D2_mJoin,
 each joined descriptor takes as many widths as its TYPE2B line asks for,
 in the order of the TYPE2B lines, and more or fewer values are refused.
-One line per descriptor is a convention for reading. A line holds values,
-generators or both:
+One line per descriptor is a convention for reading.
+A line holds values or generators (one or more), and lines of each kind
+may follow one another:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
@@ -421,8 +423,9 @@ long_description = """
 The values of all lines form one list. With the meta descriptor DM_mJoin,
 each joined descriptor takes as many centres as its TYPEMB line asks for,
 in the order of the TYPEMB lines, and more or fewer values are refused.
-One line per descriptor is a convention for reading. A line holds values,
-generators or both:
+One line per descriptor is a convention for reading.
+A line holds values or generators (one or more), and lines of each kind
+may follow one another:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
@@ -446,8 +449,9 @@ The number of widths matches the number of centres (CGRIDMB).
 The values of all lines form one list. With the meta descriptor DM_mJoin,
 each joined descriptor takes as many widths as its TYPEMB line asks for,
 in the order of the TYPEMB lines, and more or fewer values are refused.
-One line per descriptor is a convention for reading. A line holds values,
-generators or both:
+One line per descriptor is a convention for reading.
+A line holds values or generators (one or more), and lines of each kind
+may follow one another:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
