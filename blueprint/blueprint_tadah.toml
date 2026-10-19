@@ -1065,9 +1065,9 @@ and validation datasets, which it loads. Each path is checked where the
 operating system puts it, symbolic links followed; best_pot.tadah, which
 the run replaces, is checked by its own name. It starts no PC_ISOLATION
 PROCESS worker and does not take the lock of best_pot.tadah: a lock file
-that exists and cannot be written stops it, as it stops the run, but a
-worker that cannot start, or a lock another run holds, stops the run
-only. It then prints the search parameters with
+that exists and cannot be opened to read and write stops it, as it stops
+the run, but a worker that cannot start, or a lock another run holds,
+stops the run only. It then prints the search parameters with
 their boxes, the optimiser of each search with its stops, the loss terms,
 the numbers of training and validation structures, and the warnings and
 hints that tadah hpo writes to its journal, hpo_run.log, at startup. It
