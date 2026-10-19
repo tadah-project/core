@@ -1051,7 +1051,7 @@ cli_required     = false
 
 [ALLOWED_KEYS.check]
 INHERIT = ["TYPES.BOOL"]
-description  = "Check the setup of tadah hpo without running it: make its startup checks, print a summary and exit."
+description  = "Checks the setup of tadah hpo without running it: makes its startup checks, prints a summary and exits."
 long_description = """
 tadah hpo --check reads the training configuration (-c), the target file
 (--hpotarget) and the validation configuration (--validation) and makes
