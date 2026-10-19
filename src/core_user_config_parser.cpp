@@ -413,7 +413,7 @@ namespace {
 
 const std::vector<std::string> &run_setting_keys() {
   static const std::vector<std::string> keys = {
-      "VALIDATION", "HPOTARGET", "VERBOSE",      "NUMERIC",
+      "VALIDATION", "HPOTARGET", "CHECK",        "VERBOSE",   "NUMERIC",
       "OUTFILE",    "AUDIT",     "AUDIT_SAMPLE", "HEALTH_LOG"};
   return keys;
 }
