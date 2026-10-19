@@ -363,14 +363,17 @@ DM_Blip 0 6 6 Ti Nb Nb Nb"""
 [ALLOWED_KEYS.CGRID2B]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
-value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
+value_format = ["<double> [<double> ...]",  "(<generator> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Controls the centre positions for radial basis functions (two-body)."
 long_description = """
 The number of centres typically matches the number of widths (SGRID2B), and
-the centres lie below the cutoff distance. With the meta descriptor D2_mJoin,
-the key holds one list of centres for each joined descriptor, one per line.
-A line gives the values, or one generator in their place:
+the centres lie below the cutoff distance.
+The values of all lines form one list. With the meta descriptor D2_mJoin,
+each joined descriptor takes as many centres as its TYPE2B line asks for,
+in the order of the TYPE2B lines, and more or fewer values are refused.
+One line per descriptor is a convention for reading. A line holds values,
+generators or both:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
@@ -386,14 +389,16 @@ examples     = [
 [ALLOWED_KEYS.SGRID2B]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
-value_format = ["<double> [<double> ...]",  "(<algorithm> <n> <start> <stop>) [...]"]
+value_format = ["<double> [<double> ...]",  "(<generator> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for two-body radial basis functions."
 long_description = """
-The number of widths matches the number of centres (CGRID2B). With the meta
-descriptor D2_mJoin, the key holds one list of widths for each joined
-descriptor, one per line.
-A line gives the values, or one generator in their place:
+The number of widths matches the number of centres (CGRID2B).
+The values of all lines form one list. With the meta descriptor D2_mJoin,
+each joined descriptor takes as many widths as its TYPE2B line asks for,
+in the order of the TYPE2B lines, and more or fewer values are refused.
+One line per descriptor is a convention for reading. A line holds values,
+generators or both:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
@@ -409,13 +414,15 @@ GEOM 6 0.1 10"""
 [ALLOWED_KEYS.CGRIDMB]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
-value_format = ["<centre> ...",  "<algorithm> <N> <START> <STOP>"]
+value_format = ["<centre> ...",  "(<generator> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Specifies the centre positions for many-body radial basis functions."
 long_description = """
-With the meta descriptor DM_mJoin, the key holds one list of centres for each
-joined descriptor, one per line.
-A line gives the values, or one generator in their place:
+The values of all lines form one list. With the meta descriptor DM_mJoin,
+each joined descriptor takes as many centres as its TYPEMB line asks for,
+in the order of the TYPEMB lines, and more or fewer values are refused.
+One line per descriptor is a convention for reading. A line holds values,
+generators or both:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
@@ -431,14 +438,16 @@ examples     = [
 [ALLOWED_KEYS.SGRIDMB]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
-value_format = ["<width> ...",  "<algorithm> <N> <START> <STOP>"]
+value_format = ["<width> ...",  "(<generator> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Specifies the width parameters for many-body radial basis functions."
 long_description = """
-The number of widths matches the number of centres (CGRIDMB). With the meta
-descriptor DM_mJoin, the key holds one list of widths for each joined
-descriptor, one per line.
-A line gives the values, or one generator in their place:
+The number of widths matches the number of centres (CGRIDMB).
+The values of all lines form one list. With the meta descriptor DM_mJoin,
+each joined descriptor takes as many widths as its TYPEMB line asks for,
+in the order of the TYPEMB lines, and more or fewer values are refused.
+One line per descriptor is a convention for reading. A line holds values,
+generators or both:
 LIN <n> <start> <stop> gives n evenly spaced values from start to stop,
 and GEOM <n> <start> <stop> gives n values in a geometric progression
 from start to stop (both above 0). The number n is a whole number from 1
