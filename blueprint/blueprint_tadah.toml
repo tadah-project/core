@@ -1049,6 +1049,52 @@ cli_long_flag  = "--hpotarget"
 cli_short_flag = ""
 cli_required     = false
 
+[ALLOWED_KEYS.check]
+INHERIT = ["TYPES.BOOL"]
+description  = "Checks the setup of tadah hpo without running it: makes its startup checks, prints a summary and exits."
+long_description = """
+tadah hpo --check reads the training configuration (-c), the target file
+(--hpotarget) and the validation configuration (--validation) and makes
+the checks that tadah hpo makes before its first evaluation: the working
+directory and the files the run writes there that exist (its journal,
+result files, best_pot.tadah and its lock, the search-space files), the
+keys and blocks of the target file and its DUMP and BDUMP directories,
+the optimiser of each search and its settings, the search space, the
+LAMMPS scripts of the PC_LAMMPS and PC_FAILPROBE lines, and the training
+and validation datasets, which it loads. Each path is checked where the
+operating system puts it, symbolic links followed; best_pot.tadah, which
+the run replaces, is checked by its own name. It starts no PC_ISOLATION
+PROCESS worker and does not take the lock of best_pot.tadah: a lock file
+that exists and cannot be opened to read and write stops it, as it stops
+the run, but a worker that cannot start, or a lock another run holds,
+stops the run only. It then prints the search parameters with
+their boxes, the optimiser of each search with its stops, the loss terms,
+the numbers of training and validation structures, and the warnings and
+hints that tadah hpo writes to its journal, hpo_run.log, at startup. It
+exits with status 0. It evaluates no candidate and writes no file: no
+journal, no result file and no DUMP or BDUMP directory.
+
+An error ends it with the message and the exit status of tadah hpo; the
+warnings and hints that came before the error are on standard error. In a
+task file, CHECK true in the TASK hpo section, or above the first TASK
+line, makes the same check.
+
+A setting of the run, as HPOTARGET is. A CHECK true line in a training
+configuration that is not a potential also makes tadah hpo -c a check, and
+tadah train reads no CHECK. A file or TASK section whose own key lines
+include WEIGHTS is a potential, and its CHECK line is not read: tadah hpo
+-c of such a file, or a TASK hpo section with WEIGHTS lines, runs, and a
+WARNING names the line; CHECK then goes on the command line or above the
+first TASK line. No potential has a CHECK key line: the training record of
+a tadah train or tadah refit potential lists the CHECK line of its
+configuration, which neither command reads, and that of a tadah hpo
+potential lists none.
+"""
+default_value  = ["false"]
+cli_long_flag  = "--check"
+cli_short_flag = ""
+cli_required   = false
+
 [ALLOWED_KEYS.hpofileout]
 INHERIT = ["TYPES.STRING"]
 value_format = ["<file>"]
@@ -3071,9 +3117,9 @@ second Ctrl-C, or a second SIGTERM, ends it at once, as SIGKILL would:
 best_pot.tadah keeps the last best it saved, and the history files can lack
 the rows still queued.
 """
-examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
+examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah", "tadah hpo --check -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
 [TASKS.hpo.keys]
-INHERIT          = ["ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.eshift_atom", "ALLOWED_KEYS.eshift_dbatom", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.wdbfile", "ALLOWED_KEYS.wdbfile_auto", "ALLOWED_KEYS.eweight_temp", "ALLOWED_KEYS.zero_com_force"]
+INHERIT          = ["ALLOWED_KEYS.check", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.eshift_atom", "ALLOWED_KEYS.eshift_dbatom", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.wdbfile", "ALLOWED_KEYS.wdbfile_auto", "ALLOWED_KEYS.eweight_temp", "ALLOWED_KEYS.zero_com_force"]
 [TASKS.hpo.groups.input]
 description      = "Input sources for hpo. One of the following options:"
 cli_required = true
