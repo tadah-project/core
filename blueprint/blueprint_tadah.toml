@@ -173,7 +173,7 @@ INHERIT = ["TYPES.BOOL"]
 # the Context injects it on first query, so pair_tadah reads true unless the
 # user sets EAMFAST false. Same mechanism as refit_constrain_f0 above.
 default_value = ["true"]
-description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah. For a single-species linear model the potential collapses exactly to scalar radial functions: a radial two-body block alone (INITMB false, any radial D2 descriptor) collapses to a pair function phi(r); a two-body block plus one EAM-form many-body block, a DM_Embed component (what tadah refit writes, e.g. D2_Knot5 + DM_Embed) or DM_REAM (what it wrote before 1.6.0), the many-body descriptors for which this EAM collapse is implemented, additionally collapses to density and embedding functions. The pair style then evaluates cubic-Hermite tables sampled from the descriptors themselves (plus the analytic embedding and scalar ghost communication in the EAM case; the pure two-body case needs no ghost communication at all), which makes force calls faster; the gain grows with the cost of the descriptors (MD of 250 atoms: 1.6x for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy), 3.4x for D2_LJ + DM_REAM, 4.5x for a 21-knot D2_Knot5 pair term). Each table is certified when the potential is loaded: scanning down from the cutoff, the pair style bounds the error of every table segment from 31 check points and finds the smallest distance r_lo above which every segment meets a relative tolerance of 1e-9 for the value and the derivative (energy and force, relative to the function's own scale above that distance, and at least its scale over the outer half of the cutoff). Below r_lo it evaluates the analytic function, at the cost of the generic kernel. The fast path therefore agrees with the generic kernel to 1e-9 relative accuracy inside the certified range and exactly below it; the bound assumes the function is smooth on the scale of 1/32 of the table spacing apart from isolated knots and cutoff junctions. The certified range is one interval ending at the cutoff, so a single segment that misses the tolerance, for example at a knot of a C2 basis such as Blip or at the inner radius of a switching cutoff such as Cut_PolyS, sets r_lo there even where the table is accurate further in. The LAMMPS log states each certified range, the tolerance, the error bounds and where the analytic evaluation takes over, e.g. for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy): Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125. Distances are in the potential's units. A table that misses the tolerance already in its top segment, just below the cutoff, has no certified range: the log gives the reason and the generic kernel is used. false serves a bitwise comparison against the generic kernel and drivers that capture adjoint state on EAM-form models (pure two-body adjoint capture works under the fast path via the generic kernel). Silently ignored, generic kernel used, for models that do not collapse: nonlinear or normalised models, per-species bias, multi-species, dimers, or a many-body descriptor other than one DM_Embed component or DM_REAM (DM_mBlipEnv, for example)."
+description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah. For a single-species linear model the potential collapses exactly to scalar radial functions: a radial two-body block alone (INITMB false, any radial D2 descriptor) collapses to a pair function phi(r); a two-body block plus one EAM-form many-body block, a DM_Embed component (what tadah refit writes, e.g. D2_Knot5 + DM_Embed) or DM_REAM (what it wrote before 1.6.0), the many-body descriptors for which this EAM collapse is implemented, additionally collapses to density and embedding functions. The pair style then evaluates cubic-Hermite tables sampled from the descriptors themselves (plus the analytic embedding and scalar ghost communication in the EAM case; the pure two-body case needs no ghost communication at all), which makes force calls faster; the gain grows with the cost of the descriptors (MD of 250 atoms: 1.6x for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy), 3.4x for D2_LJ + DM_REAM, 4.5x for a 21-knot D2_Knot5 pair term). Each table is certified when the potential is loaded: scanning down from the cutoff, the pair style bounds the error of every table segment from 31 check points and finds the smallest distance r_lo above which every segment meets a relative tolerance of 1e-9 for the value and the derivative (energy and force, relative to the function's own scale above that distance, and at least its scale over the outer half of the cutoff). Below r_lo it evaluates the analytic function, at the cost of the generic kernel. The fast path therefore agrees with the generic kernel to 1e-9 relative accuracy inside the certified range and exactly below it; the bound assumes the function is smooth on the scale of 1/32 of the table spacing apart from isolated knots and cutoff junctions. The certified range is one interval ending at the cutoff, so a single segment that misses the tolerance, for example at a knot of a C2 basis such as Blip or at the inner radius of a switching cutoff such as Cut_PolyS, sets r_lo there even where the table is accurate further in. The LAMMPS log states each certified range, the tolerance, the error bounds and where the analytic evaluation takes over, e.g. for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy): Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125. Distances are in the potential's units. A table that misses the tolerance already in its top segment, immediately below the cutoff, has no certified range: the log gives the reason and the generic kernel is used. EAMFAST false serves a bitwise comparison against the generic kernel, or drivers that capture adjoint state on EAM-form models (pure two-body adjoint capture works under the fast path via the generic kernel). Silently ignored, generic kernel used, for models that do not collapse: nonlinear or normalised models, per-species bias, multi-species, dimers, or a many-body descriptor other than one DM_Embed component or DM_REAM (DM_mBlipEnv, for example)."
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -243,14 +243,14 @@ A potential has no DBFILE line (tadah train, tadah hpo and tadah refit write
 none), whichever the model: its training record, a comment block above its
 key lines that is never read as keys, lists the datasets its weights were
 fitted to when there were any (a refit has none; a retrain records its own,
-and a potential of an earlier version has no record). A retrain adds its
-DBFILE to a copy of the potential (`tadah train -c pot.tadah` with a DBFILE
-line). tadah train refuses a configuration without DBFILE, saying
+and a potential of an earlier version has no record). A potential is
+retrained from a copy of it with a DBFILE line added (`tadah train -c
+pot.tadah`). tadah train refuses a configuration without DBFILE, saying
 so; tadah hpo trains without one only when FIXINDEX/FIXWEIGHT pin every
 weight. An M_BLR potential written by Tadah! 1.5.x or earlier has the
 DBFILE line it was trained on (tadah predict and pair_style tadah do not
-read it): a retrain removes that line before adding its own
-DBFILE.
+read it): that line is removed from the copy before the DBFILE line of the
+retrain is added.
 """
 examples     = ["/path/to/dbfile", "/path/to/dbfile1 /path/to/dbfile2"]
 cli_long_flag  = "--dbfile"
@@ -404,7 +404,7 @@ GEOM 6 0.1 10"""
 [ALLOWED_KEYS.CGRIDMB]
 value_type   = ["{DOUBLE}", "{STRING INT DOUBLE DOUBLE}"]
 exact_in_potential = true
-value_format = ["<center> ...",  "<algorithm> <N> <START> <STOP>"]
+value_format = ["<centre> ...",  "<algorithm> <N> <START> <STOP>"]
 value_N      = [-2147483647]
 description  = "Specifies the centre positions for many-body radial basis functions."
 long_description = """
@@ -702,8 +702,8 @@ description = "Pre-flight audit mode. 'off' (default) skips the audit. 'warn' em
 long_description = """
 Pre-flight audit mode of tadah train and tadah hpo: 'off' (default) skips
 the audit, 'warn' emits diagnostics but proceeds, 'error' makes any
-FAIL-level finding fatal. The audit's data scan is sampled by default (see
-AUDIT_SAMPLE). A setting of the run: no potential has an AUDIT line (its
+FAIL-level finding fatal. The audit's data scan is sampled by default
+(AUDIT_SAMPLE). A setting of the run: no potential has an AUDIT line (its
 training record lists the run's), and an AUDIT line of a potential of an
 earlier version is not read by a retrain or tadah hpo -c of it.
 """
@@ -853,19 +853,19 @@ examples = ["10", "102"]
 INHERIT = ["TYPES.BOOL"]
 description = "Standardises the descriptors."
 long_description = """
-true standardises the descriptors, typically relevant if energies are used
-for fitting. With a linear model (BF_Linear, Kern_Linear) NORM true requires
-BIAS true: the weights fitted to the standardised descriptors are converted to
-weights of the raw descriptors, and the constant this moves goes into the
-intercept columns. A linear potential with NORM true and BIAS false, written
-by an earlier version, is refused when it predicts (tadah predict,
-pair_style tadah); it needs retraining. Its conversion had no intercept column for
-that constant: M_KRR Kern_Linear (until 1.6.0) and M_BLR BF_Linear (up to
-1.2.0) took descriptor component 0 for an intercept, so the energies and
-forces are wrong; M_BLR BF_Linear from 1.3.0-beta.1 (written by tadah hpo
-and the API; tadah train refused the configuration) dropped the constant, so
-the energies are off by the same amount for every atom and the forces are
-right.
+NORM true standardises the descriptors, which is typically relevant when
+energies are used for fitting. With a linear model (BF_Linear, Kern_Linear)
+NORM true requires BIAS true: the weights fitted to the standardised
+descriptors are converted to weights of the raw descriptors, and the constant
+this moves goes into the intercept columns. A linear potential with NORM true
+and BIAS false, written by an earlier version, is refused when it predicts
+(tadah predict, pair_style tadah); it needs retraining. Its conversion had no
+intercept column for that constant: M_KRR Kern_Linear (until 1.6.0) and M_BLR
+BF_Linear (up to 1.2.0) took descriptor component 0 for an intercept, so the
+energies and forces are wrong; M_BLR BF_Linear from 1.3.0-beta.1 (written by
+tadah hpo and the API; tadah train refused the configuration) dropped the
+constant, so the energies are off by the same amount for every atom and the
+forces are right.
 """
 
 [ALLOWED_KEYS.LAMBDA]
@@ -939,8 +939,7 @@ warning on rank 0). RCUT2B and RCUTMB must be the
 file's cutoff (in a D2_mJoin or DM_mJoin, the EAM descriptor's own value):
 the file defines its functions up to it. Another value is refused, naming
 both, and so is, at the start of tadah hpo, an OPTIM RCUT2B/RCUTMB over
-that value. A potential records the cutoff exactly whatever NUMERIC is (see
-NUMERIC).
+that value. A potential records the cutoff exactly, whatever NUMERIC is.
 
 The file is read as LAMMPS pair_style eam/alloy reads it: lines 1-3 are
 comments; from line 4 on, '#' starts a comment and a line without words is
@@ -1355,7 +1354,7 @@ examples = ["Blip5"]
 
 [ALLOWED_KEYS.refit_basis]
 INHERIT = ["TYPES.STRING"]
-description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; always to be verified with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localised C2 sawtooth degrades elastic constants vs pure Knot5 — Knot5 is preferable unless E-V is the only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never gated through the LAMMPS faithfulness battery; a Gaussian never vanishes, so without DESCRIPTOR blocks the refit fits and writes the pair function and the density with the smooth cutoff Cut_Poly at the table's rcut (RCTYPE2B Cut_Poly, the density's CUTOFF TYPE Cut_Poly): a DM_Embed Gaussian density needs a real smooth cutoff; dense mode only — any other family is preferable). Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5, Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian, gaussian, BP, D2_BP. Another spelling names no family and is refused before the EAM file is read (it was fitted as Blip while a WARNING called it Gaussian). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID2B width entries are a pure gauge for the Knot* families (pinned 1.0) — OPTIM blocks on them have no effect; the knot density and embedding of the written DM_Embed component have no widths."
+description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes; the most validated family) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; measured: best Fe elastic constants of all families but material-dependent — one reference element (Al) degraded to ~4 GPa C11; every Blip5 fit needs checking with the faithfulness battery) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the RECOMMENDED opt-in: best measured worst-case elastic constants of all families (1.6 vs Blip's 2.3 GPa across the 5 reference EAMs) with every E-V observable in tolerance; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. Measured: best-in-class E-V faithfulness, but the greedy detector deploys cubics liberally (~40-60%) and the localised C2 sawtooth degrades elastic constants vs pure Knot5 — Knot5 is preferable unless E-V is the only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit: never checked with the LAMMPS faithfulness battery; a Gaussian never vanishes, so without DESCRIPTOR blocks the refit fits and writes the pair function and the density with the smooth cutoff Cut_Poly at the table's rcut (RCTYPE2B Cut_Poly, the density's CUTOFF TYPE Cut_Poly): a DM_Embed Gaussian density needs a real smooth cutoff; dense mode only — any other family is preferable). Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5, Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian, gaussian, BP, D2_BP. Another spelling names no family and is refused before the EAM file is read (it was fitted as Blip while a WARNING called it Gaussian). Compact-only families need the Ceres-enabled HPO build. NOTE for HPO: SGRID2B width entries are a pure gauge for the Knot* families (pinned 1.0) — OPTIM blocks on them have no effect; the knot density and embedding of the written DM_Embed component have no widths."
 examples     = ["Blip", "Blip5", "Knot3", "Knot5", "KnotMix"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1723,7 +1722,8 @@ search + basis growth (absorbs the old GLOBAL stage at rung 0). Takes
 by the refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the
 block.
 
-Written as a block, with an OPTIMIZER block inside (OPTIMIZER lists its keys)::
+Written as a block, with an OPTIMIZER block inside (the OPTIMIZER entry lists
+its keys)::
 
     EXPLORE
       MAX_ADD 38
@@ -1747,7 +1747,8 @@ high-precision local polish (Ceres LM/DOGLEG, or NLOPT/DLIB local). Takes a
 nested OPTIMIZER block. Captured verbatim; parsed by the refit engine.
 REFIT_MODE compact only: REFIT_MODE dense refuses the block.
 
-Written as a block, with an OPTIMIZER block inside (OPTIMIZER lists its keys)::
+Written as a block, with an OPTIMIZER block inside (the OPTIMIZER entry lists
+its keys)::
 
     REFINE
       OPTIMIZER
@@ -1773,7 +1774,8 @@ function against its curve, each with FUSE's own MAXEVAL, FTOL_REL and
 GTOL. Takes a nested OPTIMIZER block. Captured verbatim; parsed by the
 refit engine. REFIT_MODE compact only: REFIT_MODE dense refuses the block.
 
-Written as a block, with an OPTIMIZER block inside (OPTIMIZER lists its keys)::
+Written as a block, with an OPTIMIZER block inside (the OPTIMIZER entry lists
+its keys)::
 
     FUSE
       OPTIMIZER
@@ -2633,8 +2635,9 @@ rest). With one, a FIXINDEX that covers every weight leaves tadah train
 nothing to fit: the potential it writes has the FIXWEIGHT values as its
 WEIGHTS, and it says so in a WARNING. A potential of tadah refit or
 tadah refit --edit pins every weight so (the seed of a tadah hpo
-coefficient search): a retrain deletes its FIXINDEX and FIXWEIGHT
-lines. The pinned weights leave the fit; LAMBDA penalises every
+coefficient search): for a retrain to fit the weights, its FIXINDEX and
+FIXWEIGHT lines are deleted from a copy of it. The pinned weights leave the
+fit; LAMBDA penalises every
 other weight but the model's unpinned intercepts. M_KRR implementation 2
 (MODEL M_KRR <kernel> 2), whose solve fits every weight at once, pins none:
 FIXINDEX and FIXWEIGHT are refused with it (tadah train, tadah hpo at
@@ -2659,7 +2662,7 @@ provide all the command-line arguments for each task. The task file should be
 in the same format as the configuration file, but it can also include additional
 information such as the task name and any specific parameters for that task.
 A task in a task file begins with the keyword 'TASK' followed by the task name.
-The task name is simply a command to be executed or both command and subcommand.
+The task name is a command, or a command and subcommand, to be executed.
 The lines following the `TASK` keyword should contain parameters required for
 the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
 task file; --task takes no other command-line option (`tadah hpo --task
