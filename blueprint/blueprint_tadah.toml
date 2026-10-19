@@ -1057,28 +1057,35 @@ description  = "Check the setup of tadah hpo without running it: make its startu
 long_description = """
 tadah hpo --check reads the training configuration (-c), the target file
 (--hpotarget) and the validation configuration (--validation) and makes
-every check that tadah hpo makes before its first evaluation: the keys and
-blocks of the target file and its DUMP and BDUMP directories, the
-optimiser of each search and its settings, the search space, the LAMMPS
-scripts of the PC_LAMMPS and PC_FAILPROBE lines, and the training and
-validation datasets, which it loads. It then prints the search parameters
-with their boxes, the optimiser of each search with its stops, the loss
-terms, the numbers of training and validation structures, and the warnings
-and hints that tadah hpo writes to its journal, hpo_run.log, at startup.
-It exits with status 0. It evaluates no candidate, starts no worker
-process and writes no file: no journal, no result file and no DUMP or
-BDUMP directory.
+the checks that tadah hpo makes before its first evaluation: the working
+directory, where the run writes its journal, result files and
+best_pot.tadah, the keys and blocks of the target file and its DUMP and
+BDUMP directories, the optimiser of each search and its settings, the
+search space, the LAMMPS scripts of the PC_LAMMPS and PC_FAILPROBE lines,
+and the training and validation datasets, which it loads. It starts no
+PC_ISOLATION PROCESS worker and does not lock best_pot.tadah: a failure of
+either stops the run only. It then prints the search parameters with
+their boxes, the optimiser of each search with its stops, the loss terms,
+the numbers of training and validation structures, and the warnings and
+hints that tadah hpo writes to its journal, hpo_run.log, at startup. It
+exits with status 0. It evaluates no candidate and writes no file: no
+journal, no result file and no DUMP or BDUMP directory.
 
 An error ends it with the message and the exit status of tadah hpo; the
 warnings and hints that came before the error are on standard error. In a
-task file, CHECK true in the TASK hpo section makes the same check.
+task file, CHECK true in the TASK hpo section, or above the first TASK
+line, makes the same check.
 
-A setting of the run, as HPOTARGET is: a CHECK true line in a training
-configuration that is not a potential (it has no WEIGHTS line) also makes
-tadah hpo -c a check, and tadah train reads no CHECK. No potential has a
-CHECK line (its training record lists the CHECK its run was given), and
-the CHECK line of a potential is not read: tadah hpo -c of it runs, and a
-WARNING names the line.
+A setting of the run, as HPOTARGET is. A CHECK true line in a training
+configuration that is not a potential also makes tadah hpo -c a check, and
+tadah train reads no CHECK. A file or TASK section whose own key lines
+include WEIGHTS is a potential, and its CHECK line is not read: tadah hpo
+-c of such a file, or a TASK hpo section with WEIGHTS lines, runs, and a
+WARNING names the line; CHECK then goes on the command line or above the
+first TASK line. No potential has a CHECK key line: the training record of
+a tadah train or tadah refit potential lists the CHECK line of its
+configuration, which neither command reads, and that of a tadah hpo
+potential lists none.
 """
 default_value  = ["false"]
 cli_long_flag  = "--check"
