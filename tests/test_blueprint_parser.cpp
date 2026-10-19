@@ -108,7 +108,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
     REQUIRE(oalgoKey.value_N == std::vector<int>{-2});
 
     // Verify that the description contains key text.
-    REQUIRE(oalgoKey.description.find("This key controls the optimization algorithm") != std::string::npos);
+    REQUIRE(oalgoKey.description.find("This key controls the optimisation algorithm") != std::string::npos);
 
     // Verify that example usage strings are present.
     REQUIRE(oalgoKey.examples.size() >= 5);
