@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -291,6 +292,40 @@ TEST_CASE("The error scales, ENORM and ENERGY are keys of a configuration",
   CHECK(d.get<bool>("ENERGY"));
 }
 
+/* Pins: a parse with a KeyLineRule gives the caller a retired key's line
+ * that the rule selects, as it gives any other line: listed in skipped
+ * (its source, line, key and values), not recorded on the result
+ * (Context::retired_keys()) and not in the parse's notice; a retired line
+ * the rule does not select is recorded, with the notice. (A task that
+ * retires an option with a reason of its own refuses its line so: ERROR
+ * in TASK predict, whose key is retired too.)
+ * Before the fix: the rule was not asked for a retired key's line, which
+ * was recorded and named in the notice. */
+TEST_CASE("A retired key's line that the caller's rule selects is the "
+          "caller's",
+          "[config][retired]") {
+  IgnoredKeyNoticeCapture cap;
+  const KeyLineRule rule = [](const std::set<std::string> &,
+                              const std::string &key) {
+    return key == "UNCERTAINTY";
+  };
+  std::vector<SkippedKeyLine> skipped;
+  const Context c = CoreUserConfigParser().parse(
+      std::vector<std::string>{"ATOM Ta", "UNCERTAINTY true", "WCOV 1 0.5"},
+      1, "p.task", rule, skipped);
+  REQUIRE(skipped.size() == 1);
+  CHECK(skipped[0].key == "UNCERTAINTY");
+  CHECK(skipped[0].source == "p.task");
+  CHECK(skipped[0].line == 2);
+  CHECK(skipped[0].values == std::vector<std::string>{"true"});
+  const std::vector<RetiredKeyLine> r = c.retired_keys();
+  REQUIRE(r.size() == 1);
+  CHECK(r[0].key == "WCOV");
+  REQUIRE(cap.notices().size() == 1);
+  CHECK_THAT(cap.notices()[0],
+             StartsWith("Retired key WCOV (line 3 of p.task) is ignored"));
+}
+
 TEST_CASE("retired_keys_refusal names each retired line and its conversion",
           "[retired]") {
   IgnoredKeyNoticeCapture quiet;
@@ -310,6 +345,13 @@ TEST_CASE("retired_keys_refusal names each retired line and its conversion",
     INFO(key);
     CHECK_THAT(msg, Contains(keys.at(key).retired.conversion));
   }
+  /* A line a deletion converts is marked, and the refusal says what to do
+   * with both kinds: "With the converted keys in place of these lines, or
+   * the marked lines deleted (...)". (Before the fix: "With the converted
+   * keys in place of these lines (...)", whatever the marks.) */
+  CHECK_THAT(msg, Contains(" With the converted keys in place of these "
+                           "lines, or the marked lines deleted (in the file "
+                           "that has them, a potential's included"));
   /* Each key's conversion once, however many lines set it. */
   const Context twice = CoreUserConfigParser().parse(
       std::vector<std::string>{"FWEIGHT 1", "FWEIGHT 2"});
@@ -317,6 +359,11 @@ TEST_CASE("retired_keys_refusal names each retired line and its conversion",
   const std::string conv = keys.at("FWEIGHT").retired.conversion;
   CHECK(m2.find(conv) != std::string::npos);
   CHECK(m2.find(conv, m2.find(conv) + 1) == std::string::npos);
+  /* No line marked: the converted keys in place of every line. */
+  CHECK_THAT(m2, Contains(" With the converted keys in place of these lines "
+                          "(in the file that has them, a potential's "
+                          "included), the configuration trains"));
+  CHECK(m2.find("marked") == std::string::npos);
 
   REQUIRE_THROWS_WITH(require_no_retired_keys(c, "A fit"),
                       StartsWith("A fit: ") && Contains("EWEIGHT 1.0"));

@@ -314,6 +314,45 @@ TEST_CASE("BlueprintParser::buildKey reads only_with of `retired`",
   }
 }
 
+/* Pins: the optional field by_deletion of `retired` says that deleting a
+ * line of the key converts it (nothing replaces the key: UNCERTAINTY,
+ * WCOV, WNOISE, ERROR), which a fit's refusal says of each such line.
+ * buildKey reads it, beside only_with too; a retired key without it is
+ * not converted by deletion; a value that is not true or false is
+ * refused, naming the field and the key.
+ * Before the fix: there was no by_deletion, and a table with it was
+ * refused as a fourth field that is not only_with. */
+TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
+          "[BlueprintParser][retired]") {
+  const BlueprintKey del = BlueprintParser::buildKey(
+      "KEY", key_table("", kNoExamples, kRetired + "by_deletion = true\n"));
+  CHECK(del.isRetired());
+  CHECK(del.retired.by_deletion);
+  CHECK(del.retired.only_with.empty());
+  CHECK_FALSE(BlueprintParser::buildKey(
+                  "KEY", key_table("", kNoExamples,
+                                   kRetired + "by_deletion = false\n"))
+                  .retired.by_deletion);
+  CHECK_FALSE(BlueprintParser::buildKey("KEY",
+                                        key_table("", kNoExamples, kRetired))
+                  .retired.by_deletion);
+  const BlueprintKey both = BlueprintParser::buildKey(
+      "KEY", key_table("", kNoExamples,
+                       kRetired + "only_with = \"other\"\n"
+                                  "by_deletion = true\n"));
+  CHECK(both.retired.by_deletion);
+  CHECK(both.retired.only_with == "other");
+  for (const std::string bad :
+       {std::string("by_deletion = \"true\"\n"),
+        std::string("by_deletion = 1\n")}) {
+    INFO(bad);
+    REQUIRE_THROWS_WITH(
+        BlueprintParser::buildKey("KEY",
+                                  key_table("", kNoExamples, kRetired + bad)),
+        Contains("'retired'") && Contains("by_deletion") && Contains("KEY"));
+  }
+}
+
 namespace {
 
 /* A retired option "TASK.x.<name>" of a task, with only_with @p with. */
@@ -419,21 +458,25 @@ TEST_CASE("Blueprint: a retired key's long description does not repeat its "
 }
 
 /* Pins: the SIGMA notice of every load of a potential of Tadah! 1.0.0 to
- * 1.5.0 says that uncertainty output is not part of Tadah! 1.6.0, its error
- * bars not calibrated (too narrow for many structures), and names neither
- * WCOV nor a retrain: no fit writes a weight covariance.
+ * 1.5.0 says that uncertainty output is not part of Tadah! 1.6.0, the
+ * errors of those releases not being standard deviations and no calibrated
+ * estimate replacing them, and names neither WCOV nor a retrain: no fit
+ * writes a weight covariance.
  * Before the fix: it said that a retrain with OALGO 3 writes WCOV and
  * WNOISE, which tadah predict --error needs, once the potential's retired
- * keys are converted. */
+ * keys are converted; then that the error bars were too narrow for many
+ * structures (those of a development build, not of a release). */
 TEST_CASE("Blueprint: the SIGMA notice says that uncertainty output is not "
           "part of Tadah! 1.6.0",
           "[BlueprintParser][retired][uncertainty]") {
   const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("SIGMA");
   REQUIRE(k.isDeprecated());
   CHECK_THAT(k.deprecated,
-             Contains("Uncertainty output is not part of Tadah! 1.6.0: its "
-                      "error bars were not calibrated (they were too narrow "
-                      "for many structures)."));
+             Contains("Uncertainty output is not part of Tadah! 1.6.0: the "
+                      "errors of Tadah! 1.0.0 to 1.5.0 were not standard "
+                      "deviations, and no calibrated estimate replaces "
+                      "them."));
+  CHECK(k.deprecated.find("too narrow") == std::string::npos);
   CHECK(k.deprecated.find("WCOV") == std::string::npos);
   CHECK(k.deprecated.find("retrain") == std::string::npos);
 }
