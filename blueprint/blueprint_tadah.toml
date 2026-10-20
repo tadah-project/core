@@ -937,8 +937,8 @@ Kern_Quadratic, Kern_LQ, Kern_Polynomial and Kern_Sigmoid; Kern_RBF has
 none. OALGO 3 penalises every column alike and refuses λ != 0 for a fit
 with an intercept column that FIXINDEX does not pin, LAMBDA -1 included:
 the evidence approximation needs BIAS false, or every intercept weight
-pinned with FIXINDEX and FIXWEIGHT. tadah hpo refuses such a setup when
-the run starts.
+pinned with FIXINDEX and FIXWEIGHT. tadah hpo refuses such a setup, and
+OPTIM LAMBDA with it, when the run starts.
 """
 examples = ["-1", "1e-4", "0"]
 
