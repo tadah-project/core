@@ -778,7 +778,7 @@ Available options:
 
 **2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorisation. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
 
-**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but uses SVD. This method allows the use of the evidence approximation algorithm and computes the covariance of the weights (:ref:`WCOV`, :ref:`WNOISE`), providing additional statistical information about the solution. Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but uses SVD. This method allows the use of the evidence approximation algorithm (:ref:`LAMBDA` -1). Like option 1, the parameter :code:`M` controls the reciprocal of the conditioning number (:math:`\text{rcond}`), defaulting to :math:`1 \times 10^{-8}`. Setting :code:`M = -1` uses machine precision, which might be unstable for ill-conditioned problems.
 
 **4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It does not require additional parameters.
 
@@ -787,7 +787,7 @@ Available options:
 - **Option 2** is the fastest but assumes a full-rank matrix and is less robust for ill-conditioned problems.
 - **Option 4** is also efficient but may suffer from numerical instability in ill-conditioned or rank-deficient problems due to squaring of the condition number.
 - **Option 1** offers a balance between speed and robustness, handling rank-deficient and ill-conditioned problems better than options 2 and 4.
-- **Option 3** is the slowest due to the additional computations but provides valuable extra information like the covariance matrix.
+- **Option 3** computes the full SVD of the design matrix, which the evidence approximation (:ref:`LAMBDA` -1) needs.
 
 **Usage**:
 
@@ -811,7 +811,7 @@ Available options:
 
 - **Conditioning Parameter** :code:`M`: Controls the reciprocal of the condition number (:math:`\text{rcond}`). A smaller :code:`M` (closer to machine precision) includes more singular values in the solution, which may be necessary for certain problems but can introduce instability if the matrix is ill-conditioned.
 - **Machine Precision** (:code:`M = -1`): Using machine precision can lead to numerical instability in ill-conditioned problems. It is recommended to use a positive :code:`M` value to exclude negligible singular values that could adversely affect the solution.
-- **Covariance Matrix** :math:`\Sigma`: Option **3** computes the posterior covariance of the weights, :math:`s^2 (\Phi^\top W \Phi + \lambda I)^{-1}` over the singular directions the solve keeps, with the noise variance :math:`s^2` estimated from the residuals of the observations, and writes it into the potential as :ref:`WCOV`, with the noise variance of each row type as :ref:`WNOISE`. ``tadah train --uncertainty`` lists the weights' standard deviations, and ``tadah predict --error`` the predictive standard deviation of each value. A direction the solve drops (singular value at most :code:`M` times the largest) has no covariance either; a WARNING gives their number. With fewer observations than effective weights the noise variance is undefined, and no covariance is written (a WARNING).
+- **Dropped directions**: Option **3** leaves out of the weights every singular direction of the design matrix at or below the rank threshold (singular value at most :code:`M` times the largest); a WARNING gives their number.
 - **Cholesky Decomposition**: Option **4** solves the normal equations using Cholesky decomposition. It is efficient but may be numerically unstable for ill-conditioned or rank-deficient problems due to squaring the condition number. It is best used when the matrix is well-conditioned and of full rank.
 - **A design matrix without full column rank**: options **2** and **4** refuse, before any LAPACK routine runs, a design matrix whose rows cannot give it full column rank: with :ref:`LAMBDA` 0, fewer non-zero data rows (energies, forces and stresses; a data row that is zero in every column adds nothing to the rank: a row of priority 0, such as every energy row under :ref:`ENERGY` false, a row whose values are all in :ref:`FIXINDEX` columns, or a row the descriptors make zero, such as the y and z force rows of a dimer along x or, with :ref:`BIAS` false, the energy of an atom without neighbours) than weights; with :ref:`LAMBDA` > 0, which penalises every weight but the intercepts of :ref:`BIAS`, fewer non-zero data rows than intercepts. Beyond that, option **2** stops when its QR factorisation meets an exactly zero diagonal element (a column that is zero for every structure, or exactly a combination of the columns before it in floating point), and option **4** when the Cholesky factorisation of :math:`A^\top A` meets a pivot that is not positive. Training then stops with a message that names the data rows (and, when some are zero, how many are not) and weights (and the column where LAPACK stopped), and the remedies that apply to the fit: with :ref:`LAMBDA` 0, option **1** or **3**, which give the minimum-norm weights, :ref:`LAMBDA` > 0, or more data; with :ref:`LAMBDA` > 0, option **1** (and, for option **4**, option **2**, which does not form :math:`A^\top A`), option **3** only without intercepts of :ref:`BIAS` (it refuses them with :ref:`LAMBDA` != 0), a larger :ref:`LAMBDA`, or more data. A column that depends on others, or nearly does, without being exactly a combination of them in floating point, is still fitted by options **2** and **4**, with very large weights: option **1** or **3**, or :ref:`LAMBDA` > 0, is the recommended choice when the data may not determine every weight. A design matrix or target that holds NaN or an infinity is refused under every option, naming its row and column, before any LAPACK routine runs.
 
@@ -832,7 +832,7 @@ Available options:
 
   - **Option 1 (GELSD)** suits a fit that needs robustness against rank deficiency and moderate performance.
   - **Option 2 (GELS)** gives the fastest performance on well-conditioned, full-rank matrices where robustness is less of a concern.
-  - **Option 3 (Custom SVD Implementation)** suits a fit that needs additional outputs like the covariance matrix and can trade off performance for them.
+  - **Option 3 (Custom SVD Implementation)** is the option of the evidence approximation (:ref:`LAMBDA` -1).
   - **Option 4 (Cholesky Decomposition)** suits a well-conditioned, full-rank matrix that needs an efficient solution; it can be numerically unstable in ill-conditioned or rank-deficient problems.
 
 '''
@@ -2668,7 +2668,7 @@ of a kernel's basis vectors, NMEAN and NSTDEV of a non-linear model with NORM
 true) is refused when it predicts (tadah predict, pair_style tadah). WEIGHTS
 in a training configuration are replaced by the fit and not read: tadah train
 and tadah hpo build the model to be fitted without them (and without BASIS,
-NMEAN, NSTDEV, WCOV, WNOISE and SIGMA), so a potential retrains from its own file
+NMEAN, NSTDEV and SIGMA), so a potential retrains from its own file
 (`tadah train -c pot.tadah` with the DBFILE of the retrain added: a
 potential has no DBFILE line), also with another SBASIS.
 """
@@ -2815,9 +2815,8 @@ refuses FIXWEIGHT and FIXINDEX (FIXINDEX).
 In `tadah hpo`, `OPTIM FIXWEIGHT (<weight-index>) <low> <high>` lets the
 nonlinear optimiser search a pinned weight: the (indices) name MODEL
 WEIGHTS (values of FIXINDEX), not positions in this list. When FIXINDEX
-covers every model weight, the LS solve is skipped entirely (but under
-OALGO 3, whose fit gives the pinned weights their zero covariance and the
-noise of their residuals, WCOV and WNOISE); in that case a training DBFILE
+covers every model weight, the LS solve is skipped entirely; in that case a
+training DBFILE
 becomes optional (the loss must then come from
 validation metrics, PC_OBSERVABLE, or PC_LAMMPS, and the element set must
 be declared via ATOM).
