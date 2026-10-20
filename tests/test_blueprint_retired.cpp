@@ -85,17 +85,26 @@ TEST_CASE("Blueprint: EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and "
     CHECK(k.default_value.empty());
     CHECK(k.examples.empty());
   }
-  /* The conversions of the fit's objective. */
+  /* The conversions of the fit's objective. A potential of Tadah! 1.0.0
+   * to 1.5.0 has FWEIGHT and SWEIGHT lines with FORCE and STRESS false
+   * too: deleting such a line converts it (a fit refuses an FSIGMA or
+   * SSIGMA other than the default for a quantity that is off). 1.5.0
+   * multiplied WDBFILE by n_d^-a. */
   CHECK_THAT(keys.at("FWEIGHT").retired.conversion,
-             Contains("FSIGMA = 1/sqrt(FWEIGHT)") && Contains("FORCE false"));
+             Contains("FSIGMA = 1/sqrt(FWEIGHT)") && Contains("FORCE false") &&
+                 Contains("With FORCE false, deleting the line converts it"));
   CHECK_THAT(keys.at("SWEIGHT").retired.conversion,
              Contains("SSIGMA = 160.2/sqrt(SWEIGHT)") &&
-                 Contains("diagonal") && Contains("STRESS false"));
+                 Contains("diagonal") && Contains("STRESS false") &&
+                 Contains("With STRESS false, deleting the line converts "
+                          "it"));
   CHECK_THAT(keys.at("EWEIGHT").retired.conversion,
              Contains("ESIGMA = 1000/(N sqrt(EWEIGHT))") &&
                  Contains("N^2") && Contains("ENERGY false"));
   CHECK_THAT(keys.at("WDBFILE_AUTO").retired.conversion,
-             Contains("WDBFILE") && Contains("n_d^-a"));
+             Contains("Each WDBFILE value (1 for every dataset without "
+                      "WDBFILE) multiplied by n_d^-a") &&
+                 Contains("WDBFILE_AUTO 0, deleting the line converts it"));
   CHECK_THAT(keys.at("EWEIGHT_TEMP").retired.replacement, Contains("WDBFILE"));
   /* The command-line options stay, to give the conversion. */
   CHECK(keys.at("WDBFILE_AUTO").cli_long_flag == "--wdbfile-auto");
@@ -205,16 +214,31 @@ TEST_CASE("BlueprintParser::findClosestKey never suggests a retired key",
   }
 }
 
+/* Pins: tadah data balance shifts energies only. --rescale replaced the
+ * priorities of a data file by inverse magnitudes (discontinuous at its
+ * threshold); it and the options that only served it, --threshold,
+ * --force and --stress, are retired options of data balance (no default,
+ * no example; a task file or command line that gives one is refused with
+ * the reason). The shared keys stay where other commands use them.
+ * Before the fix: the four were no options of data balance, so a TASK
+ * data balance section accepted them as configuration keys and ignored
+ * them, and the command line refused them as unknown options. */
 TEST_CASE("Blueprint: tadah data balance shifts energies only; analysis "
           "bfunc --rescale and data dedup --threshold stay",
           "[BlueprintParser][retired]") {
-  /* --rescale replaced the weights of a data file (inverse magnitudes,
-   * discontinuous at its threshold); with it go the options that only
-   * served it. The shared keys stay where other commands use them. */
   const auto balance = task_keys("DATA.balance");
-  for (const std::string gone : {"RESCALE", "THRESHOLD", "FORCE", "STRESS"}) {
+  const auto &task = BlueprintParser::getTasksMapRef().at("DATA.balance");
+  for (const std::string gone : {"rescale", "threshold", "force", "stress"}) {
     INFO(gone);
-    CHECK_FALSE(has(balance, gone));
+    const BlueprintKey *k = nullptr;
+    for (const BlueprintKey &key : task.blueprintKeys)
+      if (key.keyName == "DATA.balance." + gone) k = &key;
+    REQUIRE(k != nullptr);
+    CHECK(k->isRetired());
+    CHECK(k->default_value.empty());
+    CHECK(k->examples.empty());
+    CHECK_THAT(k->retired.conversion,
+               Contains("tadah data balance shifts energies only"));
   }
   for (const std::string kept : {"ESHIFT", "OUTFILE", "MERGE", "INDEX",
                                  "APPEND", "NUMERIC", "DBFILE"}) {
@@ -229,4 +253,79 @@ TEST_CASE("Blueprint: tadah data balance shifts energies only; analysis "
     CHECK(ex.find("--rescale") == std::string::npos);
   }
   CHECK(t.longDescription.find("rescal") == std::string::npos);
+}
+
+/* Pins: the long description of a retired key does not repeat its
+ * one-sentence description, which a page and tadah explain show before
+ * it.
+ * Before the fix: each began with that sentence, so it showed twice. */
+TEST_CASE("Blueprint: a retired key's long description does not repeat its "
+          "description",
+          "[BlueprintParser][retired]") {
+  auto trimmed = [](const std::string &s) {
+    const auto b = s.find_first_not_of(" \t\r\n");
+    return b == std::string::npos ? std::string() : s.substr(b);
+  };
+  for (const auto &[name, k] : BlueprintParser::getKeysMapRef()) {
+    if (!k.isRetired()) continue;
+    INFO(name);
+    const std::string first = k.description.substr(0, 40);
+    CHECK(trimmed(k.longDescription).rfind(first, 0) != 0);
+  }
+}
+
+/* Pins: the SIGMA notice of every load of a potential of Tadah! 1.0.0 to
+ * 1.5.0 says that a retrain writes WCOV and WNOISE once the potential's
+ * retired keys are converted: a fit refuses the retired keys before.
+ * Before the fix: it said a retrain with OALGO 3 writes them. */
+TEST_CASE("Blueprint: the SIGMA notice names the conversion of the retired "
+          "keys before a retrain",
+          "[BlueprintParser][retired]") {
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("SIGMA");
+  REQUIRE(k.isDeprecated());
+  CHECK_THAT(k.deprecated,
+             Contains("which a retrain with OALGO 3 writes after the "
+                      "potential's retired keys are converted"));
+}
+
+/* Pins: an example of tadah --help that explains an option names an
+ * option of its command that is not retired (tadah explain shows the
+ * conversion of a retired one, not how to use it), and one that explains a
+ * key names a key that is not retired.
+ * Before the fix: 'tadah explain data.balance.rescale', an option that
+ * data balance does not have (tadah explain printed the text of RESCALE of
+ * analysis bfunc). */
+TEST_CASE("Blueprint: the examples of tadah --help name no retired key",
+          "[BlueprintParser][retired]") {
+  const auto &tasks = BlueprintParser::getTasksMapRef();
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  for (const std::string &ex : BlueprintParser::getBlueprintTadahRef().examples) {
+    INFO(ex);
+    const std::string prefix = "tadah explain ";
+    if (ex.rfind(prefix, 0) != 0) continue;
+    std::vector<std::string> tokens;
+    std::istringstream path(ex.substr(prefix.size()));
+    for (std::string t; std::getline(path, t, '.');) tokens.push_back(t);
+    REQUIRE_FALSE(tokens.empty());
+    std::string upper = tokens.back();
+    std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+    if (tokens.size() == 1) {
+      const auto it = keys.find(upper);
+      if (it != keys.end()) CHECK_FALSE(it->second.isRetired());
+      continue;
+    }
+    std::string task = tokens[0];
+    std::transform(task.begin(), task.end(), task.begin(), ::toupper);
+    for (std::size_t i = 1; i + 1 < tokens.size(); ++i) task += "." + tokens[i];
+    const auto t = tasks.find(task);
+    REQUIRE(t != tasks.end());
+    const BlueprintKey *option = nullptr;
+    for (const BlueprintKey &k : t->second.blueprintKeys)
+      if (k.keyName == task + "." + tokens.back()) option = &k;
+    for (const auto &g : t->second.groups)
+      for (const BlueprintKey &k : g.blueprintKeys)
+        if (k.keyName == task + "." + tokens.back()) option = &k;
+    REQUIRE(option != nullptr);
+    CHECK_FALSE(option->isRetired());
+  }
 }

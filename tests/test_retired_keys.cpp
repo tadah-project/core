@@ -1,6 +1,8 @@
 // Retired configuration keys (blueprint field `retired`) in files and in
-// the Context: EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP,
-// which every potential of Tadah! 1.0.0 to 1.5.0 carries.
+// the Context: EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP. A
+// potential that tadah train or tadah hpo of Tadah! 1.0.0 to 1.5.0 wrote
+// has EWEIGHT, FWEIGHT and SWEIGHT lines, and from 1.3.0 a WDBFILE_AUTO
+// line.
 //
 // A file that has them still parses (a potential keeps loading): the
 // parser checks the value, records the line on the Context it returns
@@ -300,7 +302,8 @@ TEST_CASE("retired_keys_refusal names each retired line and its conversion",
   CHECK_THAT(msg, Contains("EWEIGHT 1.0 (line 2 of " + pot + ")") &&
                       Contains("FWEIGHT 100 (line 3 of " + pot + ")") &&
                       Contains("SWEIGHT 0 (line 5 of " + pot + ")") &&
-                      Contains("WDBFILE_AUTO 0.0 (line 6 of " + pot + ")"));
+                      Contains("WDBFILE_AUTO 0.0 (line 6 of " + pot +
+                               "; 0: converted by deleting the line)"));
   const auto &keys = BlueprintParser::getKeysMapRef();
   for (const std::string key :
        {"EWEIGHT", "FWEIGHT", "SWEIGHT", "WDBFILE_AUTO"}) {
@@ -320,4 +323,48 @@ TEST_CASE("retired_keys_refusal names each retired line and its conversion",
   Context fresh;
   fresh.add("ATOM", "Ta");
   REQUIRE_NOTHROW(require_no_retired_keys(fresh, "A fit"));
+}
+
+/* Pins: the refusal names, for each line of a quantity the configuration
+ * leaves out, that deleting the line converts it: FWEIGHT with FORCE
+ * false, SWEIGHT with STRESS false (a potential of Tadah! 1.0.0 to 1.5.0
+ * has both lines whatever the switches, and a fit refuses an FSIGMA or
+ * SSIGMA other than the default for a quantity that is off), and
+ * WDBFILE_AUTO 0; a line of a quantity that is on is not so marked.
+ * Before the fix: the refusal gave FSIGMA = 1/sqrt(FWEIGHT) and SSIGMA =
+ * 160.2/sqrt(SWEIGHT) for every line, so the converted configuration of
+ * such a potential was refused again (SSIGMA 160.2 with STRESS false). */
+TEST_CASE("retired_keys_refusal says which lines convert by deletion",
+          "[retired]") {
+  IgnoredKeyNoticeCapture quiet;
+  const Context off = CoreUserConfigParser().parse(std::vector<std::string>{
+      "FORCE false", "STRESS false", "EWEIGHT 1.0", "FWEIGHT 1.0",
+      "SWEIGHT 1.0", "WDBFILE_AUTO 0.0"});
+  std::string msg;
+  try {
+    require_no_retired_keys(off, "A fit");
+  } catch (const std::exception &e) {
+    msg = e.what();
+  }
+  CHECK_THAT(msg,
+             Contains("EWEIGHT 1.0 (line 3)") &&
+                 Contains("FWEIGHT 1.0 (line 4; FORCE false here: converted "
+                          "by deleting the line)") &&
+                 Contains("SWEIGHT 1.0 (line 5; STRESS false here: converted "
+                          "by deleting the line)") &&
+                 Contains("WDBFILE_AUTO 0.0 (line 6; 0: converted by "
+                          "deleting the line)"));
+  const Context on = CoreUserConfigParser().parse(std::vector<std::string>{
+      "FORCE true", "STRESS true", "FWEIGHT 100", "SWEIGHT 4",
+      "WDBFILE_AUTO 0.5"});
+  msg.clear();
+  try {
+    require_no_retired_keys(on, "A fit");
+  } catch (const std::exception &e) {
+    msg = e.what();
+  }
+  CHECK_THAT(msg, Contains("FWEIGHT 100 (line 3)") &&
+                      Contains("SWEIGHT 4 (line 4)") &&
+                      Contains("WDBFILE_AUTO 0.5 (line 5)"));
+  CHECK(msg.find("deleting the line)") == std::string::npos);
 }
