@@ -43,6 +43,29 @@ std::string one_line(const std::string &text) {
   return out;
 }
 
+/* "; FORCE false here: converted by deleting the line" for a line whose
+ * conversion is its deletion: FWEIGHT and SWEIGHT of a quantity that
+ * @p context leaves out (a fit refuses an FSIGMA or SSIGMA other than its
+ * default then), and WDBFILE_AUTO 0; "" for another line or without a
+ * context (the switches are then unknown). */
+std::string deleted_by(const RetiredKeyLine &l, const Context *context) {
+  const std::string tail = "converted by deleting the line";
+  if (l.key == "WDBFILE_AUTO" && l.values.size() == 1) {
+    try {
+      if (std::stod(l.values.front()) == 0.0) return "; 0: " + tail;
+    } catch (const std::exception &) {
+      // not a number: the parse refused it before
+    }
+    return "";
+  }
+  if (!context) return "";
+  if (l.key == "FWEIGHT" && !context->get<bool>("FORCE"))
+    return "; FORCE false here: " + tail;
+  if (l.key == "SWEIGHT" && !context->get<bool>("STRESS"))
+    return "; STRESS false here: " + tail;
+  return "";
+}
+
 const BlueprintKey &retired_entry(const std::string &key) {
   const auto &keys = BlueprintParser::getKeysMapRef();
   const auto it = keys.find(key);
@@ -84,13 +107,14 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines) {
 }
 
 std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
-                                 const std::string &who) {
+                                 const std::string &who,
+                                 const Context *context) {
   std::vector<std::string> named;
   std::vector<std::string> keys;
   for (const auto &l : lines) {
     std::string text = l.key;
     for (const auto &v : l.values) text += " " + v;
-    named.push_back(text + " (" + where(l) + ")");
+    named.push_back(text + " (" + where(l) + deleted_by(l, context) + ")");
     if (std::find(keys.begin(), keys.end(), l.key) == keys.end())
       keys.push_back(l.key);
   }
@@ -115,7 +139,7 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
 void require_no_retired_keys(const Context &context, const std::string &who) {
   const std::vector<RetiredKeyLine> lines = context.retired_keys();
   if (!lines.empty())
-    throw std::runtime_error(retired_keys_refusal(lines, who));
+    throw std::runtime_error(retired_keys_refusal(lines, who, &context));
 }
 
 }  // namespace core

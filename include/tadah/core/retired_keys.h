@@ -42,12 +42,19 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines);
  *  Tadah! 1.6.0, and a fit refuses them: EWEIGHT 1.0 (line 2 of
  *  old.tadah), FWEIGHT 100 (line 3 of old.tadah). EWEIGHT: <conversion>
  *  FWEIGHT: <conversion> ...", each key's conversion once, in the order
- *  of its first line, then what to do with the lines. */
+ *  of its first line, then what to do with the lines. A line that a
+ *  deletion converts says so: WDBFILE_AUTO 0 ("(line 6 of old.tadah; 0:
+ *  converted by deleting the line)") and, given the configuration
+ *  @p context, FWEIGHT with FORCE false and SWEIGHT with STRESS false
+ *  ("(line 3 of old.tadah; FORCE false here: converted by deleting the
+ *  line)"). */
 std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
-                                 const std::string &who);
+                                 const std::string &who,
+                                 const Context *context = nullptr);
 
 /** Refuses a fit of @p context when it records a retired line
- *  (Context::retired_keys()), with retired_keys_refusal(lines, @p who).
+ *  (Context::retired_keys()), with retired_keys_refusal(lines, @p who,
+ *  &@p context).
  *  Every fit calls it before it reads anything (M_BLR and M_KRR train,
  *  tadah train, tadah hpo when a run starts).
  *  @throws std::runtime_error */

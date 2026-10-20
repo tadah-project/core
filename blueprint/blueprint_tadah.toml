@@ -2267,9 +2267,8 @@ cli_required   = false
 INHERIT = ["TYPES.DOUBLE"]
 description  = "Retired: the dataset balance of a fit of Tadah! 1.5.0, priorities n_d^-a (WDBFILE replaces it)."
 long_description = """
-Retired: the dataset balance of a fit of Tadah! 1.5.0, priorities n_d^-a
-(WDBFILE replaces it). A potential that has it loads, with one notice; a fit
-refuses it with its conversion, which the page
+A potential that has it loads, with one notice; a fit refuses it with its
+conversion, which the page
 :ref:`What a Fit Minimises <fit_objective_conversion>` of the
 documentation gives with those of the other retired keys.
 """
@@ -2282,17 +2281,17 @@ reason = """WDBFILE_AUTO a multiplied the priorities of each dataset by \
 n_d^-a, n_d its number of structures, so a weight of the fit depended on how \
 many structures each dataset had."""
 replacement = "WDBFILE, a priority for each dataset"
-conversion = """WDBFILE with the values n_d^-a, one per dataset, n_d the \
-number of structures of dataset d after EFILTER and FFILTER, gives the same \
-fit; WDBFILE_AUTO 0 is no WDBFILE."""
+conversion = """Each WDBFILE value (1 for every dataset without WDBFILE) \
+multiplied by n_d^-a, n_d the number of structures of dataset d after \
+EFILTER and FFILTER, gives the same fit. For WDBFILE_AUTO 0, deleting the \
+line converts it (WDBFILE as it is)."""
 
 [ALLOWED_KEYS.eweight_temp]
 INHERIT = ["TYPES.DOUBLE"]
 description  = "Retired: the Boltzmann reweighting of energies of a fit of Tadah! 1.5.0 (no key replaces it)."
 long_description = """
-Retired: the Boltzmann reweighting of energies of a fit of Tadah! 1.5.0 (no
-key replaces it). A potential that has it loads, with one notice; a fit
-refuses it with its conversion, which the page
+A potential that has it loads, with one notice; a fit refuses it with its
+conversion, which the page
 :ref:`What a Fit Minimises <fit_objective_conversion>` of the
 documentation gives with those of the other retired keys.
 """
@@ -2615,9 +2614,8 @@ examples = ["true", "false"]
 INHERIT = ["TYPES.DOUBLE"]
 description = "Retired: the energy weight of a fit of Tadah! 1.0.0 to 1.5.0 (ESIGMA and ENERGY replace it)."
 long_description = """
-Retired: the energy weight of a fit of Tadah! 1.0.0 to 1.5.0 (ESIGMA and
-ENERGY replace it). A potential that has it loads, with one notice; a fit
-refuses it with its conversion, which the page
+A potential that has it loads, with one notice; a fit refuses it with its
+conversion, which the page
 :ref:`What a Fit Minimises <fit_objective_conversion>` of the
 documentation gives with those of the other retired keys.
 """
@@ -2637,9 +2635,8 @@ energies in the fit) is ENERGY false."""
 INHERIT = ["TYPES.DOUBLE"]
 description = "Retired: the force weight of a fit of Tadah! 1.0.0 to 1.5.0 (FSIGMA replaces it)."
 long_description = """
-Retired: the force weight of a fit of Tadah! 1.0.0 to 1.5.0 (FSIGMA replaces
-it). A potential that has it loads, with one notice; a fit refuses it with
-its conversion, which the page
+A potential that has it loads, with one notice; a fit refuses it with its
+conversion, which the page
 :ref:`What a Fit Minimises <fit_objective_conversion>` of the
 documentation gives with those of the other retired keys.
 """
@@ -2648,16 +2645,16 @@ examples = []
 reason = """FWEIGHT multiplied the squared residual of each force \
 component, a number without a unit an accuracy could be read in."""
 replacement = "FSIGMA, the force error scale in eV/Å (FORCE false for FWEIGHT 0)"
-conversion = """FSIGMA = 1/sqrt(FWEIGHT) eV/Å gives the same fit. FWEIGHT 0 \
+conversion = """FSIGMA = 1/sqrt(FWEIGHT) eV/Å gives the same fit. With FORCE \
+false, deleting the line converts it (FSIGMA keeps its default). FWEIGHT 0 \
 (no forces in the fit) is FORCE false."""
 
 [ALLOWED_KEYS.SWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 description = "Retired: the stress weight of a fit of Tadah! 1.0.0 to 1.5.0 (SSIGMA replaces it)."
 long_description = """
-Retired: the stress weight of a fit of Tadah! 1.0.0 to 1.5.0 (SSIGMA
-replaces it). A potential that has it loads, with one notice; a fit refuses
-it with its conversion, which the page
+A potential that has it loads, with one notice; a fit refuses it with its
+conversion, which the page
 :ref:`What a Fit Minimises <fit_objective_conversion>` of the
 documentation gives with those of the other retired keys.
 """
@@ -2670,7 +2667,8 @@ replacement = "SSIGMA, the stress error scale in GPa (STRESS false for SWEIGHT 0
 conversion = """SSIGMA = 160.2/sqrt(SWEIGHT) GPa gives the diagonal \
 entries (xx, yy, zz) the same weight; a fit counts each off-diagonal entry \
 twice (the nine entries of the tensor), so the conversion is exact for the \
-diagonal only. SWEIGHT 0 (no stresses in the fit) is STRESS false."""
+diagonal only. With STRESS false, deleting the line converts it (SSIGMA \
+keeps its default). SWEIGHT 0 (no stresses in the fit) is STRESS false."""
 
 [ALLOWED_KEYS.WEIGHTS]
 INHERIT = ["TYPES.DOUBLES"]
@@ -2716,7 +2714,7 @@ predict`, `pair_style tadah`), with one notice, and is not stored. A
 retrain with OALGO 3, after the potential's retired keys are converted,
 writes its weight covariance, WCOV and WNOISE.
 """
-deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE, which a retrain with OALGO 3 writes."""
+deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE, which a retrain with OALGO 3 writes after the potential's retired keys are converted."""
 examples = []
 
 [ALLOWED_KEYS.WCOV]
@@ -3558,7 +3556,61 @@ of the structures (eweight, fweight, sweight) are written as they are.
 """
 examples         = ["tadah data balance -d db.tadah --eshift -11.86 --outfile shifted.tadah", "tadah data balance -d db1.tadah db2.tadah --eshift -11.86 --merge --outfile shifted.tadah"]
 [TASKS.data.balance.keys]
-INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.index"]
+INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.append", "ALLOWED_KEYS.merge", "ALLOWED_KEYS.index", "ALLOWED_KEYS.rescale", "ALLOWED_KEYS.threshold", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress"]
+[TASKS.data.balance.keys.rescale]
+description = "Retired: the rescaling of the priorities of a dataset by Tadah! 1.5.0."
+long_description = """
+A task file or a command line that gives it is refused with the reason.
+"""
+examples = []
+default_value = []
+[TASKS.data.balance.keys.rescale.retired]
+reason = """tadah data balance --rescale replaced the priorities \
+(eweight, fweight, sweight) of each structure by the inverse of its \
+energy, forces or stress (1/|E|, 1/sum |F_i|, 1/|S|), whatever the \
+accuracy of the data, and kept a priority only below --threshold."""
+replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
+conversion = """No option converts it: tadah data balance shifts energies \
+only, and writes the priorities of the structures as they are."""
+[TASKS.data.balance.keys.threshold]
+description = "Retired: the magnitudes below which the rescaling of Tadah! 1.5.0 kept a priority."
+long_description = """
+A task file or a command line that gives it is refused with the reason.
+"""
+examples = []
+default_value = []
+[TASKS.data.balance.keys.threshold.retired]
+reason = """tadah data balance --threshold set the energy per atom, \
+force and stress below which --rescale kept a priority."""
+replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
+conversion = """No option converts it: tadah data balance shifts energies \
+only, and writes the priorities of the structures as they are."""
+[TASKS.data.balance.keys.force]
+description = "Retired: the rescaling of the force priorities by Tadah! 1.5.0."
+long_description = """
+A task file or a command line that gives it is refused with the reason.
+"""
+examples = []
+default_value = []
+[TASKS.data.balance.keys.force.retired]
+reason = """tadah data balance --force made --rescale replace the force \
+priority (fweight) of each structure by the inverse of its forces."""
+replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
+conversion = """No option converts it: tadah data balance shifts energies \
+only, and writes the priorities of the structures as they are."""
+[TASKS.data.balance.keys.stress]
+description = "Retired: the rescaling of the stress priorities by Tadah! 1.5.0."
+long_description = """
+A task file or a command line that gives it is refused with the reason.
+"""
+examples = []
+default_value = []
+[TASKS.data.balance.keys.stress.retired]
+reason = """tadah data balance --stress made --rescale replace the stress \
+priority (sweight) of each structure by the inverse of its stress."""
+replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
+conversion = """No option converts it: tadah data balance shifts energies \
+only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.index]
 long_description = """
 The 1-based indices of the structures to shift, counted over the input
@@ -3910,6 +3962,6 @@ description = ""  # not
 long_description = ""
 website = "https://tadah.readthedocs.io"
 version = "1.6.0"
-examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.rescale"]
+examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.eshift"]
 [TADAH.keys]
 INHERIT = ["ALLOWED_KEYS.task"]
