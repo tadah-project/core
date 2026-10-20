@@ -46,6 +46,14 @@ const std::vector<std::string> &run_setting_keys();
  * level nor VERBOSE suppresses it: pair_style tadah in LAMMPS, which leaves the Logger at
  * ERROR, shows it too.
  *
+ * A key the blueprint marks as retired (BlueprintKey::isRetired()) is accepted so that a
+ * potential that carries it still loads: its value is validated, the line is recorded on the
+ * returned Context (Context::retired_keys(): never a stored key, never written back, carried
+ * into the Context of a file that includes it with CONFIG), and each parse that read some
+ * gives one notice that lists them (retired_keys_notice(), through report_key_notice(): on
+ * standard error, or to the IgnoredKeyNoticeCapture of pair_style tadah). A fit refuses a
+ * Context that records one, with the conversion (require_no_retired_keys()).
+ *
  * A line of a key of run_setting_keys() in a file (or block) whose own key
  * lines give WEIGHTS -- a potential -- is checked and not stored, whatever
  * the parse (no Logger level is set by a potential's VERBOSE line, the

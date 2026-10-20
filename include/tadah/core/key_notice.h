@@ -17,7 +17,8 @@ namespace core {
  * report_ignored_key_once(): a deprecated key (CoreUserConfigParser,
  * subject `Deprecated key MBLOCK`) and a key that has no effect on the
  * potential that carries it (EMBF0 or RHOFORM without a DM_REAM block,
- * subject `Key EMBF0`).
+ * subject `Key EMBF0`). Retired keys get one notice per parse instead
+ * (report_key_notice()).
  *
  * Deliberately not a Logger message: the notice must reach every user of
  * the file whatever the Logger level, including pair_style tadah in LAMMPS
@@ -30,6 +31,20 @@ namespace core {
  * "WARNING: " prefix and the newline), and nothing to standard error.
  */
 void report_ignored_key(const std::string &subject, const std::string &reason);
+
+/**
+ * @brief Writes the notice @p line about keys that are accepted but change
+ *        nothing: `WARNING: <line>` and a newline, to standard error, or,
+ *        while an IgnoredKeyNoticeCapture lives on the calling thread, to
+ *        it (@p line as it is), as report_ignored_key() does with its
+ *        "<subject> is ignored: <reason>".
+ *
+ * CoreUserConfigParser gives it once per parse that read retired keys
+ * (retired_keys_notice(), retired_keys.h), so each load of a potential
+ * that carries them -- pair_style tadah's of each pair_coeff included --
+ * says so once.
+ */
+void report_key_notice(const std::string &line);
 
 /**
  * @brief Collects the notices report_ignored_key() gives on this thread
