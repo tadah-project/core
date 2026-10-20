@@ -704,7 +704,11 @@ M_KRR is its implementation: 1 (the default) fits energies, forces and
 stresses by least squares over the design matrix; 2 fits energies only: it
 solves (K + LAMBDA I) w = t, with K the kernel matrix of the basis vectors
 and t the energy per atom of each drawn structure (0 for the intercept
-vectors), every weight at once, so it refuses FIXINDEX and FIXWEIGHT.
+vectors), every weight at once, so it refuses FIXINDEX and FIXWEIGHT. No
+force, stress or weight of the data enters its solve: it refuses FORCE true,
+STRESS true, EWEIGHT, FWEIGHT or SWEIGHT other than 1, a WDBFILE value
+other than 1, WDBFILE_AUTO other than 0, EWEIGHT_TEMP, and a structure whose
+eweight is not 1, each naming implementation 1, which fits them.
 Every kernel but Kern_Linear works on SBASIS basis vectors (SBASIS), and
 Kern_Linear does with implementation 2, whose solve needs them: its weights
 are then the descriptor weights of the basis vectors (sum_j w_j b_j, the
@@ -899,15 +903,22 @@ value_format = ["<int>", "<double>", "<int> <double>"]
 value_N = [-2]
 description = "Controls the regularisation parameter λ for BLR and KRR."
 long_description = """
-If N=0, no regularisation. If N>0, λ is set to that value. If N<0, an evidence 
-approximation is used to estimate λ (OALGO 3): it iterates
-alpha = gamma/(w.w) and beta = (n_obs - gamma)/RSS, n_obs the observations
-(the rows of the design matrix with a non-zero weight) and gamma the
-effective number of weights over the singular directions the solve keeps,
-to lambda = alpha/beta. (Before 1.6.0 it counted the design matrix's
-ridge-augmentation rows, one per weight, and its rows of weight 0 as observations, which made
-beta too large, so lambda and the weights of a LAMBDA -1 fit change.) For LAMBDA 0, an optional second
-number (double) sets the effective rank threshold (default 1e-8).
+LAMBDA 0 fits without regularisation, and a positive LAMBDA is λ. LAMBDA -1
+requests the evidence approximation, which estimates λ (OALGO 3 only): it
+iterates alpha = gamma/(w.w) and beta = (n_obs - gamma)/RSS, n_obs the
+observations (the rows of the design matrix with a non-zero weight) and
+gamma the effective number of weights over the singular directions the
+solve keeps, to lambda = alpha/beta. It converges when the relative changes
+of alpha and beta both fall below 5e-12; after 41 iterations it stops, a
+WARNING names the last changes, and the fit takes the last alpha and beta.
+Targets that make alpha or beta infinite (all zero: no weight and no
+residual) are refused.
+
+LAMBDA takes one value. Every fit refuses, before it solves, a negative
+value other than -1, which requests nothing, LAMBDA -1 with an OALGO other
+than 3, and a second value: the rank threshold of OALGO 1 and 3 is OALGO's
+second value. A potential with a second value loads (prediction does not
+read LAMBDA); a retrain from it is refused.
 
 The penalty (λ times the sum of the squared weights) leaves out the
 weights of the model's intercept columns, the columns that depend on an
@@ -920,7 +931,7 @@ Kern_Quadratic, Kern_LQ, Kern_Polynomial and Kern_Sigmoid; Kern_RBF has
 none. OALGO 3 penalises every column alike and refuses λ != 0 for a model
 with an intercept column.
 """
-examples = ["-1", "1e-4", "0", "0 1e-12"]
+examples = ["-1", "1e-4", "0"]
 
 [ALLOWED_KEYS.ALPHA]
 INHERIT = ["TYPES.DOUBLE"]
@@ -2060,10 +2071,11 @@ cli_required     = false
 INHERIT = ["TYPES.BOOL"]
 description = "Derives ESHIFT from isolated-atom configurations in the dataset (mean per Z)."
 long_description = """
-Scans the loaded dataset for single-atom configurations (natoms == 1), groups
-them by atomic number, and sets ESHIFT[Z] to the mean per-Z energy. If a
-species has no isolated-atom config in the dataset, ESHIFT[Z] = 0 for that
-species and a WARNING is logged. If multiple isolated-atom configs of the same
+Scans the loaded dataset for single-atom configurations (natoms == 1) with
+an energy (eweight not 0: one with eweight 0 has no energy of its own),
+groups them by atomic number, and sets ESHIFT[Z] to the mean per-Z energy.
+If a species has no such isolated-atom config in the dataset, ESHIFT[Z] = 0
+for that species and a WARNING is logged. If multiple isolated-atom configs of the same
 Z disagree by more than 1e-3 eV, an INFO line records the spread.
 Mutually exclusive with explicit ESHIFT and ESHIFT_DBATOM.
 
@@ -2094,7 +2106,8 @@ description = "Derives ESHIFT by least-squares atomic-energy fit over the databa
 long_description = """
 Fits per-element reference energies by least squares: minimise
 ||y - M beta||^2 where y[i] is the total energy of configuration i and
-M[i, k] is the count of species k in configuration i. The fitted beta_k
+M[i, k] is the count of species k in configuration i, over the
+configurations with an energy (eweight not 0). The fitted beta_k
 becomes ESHIFT[Z(k)]. More robust than ESHIFT_ATOM when the dataset has no
 isolated-atom configs but does have compositional diversity. When the
 compositions do not determine the fit (every structure of one composition,
@@ -2163,7 +2176,8 @@ Outlier filter applied at load time before any energy-shift derivation or
 training-weight assignment, so outliers do not poison ESHIFT_ATOM /
 ESHIFT_DBATOM / EWEIGHT_TEMP. The threshold is compared against E/N_atoms
 (per-atom energy). Both bounds must be supplied. Without the key no
-configuration is filtered.
+configuration is filtered. A configuration with eweight 0 has no energy of
+its own and is not dropped for its energy.
 
 A setting of the training data, not of the model: a potential has no EFILTER
 line; its training record, a comment block above its key lines that is never
@@ -2186,7 +2200,8 @@ description  = "Drops configurations where any atomic force magnitude exceeds th
 long_description = """
 Outlier filter applied at load time. A configuration is dropped if any single
 atom has ‖F‖ > FFILTER. Useful for catching unconverged SCF or otherwise
-broken DFT runs.
+broken DFT runs. A configuration with fweight 0 has no forces of its own and
+is not dropped for them.
 
 A setting of the training data, not of the model: a potential has no FFILTER
 line; its training record, a comment block above its key lines that is never
@@ -2209,7 +2224,9 @@ description  = "Per-dataset weight multipliers, one per DBFILE entry."
 long_description = """
 Multiplies eweight, fweight, and sweight of every configuration in the
 corresponding DBFILE by the given factor. It biases training toward or away
-from particular datasets. Composes multiplicatively with WDBFILE_AUTO.
+from particular datasets. Composes multiplicatively with WDBFILE_AUTO. Each
+value is a number >= 0 (0 leaves the dataset out of the fit); a negative
+value is refused, naming the dataset.
 
 A setting of the training data, not of the model: a potential has no WDBFILE
 line; its training record, a comment block above its key lines that is never
@@ -2232,7 +2249,8 @@ description  = "Auto size-balance datasets: per-config weight multiplied by 1/N_
 long_description = """
 Rebalances per-dataset contributions to the training loss by multiplying each
 configuration's weight by N_i^(-alpha), where N_i is the number of (post-
-filter) configurations in dataset i. alpha=0 disables (default). alpha=0.5
+filter) configurations in dataset i. alpha is in [0, 1]: a value outside is
+refused. alpha=0 disables (default). alpha=0.5
 is the recommended starting point (sqrt-inverse, soft balance). alpha=1
 fully equalises aggregate dataset contribution. Composes multiplicatively
 with user-given WDBFILE.
@@ -2259,10 +2277,12 @@ INHERIT = ["TYPES.DOUBLE"]
 description  = "Boltzmann reweighting temperature in Kelvin (multiplies eweight)."
 long_description = """
 After ESHIFT is applied, multiplies each configuration's eweight by
-exp(-(E/N - E_min)/(kB * T)) where E_min is the minimum per-atom energy in
-the dataset and kB = 8.617333262e-5 eV/K. Emphasises low-energy
-configurations. Composes multiplicatively with the per-structure eweight
-already in the dataset file. Without the key, no reweighting applies.
+exp(-(E/N - E_min)/(kB * T)) where E_min is the minimum per-atom energy of
+the configurations with an energy (eweight not 0; one with eweight 0 keeps
+it) and kB = 8.617333262e-5 eV/K. Emphasises low-energy configurations.
+Composes multiplicatively with the per-structure eweight already in the
+dataset file. T must be > 0 (a value <= 0 is refused). Without the key, no
+reweighting applies.
 
 A setting of the training data, not of the model: a potential has no
 EWEIGHT_TEMP line; its training record, a comment block above its key lines
