@@ -918,7 +918,11 @@ LAMBDA takes one value. Every fit refuses, before it solves, a negative
 value other than -1, which requests nothing, LAMBDA -1 with an OALGO other
 than 3, and a second value: the rank threshold of OALGO 1 and 3 is OALGO's
 second value. A potential with a second value loads (prediction does not
-read LAMBDA); a retrain from it is refused.
+read LAMBDA); a retrain from it is refused. tadah hpo, whose evaluations
+each fit, refuses such a LAMBDA when the run starts; its journal,
+hpo_run.log, gives the WARNING of the iteration limit once per run, and a
+candidate whose targets the evidence approximation refuses fails its
+evaluation.
 
 The penalty (λ times the sum of the squared weights) leaves out the
 weights of the model's intercept columns, the columns that depend on an
