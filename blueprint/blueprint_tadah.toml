@@ -3058,12 +3058,13 @@ dynamics simulations in LAMMPS via pair_style tadah.
 
 After the fit, it prints the balance table of the fit (at VERBOSE 1 and
 above, with the legend of its columns) and writes it at the end of the
-training record of the potential: per quantity and dataset the
-observations, the error scale, the RMSE, the root mean square of residual
-over error scale, the share of the minimised sum and the effective
-parameters (the documentation's page What a Fit Minimises, The balance
-table). The table costs one pass over the n observations and p
-coefficients of the fit, of the order of n p^2, like the solve.
+training record of the potential: the error scales, and per quantity and
+dataset the observations, the RMSE, the root mean square of residual over
+error scale, the share of the minimised sum and the effective parameters
+(the section The balance table of the page What a Fit Minimises of the
+documentation). The table costs one pass over the n rows and p
+coefficients of the fit, of the order of n p^2 like the solve, and memory
+of the order of p^2 and of a block of 1024 rows, not a copy of the rows.
 """
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 [TASKS.train.keys]
@@ -3364,12 +3365,12 @@ best_pot.tadah keeps the last best it saved, and the history files can lack
 the rows still queued.
 
 Each new best potential gets the balance table of the fit of its evaluation
-at the end of the training record of best_pot.tadah (one pass of the order
-of n p^2 over the n observations and p coefficients of the fit, for each
-evaluation whose loss may make it the best, never for every evaluation;
-the DUMP and BDUMP archives have none). The run prints the table of best_pot.tadah once, when it ends (at
-VERBOSE 1 and above): the documentation's page What a Fit Minimises, The
-balance table.
+at the end of the training record of best_pot.tadah: one pass of the order
+of n p^2 over the n rows and p coefficients of the fit, only for an
+evaluation whose loss may make it the best, not for the others (the DUMP
+and BDUMP archives have no table). The run prints the table of
+best_pot.tadah once, when it ends, at VERBOSE 1 and above (the section The
+balance table of the page What a Fit Minimises of the documentation).
 """
 examples         = ["tadah hpo -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah", "tadah hpo --check -c config.tadah --hpotarget hpotargets.txt --validation valid.tadah"]
 [TASKS.hpo.keys]
