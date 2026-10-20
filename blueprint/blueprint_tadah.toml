@@ -3572,9 +3572,10 @@ examples = []
 default_value = []
 [TASKS.data.balance.keys.rescale.retired]
 reason = """tadah data balance --rescale replaced the priorities \
-(eweight, fweight, sweight) of each structure by the inverse of its \
-energy, forces or stress (1/|E|, 1/sum |F_i|, 1/|S|), whatever the \
-accuracy of the data, and kept a priority only below --threshold."""
+(eweight, fweight, sweight) of each structure by the inverse of the size \
+of its energy, of the sum of its force norms or of its stress norm, \
+whatever the accuracy of the data, and kept a priority only below \
+--threshold."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
