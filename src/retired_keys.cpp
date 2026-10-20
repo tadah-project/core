@@ -43,13 +43,33 @@ std::string one_line(const std::string &text) {
   return out;
 }
 
+/* Whether @p context is M_KRR implementation 2 (MODEL M_KRR <kernel> 2,
+ * the third value read as MLIP's is_krr_implementation_2 reads it), whose
+ * solve in Tadah! 1.0.0 to 1.5.0, (K + LAMBDA I) w = t on the energies per
+ * atom in eV, read none of the retired keys: no weight and no priority of
+ * the data. false without a context. */
+bool krr_implementation_2(const Context *context) {
+  if (!context || !context->has_stored("MODEL") ||
+      context->size("MODEL") < 3)
+    return false;
+  try {
+    return context->get<std::string>("MODEL", 0) == "M_KRR" &&
+           context->get<int>("MODEL", 2) == 2;
+  } catch (const std::exception &) {
+    return false;  // not an integer: the fit refuses the MODEL line
+  }
+}
+
 /* "; FORCE false here: converted by deleting the line" for a line whose
- * conversion is its deletion: FWEIGHT and SWEIGHT of a quantity that
- * @p context leaves out (a fit refuses an FSIGMA or SSIGMA other than its
- * default then), and WDBFILE_AUTO 0; "" for another line or without a
- * context (the switches are then unknown). */
-std::string deleted_by(const RetiredKeyLine &l, const Context *context) {
+ * conversion is its deletion: every line under M_KRR implementation 2
+ * (@p krr2), FWEIGHT and SWEIGHT of a quantity that @p context leaves out
+ * (a fit refuses an FSIGMA or SSIGMA other than its default then), and
+ * WDBFILE_AUTO 0; "" for another line or without a context (the switches
+ * are then unknown). */
+std::string deleted_by(const RetiredKeyLine &l, const Context *context,
+                       bool krr2) {
   const std::string tail = "converted by deleting the line";
+  if (krr2) return "; M_KRR implementation 2 here: " + tail;
   if (l.key == "WDBFILE_AUTO" && l.values.size() == 1) {
     try {
       if (std::stod(l.values.front()) == 0.0) return "; 0: " + tail;
@@ -109,30 +129,52 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines) {
 std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
                                  const std::string &who,
                                  const Context *context) {
+  const bool krr2 = krr_implementation_2(context);
+  const bool one = lines.size() == 1;
   std::vector<std::string> named;
   std::vector<std::string> keys;
   for (const auto &l : lines) {
     std::string text = l.key;
     for (const auto &v : l.values) text += " " + v;
-    named.push_back(text + " (" + where(l) + deleted_by(l, context) + ")");
+    named.push_back(text + " (" + where(l) + deleted_by(l, context, krr2) +
+                    ")");
     if (std::find(keys.begin(), keys.end(), l.key) == keys.end())
       keys.push_back(l.key);
   }
+  const std::string lines_here = one ? "this line" : "these lines";
+  const std::string file_of_lines =
+      std::string(" (in the file that has ") + (one ? "it" : "them") +
+      ", a potential's included";
   std::string msg = who + ": the configuration has " +
-                    (lines.size() == 1 ? "a key" : "keys") +
+                    (one ? "a key" : "keys") +
                     " retired in Tadah! 1.6.0, and a fit refuses " +
-                    (lines.size() == 1 ? "it" : "them") + ": " +
-                    join_and(named) + ".";
+                    (one ? "it" : "them") + ": " + join_and(named) + ".";
+  if (krr2) {
+    // The keys' own conversions are those of the other fits: under
+    // implementation 2 they would change the fit.
+    msg += std::string(" M_KRR implementation 2 of Tadah! 1.0.0 to 1.5.0 ") +
+           (one ? "did not read it" : "read none of them") +
+           ": it solved (K + LAMBDA I) w = t on the energies per atom in eV "
+           "(ESIGMA 1000). With " + lines_here + " deleted" + file_of_lines +
+           ") and ESIGMA 1000, or LAMBDA times 10^6 with ESIGMA 1, the "
+           "configuration fits with the solve of Tadah! 1.5.0; no "
+           "coefficients were fitted.";
+    return msg;
+  }
   for (const auto &k : keys) {
     const BlueprintKey &info = retired_entry(k);
     msg += " " + k + ": " + one_line(info.retired.conversion);
   }
-  msg += " With the converted keys in place of " +
-         std::string(lines.size() == 1 ? "this line" : "these lines") +
-         " (in the file that has " +
-         std::string(lines.size() == 1 ? "it" : "them") +
-         ", a potential's included), the configuration trains; no "
-         "coefficients were fitted.";
+  // A retrain does not read a potential's WDBFILE line, so the WDBFILE
+  // values of a potential's WDBFILE_AUTO go elsewhere (its conversion).
+  const bool wdbfile_auto =
+      std::find(keys.begin(), keys.end(), "WDBFILE_AUTO") != keys.end();
+  msg += " With the converted keys in place of " + lines_here +
+         file_of_lines +
+         (wdbfile_auto ? "; the WDBFILE values of a potential on the command "
+                         "line or in a file that includes it"
+                       : "") +
+         "), the configuration trains; no coefficients were fitted.";
   return msg;
 }
 

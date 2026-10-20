@@ -2289,7 +2289,13 @@ replacement = "WDBFILE, a priority for each dataset"
 conversion = """Each WDBFILE value (1 for every dataset without WDBFILE) \
 multiplied by n_d^-a, n_d the number of structures of dataset d after \
 EFILTER and FFILTER, gives the same fit. For WDBFILE_AUTO 0, deleting the \
-line converts it (WDBFILE as it is)."""
+line converts it (WDBFILE as it is). A retrain does not read a potential's \
+WDBFILE line: the WDBFILE values of a potential (those converted, or those \
+of its WDBFILE line) go on the command line (--wdbfile) or into a file that \
+includes the potential with CONFIG. Under M_KRR implementation 2 (MODEL \
+M_KRR <kernel> 2), whose solve read no priority, deleting the line converts \
+it, and ESIGMA 1000, or LAMBDA times 10^6 with ESIGMA 1, gives the solve of \
+Tadah! 1.5.0, (K + LAMBDA I) w = t."""
 
 [ALLOWED_KEYS.eweight_temp]
 INHERIT = ["TYPES.DOUBLE"]
@@ -2635,7 +2641,10 @@ conversion = """For cells of N atoms, ESIGMA = 1000/(N sqrt(EWEIGHT)) \
 meV/atom gives the same fit. For cells of different sizes, ESIGMA = \
 1000/sqrt(EWEIGHT) with the eweight of each structure in the data file \
 multiplied by N^2 reproduces the objective of Tadah! 1.5.0. EWEIGHT 0 (no \
-energies in the fit) is ENERGY false."""
+energies in the fit) is ENERGY false. Under M_KRR implementation 2 (MODEL \
+M_KRR <kernel> 2), whose solve did not read EWEIGHT, deleting the line \
+converts it, and ESIGMA 1000, or LAMBDA times 10^6 with ESIGMA 1, gives the \
+solve of Tadah! 1.5.0, (K + LAMBDA I) w = t."""
 
 [ALLOWED_KEYS.FWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
