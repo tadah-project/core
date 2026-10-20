@@ -3064,7 +3064,8 @@ error scale, the share of the minimised sum and the effective parameters
 (the section The balance table of the page What a Fit Minimises of the
 documentation). The table costs one pass over the n rows and p
 coefficients of the fit, of the order of n p^2 like the solve, and memory
-of the order of p^2 and of a block of 1024 rows, not a copy of the rows.
+of the order of p^2, of a block of 1024 rows and of three rows per dataset,
+not a copy of the rows.
 """
 examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
 [TASKS.train.keys]
