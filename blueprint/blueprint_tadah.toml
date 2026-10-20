@@ -708,7 +708,8 @@ vectors), every weight at once, so it refuses FIXINDEX and FIXWEIGHT. No
 force, stress or weight of the data enters its solve: it refuses FORCE true,
 STRESS true, EWEIGHT, FWEIGHT or SWEIGHT other than 1, a WDBFILE value
 other than 1, WDBFILE_AUTO other than 0, EWEIGHT_TEMP, and a structure whose
-eweight is not 1, each naming implementation 1, which fits them.
+eweight is not 1, each naming implementation 1, which fits them. M_KRR
+refuses another implementation.
 Every kernel but Kern_Linear works on SBASIS basis vectors (SBASIS), and
 Kern_Linear does with implementation 2, whose solve needs them: its weights
 are then the descriptor weights of the basis vectors (sum_j w_j b_j, the
@@ -912,7 +913,8 @@ solve keeps, to lambda = alpha/beta. It converges when the relative changes
 of alpha and beta both fall below 5e-12; after 41 iterations it stops, a
 WARNING names the last changes, and the fit takes the last alpha and beta.
 Targets that make alpha or beta infinite (all zero: no weight and no
-residual) are refused.
+residual) are refused. At VERBOSE 2 the log lists its iterations and how
+it ended.
 
 LAMBDA takes one value. Every fit refuses, before it solves, a negative
 value other than -1, which requests nothing, LAMBDA -1 with an OALGO other
@@ -932,8 +934,11 @@ columns of the descriptor for BF_Linear and Kern_Linear, the products (k,k)
 of each intercept component with itself for BF_Polynomial2 (column 0 with
 one species), and columns 0 to N-1 (the intercept basis vectors e_k) for
 Kern_Quadratic, Kern_LQ, Kern_Polynomial and Kern_Sigmoid; Kern_RBF has
-none. OALGO 3 penalises every column alike and refuses λ != 0 for a model
-with an intercept column.
+none. OALGO 3 penalises every column alike and refuses λ != 0 for a fit
+with an intercept column that FIXINDEX does not pin, LAMBDA -1 included:
+the evidence approximation needs BIAS false, or every intercept weight
+pinned with FIXINDEX and FIXWEIGHT. tadah hpo refuses such a setup when
+the run starts.
 """
 examples = ["-1", "1e-4", "0"]
 
