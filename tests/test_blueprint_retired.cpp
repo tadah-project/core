@@ -419,17 +419,23 @@ TEST_CASE("Blueprint: a retired key's long description does not repeat its "
 }
 
 /* Pins: the SIGMA notice of every load of a potential of Tadah! 1.0.0 to
- * 1.5.0 says that a retrain writes WCOV and WNOISE once the potential's
- * retired keys are converted: a fit refuses the retired keys before.
- * Before the fix: it said a retrain with OALGO 3 writes them. */
-TEST_CASE("Blueprint: the SIGMA notice names the conversion of the retired "
-          "keys before a retrain",
-          "[BlueprintParser][retired]") {
+ * 1.5.0 says that uncertainty output is not part of Tadah! 1.6.0, its error
+ * bars not calibrated (too narrow for many structures), and names neither
+ * WCOV nor a retrain: no fit writes a weight covariance.
+ * Before the fix: it said that a retrain with OALGO 3 writes WCOV and
+ * WNOISE, which tadah predict --error needs, once the potential's retired
+ * keys are converted. */
+TEST_CASE("Blueprint: the SIGMA notice says that uncertainty output is not "
+          "part of Tadah! 1.6.0",
+          "[BlueprintParser][retired][uncertainty]") {
   const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("SIGMA");
   REQUIRE(k.isDeprecated());
   CHECK_THAT(k.deprecated,
-             Contains("which a retrain with OALGO 3 writes after the "
-                      "potential's retired keys are converted"));
+             Contains("Uncertainty output is not part of Tadah! 1.6.0: its "
+                      "error bars were not calibrated (they were too narrow "
+                      "for many structures)."));
+  CHECK(k.deprecated.find("WCOV") == std::string::npos);
+  CHECK(k.deprecated.find("retrain") == std::string::npos);
 }
 
 /* Pins: an example of tadah --help that explains an option names an
