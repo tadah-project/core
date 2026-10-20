@@ -45,14 +45,21 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines);
  *  FWEIGHT: <conversion> ...", each line by its key and values (a line of
  *  more than six values by its first three: "WCOV 28 1.2e-05 3e-07 and 782
  *  more values"), each key's conversion once, in the order
- *  of its first line, then what to do with the lines (with a WDBFILE_AUTO
- *  line, that the WDBFILE values of a potential go on the command line or
- *  into a file that includes it: a retrain does not read a potential's
- *  WDBFILE line). A line that a deletion converts says so: WDBFILE_AUTO 0
- *  ("(line 6 of old.tadah; 0: converted by deleting the line)") and, given
- *  the configuration @p context, FWEIGHT with FORCE false and SWEIGHT with
- *  STRESS false ("(line 3 of old.tadah; FORCE false here: converted by
- *  deleting the line)"). When @p context is M_KRR implementation 2 (MODEL
+ *  of its first line, then what to do with the lines: "With the converted
+ *  keys in place of these lines", ", or the marked lines deleted" when a
+ *  line is marked as below, or "With these lines deleted" when every line
+ *  is (with a WDBFILE_AUTO line, that the WDBFILE values of a potential go
+ *  on the command line or into a file that includes it: a retrain does
+ *  not read a potential's WDBFILE line). A line that a deletion converts
+ *  says so: every line of a key that nothing replaces (the field
+ *  by_deletion of `retired`: UNCERTAINTY, WCOV, WNOISE, ERROR; "(line 4
+ *  of pot.tadah; converted by deleting the line)"), whose reason comes
+ *  before its conversion, as the conversion does not say why;
+ *  WDBFILE_AUTO 0 ("(line 6 of old.tadah; 0: converted by deleting the
+ *  line)") and, given the configuration @p context, FWEIGHT with FORCE
+ *  false and SWEIGHT with STRESS false ("(line 3 of old.tadah; FORCE false
+ *  here: converted by deleting the line)"). When @p context is M_KRR
+ *  implementation 2 (MODEL
  *  M_KRR <kernel> 2), whose solve of Tadah! 1.0.0 to 1.5.0, (K + LAMBDA I)
  *  w = t, read no retired key, every line is so marked ("M_KRR
  *  implementation 2 here: converted by deleting the line") and the

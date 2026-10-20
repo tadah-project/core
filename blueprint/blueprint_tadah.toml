@@ -197,12 +197,12 @@ default_value      = ["false"]
 
 [ALLOWED_KEYS.uncertainty]
 INHERIT = ["TYPES.BOOL"]
-description  = "Retired: the standard deviations of the coefficients of a fit (weights.tadah), uncertainty output that Tadah! 1.6.0 does not give."
+description  = "Retired: weights.tadah, each coefficient of a fit beside a diagonal entry of SIGMA, uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
 tadah train refuses --uncertainty, and a fit an UNCERTAINTY line of its
 configuration, with the reason. A potential with an UNCERTAINTY line
-(tadah train of Tadah! 1.5.0 wrote one into every potential) loads with
-one notice; a fit refuses it until the line is deleted.
+(tadah train of Tadah! 1.0.0 to 1.5.0 wrote one into every potential)
+loads with one notice; a fit refuses it until the line is deleted.
 """
 examples = []
 default_value = []
@@ -210,13 +210,14 @@ cli_long_flag    = "--uncertainty"
 cli_short_flag   = ""
 cli_required     = false
 [ALLOWED_KEYS.uncertainty.retired]
-reason = """tadah train --uncertainty wrote the standard deviations of the \
-coefficients of the fit (weights.tadah). Uncertainty output is not part of \
-Tadah! 1.6.0: its error bars were not calibrated (they were too narrow for \
-many structures)."""
+reason = """tadah train --uncertainty wrote weights.tadah, each coefficient \
+of the fit beside a diagonal entry of SIGMA. Uncertainty output is not part of \
+Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
+deviations, and no calibrated estimate replaces them."""
 replacement = "nothing in Tadah! 1.6.0"
 conversion = """Deleting the option, or the UNCERTAINTY line, converts it: \
 the fit and its coefficients are unaffected."""
+by_deletion = true
 
 [ALLOWED_KEYS.dbfile]
 INHERIT = ["TYPES.STRINGS"]
@@ -2419,16 +2420,28 @@ examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
 [ALLOWED_KEYS.error]
 INHERIT = ["TYPES.BOOL"]
-description  = "The retired option --error of tadah predict and tadah properties pairwise (uncertainty output)."
+description  = "Retired: the key of --error of tadah predict and tadah properties pairwise, for uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
-tadah predict and tadah properties pairwise refuse it, with the reason
-(tadah explain predict.error, tadah explain properties.pairwise.error).
+tadah predict and tadah properties pairwise refuse --error, and an ERROR
+line of their TASK sections, with the reason of the option (tadah explain
+predict.error, tadah explain properties.pairwise.error). A configuration
+or potential with an ERROR line loads with one notice; a fit refuses it
+until the line is deleted.
 """
 examples = []
 default_value = []
 cli_long_flag    = "--error"
 cli_short_flag   = ""
 cli_required     = false
+[ALLOWED_KEYS.error.retired]
+reason = """ERROR, the key of --error, asked tadah predict and tadah \
+properties pairwise for errors computed from SIGMA. Uncertainty output is not part of \
+Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
+deviations, and no calibrated estimate replaces them."""
+replacement = "nothing in Tadah! 1.6.0"
+conversion = """Deleting the line converts it: no command reads it, and \
+the fit is unaffected."""
+by_deletion = true
 
 [ALLOWED_KEYS.quantity]
 INHERIT = ["TYPES.STRING"]
@@ -2694,7 +2707,7 @@ still load (`tadah predict`, `pair_style tadah`), with one notice, and is
 not stored. Uncertainty output is not part of Tadah! 1.6.0 (tadah explain
 predict.error gives the reason).
 """
-deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. Uncertainty output is not part of Tadah! 1.6.0: its error bars were not calibrated (they were too narrow for many structures)."""
+deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. Uncertainty output is not part of Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations, and no calibrated estimate replaces them."""
 examples = []
 
 [ALLOWED_KEYS.WCOV]
@@ -2711,12 +2724,13 @@ examples = []
 [ALLOWED_KEYS.WCOV.retired]
 reason = """WCOV held the covariance of the WEIGHTS of an OALGO 3 fit, for \
 the uncertainty output of tadah predict --error and tadah properties \
-pairwise --error. Uncertainty output is not part of Tadah! 1.6.0: its \
-error bars were not calibrated (they were too narrow for many \
-structures)."""
+pairwise --error. Uncertainty output is not part of \
+Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
+deviations, and no calibrated estimate replaces them."""
 replacement = "nothing in Tadah! 1.6.0"
 conversion = """Deleting the line converts it: no prediction reads it, and \
 the fit is unaffected."""
+by_deletion = true
 
 [ALLOWED_KEYS.WNOISE]
 names = true
@@ -2733,12 +2747,13 @@ examples = []
 [ALLOWED_KEYS.WNOISE.retired]
 reason = """WNOISE held the noise variance of each quantity of an OALGO 3 \
 fit, for the uncertainty output of tadah predict --error and tadah \
-properties pairwise --error. Uncertainty output is not part of Tadah! \
-1.6.0: its error bars were not calibrated (they were too narrow for many \
-structures)."""
+properties pairwise --error. Uncertainty output is not part of \
+Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
+deviations, and no calibrated estimate replaces them."""
 replacement = "nothing in Tadah! 1.6.0"
 conversion = """Deleting the line converts it: no prediction reads it, and \
 the fit is unaffected."""
+by_deletion = true
 
 [ALLOWED_KEYS.NSTDEV]
 INHERIT = ["TYPES.DOUBLES"]
@@ -3217,7 +3232,7 @@ examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --f
 [TASKS.predict.keys]
 INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.zero_com_force", "ALLOWED_KEYS.no_lscale", "ALLOWED_KEYS.no_eshift"]
 [TASKS.predict.keys.error]
-description = "Retired: the predictive standard deviation of every predicted value, uncertainty output that Tadah! 1.6.0 does not give."
+description = "Retired: an error computed from SIGMA beside every predicted value, uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
 A command line or a TASK predict section that gives it is refused with the
 reason, and so is a task file that gives it in the GLOBAL section, whose
@@ -3226,10 +3241,10 @@ keys reach every task of the file.
 examples = []
 default_value = []
 [TASKS.predict.keys.error.retired]
-reason = """tadah predict --error gave every predicted value a standard \
-deviation from the uncertainty of the fit. Uncertainty output is not part \
-of Tadah! 1.6.0: its error bars were not calibrated (they were too narrow \
-for many structures)."""
+reason = """tadah predict --error wrote an error computed from SIGMA beside \
+every predicted value (some of the errors negative). Uncertainty output is not part of \
+Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
+deviations, and no calibrated estimate replaces them."""
 replacement = "nothing in Tadah! 1.6.0"
 conversion = """Deleting the option converts it: the predictions, and the \
 fit of the potential, are unaffected."""
@@ -3638,7 +3653,7 @@ examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 1
 [TASKS.properties.pairwise.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.atompair", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.bondenergy"]
 [TASKS.properties.pairwise.keys.error]
-description = "Retired: the standard deviation of the energy curve and of its parts, uncertainty output that Tadah! 1.6.0 does not give."
+description = "Retired: an error computed from SIGMA beside every value of the energy curve, uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
 A command line or a TASK properties pairwise section that gives it is
 refused with the reason, and so is a task file that gives it in the GLOBAL
@@ -3647,10 +3662,10 @@ section, whose keys reach every task of the file.
 examples = []
 default_value = []
 [TASKS.properties.pairwise.keys.error.retired]
-reason = """tadah properties pairwise --error gave the energy curve and its \
-two-body and many-body parts a standard deviation from the uncertainty of \
-the fit. Uncertainty output is not part of Tadah! 1.6.0: its error bars \
-were not calibrated (they were too narrow for many structures)."""
+reason = """tadah properties pairwise --error wrote an error computed from \
+SIGMA beside every value of the energy curve. Uncertainty output is not part of \
+Tadah! 1.6.0: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
+deviations, and no calibrated estimate replaces them."""
 replacement = "nothing in Tadah! 1.6.0"
 conversion = """Deleting the option converts it: the energy curves, and the \
 fit of the potential, are unaffected."""

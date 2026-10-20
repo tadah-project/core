@@ -60,16 +60,27 @@ bool krr_implementation_2(const Context *context) {
   }
 }
 
+const BlueprintKey &retired_entry(const std::string &key) {
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  const auto it = keys.find(key);
+  if (it == keys.end() || !it->second.isRetired())
+    throw std::logic_error("retired_keys: " + key + " is not a retired key");
+  return it->second;
+}
+
 /* "; FORCE false here: converted by deleting the line" for a line whose
  * conversion is its deletion: every line under M_KRR implementation 2
- * (@p krr2), FWEIGHT and SWEIGHT of a quantity that @p context leaves out
- * (a fit refuses an FSIGMA or SSIGMA other than its default then), and
- * WDBFILE_AUTO 0; "" for another line or without a context (the switches
- * are then unknown). */
+ * (@p krr2), every line of a key that nothing replaces (the field
+ * by_deletion of `retired`: "; converted by deleting the line"), FWEIGHT
+ * and SWEIGHT of a quantity that @p context leaves out (a fit refuses an
+ * FSIGMA or SSIGMA other than its default then), and WDBFILE_AUTO 0; ""
+ * for another line or without a context (the switches are then
+ * unknown). */
 std::string deleted_by(const RetiredKeyLine &l, const Context *context,
                        bool krr2) {
   const std::string tail = "converted by deleting the line";
   if (krr2) return "; M_KRR implementation 2 here: " + tail;
+  if (retired_entry(l.key).retired.by_deletion) return "; " + tail;
   if (l.key == "WDBFILE_AUTO" && l.values.size() == 1) {
     try {
       if (std::stod(l.values.front()) == 0.0) return "; 0: " + tail;
@@ -99,14 +110,6 @@ std::string line_text(const RetiredKeyLine &l) {
   if (n > kWhole)
     text += " and " + std::to_string(n - kShown) + " more values";
   return text;
-}
-
-const BlueprintKey &retired_entry(const std::string &key) {
-  const auto &keys = BlueprintParser::getKeysMapRef();
-  const auto it = keys.find(key);
-  if (it == keys.end() || !it->second.isRetired())
-    throw std::logic_error("retired_keys: " + key + " is not a retired key");
-  return it->second;
 }
 
 }  // namespace
@@ -146,9 +149,11 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
   const bool one = lines.size() == 1;
   std::vector<std::string> named;
   std::vector<std::string> keys;
+  std::size_t marked = 0;  // the lines a deletion converts
   for (const auto &l : lines) {
-    named.push_back(line_text(l) + " (" + where(l) +
-                    deleted_by(l, context, krr2) + ")");
+    const std::string mark = deleted_by(l, context, krr2);
+    if (!mark.empty()) ++marked;
+    named.push_back(line_text(l) + " (" + where(l) + mark + ")");
     if (std::find(keys.begin(), keys.end(), l.key) == keys.end())
       keys.push_back(l.key);
   }
@@ -174,14 +179,25 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
   }
   for (const auto &k : keys) {
     const BlueprintKey &info = retired_entry(k);
-    msg += " " + k + ": " + one_line(info.retired.conversion);
+    // A key that nothing replaces: its conversion, the deletion, does not
+    // say why, so its reason does.
+    msg += " " + k + ": " +
+           (info.retired.by_deletion ? one_line(info.retired.reason) + " "
+                                     : std::string()) +
+           one_line(info.retired.conversion);
   }
   // A retrain does not read a potential's WDBFILE line, so the WDBFILE
   // values of a potential's WDBFILE_AUTO go elsewhere (its conversion).
   const bool wdbfile_auto =
       std::find(keys.begin(), keys.end(), "WDBFILE_AUTO") != keys.end();
-  msg += " With the converted keys in place of " + lines_here +
-         file_of_lines +
+  // What to do with the lines: each marked line deleted, the converted
+  // keys in place of the others.
+  const std::string what_to_do =
+      marked == lines.size()
+          ? " With " + lines_here + " deleted"
+          : " With the converted keys in place of " + lines_here +
+                (marked > 0 ? ", or the marked lines deleted" : "");
+  msg += what_to_do + file_of_lines +
          (wdbfile_auto ? "; the WDBFILE values of a potential on the command "
                          "line or in a file that includes it"
                        : "") +
