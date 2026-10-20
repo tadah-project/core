@@ -3575,7 +3575,9 @@ INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS
 [TASKS.data.balance.keys.rescale]
 description = "Retired: the rescaling of the priorities of a dataset by Tadah! 1.5.0."
 long_description = """
-A task file or a command line that gives it is refused with the reason.
+A command line that gives it is refused with the reason, and so is a task
+file that gives it in a TASK data balance section or in the GLOBAL section,
+whose keys reach every task of the file.
 """
 examples = []
 default_value = []
@@ -3591,7 +3593,10 @@ only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.threshold]
 description = "Retired: the magnitudes below which the rescaling of Tadah! 1.5.0 kept a priority."
 long_description = """
-A task file or a command line that gives it is refused with the reason.
+A command line or a TASK data balance section that gives it is refused
+with the reason. A line of the GLOBAL section of a task file is accepted: it
+sets the key for the other tasks of the file, and the option acted only
+with --rescale, whose line is refused there.
 """
 examples = []
 default_value = []
@@ -3605,7 +3610,10 @@ only_with = "rescale"
 [TASKS.data.balance.keys.force]
 description = "Retired: the rescaling of the force priorities by Tadah! 1.5.0."
 long_description = """
-A task file or a command line that gives it is refused with the reason.
+A command line or a TASK data balance section that gives it is refused
+with the reason. A line of the GLOBAL section of a task file is accepted: it
+sets the key for the other tasks of the file, and the option acted only
+with --rescale, whose line is refused there.
 """
 examples = []
 default_value = []
@@ -3619,7 +3627,10 @@ only_with = "rescale"
 [TASKS.data.balance.keys.stress]
 description = "Retired: the rescaling of the stress priorities by Tadah! 1.5.0."
 long_description = """
-A task file or a command line that gives it is refused with the reason.
+A command line or a TASK data balance section that gives it is refused
+with the reason. A line of the GLOBAL section of a task file is accepted: it
+sets the key for the other tasks of the file, and the option acted only
+with --rescale, whose line is refused there.
 """
 examples = []
 default_value = []
