@@ -214,11 +214,6 @@ extern "C" {
 
 // Some useful operations on vectors and matrices
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans='N');
-/** @brief The diagonal of M D M^T for an m x N M and a diagonal N x N D:
- *  entry i is sum_j D(j,j) M(i,j)^2 (D's off-diagonal entries are not
- *  read).
- *  @throws std::invalid_argument unless D is N x N (naming both shapes). */
-aed_type T_MDMT_diag(const Matrix &M, const Matrix &D);
 double norm_X(Matrix &A, char norm='1');
 
 aed_type solve_posv(Matrix &A, aed_type /*&*/T, char uplo='U');

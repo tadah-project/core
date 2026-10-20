@@ -1,18 +1,7 @@
 #include <tadah/core/lapack.h>
 
-#include <algorithm>
-#include <stdexcept>
-#include <string>
-#include <vector>
-
 namespace tadah {
 namespace core {
-
-namespace {
-std::string shape(const Matrix &A) {
-  return std::to_string(A.rows()) + " x " + std::to_string(A.cols());
-}
-}  // namespace
 
 // Some useful operations on vectors and matrices
 aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
@@ -30,28 +19,6 @@ aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans) {
   int incy = 1;
 
   dgemv_(&trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy);
-  return res;
-}
-/** Computes diagonal entries of (M D M^T) where M is m by n
- * and D is n by n diagonal matrix
- *
- * [m,n][n,n][n,m]=[m,m]
- *
- */
-aed_type T_MDMT_diag(const Matrix &M, const Matrix &D) {
-  if (D.rows() != M.cols() || D.cols() != M.cols())
-    throw std::invalid_argument(
-        "T_MDMT_diag: D must be N x N for an M of N columns; M is " +
-        shape(M) + ", D is " + shape(D));
-
-  aed_type res(M.rows());
-  res.set_zero();
-  for (size_t i=0; i<M.rows(); ++i) {
-    for (size_t j=0; j<M.cols(); ++j) {
-      res[i] += D(j,j)*M(i,j)*M(i,j);
-    }
-  }
-
   return res;
 }
 double norm_X(Matrix &A, char norm) {

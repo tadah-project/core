@@ -61,57 +61,6 @@ TEST_CASE( "Testing norm_X()", "[lapack]" ) {
     REQUIRE_THAT( norm_X(m,'i'), Catch::Matchers::WithinAbs(0.14285714285714, 1e-12) );
     REQUIRE_THAT( norm_X(m,'e'), Catch::Matchers::WithinAbs(0.18257418583505, 1e-12) );
 }
-TEST_CASE( "Testing T_MDMT_diag()", "[lapack]" ) {
-    Matrix d(2,2);  // must be diagonal
-    d(0,0)=1.0;
-    d(0,1)=0.0;
-    d(1,0)=0.0;
-    d(1,1)=4.0;
-
-    Matrix m(3,2);
-    m(0,0)=1.0;
-    m(0,1)=2.0;
-    m(1,0)=3.0;
-    m(1,1)=4.0;
-    m(2,0)=5.0;
-    m(2,1)=6.0;
-    aed_type res =  T_MDMT_diag(m,d);
-    REQUIRE(res(0)==17);
-    REQUIRE(res(1)==73);
-    REQUIRE(res(2)==169);
-}
-/* Pins: T_MDMT_diag(M, D) refuses a D that is not N x N for an M of N
- * columns (std::invalid_argument naming both shapes): a 3 x 2 M with a 4 x
- * 4 D and with a 2 x 3 D; the 2 x 2 D of "Testing T_MDMT_diag()" is
- * accepted.
- * Before the fix: no check; it read D(j,j) for j < N whatever D's shape
- * (with a smaller D, past its end: the out-of-bounds read predict --error
- * made with FIXINDEX, a covariance of the free weights only), and returned
- * a value for both. */
-TEST_CASE( "T_MDMT_diag refuses a D of another size than M's columns",
-           "[lapack]" ) {
-    Matrix m(3,2);
-    m.set_zero();
-    for (const auto &rc : {std::pair<size_t,size_t>{4,4},
-                           std::pair<size_t,size_t>{2,3}}) {
-        Matrix d(rc.first, rc.second);
-        d.set_zero();
-        INFO("D " << rc.first << " x " << rc.second);
-        std::string msg;
-        try {
-            T_MDMT_diag(m, d);
-        } catch (const std::invalid_argument &e) {
-            msg = e.what();
-        }
-        INFO("message: " << msg);
-        CHECK(msg.find("3 x 2") != std::string::npos);
-        CHECK(msg.find(std::to_string(rc.first) + " x " +
-                       std::to_string(rc.second)) != std::string::npos);
-    }
-    Matrix d(2,2);
-    d.set_zero();
-    CHECK_NOTHROW(T_MDMT_diag(m, d));
-}
 TEST_CASE( "Testing T_dgemv()", "[lapack]" ) {
     Matrix m(2,2);
     m(0,0)=2;
