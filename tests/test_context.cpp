@@ -1094,6 +1094,9 @@ TEST_CASE("Context write_potential: below 17 digits exactly the blueprint's "
   for (const auto &kv : BlueprintParser::getKeysMapRef()) {
     const BlueprintKey &bk = kv.second;
     if (bk.value_N.empty() || bk.value_N[0] == 0) continue;
+    // A retired key is never stored (Context::add refuses it), so no
+    // potential has a line of it to write.
+    if (bk.isRetired()) continue;
     bool dbl = false;
     for (const auto &vt : bk.value_type)
       if (vt.find("DOUBLE") != std::string::npos) dbl = true;

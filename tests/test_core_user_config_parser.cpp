@@ -315,7 +315,7 @@ TEST_CASE("Config parser: refuse_keys reaches into CONFIG includes",
 
 // Pins: refusal is by exact key, never by text. A file whose keys are not
 // refused -- with a comment and an inline comment that mention FORCE, a key
-// whose name contains FORCE (ZERO_COM_FORCE), FWEIGHT, and a DBFILE value
+// whose name contains FORCE (ZERO_COM_FORCE), FSIGMA, and a DBFILE value
 // FORCE -- parses to exactly the Context a plain parser returns, CONFIG
 // include included.
 // Before refuse_keys existed this case failed before any parse. Refusing
@@ -333,7 +333,7 @@ TEST_CASE("Config parser: refuse_keys leaves a file without refused keys "
                                      "ATOM Ta\n"
                                      "INIT2B true   # not FORCE\n"
                                      "RCUT2B 5.0\n"
-                                     "FWEIGHT 2.0\n"
+                                     "FSIGMA 0.2\n"
                                      "DBFILE FORCE\n"
                                      "CONFIG " + inner + "\n");
 
