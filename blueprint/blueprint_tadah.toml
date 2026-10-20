@@ -3222,8 +3222,9 @@ INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEY
 cli_excludes = ["structure"]
 long_description = """
 Prints the energy metrics (MAE and RMSE in meV/atom, R^2) of every dataset,
-and the force and stress metrics when forces (-F) or stresses (-S) are
-predicted. A structure stored with energy priority 0 (eweight) is left out
+and the force metrics (MAE and RMSE in eV/Å over the force components, R^2)
+and the stress metrics (MAE and RMSE in GPa over the nine entries of each
+stress tensor, R^2) when forces (-F) or stresses (-S) are predicted. A structure stored with energy priority 0 (eweight) is left out
 of the energy metrics, one with force priority 0 (fweight) out of the force
 metrics, and one with stress priority 0 (sweight) out of the stress
 metrics: it has no energy, forces or stress tensor of its own (the values
