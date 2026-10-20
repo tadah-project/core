@@ -219,13 +219,6 @@ aed_type T_dgemv(Matrix &mat, aed_type &vec, char trans='N');
  *  read).
  *  @throws std::invalid_argument unless D is N x N (naming both shapes). */
 aed_type T_MDMT_diag(const Matrix &M, const Matrix &D);
-/** @brief The diagonal of M S M^T for an m x N M and a symmetric N x N S:
- *  entry i is m_i^T S m_i, m_i the i-th row of M (the quadratic form of
- *  each row; with S the covariance of a weight vector w, the variance of
- *  m_i . w). Computed in blocks of 1024 rows with dgemm (M_b S), so it
- *  allocates 1024 x N doubles, not m x N.
- *  @throws std::invalid_argument unless S is N x N (naming both shapes). */
-aed_type T_MDMT_sym(const Matrix &M, const Matrix &S);
 double norm_X(Matrix &A, char norm='1');
 
 aed_type solve_posv(Matrix &A, aed_type /*&*/T, char uplo='U');

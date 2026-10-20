@@ -30,18 +30,21 @@ std::string retired_key_text(const std::string &key, const BlueprintKey &info);
 
 /** The notice of a parse that read the retired lines @p lines (at least
  *  one): "Retired keys EWEIGHT (line 2 of old.tadah) and FWEIGHT (line 3
- *  of old.tadah) are ignored: ..." (one key: "Retired key EWEIGHT (line 2
- *  of old.tadah) is ignored: ..."), saying that they change nothing a
- *  prediction gives and that a fit refuses them, and where the conversion
- *  is. A line without a file is named "line N". Without the "WARNING: "
- *  that report_key_notice() adds. */
+ *  of old.tadah) are ignored: they change nothing a prediction gives, and
+ *  a fit refuses them (tadah explain EWEIGHT and tadah explain FWEIGHT give
+ *  the reasons and the conversions)." (one key: "Retired key EWEIGHT (line
+ *  2 of old.tadah) is ignored: it changes nothing ..."). A line without a
+ *  file is named "line N". Without the "WARNING: " that
+ *  report_key_notice() adds. */
 std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines);
 
 /** The refusal of a fit whose configuration records the retired lines
  *  @p lines (at least one): "<who>: the configuration has keys retired in
  *  Tadah! 1.6.0, and a fit refuses them: EWEIGHT 1.0 (line 2 of
  *  old.tadah), FWEIGHT 100 (line 3 of old.tadah). EWEIGHT: <conversion>
- *  FWEIGHT: <conversion> ...", each key's conversion once, in the order
+ *  FWEIGHT: <conversion> ...", each line by its key and values (a line of
+ *  more than six values by its first three: "WCOV 28 1.2e-05 3e-07 and 782
+ *  more values"), each key's conversion once, in the order
  *  of its first line, then what to do with the lines (with a WDBFILE_AUTO
  *  line, that the WDBFILE values of a potential go on the command line or
  *  into a file that includes it: a retrain does not read a potential's

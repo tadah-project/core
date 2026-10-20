@@ -197,31 +197,26 @@ default_value      = ["false"]
 
 [ALLOWED_KEYS.uncertainty]
 INHERIT = ["TYPES.BOOL"]
-description  = "Writes the weights with their standard deviations (weights.tadah); needs OALGO 3."
+description  = "Retired: the standard deviations of the coefficients of a fit (weights.tadah), uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
-`tadah train --uncertainty` writes weights.tadah: for every weight its
-index, its value and its standard deviation, the square root of the
-diagonal of the weight covariance WCOV of the fit (0 for a weight FIXINDEX
-pins), headed "Index  Mean weight  Std. dev.". Only an OALGO 3 fit of M_BLR
-or of M_KRR implementation 1 computes the covariance: any other OALGO, and
-M_KRR implementation 2 (MODEL M_KRR <kernel> 2), are refused before
-training, and a fit whose noise variance is undefined (no more
-observations than effective weights) is refused before the potential is
-written, saying what to change. Before 1.6.0 the column was the diagonal
-of SIGMA, a transposed, unscaled matrix, headed "Uncertainty". A switch of the run, not
-part of the model: no potential has an UNCERTAINTY line (its training
-record, a comment block never read as keys, lists the UNCERTAINTY its run
-was given), and a run reads no UNCERTAINTY line of a potential (a file
-with WEIGHTS given as the configuration, tadah train -c pot.tadah, or
-included with CONFIG): the UNCERTAINTY true line tadah 1.5.x wrote into
-every potential trained with it asks for nothing (a WARNING says so). The
-run's own asks for weights.tadah: --uncertainty, or UNCERTAINTY true in a
-training configuration, in a task file or in a file that includes the
-potential.
+tadah train refuses --uncertainty, and a fit an UNCERTAINTY line of its
+configuration, with the reason. A potential with an UNCERTAINTY line
+(tadah train of Tadah! 1.5.0 wrote one into every potential) loads with
+one notice; a fit refuses it until the line is deleted.
 """
+examples = []
+default_value = []
 cli_long_flag    = "--uncertainty"
 cli_short_flag   = ""
 cli_required     = false
+[ALLOWED_KEYS.uncertainty.retired]
+reason = """tadah train --uncertainty wrote the standard deviations of the \
+coefficients of the fit (weights.tadah). Uncertainty output is not part of \
+Tadah! 1.6.0: its error bars were not calibrated (they were too narrow for \
+many structures)."""
+replacement = "nothing in Tadah! 1.6.0"
+conversion = """Deleting the option, or the UNCERTAINTY line, converts it: \
+the fit and its coefficients are unaffected."""
 
 [ALLOWED_KEYS.dbfile]
 INHERIT = ["TYPES.STRINGS"]
@@ -2424,44 +2419,15 @@ examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
 [ALLOWED_KEYS.error]
 INHERIT = ["TYPES.BOOL"]
-description  = "Gives every predicted value its predictive standard deviation (needs WCOV and WNOISE)."
+description  = "The retired option --error of tadah predict and tadah properties pairwise (uncertainty output)."
 long_description = """
-`tadah predict --error` gives every predicted value its predictive
-standard deviation, sqrt(phi^T WCOV phi + v): phi the design-matrix row of
-the value (its derivatives with respect to the WEIGHTS), WCOV the
-covariance of the WEIGHTS and v the noise variance of an observation of
-the value, both from an OALGO 3 fit: WNOISE F for a force component,
-WNOISE S for a diagonal stress entry and half of it for an off-diagonal one
-(which the fit counts twice), and N^2q times WNOISE E for the energy of a
-structure of N atoms (q = 1 under the potential's ENORM ATOM, 1/2 under
-ENORM SQRT; WNOISE E is per atom). The first term is the variance of the
-predicted value, the second the scatter of a reference value about it, so
-the error is that of the prediction against data like the training data. energy.pred, forces.pred
-and stress.pred get a fourth column with it (per atom for the energy), and
-error.pred lists, per structure, the energy's (eV/atom) and the largest
-force (eV/Å) and stress (eV/Å^3) one.
-`tadah properties pairwise --error` gives the energy's per atom (per bond
-with --bondenergy); its two-body and many-body parts get
-sqrt(phi_p^T WCOV phi_p), without the noise term (a part is not observed).
-A potential without WCOV and WNOISE is refused, saying why it has none:
-a fit other than OALGO 3 (a retrain with OALGO 3 gives them), M_KRR
-implementation 2 (a retrain with implementation 1 gives them), or, with
-OALGO 3, a potential of Tadah! 1.0.0 to 1.5.0, whose SIGMA is ignored (its
-retired keys converted, a retrain gives them), a fit with no more
-observations than effective weights, whose noise variance is undefined
-(more data and a retrain give them), or weights set from FIXWEIGHT without
-a fit. Refused too: a potential whose WNOISE has no ESIGMA line beside it,
-which a fit before the error scales wrote in other units (a retrain gives
-both); every prediction of a potential fitted without energies (ENERGY
-false, or every structure's priority 0: no WNOISE E; every prediction has
-an energy); and forces or stresses asked for that the fit had no
-observations of (no WNOISE F or S). Before 1.6.0 the errors were computed
-from SIGMA, a transposed and unscaled matrix, minus their mean, and most were
-negative.
+tadah predict and tadah properties pairwise refuse it, with the reason
+(tadah explain predict.error, tadah explain properties.pairwise.error).
 """
+examples = []
+default_value = []
 cli_long_flag    = "--error"
 cli_short_flag   = ""
-default_value      = ["false"]
 cli_required     = false
 
 [ALLOWED_KEYS.quantity]
@@ -2712,91 +2678,67 @@ examples = ["0.12 1.2 0.3"]
 value_type = ["INT {DOUBLE}"]
 value_format = ["<integer> <double> ..."]
 value_N = [-2147483647]
-description = "The weight matrix Tadah! 1.0.0 to 1.5.0 wrote for an OALGO 3 fit (deprecated: replaced by WCOV and WNOISE)."
+description = "The weight matrix Tadah! 1.0.0 to 1.5.0 wrote for an OALGO 3 fit (deprecated: ignored)."
 long_description = """
 N, then an N×N matrix in column-major order, which `tadah train` 1.0.0 to
-1.5.0 wrote for an OALGO 3 fit as the
-covariance of the weights. It was
-computed with a transposed formula, V^T R V instead of V R V^T (V the
-right singular vectors of the design matrix, R the ridge factors
-1/(s_i^2 + lambda)), and without the noise variance, so it is not the
-covariance of the weights, and `tadah predict --error` reported wrong
-values with it (negative ones among them). Only the diagonal and the
-magnitudes of the entries of the covariance can be recovered from it: the
-signs of the off-diagonal entries and the noise scale need the training
-data. The key is accepted so that those potentials still load (`tadah
-predict`, `pair_style tadah`), with one notice, and is not stored. A
-retrain with OALGO 3, after the potential's retired keys are converted,
-writes its weight covariance, WCOV and WNOISE.
+1.5.0 wrote for an OALGO 3 fit as the covariance of the weights and which
+`tadah predict --error` read. It was computed with a transposed formula,
+V^T R V instead of V R V^T (V the right singular vectors of the design
+matrix, R the ridge factors 1/(s_i^2 + lambda)), and without the noise
+variance, so it is not the covariance of the weights, and `tadah predict
+--error` reported wrong values with it (negative ones among them). Only the
+diagonal and the magnitudes of the entries of the covariance can be
+recovered from it: the signs of the off-diagonal entries and the noise
+scale need the training data. The key is accepted so that those potentials
+still load (`tadah predict`, `pair_style tadah`), with one notice, and is
+not stored. Uncertainty output is not part of Tadah! 1.6.0 (tadah explain
+predict.error gives the reason).
 """
-deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. tadah predict --error needs WCOV and WNOISE, which a retrain with OALGO 3 writes after the potential's retired keys are converted."""
+deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. Uncertainty output is not part of Tadah! 1.6.0: its error bars were not calibrated (they were too narrow for many structures)."""
 examples = []
 
 [ALLOWED_KEYS.WCOV]
 value_type = ["INT {DOUBLE}"]
 value_format = ["<N> <double> ..."]
 value_N = [-2147483647]
-description = "The covariance of the potential's WEIGHTS, written by an OALGO 3 fit."
+description = "Retired: the covariance of the WEIGHTS of an OALGO 3 fit, for uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
-N, then the N×N covariance matrix of the WEIGHTS in column-major order, in
-the parameterisation of WEIGHTS (with NORM true and a linear model,
-BF_Linear or Kern_Linear, that of the weights of the raw descriptors). It
-is the posterior covariance of the fit that wrote it,
-s^2 (Phi^T W Phi + lambda I)^-1, with Phi the design matrix, W the weight of
-each row in the fit (its priority over the square of its error scale:
-ESIGMA describes it), lambda the fit's LAMBDA (the evidence approximation's
-for LAMBDA -1) and s^2 = RSS/(n_obs - gamma) the noise variance per unit row
-weight: RSS the weighted residual sum of squares, n_obs the number of
-observations (the rows of priority above 0 that are not zero in every
-column) and gamma = sum_i s_i^2/(s_i^2 + lambda)
-the effective number of weights, the sum over the singular directions the
-solve keeps, s_i the singular values of the weighted design matrix. The
-inverse is over the kept directions too: a direction the solve drops (s_i
-at most rcond times the largest, rcond the second value of OALGO) has no
-weight component, no covariance and no part in gamma; the fit's WARNING
-gives their number. A weight FIXINDEX pins has
-no variance: its row and column are 0 (every weight pinned: all zeros).
-
-`tadah train` writes WCOV, with WNOISE, for an OALGO 3 fit (M_BLR, M_KRR
-implementation 1); a fit whose noise variance is undefined (n_obs <= gamma)
-writes neither, with a WARNING, and so does every other fit. A training
-configuration's WCOV and WNOISE are not read: the fit writes its own.
-`tadah predict --error` reads both, and refuses a WCOV whose N is not the
-number of WEIGHTS or that does not hold N×N+1 values (and, as WNOISE
-describes, a potential whose WNOISE has no E). `pair_style tadah`
-does not use them. Tadah! 1.0.0 to 1.5.0 wrote SIGMA instead (deprecated).
+N, then the N×N covariance matrix of the WEIGHTS in column-major order. A
+potential that has it loads, with one notice; a fit refuses it until the
+line is deleted.
 """
-examples = ["2 0.5 0.1 0.1 0.25"]
+examples = []
+[ALLOWED_KEYS.WCOV.retired]
+reason = """WCOV held the covariance of the WEIGHTS of an OALGO 3 fit, for \
+the uncertainty output of tadah predict --error and tadah properties \
+pairwise --error. Uncertainty output is not part of Tadah! 1.6.0: its \
+error bars were not calibrated (they were too narrow for many \
+structures)."""
+replacement = "nothing in Tadah! 1.6.0"
+conversion = """Deleting the line converts it: no prediction reads it, and \
+the fit is unaffected."""
 
 [ALLOWED_KEYS.WNOISE]
 names = true
 value_type = ["{STRING DOUBLE}"]
 value_format = ["<type> <variance> ..."]
 value_N = [-2147483647]
-description = "The noise variance of each row type of the potential's fit, written by an OALGO 3 fit."
+description = "Retired: the noise variance of each quantity of an OALGO 3 fit, for uncertainty output that Tadah! 1.6.0 does not give."
 long_description = """
-Pairs of a row type, E (energies), F (forces) or S (stresses), and the
-noise variance of one observation of it in the units of the data: (eV/atom)^2
-for the energy per atom (eV^2/atom, that of E/sqrt(N), under ENORM SQRT),
-(eV/Å)^2 for a force component and (eV/Å^3)^2 for a diagonal stress entry.
-Each is s^2 sigma^2, s^2 the noise variance per unit row weight of the fit
-(WCOV) and sigma the absolute part of the error scale of the type (ESIGMA,
-FSIGMA, SSIGMA, converted to these units), for an observation of priority 1:
-neither a structure's priority nor the relative part of FSIGMA and SSIGMA is
-in it. Only the types the fit observed are listed (E alone for a fit with
-FORCE and STRESS false; F, and S, without E for a fit without energies:
-ENERGY false, or every structure's priority 0).
-
-`tadah predict --error` adds the noise variance of a value's observation to
-its variance phi^T WCOV phi (the help of --error describes it) and refuses a
-type WNOISE does not list: forces asked for with -F of a potential fitted
-without them, stresses likewise, and, as every prediction has an energy, every prediction
-of a potential whose WNOISE has no E (`tadah train` warns when it writes
-one; its WCOV and the standard deviations of --uncertainty are not
-affected). It refuses a WNOISE without an ESIGMA line beside it, which a fit
-before the error scales wrote in other units.
+Pairs of a quantity, E (energies), F (forces) or S (stresses), and the
+noise variance of one observation of it. A potential that has it loads,
+with one notice; a fit refuses it until the line is deleted.
 """
-examples = ["E 1.2e-4 F 3.4e-3", "E 1e-3 F 0.01 S 1e-6"]
+examples = []
+[ALLOWED_KEYS.WNOISE.retired]
+reason = """WNOISE held the noise variance of each quantity of an OALGO 3 \
+fit, for the uncertainty output of tadah predict --error and tadah \
+properties pairwise --error. Uncertainty output is not part of Tadah! \
+1.6.0: its error bars were not calibrated (they were too narrow for many \
+structures)."""
+replacement = "nothing in Tadah! 1.6.0"
+conversion = """Deleting the line converts it: no prediction reads it, and \
+the fit is unaffected."""
 
 [ALLOWED_KEYS.NSTDEV]
 INHERIT = ["TYPES.DOUBLES"]
@@ -3275,6 +3217,23 @@ on the command line.
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
 [TASKS.predict.keys]
 INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.error", "ALLOWED_KEYS.analytics", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.zero_com_force", "ALLOWED_KEYS.no_lscale", "ALLOWED_KEYS.no_eshift"]
+[TASKS.predict.keys.error]
+description = "Retired: the predictive standard deviation of every predicted value, uncertainty output that Tadah! 1.6.0 does not give."
+long_description = """
+A command line or a TASK predict section that gives it is refused with the
+reason, and so is a task file that gives it in the GLOBAL section, whose
+keys reach every task of the file.
+"""
+examples = []
+default_value = []
+[TASKS.predict.keys.error.retired]
+reason = """tadah predict --error gave every predicted value a standard \
+deviation from the uncertainty of the fit. Uncertainty output is not part \
+of Tadah! 1.6.0: its error bars were not calibrated (they were too narrow \
+for many structures)."""
+replacement = "nothing in Tadah! 1.6.0"
+conversion = """Deleting the option converts it: the predictions, and the \
+fit of the potential, are unaffected."""
 [TASKS.predict.keys.analytics]
 cli_excludes = ["structure"]
 long_description = """
@@ -3679,6 +3638,23 @@ long_description = ""
 examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
 [TASKS.properties.pairwise.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.atompair", "ALLOWED_KEYS.force", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.error", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.bondenergy"]
+[TASKS.properties.pairwise.keys.error]
+description = "Retired: the standard deviation of the energy curve and of its parts, uncertainty output that Tadah! 1.6.0 does not give."
+long_description = """
+A command line or a TASK properties pairwise section that gives it is
+refused with the reason, and so is a task file that gives it in the GLOBAL
+section, whose keys reach every task of the file.
+"""
+examples = []
+default_value = []
+[TASKS.properties.pairwise.keys.error.retired]
+reason = """tadah properties pairwise --error gave the energy curve and its \
+two-body and many-body parts a standard deviation from the uncertainty of \
+the fit. Uncertainty output is not part of Tadah! 1.6.0: its error bars \
+were not calibrated (they were too narrow for many structures)."""
+replacement = "nothing in Tadah! 1.6.0"
+conversion = """Deleting the option converts it: the energy curves, and the \
+fit of the potential, are unaffected."""
 [TASKS.properties.pairwise.keys.eshift]
 INHERIT = ["TYPES.DOUBLE"]
 description = "Shifts the energy curve by this value. If zero is provided the curve is shifted by the furthest right value of the curve. A potential that is either two- or many-body takes a single double for --eshift; one that is both two- and many-body takes three: the first for the total energy, the second for the two-body and the third for the many-body part."

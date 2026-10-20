@@ -86,6 +86,21 @@ std::string deleted_by(const RetiredKeyLine &l, const Context *context,
   return "";
 }
 
+/* The line @p l as a refusal names it: its key and values ("EWEIGHT
+ * 1.0"); a line of more than six values (the WCOV of a potential: N, then
+ * N x N values) by its first three and the number of the others ("WCOV 28
+ * 1.2e-05 3e-07 and 782 more values"). */
+std::string line_text(const RetiredKeyLine &l) {
+  constexpr std::size_t kWhole = 6, kShown = 3;
+  std::string text = l.key;
+  const std::size_t n = l.values.size();
+  for (std::size_t i = 0; i < n && (n <= kWhole || i < kShown); ++i)
+    text += " " + l.values[i];
+  if (n > kWhole)
+    text += " and " + std::to_string(n - kShown) + " more values";
+  return text;
+}
+
 const BlueprintKey &retired_entry(const std::string &key) {
   const auto &keys = BlueprintParser::getKeysMapRef();
   const auto it = keys.find(key);
@@ -115,15 +130,13 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines) {
   for (const auto &k : keys) explain.push_back("tadah explain " + k);
   return std::string(one ? "Retired key " : "Retired keys ") +
          join_and(named) +
-         (one ? " is ignored: it weighted the training data of a fit before "
-                "Tadah! 1.6.0 and changes nothing a prediction gives; a fit "
-                "refuses it ("
-              : " are ignored: they weighted the training data of a fit "
-                "before Tadah! 1.6.0 and change nothing a prediction gives; "
-                "a fit refuses them (") +
+         (one ? " is ignored: it changes nothing a prediction gives, and a "
+                "fit refuses it ("
+              : " are ignored: they change nothing a prediction gives, and a "
+                "fit refuses them (") +
          join_and(explain) +
-         (keys.size() == 1 ? " gives the conversion)."
-                           : " give the conversions).");
+         (keys.size() == 1 ? " gives the reason and the conversion)."
+                           : " give the reasons and the conversions).");
 }
 
 std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
@@ -134,10 +147,8 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
   std::vector<std::string> named;
   std::vector<std::string> keys;
   for (const auto &l : lines) {
-    std::string text = l.key;
-    for (const auto &v : l.values) text += " " + v;
-    named.push_back(text + " (" + where(l) + deleted_by(l, context, krr2) +
-                    ")");
+    named.push_back(line_text(l) + " (" + where(l) +
+                    deleted_by(l, context, krr2) + ")");
     if (std::find(keys.begin(), keys.end(), l.key) == keys.end())
       keys.push_back(l.key);
   }
