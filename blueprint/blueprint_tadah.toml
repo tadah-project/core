@@ -906,7 +906,8 @@ description = "Controls the regularisation parameter λ for BLR and KRR."
 long_description = """
 LAMBDA 0 fits without regularisation, and a positive LAMBDA is λ. λ weighs
 the coefficients against the sum of the observations, each scaled by its
-error scale (ESIGMA describes it): every error scale multiplied by c fits as
+error scale (the page :ref:`What a Fit Minimises <fit_objective>` of the
+documentation describes it): every error scale multiplied by c fits as
 LAMBDA multiplied by c^2. LAMBDA -1 requests the evidence approximation, which estimates λ (OALGO 3 only): it
 iterates alpha = gamma/(w.w) and beta = (n_obs - gamma)/RSS, n_obs the
 observations (the rows of the design matrix with a priority above 0 that are
@@ -2237,7 +2238,9 @@ description  = "Per-dataset priorities in a fit, one per DBFILE entry."
 long_description = """
 Multiplies, in the fit, the priority of every observation of the structures
 of the corresponding DBFILE entry (the eweight, fweight and sweight of each
-structure in its data file; ESIGMA describes the sum). It weights datasets
+structure in its data file; the page
+:ref:`What a Fit Minimises <fit_objective>` of the documentation describes
+the sum). It weights datasets
 against each other: a dataset of hot or highly compressed structures, whose
 errors are larger, can get a lower priority than one of near-equilibrium
 structures. Each value is a finite number >= 0, one per dataset; a negative
@@ -2263,6 +2266,13 @@ cli_required   = false
 [ALLOWED_KEYS.wdbfile_auto]
 INHERIT = ["TYPES.DOUBLE"]
 description  = "Retired: the dataset balance of a fit of Tadah! 1.5.0, priorities n_d^-a (WDBFILE replaces it)."
+long_description = """
+Retired: the dataset balance of a fit of Tadah! 1.5.0, priorities n_d^-a
+(WDBFILE replaces it). A potential that has it loads, with one notice; a fit
+refuses it with its conversion, which the page
+:ref:`What a Fit Minimises <fit_objective_conversion>` of the
+documentation gives with those of the other retired keys.
+"""
 examples       = []
 cli_long_flag  = "--wdbfile-auto"
 cli_short_flag = ""
@@ -2279,6 +2289,13 @@ fit; WDBFILE_AUTO 0 is no WDBFILE."""
 [ALLOWED_KEYS.eweight_temp]
 INHERIT = ["TYPES.DOUBLE"]
 description  = "Retired: the Boltzmann reweighting of energies of a fit of Tadah! 1.5.0 (no key replaces it)."
+long_description = """
+Retired: the Boltzmann reweighting of energies of a fit of Tadah! 1.5.0 (no
+key replaces it). A potential that has it loads, with one notice; a fit
+refuses it with its conversion, which the page
+:ref:`What a Fit Minimises <fit_objective_conversion>` of the
+documentation gives with those of the other retired keys.
+"""
 examples       = []
 cli_long_flag  = "--eweight-temp"
 cli_short_flag = ""
@@ -2483,14 +2500,14 @@ description = "Energy error scale of a fit, in meV/atom (> 0)."
 long_description = """
 A fit minimises the sum, over the observations of its training data, of
 priority x (residual / error scale)^2, plus the LAMBDA penalty of its
-coefficients. The energy of a structure of N atoms is one observation: its
-residual divided by N (ENORM ATOM, the default) or by sqrt(N) (ENORM SQRT),
-with the error scale ESIGMA, in meV/atom (meV per sqrt(atom) under ENORM
-SQRT). Its priority is the structure's eweight in the data file times the
-WDBFILE value of its dataset. With FORCE true each force component is an
-observation (FSIGMA), and with STRESS true each stress tensor (SSIGMA). The
-sum is not averaged: an observation whose residual equals its error scale
-adds its priority to it, whatever the number of observations.
+coefficients; the page :ref:`What a Fit Minimises <fit_objective>` of the
+documentation describes it. The energy of a structure of N atoms is one
+observation: its residual divided by N (ENORM ATOM, the default) or by
+sqrt(N) (ENORM SQRT), with the error scale ESIGMA, in meV/atom (meV per
+sqrt(atom) under ENORM SQRT). Its priority is the structure's eweight in the
+data file times the WDBFILE value of its dataset. The sum is not averaged:
+an observation whose residual equals its error scale adds its priority to
+it, whatever the number of observations.
 
 Only the ratios of the error scales and LAMBDA shape the fit: every error
 scale multiplied by c fits as LAMBDA multiplied by c^2. A smaller ESIGMA
@@ -2510,7 +2527,8 @@ default_value = ["0.1", "0"]
 description = "Force error scale of a fit, in eV/Å: <a> [<b>], a > 0 and b >= 0."
 long_description = """
 With FORCE true each Cartesian force component of a structure is an
-observation of the fit (ESIGMA describes the sum), with the error scale
+observation of the fit (:ref:`What a Fit Minimises <fit_objective>`
+describes the sum), with the error scale
 sqrt(a^2 + (b M)^2) in eV/Å: a is the absolute part, b the relative one and
 M the root mean square of the structure's own reference force components.
 b 0, the default, gives every force component the error scale a; with b > 0
@@ -2534,7 +2552,8 @@ default_value = ["0.5", "0"]
 description = "Stress error scale of a fit, in GPa: <a> [<b>], a > 0 and b >= 0."
 long_description = """
 With STRESS true the stress tensor of each structure is observed by its
-nine entries (ESIGMA describes the sum): each off-diagonal entry (xy, xz,
+nine entries (:ref:`What a Fit Minimises <fit_objective>` describes the
+sum): each off-diagonal entry (xy, xz,
 yz) counts twice, so the cost of a residual tensor is its squared Frobenius
 norm, the same in every orientation of the cell. The error scale is
 sqrt(a^2 + (b M)^2) in GPa: a is the absolute part, b the relative one and M
@@ -2567,7 +2586,9 @@ ESIGMA/sqrt(54) (0.14 meV/atom for ESIGMA 1). Forces and stresses are not
 affected.
 
 With ENERGY false a fit refuses ENORM SQRT. Every potential tadah train and
-tadah hpo write has an ENORM line, the default included.
+tadah hpo write has an ENORM line, the default included. The page
+:ref:`What a Fit Minimises <fit_objective>` of the documentation describes
+the sum a fit minimises.
 """
 examples = ["ATOM", "SQRT"]
 
@@ -2584,13 +2605,22 @@ FIXINDEX and FIXWEIGHT pin them. A structure's eweight 0 in the data file
 leaves that structure's energy out of the fit, of the energy metrics and of
 the data statistics instead. tadah predict predicts energies whatever the
 potential's ENERGY. Every potential tadah train and tadah hpo write has an
-ENERGY line, the default included.
+ENERGY line, the default included. The page
+:ref:`What a Fit Minimises <fit_objective>` of the documentation describes
+the sum a fit minimises.
 """
 examples = ["true", "false"]
 
 [ALLOWED_KEYS.EWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 description = "Retired: the energy weight of a fit of Tadah! 1.0.0 to 1.5.0 (ESIGMA and ENERGY replace it)."
+long_description = """
+Retired: the energy weight of a fit of Tadah! 1.0.0 to 1.5.0 (ESIGMA and
+ENERGY replace it). A potential that has it loads, with one notice; a fit
+refuses it with its conversion, which the page
+:ref:`What a Fit Minimises <fit_objective_conversion>` of the
+documentation gives with those of the other retired keys.
+"""
 examples = []
 [ALLOWED_KEYS.EWEIGHT.retired]
 reason = """EWEIGHT multiplied the squared residual of the total energy of \
@@ -2606,6 +2636,13 @@ energies in the fit) is ENERGY false."""
 [ALLOWED_KEYS.FWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 description = "Retired: the force weight of a fit of Tadah! 1.0.0 to 1.5.0 (FSIGMA replaces it)."
+long_description = """
+Retired: the force weight of a fit of Tadah! 1.0.0 to 1.5.0 (FSIGMA replaces
+it). A potential that has it loads, with one notice; a fit refuses it with
+its conversion, which the page
+:ref:`What a Fit Minimises <fit_objective_conversion>` of the
+documentation gives with those of the other retired keys.
+"""
 examples = []
 [ALLOWED_KEYS.FWEIGHT.retired]
 reason = """FWEIGHT multiplied the squared residual of each force \
@@ -2617,6 +2654,13 @@ conversion = """FSIGMA = 1/sqrt(FWEIGHT) eV/Å gives the same fit. FWEIGHT 0 \
 [ALLOWED_KEYS.SWEIGHT]
 INHERIT = ["TYPES.DOUBLE"]
 description = "Retired: the stress weight of a fit of Tadah! 1.0.0 to 1.5.0 (SSIGMA replaces it)."
+long_description = """
+Retired: the stress weight of a fit of Tadah! 1.0.0 to 1.5.0 (SSIGMA
+replaces it). A potential that has it loads, with one notice; a fit refuses
+it with its conversion, which the page
+:ref:`What a Fit Minimises <fit_objective_conversion>` of the
+documentation gives with those of the other retired keys.
+"""
 examples = []
 [ALLOWED_KEYS.SWEIGHT.retired]
 reason = """SWEIGHT multiplied the squared residual of each of the six \
