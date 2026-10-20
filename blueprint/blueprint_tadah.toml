@@ -899,7 +899,7 @@ forces are right.
 [ALLOWED_KEYS.LAMBDA]
 default_value = ["0"]
 value_type = ["INT","DOUBLE","INT DOUBLE"]
-value_format = ["<int>", "<double>", "<int> <double>"]
+value_format = ["<int>", "<double>", "<int> <double> (read in a potential of an earlier version; a fit refuses it)"]
 value_N = [-2]
 description = "Controls the regularisation parameter λ for BLR and KRR."
 long_description = """
@@ -2109,10 +2109,12 @@ Fits per-element reference energies by least squares: minimise
 M[i, k] is the count of species k in configuration i, over the
 configurations with an energy (eweight not 0). The fitted beta_k
 becomes ESHIFT[Z(k)]. More robust than ESHIFT_ATOM when the dataset has no
-isolated-atom configs but does have compositional diversity. When the
-compositions do not determine the fit (every structure of one composition,
-say) the normal matrix is singular: every ESHIFT is then 0 and a WARNING
-says so.
+isolated-atom configs but does have compositional diversity. A species
+that only configurations with eweight 0 contain has no energy to fit: its
+ESHIFT is 0, a WARNING names it, and the other species are fitted. When
+the compositions do not determine the fit (every structure of one
+composition, say) the normal matrix is singular: every ESHIFT is then 0
+and a WARNING says so.
 Mutually exclusive with explicit ESHIFT and ESHIFT_ATOM.
 
 A setting of the training data, not of the model: a potential has no
@@ -3092,15 +3094,19 @@ cli_excludes = ["structure"]
 long_description = """
 Prints the energy metrics (MAE and RMSE in meV/atom, R^2) of every dataset,
 and the force and stress metrics when forces (-F) or stresses (-S) are
-predicted. A structure stored with force weight 0 (fweight) is left out of
-the force metrics, and one with stress weight 0 (sweight) out of the stress
-metrics: it has no forces or stress tensor of its own (tadah data convert
-stores zeros in their place). A dataset in which every structure has force
-(stress) weight 0 is not measured: nan in its column, left out of the mean,
-and a note names it. With -F (-S), a run in which no dataset has forces (a
-stress tensor) is refused before predicting, and so, with or without them,
-is a dataset that the filters predict is given (--efilter, --ffilter) leave
-without structures. The keys that prepared the training data of the potential
+predicted. A structure stored with energy weight 0 (eweight) is left out of
+the energy metrics, one with force weight 0 (fweight) out of the force
+metrics, and one with stress weight 0 (sweight) out of the stress metrics:
+it has no energy, forces or stress tensor of its own (the values stored
+for it are placeholders; tadah data convert stores zero forces and
+stresses with that weight 0 for a file that gives none). A dataset in
+which every structure has that weight 0 is not measured by those metrics:
+nan in its column, left out of the mean, and a note names it. A run in
+which no dataset has an energy is not refused: its Energy lines are nan.
+With -F (-S), a run in which no dataset has forces (a stress tensor) is
+refused before predicting, and so, with or without them, is a dataset that
+the filters predict is given (--efilter, --ffilter) leave without
+structures. The keys that prepared the training data of the potential
 (EFILTER, FFILTER, ZERO_COM_FORCE, ESHIFT_ATOM, ESHIFT_DBATOM, WDBFILE,
 WDBFILE_AUTO, EWEIGHT_TEMP; a potential of an earlier version has them as key
 lines) are not applied to the data predicted.
