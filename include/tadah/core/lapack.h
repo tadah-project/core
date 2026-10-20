@@ -122,6 +122,27 @@ extern "C" {
                 double* B, int* LDB, double* WORK, int* LWORK, int* INFO);
 
     /**
+     * @brief Computes the QR factorisation A = Q R of a real M-by-N matrix A.
+     *
+     * @param M     The number of rows of A. M >= 0.
+     * @param N     The number of columns of A. N >= 0.
+     * @param A     On entry, the M-by-N matrix A. On exit, R in the upper
+     *              triangle (its min(M,N) x N upper trapezoid), and below
+     *              the diagonal the Householder vectors that with TAU
+     *              represent Q.
+     * @param LDA   The leading dimension of A. LDA >= max(1, M).
+     * @param TAU   The min(M,N) scalar factors of the reflectors.
+     * @param WORK  Workspace; WORK(1) returns the optimal LWORK.
+     * @param LWORK The dimension of WORK, >= max(1, N); -1 queries it.
+     * @param INFO  0 on success; -i when the i-th argument is illegal.
+     *
+     * The sizes are const, as in dlib's declaration of the same routine,
+     * so a source that includes both declares one function.
+     */
+    void dgeqrf_(const int* M, const int* N, double* A, const int* LDA,
+                 double* TAU, double* WORK, const int* LWORK, int* INFO);
+
+    /**
      * @brief Solves a system of linear equations A * X = B with a symmetric positive definite matrix A using the Cholesky factorization computed by DPOTRF.
      *
      * @param UPLO  Specifies whether the upper or lower triangular factor is stored:
