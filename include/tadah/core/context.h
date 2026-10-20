@@ -49,6 +49,23 @@ struct ConfigBlock {
   std::vector<std::string> lines;
 };
 
+/** A line of a retired key (blueprint field `retired`,
+ *  BlueprintKey::isRetired()) that a parse read. CoreUserConfigParser
+ *  records it on the Context it returns (Context::record_retired_key())
+ *  instead of storing the key: no getter reads it, no writer writes it,
+ *  and a fit refuses a Context that records one (retired_keys.h). */
+struct RetiredKeyLine {
+  std::string key;                  ///< The key, upper case.
+  std::string source;               ///< Its file; empty for lines without one.
+  std::size_t line = 0;             ///< Its number (1-based) in @c source.
+  std::vector<std::string> values;  ///< Its values, as written.
+  std::string text;                 ///< The line, without the blanks around it.
+  bool operator==(const RetiredKeyLine &o) const {
+    return key == o.key && source == o.source && line == o.line &&
+           values == o.values && text == o.text;
+  }
+};
+
 /**
  * @class Context
  * @brief Thread-safe key-value container that consults the blueprint for
@@ -66,6 +83,16 @@ public:
   void append_block(const ConfigBlock &block);
   std::vector<ConfigBlock> blocks(const std::string &kind = "") const;
   void replace_blocks(const std::vector<ConfigBlock> &blocks);
+  /** Records a line of a retired key that a parse read
+   *  (CoreUserConfigParser): kept apart from the keys, as the blocks are,
+   *  so that copies, merge() (either side, without duplicates),
+   *  serialize() and deserialize() carry it, and neither operator<< nor
+   *  write_potential() writes it. @throws std::invalid_argument for a key
+   *  the blueprint does not mark as retired. */
+  void record_retired_key(const RetiredKeyLine &line);
+  /** The retired lines recorded on this Context, in the order recorded
+   *  (a CONFIG include's where its CONFIG line is). */
+  std::vector<RetiredKeyLine> retired_keys() const;
   /** Spatial radii derived by a component owner. They participate in the
    * ordinary RCUT*MAX refresh, so adding an unrelated key cannot erase them.
    * These are evaluation metadata, regenerated from blocks on model load. */
@@ -241,7 +268,9 @@ public:
    * @brief Appends a value to an existing key, respecting blueprint capacity.
    *
    * If the key is not allowed by blueprint, or if capacity is reached, throws
-   * std::runtime_error.
+   * std::runtime_error. A retired key (BlueprintKey::isRetired()) is
+   * refused too, with why it was retired and its conversion: nothing reads
+   * it, and a value given to it would change nothing.
    *
    * Values are stored as lossless text (to_string_lossless()): a floating
    * value, or each element of a range, comes back bit-identical from
@@ -255,6 +284,7 @@ public:
     std::string upKey = to_upper(key);
     // Validate blueprint
     const auto bi = findBlueprintKey(upKey, "ALLOWED_KEYS");
+    if (bi != nullptr && bi->isRetired()) throwRetiredKey(upKey, "add");
     if (bi == nullptr) {
       const auto bi_ = findBlueprintKey(upKey, "INTERNAL_KEYS");
       if (bi_ != nullptr) {
@@ -520,6 +550,16 @@ public:
         dest.insert(dest.end(), pair.second.begin(), pair.second.end());
         continue;
       }
+      // The retired lines of both sides, each once (record_retired_key):
+      // whatever overrides what, a fit of the merged context refuses them.
+      if (key == kRetiredRecordKey) {
+        std::lock_guard<std::mutex> lock(merged.mtx_);
+        auto &dest = merged.storage_[key];
+        for (const auto &record : pair.second)
+          if (std::find(dest.begin(), dest.end(), record) == dest.end())
+            dest.push_back(record);
+        continue;
+      }
       // only copy allowed keys
       if (ctx1.allowedKeys_.find(key) == ctx1.allowedKeys_.end()) {
         continue;
@@ -596,6 +636,10 @@ public:
   }
 
 private:
+  /** The storage entry that holds the retired lines (record_retired_key()),
+   *  one encoded record per line; not a key (no key starts with '@'). */
+  static constexpr const char *kRetiredRecordKey = "@RETIRED";
+
   /**
    * @brief Attempts to insert the blueprint's defaultValue for upKey if it
    * exists and is not empty.
@@ -797,6 +841,14 @@ private:
    */
   void keyNotFoundLogSuggestThrow(const std::string &key,
                                   const std::string &method) const;
+
+  /**
+   * @brief Throws std::runtime_error for the retired key @p upKey that
+   *        @p method was asked to add or read: why it was retired, what
+   *        replaces it and its conversion (retired_key_text()).
+   */
+  [[noreturn]] void throwRetiredKey(const std::string &upKey,
+                                    const std::string &method) const;
 
   // helper method to find max value for a given allowed key
   double findMaxValue(const std::string &allowedKey) const {

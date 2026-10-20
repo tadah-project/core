@@ -30,13 +30,16 @@ IgnoredKeyNoticeCapture::IgnoredKeyNoticeCapture() : outer_(tls_capture) {
 
 IgnoredKeyNoticeCapture::~IgnoredKeyNoticeCapture() { tls_capture = outer_; }
 
-void report_ignored_key(const std::string &subject, const std::string &reason) {
-  const std::string line = subject + " is ignored: " + reason;
+void report_key_notice(const std::string &line) {
   if (tls_capture) {
     tls_capture->add(line);
     return;
   }
   std::cerr << ("WARNING: " + line + "\n");
+}
+
+void report_ignored_key(const std::string &subject, const std::string &reason) {
+  report_key_notice(subject + " is ignored: " + reason);
 }
 
 bool report_ignored_key_once(const std::string &key, const std::string &subject,

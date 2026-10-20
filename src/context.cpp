@@ -1,6 +1,7 @@
 #include <tadah/core/context.h>
 #include <tadah/core/logger.h>
 #include <tadah/core/number_format.h>
+#include <tadah/core/retired_keys.h>
 
 #include <cmath>
 #include <iomanip>
@@ -50,7 +51,59 @@ ConfigBlock decode_block(const std::string &s) {
   while (std::getline(body, line)) out.lines.push_back(line);
   return out;
 }
+/* A retired line as one whitespace-free record: key, source, line, values
+ * (one per line) and text, the strings hex-encoded. */
+std::string encode_retired(const RetiredKeyLine &r) {
+  std::string values;
+  for (const auto &v : r.values) values += v + "\n";
+  return hex_encode(r.key) + ":" + hex_encode(r.source) + ":" +
+         std::to_string(r.line) + ":" + hex_encode(values) + ":" +
+         hex_encode(r.text);
+}
+RetiredKeyLine decode_retired(const std::string &s) {
+  std::vector<std::size_t> colon;
+  for (std::size_t i = 0; i < s.size(); ++i)
+    if (s[i] == ':') colon.push_back(i);
+  if (colon.size() != 4)
+    throw std::runtime_error("Malformed retired-key record");
+  auto part = [&](std::size_t k) {
+    const std::size_t b = k == 0 ? 0 : colon[k - 1] + 1;
+    const std::size_t e = k < colon.size() ? colon[k] : s.size();
+    return s.substr(b, e - b);
+  };
+  RetiredKeyLine r;
+  r.key = hex_decode(part(0));
+  r.source = hex_decode(part(1));
+  r.line = std::stoull(part(2));
+  std::istringstream values(hex_decode(part(3)));
+  for (std::string v; std::getline(values, v);) r.values.push_back(v);
+  r.text = hex_decode(part(4));
+  return r;
+}
 } // namespace
+
+void Context::record_retired_key(const RetiredKeyLine &r) {
+  const BlueprintKey *bk = findBlueprintKey(to_upper(r.key), "ALLOWED_KEYS");
+  if (bk == nullptr || !bk->isRetired())
+    throw std::invalid_argument("Context::record_retired_key: " + r.key +
+                                " is not a retired key");
+  RetiredKeyLine up = r;
+  up.key = to_upper(r.key);
+  const std::string record = encode_retired(up);
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto &dest = storage_[kRetiredRecordKey];
+  if (std::find(dest.begin(), dest.end(), record) == dest.end())
+    dest.push_back(record);
+}
+
+std::vector<RetiredKeyLine> Context::retired_keys() const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<RetiredKeyLine> out;
+  const auto it = storage_.find(kRetiredRecordKey);
+  if (it == storage_.end()) return out;
+  for (const auto &record : it->second) out.push_back(decode_retired(record));
+  return out;
+}
 
 void Context::append_block(const ConfigBlock &b) {
   if (b.kind.empty() || b.lines.size() < 2)
@@ -255,6 +308,8 @@ void Context::print_NoLock(std::ostream &os, bool potential,
         for (const auto &line : decode_block(record).lines) os << line << '\n';
       continue;
     }
+    // The retired lines a parse recorded are not keys: never written.
+    if (key == kRetiredRecordKey) continue;
 
     // NUMERIC is a writer setting, never part of a potential file.
     if (potential && key == "NUMERIC") continue;
@@ -450,10 +505,14 @@ Context::findBlueprintKey(const std::string &upKey,
 
 void Context::keyNotFoundLogSuggestThrow(const std::string &key,
     const std::string &method) const {
+  // A retired key is never stored: say what replaces it.
+  const auto allowed = allowedKeys_.find(to_upper(key));
+  const bool isAllowed = allowed != allowedKeys_.end();
+  if (isAllowed && allowed->second.isRetired())
+    throwRetiredKey(allowed->first, method);
   Logger::instance().log(LogLevel::ERROR,
       "Context::" + method + "() -> Key not found: ", key);
 
-  bool isAllowed = allowedKeys_.find(to_upper(key)) != allowedKeys_.end();
   if (isAllowed) {
     throw std::runtime_error("Key not found in the Context object: " + key);
   } else {
@@ -463,6 +522,17 @@ void Context::keyNotFoundLogSuggestThrow(const std::string &key,
     }
     throw std::runtime_error("Key not allowed: " + key);
   }
+}
+
+void Context::throwRetiredKey(const std::string &upKey,
+                              const std::string &method) const {
+  const auto it = allowedKeys_.find(upKey);
+  const std::string text =
+      it == allowedKeys_.end() ? upKey + " is retired"
+                               : retired_key_text(upKey, it->second);
+  Logger::instance().log(LogLevel::ERROR,
+                         "Context::" + method + "() -> " + text);
+  throw std::runtime_error(text);
 }
 
 } // namespace core

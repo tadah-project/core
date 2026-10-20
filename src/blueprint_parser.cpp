@@ -274,6 +274,45 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     }
   }
 
+  // Retired keys: still accepted in files, recorded on the parse result and
+  // refused by every fit with the conversion (retired_keys.h). A default
+  // would be inserted by Context::contains() and written into every
+  // potential, and examples would show how to use the key; a CLI flag stays
+  // to give the conversion.
+  if (table.contains("retired")) {
+    const toml::value &node = table.at("retired");
+    const std::string fields =
+        "'retired' must be a table of three non-empty strings, reason, "
+        "replacement and conversion, and optionally a fourth, only_with, in "
+        "key: " + fullKey;
+    const bool with = node.is_table() && node.contains("only_with");
+    if (!node.is_table() || node.as_table().size() != (with ? 4u : 3u))
+      throw std::runtime_error(fields);
+    auto field = [&](const char *name) {
+      if (!node.contains(name) || !node.at(name).is_string())
+        throw std::runtime_error(fields);
+      const std::string s = toml::get<std::string>(node.at(name));
+      if (s.find_first_not_of(" \t\r\n") == std::string::npos)
+        throw std::runtime_error(fields);
+      return s;
+    };
+    item.retired.reason = field("reason");
+    item.retired.replacement = field("replacement");
+    item.retired.conversion = field("conversion");
+    // The retired option of the same task without which this one had no
+    // effect (checkRetiredOptions, on the task).
+    if (with) item.retired.only_with = field("only_with");
+    if (!item.deprecated.empty())
+      throw std::runtime_error("Key " + fullKey + " is both deprecated and "
+                               "retired: a key is one or the other");
+    if (!item.default_value.empty())
+      throw std::runtime_error("Retired key " + fullKey +
+                               " must not define default_value");
+    if (!item.examples.empty())
+      throw std::runtime_error("Retired key " + fullKey +
+                               " must not define examples (set examples = [])");
+  }
+
   // Names: the key's STRING values are names, which hold no ',' or '+'.
   if (table.contains("names")) {
     const toml::value &node = table.at("names");
@@ -718,6 +757,9 @@ buildBlueprintTasksMap(const std::string &rootTable) {
         parseTaskRec(topName, kv.second, tasksMap);
       }
     }
+    // The only_with of each retired option names a retired option of its
+    // task.
+    for (const auto &kv : tasksMap) BlueprintParser::checkRetiredOptions(kv.second);
   }
   catch (const std::exception &ex) {
     throw std::runtime_error("Error building blueprint tasks map: " + std::string(ex.what()));
@@ -917,6 +959,32 @@ BlueprintParser::getTasksMapRef() {
   return blueprintTasksMap;
 }
 
+void BlueprintParser::checkRetiredOptions(const BlueprintTask &task) {
+  std::vector<const BlueprintKey *> options;
+  for (const BlueprintKey &k : task.blueprintKeys) options.push_back(&k);
+  for (const BlueprintKeyGroup &g : task.groups)
+    for (const BlueprintKey &k : g.blueprintKeys) options.push_back(&k);
+  // The option's name: the last part of its blueprint name
+  // ("DATA.balance.force" -> "force"), lower case.
+  auto name_of = [](const std::string &key_name) {
+    const auto dot = key_name.rfind('.');
+    return to_lower(dot == std::string::npos ? key_name
+                                             : key_name.substr(dot + 1));
+  };
+  for (const BlueprintKey *k : options) {
+    const std::string &with = k->retired.only_with;
+    if (with.empty()) continue;
+    const BlueprintKey *named = nullptr;
+    for (const BlueprintKey *o : options)
+      if (o != k && name_of(o->keyName) == to_lower(with)) named = o;
+    if (!named || !named->isRetired() || !named->retired.only_with.empty())
+      throw std::runtime_error(
+          "Retired option " + k->keyName + " has only_with '" + with +
+          "', which names no other retired option of the task " +
+          task.taskName + " without an only_with of its own");
+  }
+}
+
 BlueprintKey BlueprintParser::buildKey(const std::string &fullKey,
                                        const toml::value &table) {
   return buildBlueprintKey(fullKey, table);
@@ -969,9 +1037,9 @@ std::string BlueprintParser::findClosestKey(
   std::string bestKey;
 
   // Loop over all keys in the map, computing the edit distance and tracking the
-  // minimal result. Deprecated keys are never suggested.
+  // minimal result. Deprecated and retired keys are never suggested.
   for (const auto &pair : map) {
-    if (pair.second.isDeprecated()) {
+    if (pair.second.isDeprecated() || pair.second.isRetired()) {
       continue;
     }
     int dist = computeLevenshteinDistance(key, pair.first);

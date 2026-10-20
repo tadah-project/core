@@ -3,6 +3,7 @@
 #include "tadah/core/core_user_config_parser.h"
 #include "tadah/core/key_notice.h"
 #include "tadah/core/logger.h"
+#include "tadah/core/retired_keys.h"
 #include "tadah/core/utils.h"
 #include <algorithm>
 #include <cctype>
@@ -326,6 +327,17 @@ namespace {
         reportDeprecatedKey(uKey, keyInfo.deprecated);
         continue;
       }
+      if (keyInfo.isRetired()) {
+        // Accepted so that a potential that carries it still loads, and
+        // recorded on the result, never stored: a fit refuses the
+        // configuration with the conversion (retired_keys.h), and the parse
+        // gives one notice listing its retired lines (finishParse).
+        ctx.record_retired_key(RetiredKeyLine{
+            uKey, source, first_line + i,
+            std::vector<std::string>(tokens.begin() + 1, tokens.end()),
+            trim(lines[i])});
+        continue;
+      }
       // A line no parse stores (a run setting of a potential: the program
       // that loads the potential keeps its own; a potential's VERBOSE line
       // would set the Logger level) or the caller's rule does not read
@@ -409,6 +421,19 @@ namespace {
     parseLines(lines, ctx, 1, filename, refused, skip);
     return ctx;
   }
+  /**
+   * @brief The end of a public parse: one notice for the retired lines it
+   *        read (retired_keys_notice()), when it is a top-level parse (a
+   *        parse that a parse in progress on this thread runs gives none:
+   *        its lines are those of the outer parse).
+   */
+  Context finishParse(Context ctx) {
+    if (parseDepth == 0) {
+      const std::vector<RetiredKeyLine> retired = ctx.retired_keys();
+      if (!retired.empty()) report_key_notice(retired_keys_notice(retired));
+    }
+    return ctx;
+  }
 } // end anonymous namespace
 
 const std::vector<std::string> &run_setting_keys() {
@@ -419,49 +444,47 @@ const std::vector<std::string> &run_setting_keys() {
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
-  return parseFile(filename, refused_, LineSkip());
+  return finishParse(parseFile(filename, refused_, LineSkip()));
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename,
                                     const KeyLineRule &skip,
                                     std::vector<SkippedKeyLine> &skipped) const {
-  return parseFile(filename, refused_,
-                   skip ? LineSkip{&skip, &skipped} : LineSkip());
+  return finishParse(parseFile(filename, refused_,
+                               skip ? LineSkip{&skip, &skipped} : LineSkip()));
 }
 
 Context CoreUserConfigParser::parse(std::istream &in) const {
-  ParseScope scope;
-
-  std::vector<std::string> lines;
-  {
-    std::string line;
-    while (std::getline(in, line)) {
-      lines.push_back(line);
-    }
-  }
-
   Context ctx;
-  parseLines(lines, ctx, 1, "", refused_);
-  return ctx;
+  {
+    ParseScope scope;
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(in, line)) lines.push_back(line);
+    parseLines(lines, ctx, 1, "", refused_);
+  }
+  return finishParse(std::move(ctx));
 }
 
 Context
 CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
-  ParseScope scope;
-
   Context ctx;
-  parseLines(lines, ctx, 1, "", refused_);
-  return ctx;
+  {
+    ParseScope scope;
+    parseLines(lines, ctx, 1, "", refused_);
+  }
+  return finishParse(std::move(ctx));
 }
 
 Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
                                     std::size_t first_line,
                                     const std::string &source) const {
-  ParseScope scope;
-
   Context ctx;
-  parseLines(lines, ctx, first_line, source, refused_);
-  return ctx;
+  {
+    ParseScope scope;
+    parseLines(lines, ctx, first_line, source, refused_);
+  }
+  return finishParse(std::move(ctx));
 }
 
 Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
@@ -469,12 +492,13 @@ Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
                                     const std::string &source,
                                     const KeyLineRule &skip,
                                     std::vector<SkippedKeyLine> &skipped) const {
-  ParseScope scope;
-
   Context ctx;
-  parseLines(lines, ctx, first_line, source, refused_,
-             skip ? LineSkip{&skip, &skipped} : LineSkip());
-  return ctx;
+  {
+    ParseScope scope;
+    parseLines(lines, ctx, first_line, source, refused_,
+               skip ? LineSkip{&skip, &skipped} : LineSkip());
+  }
+  return finishParse(std::move(ctx));
 }
 
 void CoreUserConfigParser::refuse_keys(
