@@ -114,6 +114,37 @@ TEST_CASE("Blueprint: EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and "
   CHECK_FALSE(keys.at("MBLOCK").isRetired());
 }
 
+/* Pins: the conversion of WDBFILE_AUTO says where the WDBFILE values of a
+ * converted potential go (a retrain does not read a potential's WDBFILE
+ * line: on the command line or into a file that includes the potential
+ * with CONFIG); those of EWEIGHT and WDBFILE_AUTO give the conversion
+ * under M_KRR implementation 2, whose solve of Tadah! 1.5.0, (K + LAMBDA
+ * I) w = t on the energies per atom in eV, read neither: deleting the
+ * line, with ESIGMA 1000 (sigma = 1 eV) or LAMBDA times 10^6 with ESIGMA
+ * 1.
+ * Before the fix: the conversion of WDBFILE_AUTO left the WDBFILE values
+ * in the potential, where a retrain ignores them, and neither conversion
+ * named implementation 2, under which both changed the fit. */
+TEST_CASE("Blueprint: the conversions of EWEIGHT and WDBFILE_AUTO under "
+          "M_KRR implementation 2, and the WDBFILE values of a potential",
+          "[BlueprintParser][retired]") {
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  CHECK_THAT(keys.at("WDBFILE_AUTO").retired.conversion,
+             Contains("A retrain does not read a potential's WDBFILE line") &&
+                 Contains("go on the command line (--wdbfile) or into a "
+                          "file that includes the potential with CONFIG"));
+  for (const std::string key : {"EWEIGHT", "WDBFILE_AUTO"}) {
+    INFO(key);
+    CHECK_THAT(keys.at(key).retired.conversion,
+               Contains("Under M_KRR implementation 2 (MODEL M_KRR <kernel> "
+                        "2)") &&
+                   Contains("deleting the line converts it, and ESIGMA "
+                            "1000, or LAMBDA times 10^6 with ESIGMA 1, gives "
+                            "the solve of Tadah! 1.5.0, (K + LAMBDA I) w = "
+                            "t."));
+  }
+}
+
 TEST_CASE("Blueprint: the error scales ESIGMA, FSIGMA, SSIGMA, the energy "
           "norm ENORM and the energy switch ENERGY, with their defaults",
           "[BlueprintParser][retired]") {

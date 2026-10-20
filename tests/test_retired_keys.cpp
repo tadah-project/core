@@ -368,3 +368,104 @@ TEST_CASE("retired_keys_refusal says which lines convert by deletion",
                       Contains("WDBFILE_AUTO 0.5 (line 5)"));
   CHECK(msg.find("deleting the line)") == std::string::npos);
 }
+
+/* Pins: a retrain does not read a potential's WDBFILE line (it is in the
+ * training record of the potentials this version writes), so the
+ * conversion of a potential's WDBFILE_AUTO line puts the WDBFILE values
+ * on the command line or into a file that includes the potential: the
+ * conversion says so, and so does the refusal's last sentence when a
+ * WDBFILE_AUTO line is among its lines (not otherwise).
+ * Before the fix: the refusal said to put every converted key in place of
+ * its line, a potential's included, so the WDBFILE line of a converted
+ * potential of Tadah! 1.5.0 was ignored and the retrain fitted another
+ * fit. */
+TEST_CASE("retired_keys_refusal puts the WDBFILE values of a potential "
+          "where a retrain reads them",
+          "[retired]") {
+  IgnoredKeyNoticeCapture quiet;
+  const ScratchDir dir;
+  const std::string pot = dir.write_file(
+      "auto.tadah", "ATOM Ta\nEWEIGHT 2.5\nWDBFILE 1 3\nWDBFILE_AUTO 0.7\n"
+                    "WEIGHTS 1 2\n");
+  const Context c = CoreUserConfigParser().parse(pot);
+  std::string msg;
+  try {
+    require_no_retired_keys(c, "tadah train");
+  } catch (const std::exception &e) {
+    msg = e.what();
+  }
+  CHECK_THAT(msg, Contains("WDBFILE_AUTO 0.7 (line 4 of " + pot + ")") &&
+                      Contains("A retrain does not read a potential's "
+                               "WDBFILE line") &&
+                      Contains("the WDBFILE values of a potential on the "
+                               "command line or in a file that includes it"));
+  const Context no_auto = CoreUserConfigParser().parse(
+      std::vector<std::string>{"EWEIGHT 2.5", "FWEIGHT 50"});
+  msg.clear();
+  try {
+    require_no_retired_keys(no_auto, "tadah train");
+  } catch (const std::exception &e) {
+    msg = e.what();
+  }
+  CHECK_THAT(msg, Contains("EWEIGHT 2.5 (line 1)"));
+  CHECK(msg.find("WDBFILE") == std::string::npos);
+}
+
+/* Pins: M_KRR implementation 2 (MODEL M_KRR <kernel> 2) of Tadah! 1.0.0
+ * to 1.5.0 solved (K + LAMBDA I) w = t on the energies per atom in eV and
+ * read none of the retired keys (no weight, no priority), so under it each
+ * retired line converts by its deletion, and ESIGMA 1000 (sigma = 1 eV),
+ * or LAMBDA times 10^6 with ESIGMA 1, gives that solve: the refusal marks
+ * every line so and gives that conversion instead of the keys' own (which
+ * would change the fit: ESIGMA = 1000/(N sqrt(EWEIGHT)) is sigma = 18.5
+ * meV/atom for EWEIGHT 1 and 54-atom cells). Implementation 1, given or
+ * by default, keeps the keys' conversions.
+ * Before the fix: the refusal gave the conversions of implementation 1
+ * under implementation 2 too. */
+TEST_CASE("retired_keys_refusal converts every retired line of M_KRR "
+          "implementation 2 by its deletion, with ESIGMA 1000",
+          "[retired]") {
+  IgnoredKeyNoticeCapture quiet;
+  auto refusal = [](const std::vector<std::string> &lines) {
+    const Context c = CoreUserConfigParser().parse(lines);
+    try {
+      require_no_retired_keys(c, "tadah train");
+    } catch (const std::exception &e) {
+      return std::string(e.what());
+    }
+    return std::string();
+  };
+  const std::string mark =
+      "; M_KRR implementation 2 here: converted by deleting the line)";
+  const std::string msg = refusal(
+      {"MODEL M_KRR Kern_RBF 2", "FORCE false", "STRESS false",
+       "EWEIGHT 1.0", "FWEIGHT 1.0", "SWEIGHT 1.0", "WDBFILE_AUTO 0.5",
+       "EWEIGHT_TEMP 300"});
+  CHECK_THAT(msg, Contains("EWEIGHT 1.0 (line 4" + mark) &&
+                      Contains("FWEIGHT 1.0 (line 5" + mark) &&
+                      Contains("SWEIGHT 1.0 (line 6" + mark) &&
+                      Contains("WDBFILE_AUTO 0.5 (line 7" + mark) &&
+                      Contains("EWEIGHT_TEMP 300 (line 8" + mark) &&
+                      Contains("M_KRR implementation 2 of Tadah! 1.0.0 to "
+                               "1.5.0 read none of them") &&
+                      Contains("(K + LAMBDA I) w = t") &&
+                      Contains("With these lines deleted") &&
+                      Contains("ESIGMA 1000, or LAMBDA times 10^6 with "
+                               "ESIGMA 1,"));
+  CHECK(msg.find("ESIGMA = 1000/(N sqrt(EWEIGHT))") == std::string::npos);
+  CHECK(msg.find("n_d^-a") == std::string::npos);
+  const std::string one =
+      refusal({"MODEL M_KRR Kern_Linear 2", "EWEIGHT 1"});
+  CHECK_THAT(one, Contains("EWEIGHT 1 (line 2" + mark) &&
+                      Contains("did not read it") &&
+                      Contains("With this line deleted"));
+  for (const std::string model :
+       {"MODEL M_KRR Kern_RBF 1", "MODEL M_KRR Kern_RBF",
+        "MODEL M_BLR BF_Linear"}) {
+    INFO(model);
+    const std::string m = refusal({model, "EWEIGHT 1"});
+    CHECK_THAT(m, Contains("EWEIGHT 1 (line 2)") &&
+                      Contains("ESIGMA = 1000/(N sqrt(EWEIGHT))"));
+    CHECK(m.find("implementation 2 here") == std::string::npos);
+  }
+}
