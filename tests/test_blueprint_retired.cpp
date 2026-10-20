@@ -458,24 +458,27 @@ TEST_CASE("Blueprint: a retired key's long description does not repeat its "
 }
 
 /* Pins: the SIGMA notice of every load of a potential of Tadah! 1.0.0 to
- * 1.5.0 says that uncertainty output is not part of Tadah! 1.6.0, the
- * errors of those releases not being standard deviations and no calibrated
- * estimate replacing them, and names neither WCOV nor a retrain: no fit
- * writes a weight covariance.
+ * 1.5.0 says that uncertainty output is removed, the errors of those
+ * releases not being standard deviations and no calibrated estimate
+ * replacing them, and names neither WCOV nor a retrain: no fit writes a
+ * weight covariance. Neither the notice nor the help of SIGMA names a
+ * version of Tadah! without uncertainty output ("1.6.0").
  * Before the fix: it said that a retrain with OALGO 3 writes WCOV and
  * WNOISE, which tadah predict --error needs, once the potential's retired
  * keys are converted; then that the error bars were too narrow for many
- * structures (those of a development build, not of a release). */
-TEST_CASE("Blueprint: the SIGMA notice says that uncertainty output is not "
-          "part of Tadah! 1.6.0",
+ * structures (those of a development build, not of a release); then that
+ * uncertainty output was not part of Tadah! 1.6.0. */
+TEST_CASE("Blueprint: the SIGMA notice says that uncertainty output is "
+          "removed",
           "[BlueprintParser][retired][uncertainty]") {
   const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("SIGMA");
   REQUIRE(k.isDeprecated());
   CHECK_THAT(k.deprecated,
-             Contains("Uncertainty output is not part of Tadah! 1.6.0: the "
-                      "errors of Tadah! 1.0.0 to 1.5.0 were not standard "
-                      "deviations, and no calibrated estimate replaces "
-                      "them."));
+             Contains("Uncertainty output is removed: the errors of Tadah! "
+                      "1.0.0 to 1.5.0 were not standard deviations, and no "
+                      "calibrated estimate replaces them."));
+  CHECK(k.deprecated.find("1.6.0") == std::string::npos);
+  CHECK(k.longDescription.find("1.6.0") == std::string::npos);
   CHECK(k.deprecated.find("too narrow") == std::string::npos);
   CHECK(k.deprecated.find("WCOV") == std::string::npos);
   CHECK(k.deprecated.find("retrain") == std::string::npos);

@@ -1,6 +1,6 @@
-// The keys and options of uncertainty output, which Tadah! 1.6.0 does not
-// give: the errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations,
-// and no calibrated estimate replaces them.
+// The keys and options of uncertainty output, which is removed: the errors
+// of Tadah! 1.0.0 to 1.5.0 were not standard deviations, and no calibrated
+// estimate replaces them.
 //
 //  - WCOV and WNOISE (the covariance of the WEIGHTS and the noise variance
 //    of each quantity of an OALGO 3 fit), UNCERTAINTY (tadah train
@@ -42,11 +42,12 @@ using Catch::Matchers::StartsWith;
 namespace {
 
 /* The sentence every retired key and option of uncertainty output gives as
- * the reason it is retired. */
-const std::string kNotPart =
-    "Uncertainty output is not part of Tadah! 1.6.0: the errors of Tadah! "
-    "1.0.0 to 1.5.0 were not standard deviations, and no calibrated "
-    "estimate replaces them.";
+ * the reason it is retired: a statement of fact, with no version in which
+ * uncertainty output is absent. */
+const std::string kRemoved =
+    "Uncertainty output is removed: the errors of Tadah! 1.0.0 to 1.5.0 "
+    "were not standard deviations, and no calibrated estimate replaces "
+    "them.";
 
 /* Captures std::cerr (where the deprecation notice goes) and std::cout
  * (the Logger) at WARNING level; restores them afterwards. */
@@ -133,21 +134,30 @@ const BlueprintKey *task_option(const std::string &task,
 }
 
 /* The checks of a retired key or option of uncertainty output: why (the
- * output it gave, @p what, and kNotPart), with no claim that the output it
+ * output it gave, @p what, and kRemoved), with no claim that the output it
  * gave was a standard deviation (neither in the reason nor in the
- * description), that nothing replaces it, its conversion (deleting it; the
- * fit, and the predictions, unaffected), and no default or example. */
+ * description), that nothing replaces it ("nothing"), its conversion
+ * (deleting it; the fit, and the predictions, unaffected), no version of
+ * Tadah! that lacks it (no "1.6.0" in the description, the long
+ * description, the reason or the replacement), and no default or
+ * example. */
 void check_retired_output(const BlueprintKey &k, const std::string &what) {
   INFO(k.keyName);
   REQUIRE(k.isRetired());
   CHECK_FALSE(k.isDeprecated());
-  CHECK_THAT(k.retired.reason, Contains(what) && Contains(kNotPart));
+  CHECK_THAT(k.retired.reason, Contains(what) && Contains(kRemoved));
   const std::string gave =
-      k.retired.reason.substr(0, k.retired.reason.find(kNotPart));
+      k.retired.reason.substr(0, k.retired.reason.find(kRemoved));
   CHECK(gave.find("standard deviation") == std::string::npos);
   CHECK(k.description.find("standard deviation") == std::string::npos);
   CHECK(k.retired.reason.find("too narrow") == std::string::npos);
-  CHECK(k.retired.replacement == "nothing in Tadah! 1.6.0");
+  CHECK(k.retired.replacement == "nothing");
+  for (const std::string *text :
+       {&k.description, &k.longDescription, &k.retired.reason,
+        &k.retired.replacement}) {
+    INFO(*text);
+    CHECK(text->find("1.6.0") == std::string::npos);
+  }
   CHECK_THAT(k.retired.conversion, StartsWith("Deleting the") &&
                                        Contains("unaffected"));
   CHECK(k.default_value.empty());
@@ -163,11 +173,12 @@ void check_retired_output(const BlueprintKey &k, const std::string &what) {
  * (UNCERTAINTY: "tadah train --uncertainty wrote weights.tadah, each
  * coefficient of the fit beside a diagonal entry of SIGMA"; --error of
  * predict: "wrote an error computed from SIGMA beside every predicted
- * value"), and that uncertainty output is not part of Tadah! 1.6.0, the
- * errors of Tadah! 1.0.0 to 1.5.0 not being standard deviations and no
- * calibrated estimate replacing them; nothing replaces it, and deleting it
- * converts it, the fit (and the predictions) unaffected; none has a
- * default or an example. The four keys are converted by deleting their
+ * value"), and that uncertainty output is removed, the errors of Tadah!
+ * 1.0.0 to 1.5.0 not being standard deviations and no calibrated estimate
+ * replacing them; nothing replaces it ("nothing"), and deleting it
+ * converts it, the fit (and the predictions) unaffected; no text names a
+ * version of Tadah! without uncertainty output; none has a default or an
+ * example. The four keys are converted by deleting their
  * lines (the field by_deletion of `retired`). The command-line options
  * stay, to give the reason: --uncertainty of UNCERTAINTY, --error of the
  * task options and of ERROR. UNCERTAINTY's help says that tadah train of
@@ -176,7 +187,10 @@ void check_retired_output(const BlueprintKey &k, const std::string &what) {
  * deviations, the error bars of which were too narrow for many structures
  * (what a development build gave, not a release), ERROR was a key of a
  * configuration (written into the potential of a fit, read by nothing),
- * and the help of UNCERTAINTY named tadah train 1.5.0 alone. */
+ * and the help of UNCERTAINTY named tadah train 1.5.0 alone; then each
+ * said that uncertainty output was not part of Tadah! 1.6.0, its
+ * replacement "nothing in Tadah! 1.6.0", and each description that
+ * Tadah! 1.6.0 did not give it. */
 TEST_CASE("Blueprint: uncertainty output is retired: WCOV, WNOISE, "
           "UNCERTAINTY, ERROR and --error of predict and properties "
           "pairwise",
@@ -322,7 +336,7 @@ TEST_CASE("Config parser: ERROR is a retired key",
         "the reason and the conversion).");
   Context d;
   REQUIRE_THROWS_WITH(d.add("ERROR", true),
-                      Contains("ERROR is a retired key") && Contains(kNotPart));
+                      Contains("ERROR is a retired key") && Contains(kRemoved));
   CHECK_FALSE(d.has_stored("ERROR"));
 }
 
@@ -389,19 +403,20 @@ TEST_CASE("A fit refuses UNCERTAINTY, WCOV, WNOISE and ERROR lines as "
 }
 
 /* Pins: Context::add() refuses WCOV, WNOISE and UNCERTAINTY with the
- * reason ("<KEY> is a retired key: ... Uncertainty output is not part of
- * Tadah! 1.6.0 ..."), and stores nothing.
+ * reason ("<KEY> is a retired key: ... Uncertainty output is removed:
+ * ..."), and stores nothing.
  * Before the fix: each was stored. */
 TEST_CASE("Context::add refuses WCOV, WNOISE and UNCERTAINTY with the reason",
           "[context][retired][uncertainty]") {
   Context c;
   REQUIRE_THROWS_WITH(c.add("WCOV", "2"),
-                      Contains("WCOV is a retired key") && Contains(kNotPart));
+                      Contains("WCOV is a retired key") && Contains(kRemoved));
   REQUIRE_THROWS_WITH(c.add("wnoise", "E"),
-                      Contains("WNOISE is a retired key") && Contains(kNotPart));
+                      Contains("WNOISE is a retired key") &&
+                          Contains(kRemoved));
   REQUIRE_THROWS_WITH(c.add("UNCERTAINTY", true),
                       Contains("UNCERTAINTY is a retired key") &&
-                          Contains(kNotPart));
+                          Contains(kRemoved));
   CHECK_FALSE(c.has_stored("WCOV"));
   CHECK_FALSE(c.has_stored("WNOISE"));
   CHECK_FALSE(c.has_stored("UNCERTAINTY"));
@@ -439,7 +454,7 @@ TEST_CASE("A fit refuses WCOV and WNOISE, naming a long line by its first "
 /* Pins: a potential with a SIGMA line (as Tadah! 1.0.0 to 1.5.0 wrote for
  * an OALGO 3 fit, here "SIGMA 2 1 0 0 1") parses: one WARNING on standard
  * error, "Deprecated key SIGMA is ignored", naming the transposed formula
- * and saying that uncertainty output is not part of Tadah! 1.6.0, without
+ * and saying that uncertainty output is removed, without
  * pointing to WCOV or a retrain; the key is not stored (has_stored false)
  * and a potential written from the Context has no SIGMA line; the other
  * keys are kept.
@@ -458,7 +473,7 @@ TEST_CASE("Config parser: SIGMA parses, warns once and is not stored",
   if (!warned.empty()) {
     INFO(warned[0]);
     CHECK(warned[0].find("transposed") != std::string::npos);
-    CHECK(warned[0].find(kNotPart) != std::string::npos);
+    CHECK(warned[0].find(kRemoved) != std::string::npos);
     CHECK(warned[0].find("WCOV") == std::string::npos);
     CHECK(warned[0].find("retrain") == std::string::npos);
   }
