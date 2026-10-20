@@ -283,8 +283,10 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     const toml::value &node = table.at("retired");
     const std::string fields =
         "'retired' must be a table of three non-empty strings, reason, "
-        "replacement and conversion, in key: " + fullKey;
-    if (!node.is_table() || node.as_table().size() != 3)
+        "replacement and conversion, and optionally a fourth, only_with, in "
+        "key: " + fullKey;
+    const bool with = node.is_table() && node.contains("only_with");
+    if (!node.is_table() || node.as_table().size() != (with ? 4u : 3u))
       throw std::runtime_error(fields);
     auto field = [&](const char *name) {
       if (!node.contains(name) || !node.at(name).is_string())
@@ -297,6 +299,9 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     item.retired.reason = field("reason");
     item.retired.replacement = field("replacement");
     item.retired.conversion = field("conversion");
+    // The retired option of the same task without which this one had no
+    // effect (checkRetiredOptions, on the task).
+    if (with) item.retired.only_with = field("only_with");
     if (!item.deprecated.empty())
       throw std::runtime_error("Key " + fullKey + " is both deprecated and "
                                "retired: a key is one or the other");
@@ -752,6 +757,9 @@ buildBlueprintTasksMap(const std::string &rootTable) {
         parseTaskRec(topName, kv.second, tasksMap);
       }
     }
+    // The only_with of each retired option names a retired option of its
+    // task.
+    for (const auto &kv : tasksMap) BlueprintParser::checkRetiredOptions(kv.second);
   }
   catch (const std::exception &ex) {
     throw std::runtime_error("Error building blueprint tasks map: " + std::string(ex.what()));
@@ -949,6 +957,32 @@ BlueprintParser::getTasksMapRef() {
   static std::unordered_map<std::string, BlueprintTask> blueprintTasksMap =
       buildBlueprintTasksMap("TASKS");
   return blueprintTasksMap;
+}
+
+void BlueprintParser::checkRetiredOptions(const BlueprintTask &task) {
+  std::vector<const BlueprintKey *> options;
+  for (const BlueprintKey &k : task.blueprintKeys) options.push_back(&k);
+  for (const BlueprintKeyGroup &g : task.groups)
+    for (const BlueprintKey &k : g.blueprintKeys) options.push_back(&k);
+  // The option's name: the last part of its blueprint name
+  // ("DATA.balance.force" -> "force"), lower case.
+  auto name_of = [](const std::string &key_name) {
+    const auto dot = key_name.rfind('.');
+    return to_lower(dot == std::string::npos ? key_name
+                                             : key_name.substr(dot + 1));
+  };
+  for (const BlueprintKey *k : options) {
+    const std::string &with = k->retired.only_with;
+    if (with.empty()) continue;
+    const BlueprintKey *named = nullptr;
+    for (const BlueprintKey *o : options)
+      if (o != k && name_of(o->keyName) == to_lower(with)) named = o;
+    if (!named || !named->isRetired() || !named->retired.only_with.empty())
+      throw std::runtime_error(
+          "Retired option " + k->keyName + " has only_with '" + with +
+          "', which names no other retired option of the task " +
+          task.taskName + " without an only_with of its own");
+  }
 }
 
 BlueprintKey BlueprintParser::buildKey(const std::string &fullKey,

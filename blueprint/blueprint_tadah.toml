@@ -3601,6 +3601,7 @@ force and stress below which --rescale kept a priority."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
+only_with = "rescale"
 [TASKS.data.balance.keys.force]
 description = "Retired: the rescaling of the force priorities by Tadah! 1.5.0."
 long_description = """
@@ -3614,6 +3615,7 @@ priority (fweight) of each structure by the inverse of its forces."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
+only_with = "rescale"
 [TASKS.data.balance.keys.stress]
 description = "Retired: the rescaling of the stress priorities by Tadah! 1.5.0."
 long_description = """
@@ -3627,6 +3629,7 @@ priority (sweight) of each structure by the inverse of its stress."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
+only_with = "rescale"
 [TASKS.data.balance.keys.index]
 long_description = """
 The 1-based indices of the structures to shift, counted over the input

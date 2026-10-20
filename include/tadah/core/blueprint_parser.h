@@ -29,6 +29,19 @@ struct RetiredKey {
   std::string reason;       ///< Why the key was retired.
   std::string replacement;  ///< The key(s) that replace it, or what to use.
   std::string conversion;   ///< How a value of it converts.
+  /**
+   * The optional fourth field `only_with` of a retired option of a task:
+   * the retired option of the same task without which it had no effect
+   * (tadah data balance --force acted only with --rescale); empty
+   * otherwise. A line of the GLOBAL section of a task file sets the keys of
+   * every task of the file: MLIPUserConfigParser refuses one that gives a
+   * retired option of a task of the file, but not one of an option with
+   * only_with, which the other tasks may take (FORCE true), as the line of
+   * the option it names is refused. BlueprintParser::checkRetiredOptions
+   * checks that it names another retired option of the task, one without
+   * an only_with of its own.
+   */
+  std::string only_with;
 };
 
 /**
@@ -242,9 +255,10 @@ public:
    * field must be a non-empty string, and a deprecated key must define
    * neither `default_value`, a CLI flag nor examples (after inheritance:
    * `examples = []` overrides those of a TYPES table). A `retired` field
-   * must be a table of exactly three non-empty strings, `reason`,
-   * `replacement` and `conversion` (RetiredKey); a retired key must define
-   * neither `default_value` nor examples, may keep a CLI flag, and is not
+   * must be a table of three non-empty strings, `reason`, `replacement`
+   * and `conversion`, and optionally a fourth, `only_with` (RetiredKey),
+   * and of no other field; a retired key must define neither
+   * `default_value` nor examples, may keep a CLI flag, and is not
    * deprecated as well.
    *
    * @param fullKey Fully qualified key name (used in error messages).
@@ -254,6 +268,20 @@ public:
    */
   static BlueprintKey buildKey(const std::string &fullKey,
                                const toml::value &table);
+
+  /**
+   * @brief Checks the field `only_with` of the retired options of @p task
+   *        (its own options and those of its groups).
+   *
+   * The only_with of a retired option names, in any letter case, another
+   * option of the task that is retired and has no only_with of its own
+   * (RetiredKey::only_with). The tasks map applies it to every task of the
+   * blueprint.
+   *
+   * @throws std::runtime_error naming the option and its only_with when it
+   *         names no such option.
+   */
+  static void checkRetiredOptions(const BlueprintTask &task);
 
   /**
  * @brief Computes the closest matching key name by measuring the edit distance to each valid blueprint key.
