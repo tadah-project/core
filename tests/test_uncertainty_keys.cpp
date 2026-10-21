@@ -244,10 +244,13 @@ TEST_CASE("Blueprint: uncertainty output is retired: WCOV, WNOISE, "
  * (Context::retired_keys(), with their values) and neither is stored, a
  * Context written with operator<< has neither line, and the parse gives
  * one notice, "Retired keys WCOV (line 2) and WNOISE (line 3) are
- * ignored: they change nothing a prediction gives, and a fit refuses them
- * (tadah explain WCOV and tadah explain WNOISE give the reasons and the
- * conversions)."
- * Before the fix: both keys were stored as written, with no notice. */
+ * ignored by a prediction, as they change nothing it gives, and refused by
+ * a fit (tadah explain WCOV and tadah explain WNOISE give the reasons and
+ * the conversions)": in a fit's configuration, as in a prediction's, the
+ * notice says what each does.
+ * Before the fix: both keys were stored as written, with no notice; then
+ * the notice said "are ignored: ... a fit refuses them", and a fit's
+ * refusal followed it. */
 TEST_CASE("Config parser: WCOV and WNOISE are retired: recorded, not "
           "stored, one notice",
           "[config][retired][uncertainty]") {
@@ -272,17 +275,18 @@ TEST_CASE("Config parser: WCOV and WNOISE are retired: recorded, not "
   CHECK(key_line(pot, "WNOISE").empty());
   REQUIRE(cap.notices().size() == 1);
   CHECK(cap.notices()[0] ==
-        "Retired keys WCOV (line 2) and WNOISE (line 3) are ignored: they "
-        "change nothing a prediction gives, and a fit refuses them (tadah "
-        "explain WCOV and tadah explain WNOISE give the reasons and the "
-        "conversions).");
+        "Retired keys WCOV (line 2) and WNOISE (line 3) are ignored by a "
+        "prediction, as they change nothing it gives, and refused by a fit "
+        "(tadah explain WCOV and tadah explain WNOISE give the reasons and "
+        "the conversions).");
 }
 
 /* Pins: an UNCERTAINTY line (tadah train 1.0.0 to 1.5.0 wrote one, true
  * or false, into every potential) parses as a retired key: recorded, not
  * stored, one notice "Retired key UNCERTAINTY (line 2) is
- * ignored: it changes nothing a prediction gives, and a fit refuses it
- * (tadah explain UNCERTAINTY gives the reason and the conversion)."; a
+ * ignored by a prediction, as it changes nothing it gives, and refused by
+ * a fit (tadah explain UNCERTAINTY gives the reason and the
+ * conversion)."; a
  * notice of retired keys of several kinds says no more than that (not
  * that they weighted the training data).
  * Before the fix: UNCERTAINTY was stored, with no notice. */
@@ -297,26 +301,27 @@ TEST_CASE("Config parser: UNCERTAINTY is a retired key",
           std::vector<std::string>{"UNCERTAINTY"});
   REQUIRE(cap.notices().size() == 1);
   CHECK(cap.notices()[0] ==
-        "Retired key UNCERTAINTY (line 2) is ignored: it changes nothing a "
-        "prediction gives, and a fit refuses it (tadah explain UNCERTAINTY "
-        "gives the reason and the conversion).");
+        "Retired key UNCERTAINTY (line 2) is ignored by a prediction, as it "
+        "changes nothing it gives, and refused by a fit (tadah explain "
+        "UNCERTAINTY gives the reason and the conversion).");
 
   CoreUserConfigParser().parse(std::vector<std::string>{
       "EWEIGHT 1", "UNCERTAINTY true", "WCOV 1 0.5"});
   REQUIRE(cap.notices().size() == 2);
   CHECK_THAT(cap.notices()[1],
              StartsWith("Retired keys EWEIGHT (line 1), UNCERTAINTY (line "
-                        "2) and WCOV (line 3) are ignored: they change "
-                        "nothing a prediction gives"));
+                        "2) and WCOV (line 3) are ignored by a prediction, "
+                        "as they change nothing it gives"));
   CHECK(cap.notices()[1].find("training data") == std::string::npos);
 }
 
 /* Pins: an ERROR line (the key of --error of tadah predict and tadah
  * properties pairwise) in a configuration parses as a retired key:
  * recorded, not stored (a potential written from the Context has no ERROR
- * line), one notice "Retired key ERROR (line 2) is ignored: it changes
- * nothing a prediction gives, and a fit refuses it (tadah explain ERROR
- * gives the reason and the conversion)."; Context::add refuses it with the
+ * line), one notice "Retired key ERROR (line 2) is ignored by a
+ * prediction, as it changes nothing it gives, and refused by a fit (tadah
+ * explain ERROR gives the reason and the conversion)."; Context::add
+ * refuses it with the
  * reason.
  * Before the fix: ERROR was stored with no notice, so a fit took it and
  * wrote it into its potential, where nothing read it. */
@@ -331,9 +336,9 @@ TEST_CASE("Config parser: ERROR is a retired key",
   CHECK(key_line(serialized(c), "ERROR").empty());
   REQUIRE(cap.notices().size() == 1);
   CHECK(cap.notices()[0] ==
-        "Retired key ERROR (line 2) is ignored: it changes nothing a "
-        "prediction gives, and a fit refuses it (tadah explain ERROR gives "
-        "the reason and the conversion).");
+        "Retired key ERROR (line 2) is ignored by a prediction, as it "
+        "changes nothing it gives, and refused by a fit (tadah explain ERROR "
+        "gives the reason and the conversion).");
   Context d;
   REQUIRE_THROWS_WITH(d.add("ERROR", true),
                       Contains("ERROR is a retired key") && Contains(kRemoved));
