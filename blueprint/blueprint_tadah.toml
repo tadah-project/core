@@ -1156,10 +1156,13 @@ long_description = """
 One configuration file (a second value is refused, naming both), whose
 DBFILE lines are the validation datasets, in the order the indexed PC_ERMSE
 (i), PC_FRMSE (i) and PC_SRMSE_GPA (i) lines number them; it may also hold
-EFILTER and FFILTER for the validation set. It refuses the keys that set a
-fit, which the validation set is not: FORCE, STRESS, ENERGY, ENORM, the
-error scales ESIGMA, FSIGMA and SSIGMA, and every retired key (with its
-conversion). Each DBFILE entry is a
+EFILTER and FFILTER for the validation set, and CONFIG includes. Every other
+key is refused at its line: those that set a fit, which the validation set
+is not (FORCE, STRESS, ENERGY, ENORM, the error scales ESIGMA, FSIGMA and
+SSIGMA, WDBFILE, and every retired key, with its conversion), and those of
+the model, its fit and the run, which the training configuration sets. A
+validation structure without a label has eweight, fweight or sweight 0 in
+its data file. Each DBFILE entry is a
 dataset: one file listed twice (the same path, two spellings of it, or a link
 to it) is refused, naming both entries, since every validation metric
 averages over the validation datasets.
