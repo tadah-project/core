@@ -133,10 +133,10 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines) {
   for (const auto &k : keys) explain.push_back("tadah explain " + k);
   return std::string(one ? "Retired key " : "Retired keys ") +
          join_and(named) +
-         (one ? " is ignored: it changes nothing a prediction gives, and a "
-                "fit refuses it ("
-              : " are ignored: they change nothing a prediction gives, and a "
-                "fit refuses them (") +
+         (one ? " is ignored by a prediction, as it changes nothing it gives, "
+                "and refused by a fit ("
+              : " are ignored by a prediction, as they change nothing it "
+                "gives, and refused by a fit (") +
          join_and(explain) +
          (keys.size() == 1 ? " gives the reason and the conversion)."
                            : " give the reasons and the conversions).");

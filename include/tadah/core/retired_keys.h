@@ -30,12 +30,14 @@ std::string retired_key_text(const std::string &key, const BlueprintKey &info);
 
 /** The notice of a parse that read the retired lines @p lines (at least
  *  one): "Retired keys EWEIGHT (line 2 of old.tadah) and FWEIGHT (line 3
- *  of old.tadah) are ignored: they change nothing a prediction gives, and
- *  a fit refuses them (tadah explain EWEIGHT and tadah explain FWEIGHT give
- *  the reasons and the conversions)." (one key: "Retired key EWEIGHT (line
- *  2 of old.tadah) is ignored: it changes nothing ..."). A line without a
- *  file is named "line N". Without the "WARNING: " that
- *  report_key_notice() adds. */
+ *  of old.tadah) are ignored by a prediction, as they change nothing it
+ *  gives, and refused by a fit (tadah explain EWEIGHT and tadah explain
+ *  FWEIGHT give the reasons and the conversions)." (one key: "Retired key
+ *  EWEIGHT (line 2 of old.tadah) is ignored by a prediction, as it changes
+ *  nothing it gives, and ..."): what a prediction and what a fit do, as
+ *  the parse does not know which reads the file. A line without a file is
+ *  named "line N". Without the "WARNING: " that report_key_notice()
+ *  adds. */
 std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines);
 
 /** The refusal of a fit whose configuration records the retired lines
