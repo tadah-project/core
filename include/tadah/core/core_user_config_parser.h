@@ -132,8 +132,9 @@ public:
    * set; an empty map refuses nothing (the default).
    *
    * For a file whose role leaves no meaning to a key that is valid
-   * elsewhere: HPO's --validation file refuses FORCE and STRESS, since what
-   * validation predicts follows PC_FRMSE and PC_SRMSE.
+   * elsewhere: HPO's --validation file refuses every key but DBFILE,
+   * EFILTER, FFILTER and CONFIG (FORCE and STRESS among them, since what
+   * validation predicts follows PC_FRMSE and PC_SRMSE_GPA).
    */
   void refuse_keys(std::map<std::string, std::string> reasons);
 
