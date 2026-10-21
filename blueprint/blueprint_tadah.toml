@@ -2525,8 +2525,9 @@ a structure of large forces has a larger error scale. Its priority is the
 structure's fweight in the data file times the WDBFILE value of its
 dataset. A force component the model cannot change (its row of the design
 matrix is zero, as for a force that is zero by symmetry; a row with no
-value above 1e-10 of the largest of its column is zero, so the rounding of
-sums that cancel does not count) is not an observation.
+value above 1e-10 of the largest of its column over the rows of priority
+above 0 is zero, so the rounding of sums that cancel does not count) is not
+an observation.
 
 a > 0 and b >= 0. With FORCE false a fit refuses an FSIGMA other than 0.1 0,
 compared by value (FSIGMA 0.1 is FSIGMA 0.1 0). Every potential tadah train
