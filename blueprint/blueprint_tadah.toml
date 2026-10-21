@@ -2718,16 +2718,16 @@ examples = []
 value_type = ["INT {DOUBLE}"]
 value_format = ["<N> <double> ..."]
 value_N = [-2147483647]
-description = "Retired: a key that no release of Tadah! wrote or read; Tadah! 1.6.0 has no uncertainty output."
+description = "Retired: a key that no release of Tadah! wrote or read; uncertainty output is removed."
 long_description = """
 A line of N, then N×N numbers. A file that has it loads, with one notice;
 a fit refuses it until the line is deleted.
 """
 examples = []
 [ALLOWED_KEYS.WCOV.retired]
-reason = """No release of Tadah! wrote or read WCOV, and Tadah! 1.6.0 has \
-no uncertainty output: the errors of Tadah! 1.0.0 to 1.5.0 were not standard \
-deviations, and no calibrated estimate replaces them."""
+reason = """No release of Tadah! wrote or read WCOV. Uncertainty output is \
+removed: the errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations, \
+and no calibrated estimate replaces them."""
 replacement = "nothing"
 conversion = """Deleting the line converts it: no prediction reads it, and \
 the fit is unaffected."""
@@ -2738,16 +2738,16 @@ names = true
 value_type = ["{STRING DOUBLE}"]
 value_format = ["<type> <variance> ..."]
 value_N = [-2147483647]
-description = "Retired: a key that no release of Tadah! wrote or read; Tadah! 1.6.0 has no uncertainty output."
+description = "Retired: a key that no release of Tadah! wrote or read; uncertainty output is removed."
 long_description = """
 Pairs of a word, E, F or S, and a number. A file that has it loads, with
 one notice; a fit refuses it until the line is deleted.
 """
 examples = []
 [ALLOWED_KEYS.WNOISE.retired]
-reason = """No release of Tadah! wrote or read WNOISE, and Tadah! 1.6.0 has \
-no uncertainty output: the errors of Tadah! 1.0.0 to 1.5.0 were not \
-standard deviations, and no calibrated estimate replaces them."""
+reason = """No release of Tadah! wrote or read WNOISE. Uncertainty output is \
+removed: the errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations, \
+and no calibrated estimate replaces them."""
 replacement = "nothing"
 conversion = """Deleting the line converts it: no prediction reads it, and \
 the fit is unaffected."""
