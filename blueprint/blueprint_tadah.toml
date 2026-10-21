@@ -3579,15 +3579,15 @@ examples = []
 default_value = []
 [TASKS.data.balance.keys.rescale.retired]
 reason = """tadah data balance --rescale replaced the priorities \
-(eweight, fweight, sweight) of each structure by the inverse of the size \
-of its energy, of the sum of its force norms or of its stress norm, \
-whatever the accuracy of the data, and kept a priority only below \
---threshold."""
+(eweight, fweight, sweight) of each structure, 0 included, by the inverse \
+of the magnitude of its total energy, of the sum of its force norms or of \
+its stress norm, and by 1 below --threshold, whatever the accuracy of the \
+data."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.threshold]
-description = "Retired: the magnitudes below which the rescaling of Tadah! 1.5.0 kept a priority."
+description = "Retired: the magnitudes below which the rescaling of Tadah! 1.5.0 set a priority to 1."
 long_description = """
 A command line or a TASK data balance section that gives it is refused
 with the reason. A line of the GLOBAL section of a task file is accepted: it
@@ -3597,8 +3597,9 @@ with --rescale, whose line is refused there.
 examples = []
 default_value = []
 [TASKS.data.balance.keys.threshold.retired]
-reason = """tadah data balance --threshold set the energy per atom, \
-force and stress below which --rescale kept a priority."""
+reason = """tadah data balance --threshold set the energy per atom, the \
+sum of force norms and the stress norm below which --rescale set a \
+priority to 1."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
