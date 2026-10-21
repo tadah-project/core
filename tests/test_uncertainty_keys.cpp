@@ -2,8 +2,8 @@
 // of Tadah! 1.0.0 to 1.5.0 were not standard deviations, and no calibrated
 // estimate replaces them.
 //
-//  - WCOV and WNOISE (the covariance of the WEIGHTS and the noise variance
-//    of each quantity of an OALGO 3 fit), UNCERTAINTY (tadah train
+//  - WCOV and WNOISE (keys that no release of Tadah! wrote or read),
+//    UNCERTAINTY (tadah train
 //    --uncertainty; tadah train 1.0.0 to 1.5.0 wrote an UNCERTAINTY line,
 //    true or false, into every potential) and ERROR (the key of --error)
 //    are retired keys: a file with them parses, with one notice per parse,
@@ -190,14 +190,19 @@ void check_retired_output(const BlueprintKey &k, const std::string &what) {
  * and the help of UNCERTAINTY named tadah train 1.5.0 alone; then each
  * said that uncertainty output was not part of Tadah! 1.6.0, its
  * replacement "nothing in Tadah! 1.6.0", and each description that
- * Tadah! 1.6.0 did not give it. */
+ * Tadah! 1.6.0 did not give it; and WCOV and WNOISE said that each held a
+ * quantity for the uncertainty output of tadah predict --error, which no
+ * release wrote (WCOV and WNOISE say that no release wrote or read them).
+ */
 TEST_CASE("Blueprint: uncertainty output is retired: WCOV, WNOISE, "
           "UNCERTAINTY, ERROR and --error of predict and properties "
           "pairwise",
           "[BlueprintParser][retired][uncertainty]") {
   const auto &keys = BlueprintParser::getKeysMapRef();
-  check_retired_output(keys.at("WCOV"), "covariance of the WEIGHTS");
-  check_retired_output(keys.at("WNOISE"), "noise variance");
+  check_retired_output(keys.at("WCOV"),
+                       "No release of Tadah! wrote or read WCOV.");
+  check_retired_output(keys.at("WNOISE"),
+                       "No release of Tadah! wrote or read WNOISE.");
   check_retired_output(keys.at("UNCERTAINTY"),
                        "tadah train --uncertainty wrote weights.tadah, each "
                        "coefficient of the fit beside a diagonal entry of "
