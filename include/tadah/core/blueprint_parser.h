@@ -13,7 +13,7 @@ namespace core {
 /**
  * @brief The blueprint field `retired` of a key: a table of three non-empty
  *        strings, why the key was retired, what replaces it and how a value
- *        of it converts.
+ *        of it converts, and the optional fields only_with and by_deletion.
  *
  * A retired key is accepted in a file so that the potentials that carry it
  * still load: CoreUserConfigParser checks its value against the key's
@@ -42,6 +42,15 @@ struct RetiredKey {
    * an only_with of its own.
    */
   std::string only_with;
+  /**
+   * The optional field `by_deletion` (true or false; false when absent):
+   * deleting a line of the key converts it, whatever the configuration,
+   * as nothing replaces the key (UNCERTAINTY, WCOV, WNOISE, ERROR). A
+   * fit's refusal (retired_keys_refusal()) marks each such line "converted
+   * by deleting the line" and gives the key's reason, which its conversion
+   * does not say.
+   */
+  bool by_deletion = false;
 };
 
 /**

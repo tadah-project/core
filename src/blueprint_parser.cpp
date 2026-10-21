@@ -283,10 +283,12 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     const toml::value &node = table.at("retired");
     const std::string fields =
         "'retired' must be a table of three non-empty strings, reason, "
-        "replacement and conversion, and optionally a fourth, only_with, in "
-        "key: " + fullKey;
+        "replacement and conversion, and optionally only_with, a non-empty "
+        "string, and by_deletion, true or false, in key: " + fullKey;
     const bool with = node.is_table() && node.contains("only_with");
-    if (!node.is_table() || node.as_table().size() != (with ? 4u : 3u))
+    const bool del = node.is_table() && node.contains("by_deletion");
+    if (!node.is_table() ||
+        node.as_table().size() != 3u + (with ? 1u : 0u) + (del ? 1u : 0u))
       throw std::runtime_error(fields);
     auto field = [&](const char *name) {
       if (!node.contains(name) || !node.at(name).is_string())
@@ -302,6 +304,13 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     // The retired option of the same task without which this one had no
     // effect (checkRetiredOptions, on the task).
     if (with) item.retired.only_with = field("only_with");
+    // Deleting a line of the key converts it (retired_keys_refusal marks
+    // the line and gives the reason).
+    if (del) {
+      if (!node.at("by_deletion").is_boolean())
+        throw std::runtime_error(fields);
+      item.retired.by_deletion = node.at("by_deletion").as_boolean();
+    }
     if (!item.deprecated.empty())
       throw std::runtime_error("Key " + fullKey + " is both deprecated and "
                                "retired: a key is one or the other");

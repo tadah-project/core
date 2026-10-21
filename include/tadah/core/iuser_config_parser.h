@@ -103,8 +103,11 @@ public:
    * at its line. A key line (not a CONFIG line, not a block) for which
    * @p skip(file_keys, key) is true, or that the parser does not store in
    * any parse (CoreUserConfigParser: a run setting of a potential), is
-   * appended to @p skipped instead, in the order read. A file a CONFIG line
-   * includes is read under the same rule, with the keys of its own lines.
+   * appended to @p skipped instead, in the order read; a line of a retired
+   * key that @p skip selects too, which is then not recorded on the result
+   * (Context::retired_keys()) and not named in the parse's notice. A file a
+   * CONFIG line includes is read under the same rule, with the keys of its
+   * own lines.
    *
    * @param lines      The lines of the block, blank and comment lines
    *                   included.

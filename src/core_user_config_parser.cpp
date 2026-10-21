@@ -328,6 +328,16 @@ namespace {
         continue;
       }
       if (keyInfo.isRetired()) {
+        // A line the caller's rule selects is the caller's, as any other
+        // line: a task that retires the option with a reason of its own
+        // (ERROR of TASK predict) refuses it with that reason.
+        if (skip.rule && (*skip.rule)(ownKeys, uKey)) {
+          if (skip.skipped)
+            skip.skipped->push_back(SkippedKeyLine{
+                source, first_line + i, uKey,
+                std::vector<std::string>(tokens.begin() + 1, tokens.end())});
+          continue;
+        }
         // Accepted so that a potential that carries it still loads, and
         // recorded on the result, never stored: a fit refuses the
         // configuration with the conversion (retired_keys.h), and the parse
