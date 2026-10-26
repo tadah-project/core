@@ -737,7 +737,9 @@ by default (AUDIT_SAMPLE). It checks the parameters of each descriptor
 against the neighbour distances of the data: a radial channel of a
 many-body density fails when it reaches none of them within its cutoff (a
 Gaussian when it is below 1e-6 at all of them, a blip when its support
-holds none), whatever its centre. Under tadah hpo it also warns about a
+holds none), whatever its centre. Each descriptor of a D2_mJoin or
+DM_mJoin line is judged by its own channels and cutoff, and a channel is
+named by its entry of the whole key. Under tadah hpo it also warns about a
 critical parameter that the seed fixes and the search space leaves out,
 for a descriptor that has another parameter in the search space. A setting of the run: no potential has an AUDIT line (its
 training record lists the run's), and an AUDIT line of a potential of an
@@ -788,7 +790,7 @@ Available options:
 
 **2** - **GELS**: Uses the LAPACK routine :code:`DGELS` to solve linear least squares problems via QR or LQ factorisation. This method assumes that the matrix has full rank and is the fastest among the options. It is suitable for well-conditioned problems but less robust for ill-conditioned or rank-deficient matrices.
 
-**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but uses SVD. This method allows the use of the evidence approximation algorithm (:ref:`LAMBDA` -1). The second value :code:`M` (:math:`\text{rcond}`, default :math:`1 \times 10^{-8}`) is the rank threshold: for :math:`0 < M < 1`, the solve leaves out of the coefficients every singular direction whose singular value is at most :code:`M` times the largest. An :code:`M` of 0 or less leaves out only the directions of singular value 0 and keeps every other one, also one at the rounding level of an ill-conditioned design matrix, which with :ref:`LAMBDA` 0 can give very large coefficients. A fit refuses an :code:`M` of 1 or more, which would leave out every direction. A fit refuses coefficients that are not finite, under every option: under option 3 a kept singular value whose square is below the smallest double gives one at :ref:`LAMBDA` 0, and the refusal names that singular value (a positive :code:`M` leaves such directions out).
+**3** - **Custom Implementation Similar to DGELS (Uses SVD)**: Employs a custom algorithm similar to :code:`DGELS` but uses SVD. This method allows the use of the evidence approximation algorithm (:ref:`LAMBDA` -1). The second value :code:`M` (:math:`\text{rcond}`, default :math:`1 \times 10^{-8}`) is the rank threshold: for :math:`0 < M < 1`, the solve leaves out of the coefficients every singular direction whose singular value is at most :code:`M` times the largest. An :code:`M` of 0 or less leaves out only the directions of singular value 0 and keeps every other one, also one at the rounding level of an ill-conditioned design matrix, which with :ref:`LAMBDA` 0 can give very large coefficients. A fit refuses an :code:`M` of 1 or more, which would leave out every direction. A fit refuses coefficients that are not finite, under every option. Under option 3 at :ref:`LAMBDA` 0, a kept singular value whose square is below the smallest double gives one: the refusal then names that singular value, which a :ref:`LAMBDA` above 0 keeps finite and an :code:`M` of at least its ratio to the largest leaves out (the default :code:`M` does for a ratio of at most :math:`1 \times 10^{-8}`).
 
 **4** - **Cholesky Decomposition**: Solves the normal equations :math:`A^\top A x = A^\top b` using Cholesky decomposition. This method is efficient for well-conditioned, full-rank matrices but may be less stable for ill-conditioned or rank-deficient problems because it squares the condition number of the matrix. It takes no second value.
 
@@ -3835,17 +3837,28 @@ Reads the training configuration (DBFILE, TYPE2B, TYPEMB and the seed
 values; a radial grid given by a generator, LIN or GEOM, is the grid it
 makes), computes dataset statistics (per-pair r_ij percentiles and KDE
 peaks, no densities), then walks the metadata of each configured
-descriptor and proposes one OPTIM bound per parameter entry. Each row
-gives its rationale: the form the range assumes and the data it comes
-from, or "fixed range" and why (the ranges of the densities ρ, which the
-statistics do not hold). The ranges of a Gaussian density read the seed:
-a centre at the origin (CGRIDMB 0) gets no OPTIM line, its width setting
-its reach, and its width the range over which the Gaussian drops by a
-factor of 0.9 to 1/20 from the first neighbour shell to the second, at
-most the width at which it is 1e-6 at the nearest neighbour; a centre on
-a shell gets the first peak +- its width. Prints the table and writes a
-compilable OPTIM block, one line per run of entries of a key with the
-same range (to --outfile, or to standard output).
+descriptor and proposes one OPTIM bound per parameter entry. Each
+descriptor of a D2_mJoin or DM_mJoin line gets the rows of its own values,
+numbered as the whole key numbers them. Each row gives its rationale: the
+form the range assumes and the data it comes from (the centres and widths
+of the Gaussian densities), "fixed range" and why (the ranges of the
+densities ρ, which the statistics do not hold), or the scale and the role
+of the parameter. Every range holds the seed's value, where a search of
+tadah hpo starts: a range the data alone end before it is widened to it,
+and its rationale says so (the range of a cutoff ends at the 99th
+percentile of the distances within the seed's cutoff). The ranges of a
+Gaussian density read the seed. A centre at the origin (CGRIDMB 0) gets
+no OPTIM line, its width setting its reach, and its width the range over
+which the Gaussian drops by a factor of 0.9 to 1/20 from the first
+neighbour shell to the second, at most the width at which it is 1e-6 at
+the nearest neighbour. Another centre gets itself +- the FWHM of the
+neighbour shell nearest to it, within the neighbour distances unless it
+lies outside them, and its width 0.25/w^2 to 9/w^2 with w that FWHM. A
+value of a descriptor's TYPE2B line (the screening parameters of D2_ZBL,
+the exponents of D2_MIE) gets a row without an OPTIM line: tadah hpo does
+not search it. Prints the table and writes a compilable OPTIM block, one
+line per run of entries of a key with the same range (to --outfile, or to
+standard output).
 """
 examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
 [TASKS.analysis.suggest_bounds.keys]
