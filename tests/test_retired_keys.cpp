@@ -138,11 +138,17 @@ TEST_CASE("Config parser: a retired key line is checked, recorded on the "
   CHECK(r[4].source.empty());
 }
 
+/* Pins: the value of a retired key is checked as any value, and refused
+ * naming the key and its line ("Invalid value for key EWEIGHT on line 1:
+ * 'heavy'", the key's schema, format and examples after it).
+ * Before the fix: refused as "Invalid schema for key: EWEIGHT", without the
+ * line. */
 TEST_CASE("Config parser: a retired key's value is still checked",
           "[config][retired]") {
   REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
                           "EWEIGHT heavy"}),
-                      Contains("Invalid schema for key: EWEIGHT"));
+                      StartsWith("Invalid value for key EWEIGHT on line 1: "
+                                 "'heavy'\n"));
 }
 
 TEST_CASE("Config parser: one notice per parse lists the retired keys of "

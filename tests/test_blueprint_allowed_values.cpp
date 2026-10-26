@@ -162,11 +162,15 @@ TEST_CASE("Config parser: EMBF0 takes ZERO or FREE, any case, and nothing "
                         Contains("Invalid value for key EMBF0 on line 4 of " +
                                  path + ": 'frei'"));
   }
+  // A second value is refused at its line, as any value the key's types do
+  // not take ("Invalid schema for key: EMBF0", without the line, before the
+  // line was named).
   SECTION("a second value is an error (one value)") {
     Quiet q;
     REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
                             "EMBF0 ZERO FREE"}),
-                        Contains("Invalid schema for key: EMBF0"));
+                        Contains("Invalid value for key EMBF0 on line 1: "
+                                 "'ZERO FREE'"));
   }
 }
 

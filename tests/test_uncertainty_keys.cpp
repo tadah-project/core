@@ -494,10 +494,11 @@ TEST_CASE("Config parser: SIGMA parses, warns once and is not stored",
 
 /* Pins: a WNOISE that is not row type and number pairs ("WNOISE E", "WNOISE
  * E 0.1 F") and a WCOV whose first value is not an integer ("WCOV 1.5 1")
- * are refused at parse with the parser's schema error naming the key
- * ("Invalid schema for key: WNOISE ..."): the value of a retired key is
- * still checked.
- * Before the fix: refused alike (a pin: the keys kept their types). */
+ * are refused at parse with the parser's error naming the key and its line
+ * ("Invalid value for key WNOISE on line 2: 'E'"): the value of a retired
+ * key is still checked.
+ * Before the fix: refused alike (a pin: the keys kept their types), as
+ * "Invalid schema for key: WNOISE", without the line. */
 TEST_CASE("Config parser: a malformed WNOISE or WCOV is refused",
           "[config][uncertainty]") {
   for (const std::string line :
@@ -505,7 +506,9 @@ TEST_CASE("Config parser: a malformed WNOISE or WCOV is refused",
     INFO(line);
     const std::string msg = refusal({"ATOM Ta", line});
     INFO("message: " << msg);
-    CHECK(msg.find("Invalid schema for key") != std::string::npos);
-    CHECK(msg.find(line.substr(0, line.find(' '))) != std::string::npos);
+    const std::string key = line.substr(0, line.find(' '));
+    CHECK(msg.find("Invalid value for key " + key + " on line 2: '" +
+                   line.substr(line.find(' ') + 1) + "'") !=
+          std::string::npos);
   }
 }
