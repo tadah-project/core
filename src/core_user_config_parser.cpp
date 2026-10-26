@@ -210,6 +210,18 @@ namespace {
   }
 
   /**
+   * @brief What a parse refuses: the keys of refuse_keys() with their
+   *        reasons, and the command whose configuration file it reads
+   *        (set_command(): its blueprint task name, "TRAIN"; empty: none),
+   *        whose file refuses a key only other commands read
+   *        (BlueprintKey::command_only).
+   */
+  struct Refusal {
+    const std::map<std::string, std::string> &keys;
+    const std::string &command;
+  };
+
+  /**
    * @brief The key line rule of a parse and the list its skipped lines go
    *        to (both null: no rule).
    */
@@ -218,8 +230,7 @@ namespace {
     std::vector<SkippedKeyLine> *skipped = nullptr;
   };
 
-  Context parseFile(const std::string &filename,
-                    const std::map<std::string, std::string> &refused,
+  Context parseFile(const std::string &filename, const Refusal &refused,
                     const LineSkip &skip, const std::string &includedAt = "");
 
   /**
@@ -243,10 +254,44 @@ namespace {
    */
   void parseLines(const std::vector<std::string> &lines, Context &ctx,
                   std::size_t first_line, const std::string &source,
-                  const std::map<std::string, std::string> &refused,
+                  const Refusal &refused,
                   const LineSkip &skip = LineSkip()) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
     const std::set<std::string> ownKeys = fileKeys(lines);
+    const bool potential = ownKeys.count("WEIGHTS") > 0;
+    // A line of a key that only some commands read
+    // (BlueprintKey::command_only), at line @p at (its text @p text, "KEY
+    // values" or "KEY" and its block): in a potential it is not read, with
+    // one notice per key (a potential written before 1.6.0 may hold such a
+    // line, as tadah train wrote what its configuration held); in a
+    // configuration file of a command that does not read it, it is
+    // refused. True when the line is not read.
+    auto commandOnlyLine = [&](const std::string &uKey, std::size_t at,
+                               const std::string &text,
+                               std::size_t block_end = 0) {
+      if (potential) {
+        report_ignored_key_once(
+            uKey, "Key " + uKey,
+            text + " on " + lineOf(at, source) +
+                (block_end ? " (a block, to END" + uKey + " on line " +
+                                 std::to_string(block_end) + ")"
+                           : std::string()) +
+                " is " + command_key_role(uKey) + ", not a key of a "
+                "potential; the " + (block_end ? "block" : "line") +
+                " is not read");
+        return true;
+      }
+      if (refused.command.empty()) return false;
+      const std::string command = task_command_words(refused.command);
+      const std::vector<std::string> readers = commands_reading_key(uKey);
+      if (std::find(readers.begin(), readers.end(), command) != readers.end())
+        return false;
+      throw std::runtime_error("Key " + uKey + " on " + lineOf(at, source) +
+                               " is not accepted here: " +
+                               command_key_text(uKey) +
+                               ", not a key of a configuration file of " +
+                               command);
+    };
     for (size_t i = 0; i < lines.size(); ++i) {
       std::string rawLine = trim(lines[i]);
       if (rawLine.empty() || rawLine[0] == '#') {
@@ -273,7 +318,7 @@ namespace {
       std::string uKey = to_upper(key);
 
       // A key the caller refuses for this input (refuse_keys()).
-      if (const auto r = refused.find(uKey); r != refused.end()) {
+      if (const auto r = refused.keys.find(uKey); r != refused.keys.end()) {
         throw std::runtime_error("Key " + uKey + " on " +
                                  lineOf(first_line + i, source) +
                                  " is not accepted here: " + r->second);
@@ -347,6 +392,12 @@ namespace {
                                    lineOf(first_line + i, source) +
                                    " is not closed; expected " + endTok);
         }
+        const auto blockKey = keyMap.find(uKey);
+        if (blockKey != keyMap.end() && blockKey->second.command_only &&
+            commandOnlyLine(uKey, first_line + i, uKey, first_line + k)) {
+          i = k;
+          continue;
+        }
         i = k;  // resume after END<block>
         if (!body.empty()) {
           ctx.add(uKey, body);  // STRINGS key: add() splits on whitespace
@@ -373,6 +424,11 @@ namespace {
           !keyInfo.isAllowedValue(trim(val))) {
         throw std::runtime_error(valueRefusal(
             uKey, val, keyInfo, lineOf(first_line + i, source)));
+      }
+      if (keyInfo.command_only) {
+        std::string text = uKey;
+        for (std::size_t j = 1; j < tokens.size(); ++j) text += " " + tokens[j];
+        if (commandOnlyLine(uKey, first_line + i, text)) continue;
       }
       if (keyInfo.isDeprecated()) {
         // Accepted so that older files still load, but never stored: the
@@ -478,8 +534,7 @@ namespace {
    *        config.train", which the error of a file that does not open
    *        names: "Failed to open config file: <file> (<includedAt>)").
    */
-  Context parseFile(const std::string &filename,
-                    const std::map<std::string, std::string> &refused,
+  Context parseFile(const std::string &filename, const Refusal &refused,
                     const LineSkip &skip, const std::string &includedAt) {
     ParseScope scope;
 
@@ -526,13 +581,14 @@ const std::vector<std::string> &run_setting_keys() {
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
-  return finishParse(parseFile(filename, refused_, LineSkip()));
+  return finishParse(parseFile(filename, Refusal{refused_, command_},
+                               LineSkip()));
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename,
                                     const KeyLineRule &skip,
                                     std::vector<SkippedKeyLine> &skipped) const {
-  return finishParse(parseFile(filename, refused_,
+  return finishParse(parseFile(filename, Refusal{refused_, command_},
                                skip ? LineSkip{&skip, &skipped} : LineSkip()));
 }
 
@@ -543,7 +599,7 @@ Context CoreUserConfigParser::parse(std::istream &in) const {
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(in, line)) lines.push_back(line);
-    parseLines(lines, ctx, 1, "", refused_);
+    parseLines(lines, ctx, 1, "", Refusal{refused_, command_});
   }
   return finishParse(std::move(ctx));
 }
@@ -553,7 +609,7 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   Context ctx;
   {
     ParseScope scope;
-    parseLines(lines, ctx, 1, "", refused_);
+    parseLines(lines, ctx, 1, "", Refusal{refused_, command_});
   }
   return finishParse(std::move(ctx));
 }
@@ -563,6 +619,15 @@ void CoreUserConfigParser::refuse_keys(
   refused_.clear();
   for (auto &kv : reasons)
     refused_[to_upper(kv.first)] = std::move(kv.second);
+}
+
+void CoreUserConfigParser::set_command(const std::string &task) {
+  if (!task.empty() &&
+      BlueprintParser::getTasksMapRef().count(task) == 0)
+    throw std::invalid_argument(
+        "CoreUserConfigParser::set_command: no blueprint command '" + task +
+        "'");
+  command_ = task;
 }
 
 bool CoreUserConfigParser::validateWithBlueprint(

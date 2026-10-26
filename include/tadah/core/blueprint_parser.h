@@ -112,6 +112,19 @@ struct BlueprintKey {
   bool names = false;
 
   /**
+   * True for a key that only the commands whose [TASKS.*] table lists it
+   * read (blueprint field `command_only`): an option of their command line
+   * (ANALYTICS of tadah predict, INDEX of tadah data print) or a key of
+   * their configuration file (REFIT_MODE of tadah refit), never a key of a
+   * model, a potential or a training configuration. CoreUserConfigParser
+   * refuses its line in a configuration file of another command
+   * (CoreUserConfigParser::set_command) and does not read it in a potential
+   * (a file whose lines give WEIGHTS), with a notice. The field must be a
+   * boolean.
+   */
+  bool command_only = false;
+
+  /**
    * The blueprint field `retired` (RetiredKey); its strings are empty for a
    * key that is not retired.
    */
@@ -129,16 +142,20 @@ struct BlueprintKey {
   /// True if the blueprint marks this key as retired (field `retired`).
   bool isRetired() const { return !retired.reason.empty(); }
 };
+/**
+ * @brief An option group of a command ([TASKS.<command>.groups.<name>]):
+ *        its fields are description, required_min, required_max and keys,
+ *        and a group with another field is refused when the blueprint
+ *        loads (the excludes and needs of the command line belong to an
+ *        option).
+ */
 struct BlueprintKeyGroup {
   std::string groupName;                          ///< Name of the group 
   std::vector<std::string> description;           ///< Description of the group
   std::vector<BlueprintKey> blueprintKeys;        ///< BlueprintKey objects in this group
-  bool cli_required;                              ///< Indicates if required in a cli context
   size_t requiredMin;                             ///< Minimum number of required keys which must be selected
   size_t requiredMax;                             ///< Maximum number of required keys which must be selected
-  std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
-  std::vector<std::string> cli_needs;             ///< List of CLI keys/options that are required for this CLI option
-  BlueprintKeyGroup() : cli_required(false), requiredMin(1), requiredMax(1) {}
+  BlueprintKeyGroup() : requiredMin(1), requiredMax(1) {}
 };
 
 struct BlueprintTask {
@@ -267,8 +284,10 @@ public:
    * @return The commands by their dot-separated, uppercase names.
    * @throws std::runtime_error "Error building blueprint tasks map: ..."
    *         with the reason: a command missing a mandatory field, a key
-   *         that buildKey refuses, an option whose cli_excludes or
-   *         cli_needs names no other option of its command.
+   *         that buildKey refuses, an option group with a field other
+   *         than description, required_min, required_max and keys, an
+   *         option whose cli_excludes or cli_needs names no other option
+   *         of its command.
    */
   static std::unordered_map<std::string, BlueprintTask>
   buildTasksMap(const toml::value &blueprint);
@@ -350,6 +369,34 @@ public:
   static std::string findClosestKey(const std::string &key,
       const std::unordered_map<std::string, BlueprintKey> &map);
 };
+
+/**
+ * @brief The commands that read the key @p key (upper case): those whose
+ *        [TASKS.*] table lists it among its options or the keys of its
+ *        option groups, as typed ("tadah predict", "tadah data print"),
+ *        sorted.
+ */
+std::vector<std::string> commands_reading_key(const std::string &key);
+
+/**
+ * @brief The command line of the blueprint task @p task as typed: "tadah
+ *        train" for "TRAIN", "tadah data print" for "DATA.print".
+ */
+std::string task_command_words(const std::string &task);
+
+/**
+ * @brief What the key @p key (upper case) of BlueprintKey::command_only is,
+ *        for a message: "the option --analytics (-A) of tadah predict", "a
+ *        key of tadah refit", "the option --index of tadah analysis bfunc,
+ *        ... and tadah data write", or "read by no tadah command".
+ */
+std::string command_key_role(const std::string &key);
+
+/**
+ * @brief command_key_role() after the key: "ANALYTICS is the option
+ *        --analytics (-A) of tadah predict".
+ */
+std::string command_key_text(const std::string &key);
 
 } // namespace core
 } // namespace tadah

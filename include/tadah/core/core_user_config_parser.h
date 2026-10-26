@@ -136,6 +136,29 @@ public:
   void refuse_keys(std::map<std::string, std::string> reasons);
 
   /**
+   * @brief The command whose configuration file this parser reads, by its
+   *        blueprint task name ("TRAIN", "HPO", "ANALYSIS.check_bounds";
+   *        empty: none, the default).
+   *
+   * With a command, a line of a key that only other commands read
+   * (BlueprintKey::command_only: an option of their command line, or a key
+   * of their configuration file) is an error at that line, in the file and
+   * in the files it includes with CONFIG: "Key ANALYTICS on line 3 of
+   * config.train is not accepted here: ANALYTICS is the option --analytics
+   * (-A) of tadah predict, not a key of a configuration file of tadah
+   * train"; a key the command reads (REFIT_MODE in a file of tadah refit)
+   * is read. Every parse, with a command or without, reads a potential (a
+   * file whose own lines give WEIGHTS) without such a line, with one notice
+   * per key and process (report_ignored_key_once(): "WARNING: Key ANALYTICS
+   * is ignored: ANALYTICS true on line 40 of pot.tadah is the option
+   * --analytics (-A) of tadah predict, not a key of a potential; the line is
+   * not read"), so that a potential written before 1.6.0, whose training
+   * configuration held such a key, still loads.
+   * @throws std::invalid_argument for a name that is no blueprint task.
+   */
+  void set_command(const std::string &task);
+
+  /**
    * @brief Validate a (key, value) pair against Blueprint schema (the
    *        values of a command-line option; a parse checks the values of
    *        its lines itself, and names the line in its error).
@@ -215,6 +238,9 @@ private:
 
   /// Upper-case key -> the reason it is refused (refuse_keys()).
   std::map<std::string, std::string> refused_;
+  /// The blueprint task whose configuration file this parser reads
+  /// (set_command()); empty: none.
+  std::string command_;
 };
 } // namespace core
 } // namespace tadah
