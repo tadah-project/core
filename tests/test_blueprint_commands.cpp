@@ -294,3 +294,91 @@ TEST_CASE("Blueprint: loading a blueprint refuses a keys table of [TADAH]",
                "command ([TASKS.<command>.keys])"));
   }
 }
+
+namespace {
+
+/* demo_blueprint("") with @p group_fields more fields of its group
+ * input. */
+std::string demo_blueprint_group(const std::string &group_fields) {
+  std::string b = demo_blueprint("");
+  const std::string at = "[TASKS.demo.groups.input]\ndescription = \"One of:\"\n";
+  const auto pos = b.find(at);
+  REQUIRE(pos != std::string::npos);
+  b.insert(pos + at.size(), group_fields);
+  return b;
+}
+
+}  // namespace
+
+/* Pins: loading a blueprint refuses a field of an option group that no
+ * code reads: a group takes description, required_min, required_max and
+ * its keys. A group with required_min 1 and required_max 2 loads (the
+ * group input of DEMO, 1 to 2 options); one with cli_excludes, cli_needs
+ * (fields of an option, which the command line applies to options only),
+ * cli_required (the group's required_min says what it requires) or a
+ * misspelt field (required_mn) is refused with "Error building blueprint
+ * tasks map: The group input of the command DEMO has the field <field>,
+ * which a group does not take ...". The embedded blueprint loads.
+ * Before the fix: each loaded; the group-level cli_excludes and cli_needs
+ * were read into the group and applied nowhere, and a field the reader did
+ * not know was not read, all without a word. */
+TEST_CASE("Blueprint: loading a blueprint refuses a field of an option group "
+          "that no code reads",
+          "[BlueprintParser][commands][groups]") {
+  std::unordered_map<std::string, BlueprintTask> tasks;
+  REQUIRE_NOTHROW(tasks = BlueprintParser::buildTasksMap(parse_toml(
+                      demo_blueprint_group("required_min = 1\n"
+                                           "required_max = 2\n"))));
+  REQUIRE(tasks.count("DEMO") == 1);
+  REQUIRE(tasks.at("DEMO").groups.size() == 1);
+  CHECK(tasks.at("DEMO").groups[0].requiredMin == 1);
+  CHECK(tasks.at("DEMO").groups[0].requiredMax == 2);
+  for (const std::string field :
+       {"cli_excludes = [\"beta\"]", "cli_needs = [\"alpha\"]",
+        "cli_required = true", "required_mn = 1"}) {
+    INFO("group input with " << field);
+    const std::string name = field.substr(0, field.find(' '));
+    std::string what;
+    try {
+      (void)BlueprintParser::buildTasksMap(
+          parse_toml(demo_blueprint_group(field + "\n")));
+    } catch (const std::exception &e) {
+      what = e.what();
+    }
+    CHECK_THAT(what, Contains("Error building blueprint tasks map: The group "
+                              "input of the command DEMO has the field " +
+                              name + ", which a group does not take"));
+  }
+  CHECK_NOTHROW(BlueprintParser::getTasksMapRef());
+}
+
+/* Pins: the commands that read a command key (BlueprintKey::command_only)
+ * are those whose options or group keys list it, without a command whose
+ * table retires it: RESCALE and THRESHOLD, retired options of tadah data
+ * balance (refused there with the reason), are read by tadah analysis
+ * bfunc and by tadah data dedup alone, and a message names those ("RESCALE
+ * is the option --rescale of tadah analysis bfunc"). OPTION, whose
+ * cli_long_flag does not start with "-", is the positional argument of
+ * tadah explain and is named so ("OPTION is the argument of tadah
+ * explain"); ANALYTICS stays the option --analytics (-A) of tadah predict
+ * (a pin).
+ * Before the fix: tadah data balance was named among the commands that
+ * read RESCALE and THRESHOLD, and OPTION was "a key of tadah explain", of a
+ * command that reads no configuration file. */
+TEST_CASE("Blueprint: a command key is named by the commands that read it, "
+          "not by one that retires it, and a positional one as the argument "
+          "of its command",
+          "[BlueprintParser][commands][command_keys]") {
+  CHECK_THAT(commands_reading_key("RESCALE"),
+             Equals(std::vector<std::string>{"tadah analysis bfunc"}));
+  CHECK_THAT(commands_reading_key("THRESHOLD"),
+             Equals(std::vector<std::string>{"tadah data dedup"}));
+  CHECK(command_key_text("RESCALE") ==
+        "RESCALE is the option --rescale of tadah analysis bfunc");
+  CHECK(command_key_text("THRESHOLD") ==
+        "THRESHOLD is the option --threshold of tadah data dedup");
+  CHECK(command_key_text("OPTION") ==
+        "OPTION is the argument of tadah explain");
+  CHECK(command_key_text("ANALYTICS") ==
+        "ANALYTICS is the option --analytics (-A) of tadah predict");
+}

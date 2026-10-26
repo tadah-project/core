@@ -2,6 +2,7 @@
 #include <tadah/core/logger.h>
 #include <tadah/core/utils.h>
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <blueprint_tadah.hpp>
@@ -379,6 +380,18 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     }
   }
 
+  // A key only the commands that list it read (an option of theirs, or a
+  // key of their configuration file): refused in a configuration file of
+  // another command and not read from a potential (CoreUserConfigParser).
+  if (table.contains("command_only")) {
+    const toml::value &node = table.at("command_only");
+    if (!node.is_boolean()) {
+      throw std::runtime_error(
+          "'command_only' must be true or false in key: " + fullKey);
+    }
+    item.command_only = node.as_boolean();
+  }
+
   // Written exactly in a potential whatever NUMERIC is: governs the
   // non-integer numbers Context::write_potential writes, so it needs a
   // DOUBLE position (on another key it would govern nothing).
@@ -575,6 +588,21 @@ static void parseGroups(const toml::value &groupsTbl,
     if (!groupNode.is_table()) {
       throw std::runtime_error("Group '" + group.groupName + "' under '" + fullTaskName + "' must be a table.");
     }
+    // A group takes these fields and no other: a field no code reads
+    // would be accepted without effect (cli_excludes, cli_needs and
+    // cli_required are fields of an option; the options a group requires
+    // are required_min and required_max).
+    for (const auto &field : groupNode.as_table()) {
+      if (field.first == "description" || field.first == "required_min" ||
+          field.first == "required_max" || field.first == "keys")
+        continue;
+      throw std::runtime_error(
+          "The group " + group.groupName + " of the command " +
+          fullTaskName + " has the field " + field.first +
+          ", which a group does not take: a group takes description, "
+          "required_min, required_max and keys (cli_excludes, cli_needs and "
+          "cli_required are fields of an option)");
+    }
 
     // 1) description
     if (groupNode.contains("description")) {
@@ -598,20 +626,7 @@ static void parseGroups(const toml::value &groupsTbl,
     if (groupNode.contains("required_max")) {
       group.requiredMax = toml::find<size_t>(groupNode, "required_max");
     }
-    // 4) cli_required
-    if (groupNode.contains("cli_required")) {
-      group.cli_required = toml::find<bool>(groupNode, "cli_required");
-    }
-    // 5) cli_excludes (if you need group-level excludes)
-    if (groupNode.contains("cli_excludes")) {
-      group.cli_excludes = toml::find<std::vector<std::string>>(groupNode, "cli_excludes");
-    }
-    // 6) cli_needs (if you need group-level needs)
-    if (groupNode.contains("cli_needs")) {
-      group.cli_needs = toml::find<std::vector<std::string>>(groupNode, "cli_needs");
-    }
-
-    // 6) The [TASKS.<task>.groups.<groupName>.keys] subtable
+    // 4) The [TASKS.<task>.groups.<groupName>.keys] subtable
     if (groupNode.contains("keys")) {
       parseGroupKeys(groupNode.at("keys"), group.blueprintKeys, fullTaskName + "." + group.groupName);
     }
@@ -1036,5 +1051,81 @@ std::string BlueprintParser::findClosestKey(
 
   return bestKey;
 }
+namespace {
+
+/* The key name of a blueprint key of a task ("TASKS.predict.keys.analytics",
+ * "PREDICT.analytics"): its last word, upper case. */
+std::string last_word_upper(const std::string &name) {
+  const std::size_t dot = name.rfind('.');
+  std::string key = dot == std::string::npos ? name : name.substr(dot + 1);
+  std::transform(key.begin(), key.end(), key.begin(),
+                 [](unsigned char c) { return std::toupper(c); });
+  return key;
+}
+
+/* "a", "a and b", "a, b and c". */
+std::string and_list(const std::vector<std::string> &items) {
+  std::string s;
+  for (std::size_t i = 0; i < items.size(); ++i)
+    s += (i == 0 ? "" : i + 1 == items.size() ? " and " : ", ") + items[i];
+  return s;
+}
+
+}  // namespace
+
+std::string task_command_words(const std::string &task) {
+  std::string words = "tadah " + task;
+  std::transform(words.begin(), words.end(), words.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  std::replace(words.begin(), words.end(), '.', ' ');
+  return words;
+}
+
+std::vector<std::string> commands_reading_key(const std::string &key) {
+  // A task key that the task retires (an option it refuses with the
+  // reason, such as --rescale of tadah data balance) is not read by it.
+  auto reads_it = [&key](const BlueprintKey &k) {
+    return !k.isRetired() && last_word_upper(k.keyName) == key;
+  };
+  std::vector<std::string> tasks;
+  for (const auto &kv : BlueprintParser::getTasksMapRef()) {
+    bool reads = false;
+    for (const BlueprintKey &k : kv.second.blueprintKeys)
+      if (reads_it(k)) reads = true;
+    for (const BlueprintKeyGroup &g : kv.second.groups)
+      for (const BlueprintKey &k : g.blueprintKeys)
+        if (reads_it(k)) reads = true;
+    if (reads) tasks.push_back(kv.first);
+  }
+  std::sort(tasks.begin(), tasks.end());
+  std::vector<std::string> commands;
+  for (const std::string &t : tasks) commands.push_back(task_command_words(t));
+  return commands;
+}
+
+std::string command_key_role(const std::string &key) {
+  const std::vector<std::string> commands = commands_reading_key(key);
+  if (commands.empty()) return "read by no tadah command";
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  const auto found = keys.find(key);
+  const std::string flag =
+      found == keys.end() ? std::string() : found->second.cli_long_flag;
+  // A flag that does not start with '-' names a positional argument
+  // (OPTION of tadah explain).
+  if (!flag.empty() && flag[0] != '-')
+    return "the argument of " + and_list(commands);
+  if (flag.rfind("--", 0) == 0) {
+    std::string option = flag;
+    if (!found->second.cli_short_flag.empty())
+      option += " (" + found->second.cli_short_flag + ")";
+    return "the option " + option + " of " + and_list(commands);
+  }
+  return "a key of " + and_list(commands);
+}
+
+std::string command_key_text(const std::string &key) {
+  return key + " is " + command_key_role(key);
+}
+
 } // namespace core
 } // namespace tadah
