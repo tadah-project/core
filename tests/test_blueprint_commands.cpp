@@ -8,11 +8,14 @@
 
 #include <tadah/core/blueprint_parser.h>
 
+#include <sstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 using namespace tadah::core;
 using Catch::Matchers::Contains;
+using Catch::Matchers::Equals;
 
 namespace {
 
@@ -40,6 +43,42 @@ BlueprintKey option(const std::string &name) {
   k.keyName = "X." + name;
   k.cli_long_flag = "--" + name;
   return k;
+}
+
+/* @p text parsed as TOML, as the blueprint is. */
+toml::value parse_toml(const std::string &text) {
+  std::istringstream ss(text);
+  return toml::parse(ss);
+}
+
+/* The fields of a STRING option with the long flag --<name>. */
+std::string option_fields(const std::string &name) {
+  return "value_type = [\"STRING\"]\nvalue_format = [\"<string>\"]\n"
+         "value_N = [1]\nexamples = [\"a\"]\n"
+         "description = \"Option " + name + ".\"\n"
+         "cli_long_flag = \"--" + name + "\"\n";
+}
+
+/* A blueprint (TOML) of one command, demo, with the options --alpha and
+ * --beta and, in its group input, --gamma; @p alpha_fields are more fields
+ * of --alpha. */
+std::string demo_blueprint(const std::string &alpha_fields) {
+  return "[TASKS.demo]\ndescription = \"A command.\"\n"
+         "long_description = \"\"\nexamples = [\"tadah demo --alpha a\"]\n"
+         "[TASKS.demo.keys.alpha]\n" + option_fields("alpha") + alpha_fields +
+         "[TASKS.demo.keys.beta]\n" + option_fields("beta") +
+         "[TASKS.demo.groups.input]\ndescription = \"One of:\"\n"
+         "[TASKS.demo.groups.input.keys.gamma]\n" + option_fields("gamma");
+}
+
+/* A blueprint (TOML) with the [TADAH] table, its mandatory fields, and the
+ * option ALLOWED_KEYS.verbose (--verbose); @p more follows [TADAH]. */
+std::string tadah_blueprint(const std::string &more) {
+  return "[ALLOWED_KEYS.verbose]\n" + option_fields("verbose") +
+         "[TADAH]\nlogo = \"Tadah!\"\nversion = \"1.6.0\"\n"
+         "website = \"https://tadah.readthedocs.io\"\n"
+         "description = \"Tadah!\"\nlong_description = \"\"\n"
+         "examples = [\"tadah --version\"]\n" + more;
 }
 
 }  // namespace
@@ -127,12 +166,14 @@ TEST_CASE("Blueprint: the cli_excludes and cli_needs of each option name "
   CHECK(names > 30);
 }
 
-/* Pins: loading the blueprint refuses a command with an option whose
- * cli_excludes or cli_needs names no other option of the command (no long
- * flag --<name> among its options and those of its groups): the message
- * names the command, the option, the field and the name. A name of an
- * option of a group of the command is accepted, and so is a command whose
- * names are all its options; every command of the blueprint passes.
+/* Pins: the check of a command's options (checkCommandOptions, on commands
+ * built here) refuses a command with an option whose cli_excludes or
+ * cli_needs names no other option of the command (no long flag --<name>
+ * among its options and those of its groups): the message names the
+ * command, the option, the field and the name. A name of an option of a
+ * group of the command is accepted, and so is a command whose names are
+ * all its options; every command of the blueprint passes. The next case
+ * loads a blueprint with such an option.
  * Before the fix: the check of a command's options when the blueprint
  * loads (BlueprintParser::checkRetiredOptions, which checkCommandOptions
  * replaces) read only the field only_with of its retired options: every
@@ -176,5 +217,80 @@ TEST_CASE("Blueprint: an option whose cli_excludes or cli_needs names no "
   for (const auto &kv : BlueprintParser::getTasksMapRef()) {
     INFO(kv.first);
     CHECK_NOTHROW(BlueprintParser::checkCommandOptions(kv.second));
+  }
+}
+
+/* Pins: loading a blueprint (BlueprintParser::buildTasksMap, which
+ * getTasksMapRef() applies to the embedded one) refuses a command with an
+ * option whose cli_excludes or cli_needs names no other option of the
+ * command. The blueprint of one command, demo, with the options --alpha,
+ * --beta and, in its group input, --gamma: --alpha with no such field, with
+ * cli_excludes ["beta"] or with cli_needs ["gamma"] loads (the command DEMO
+ * with its 3 options); --alpha with cli_excludes or cli_needs ["delta"] (no
+ * option), ["alpha"] (itself) or ["ALL"] is refused with exactly "Error
+ * building blueprint tasks map: The option --alpha of the command DEMO has
+ * cli_excludes 'delta', which names no other option of the command (an
+ * option is named by its long flag without --)" (the field and the name of
+ * each).
+ * Before the fix: passes as well (a pin of the refusal the load makes:
+ * with the check of the commands' options taken out of buildTasksMap, each
+ * refused blueprint loads, no exception). */
+TEST_CASE("Blueprint: loading a blueprint refuses an option whose "
+          "cli_excludes or cli_needs names no option of its command",
+          "[BlueprintParser][commands]") {
+  for (const std::string fields :
+       {"", "cli_excludes = [\"beta\"]\n", "cli_needs = [\"gamma\"]\n"}) {
+    INFO("--alpha with " << (fields.empty() ? "no cli field" : fields));
+    std::unordered_map<std::string, BlueprintTask> tasks;
+    REQUIRE_NOTHROW(tasks = BlueprintParser::buildTasksMap(
+                        parse_toml(demo_blueprint(fields))));
+    REQUIRE(tasks.count("DEMO") == 1);
+    CHECK(options_of(tasks.at("DEMO")).size() == 3);
+  }
+  for (const std::string field : {"cli_excludes", "cli_needs"}) {
+    for (const std::string name : {"delta", "alpha", "ALL"}) {
+      INFO("--alpha with " << field << " [\"" << name << "\"]");
+      REQUIRE_THROWS_WITH(
+          BlueprintParser::buildTasksMap(parse_toml(
+              demo_blueprint(field + " = [\"" + name + "\"]\n"))),
+          Equals("Error building blueprint tasks map: The option --alpha of "
+                 "the command DEMO has " + field + " '" + name +
+                 "', which names no other option of the command (an option "
+                 "is named by its long flag without --)"));
+    }
+  }
+}
+
+/* Pins: loading a blueprint (BlueprintParser::buildBlueprintTadah, which
+ * getBlueprintTadahRef() applies to the embedded one) refuses a keys table
+ * of [TADAH]: tadah alone takes no option but -h and --version. A [TADAH]
+ * with its mandatory fields and no keys table loads (version "1.6.0", no
+ * option); the same with a keys table, [TADAH.keys] INHERIT =
+ * ["ALLOWED_KEYS.verbose"] (as [TADAH.keys] INHERIT = ["ALLOWED_KEYS.task"]
+ * gave tadah alone its option --task), or [TADAH.keys.verbose] written out,
+ * is refused with exactly "[TADAH] must not have a keys table: tadah alone
+ * takes no option but -h and --version, and an option belongs to a command
+ * ([TASKS.<command>.keys])".
+ * Before the fix: passes as well (a pin of the refusal the load makes:
+ * with the refusal taken out of buildBlueprintTadah, each keys table loads
+ * and is not read, no exception). */
+TEST_CASE("Blueprint: loading a blueprint refuses a keys table of [TADAH]",
+          "[BlueprintParser][commands]") {
+  BlueprintTadah top;
+  REQUIRE_NOTHROW(top = BlueprintParser::buildBlueprintTadah(
+                      parse_toml(tadah_blueprint(""))));
+  CHECK(top.version == "1.6.0");
+  CHECK(top.blueprintKeys.empty());
+  CHECK(top.groups.empty());
+  for (const std::string &keys :
+       {std::string("[TADAH.keys]\nINHERIT = [\"ALLOWED_KEYS.verbose\"]\n"),
+        "[TADAH.keys.verbose]\n" + option_fields("verbose")}) {
+    INFO(keys);
+    REQUIRE_THROWS_WITH(
+        BlueprintParser::buildBlueprintTadah(
+            parse_toml(tadah_blueprint(keys))),
+        Equals("[TADAH] must not have a keys table: tadah alone takes no "
+               "option but -h and --version, and an option belongs to a "
+               "command ([TASKS.<command>.keys])"));
   }
 }
