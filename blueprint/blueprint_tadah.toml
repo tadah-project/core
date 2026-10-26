@@ -578,8 +578,8 @@ DM_REAM many-body block, and the potential has none (...)", like a deprecated
 key (the Logger level and VERBOSE do not hide it). pair_style tadah writes it
 as a LAMMPS warning on rank 0 instead, in log.lammps and on the screen, each
 time pair_coeff loads such a potential ("WARNING: pair tadah: potential
-'<file>': Key EMBF0 is ignored: ..."). A task value for such a potential
-(tadah predict) is reported the same way.
+'<file>': Key EMBF0 is ignored: ..."). So is an EMBF0 of a configuration
+for such a potential (tadah refit --edit with -c).
 
 Migration: a potential written by tadah 1.5.0 or earlier reproduces its
 energies with `EMBF0 FREE` added. Training a DM_REAM model on absolute reference
@@ -1083,11 +1083,10 @@ above their key lines that is never read as keys; the journal, hpo_run.log,
 names it too). The HPOTARGET line of a potential of an earlier version
 (every 1.5.x best_pot.tadah has one) is not read, and a WARNING names it:
 tadah hpo -c and tadah analysis check_bounds -c take the file from
---hpotarget, a TASK hpo or TASK analysis check_bounds section that includes
-such a potential from an HPOTARGET line of its own or above the first TASK
-line of the task file (a run of a task file takes no command-line option).
-A run without one is refused, saying where it goes and naming the
-potential's line that was not read.
+--hpotarget (which tadah hpo -c requires), or from an HPOTARGET line of a
+configuration file without WEIGHTS that includes such a potential. A run
+without one is refused, saying where it goes and naming the potential's
+line that was not read.
 """
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
@@ -1120,17 +1119,15 @@ exits with status 0. It evaluates no candidate and writes no file: no
 journal, no result file and no DUMP or BDUMP directory.
 
 An error ends it with the message and the exit status of tadah hpo; the
-warnings and hints that came before the error are on standard error. In a
-task file, CHECK true in the TASK hpo section, or above the first TASK
-line, makes the same check.
+warnings and hints that came before the error are on standard error.
 
 A setting of the run, as HPOTARGET is. A CHECK true line in a training
 configuration that is not a potential also makes tadah hpo -c a check, and
-tadah train reads no CHECK. A file or TASK section whose own key lines
-include WEIGHTS is a potential, and its CHECK line is not read: tadah hpo
--c of such a file, or a TASK hpo section with WEIGHTS lines, runs, and a
-WARNING names the line; CHECK then goes on the command line or above the
-first TASK line. No potential has a CHECK key line: the training record of
+tadah train reads no CHECK. A file whose own key lines include WEIGHTS is
+a potential, and its CHECK line is not read: tadah hpo -c of such a file
+runs, and a WARNING names the line; CHECK then goes on the command line
+(--check) or in a configuration file that includes the potential with
+CONFIG. No potential has a CHECK key line: the training record of
 a tadah train or tadah refit potential lists the CHECK line of its
 configuration, which neither command reads, and that of a tadah hpo
 potential lists none.
@@ -2075,7 +2072,7 @@ it predicts (--eshift replaces them, --no-eshift subtracts none), and a
 retrain from the potential (tadah train -c pot.tadah, a tadah hpo -c seed)
 uses them; a retrain derives ESHIFT from its own data when the line is
 deleted and the run is given ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
---eshift-dbatom, or a line of the task file or of a file that includes the
+--eshift-dbatom, or a line of a configuration file that includes the
 potential: a toggle line of the potential itself is not read).
 """
 examples     = ["0.5", "0.5 -0.1"]
@@ -2105,7 +2102,7 @@ line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
 -c, or included with CONFIG) is not read, with or without its ESHIFT line (a
 WARNING names it when it is true, unless the run gives ESHIFT_ATOM itself or
 sets ESHIFT_DBATOM true: the two choose the source of the shift and exclude
-each other, so the run's own toggle is its choice). The run's own ESHIFT_ATOM (--eshift-atom, or a line of the task file or of a file
+each other, so the run's own toggle is its choice). The run's own ESHIFT_ATOM (--eshift-atom, or a line of a configuration file
 that includes the potential) is read, and is overruled by an ESHIFT line as
 in any configuration: to derive ESHIFT from the data of a retrain, delete
 the potential's ESHIFT line and give the run ESHIFT_ATOM.
@@ -2144,8 +2141,8 @@ line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
 WARNING names it when it is true, unless the run gives ESHIFT_DBATOM itself
 or sets ESHIFT_ATOM true: the two choose the source of the shift and exclude
 each other, so the run's own toggle is its choice). The run's own
-ESHIFT_DBATOM (--eshift-dbatom, or a line of the task file or of a
-file that includes the potential) is read, and is overruled by an ESHIFT
+ESHIFT_DBATOM (--eshift-dbatom, or a line of a configuration file that
+includes the potential) is read, and is overruled by an ESHIFT
 line as in any configuration: to derive ESHIFT from the data of a retrain,
 delete the potential's ESHIFT line and give the run ESHIFT_DBATOM.
 """
@@ -2205,7 +2202,7 @@ the potential's (one of an earlier version has it as a key line: ignored). A
 potential's EFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
 run reads: given with -c, or included with CONFIG) is not read, with a
 WARNING when the run gives none of its own; the run's own EFILTER (--efilter,
-or a line of the task file or of a file that includes the potential) applies.
+or a line of a configuration file that includes the potential) applies.
 """
 examples       = ["-12.0 -2.0"]
 cli_long_flag  = "--efilter"
@@ -2229,7 +2226,7 @@ the potential's (one of an earlier version has it as a key line: ignored). A
 potential's FFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
 run reads: given with -c, or included with CONFIG) is not read, with a
 WARNING when the run gives none of its own; the run's own FFILTER (--ffilter,
-or a line of the task file or of a file that includes the potential) applies.
+or a line of a configuration file that includes the potential) applies.
 """
 examples       = ["20.0"]
 cli_long_flag  = "--ffilter"
@@ -2260,7 +2257,7 @@ earlier version wrote as a key line. A potential's WDBFILE line (a file with
 WEIGHTS that a retrain or a tadah hpo run reads: given with -c, or included
 with CONFIG) is not read, with a WARNING when the run gives none of its own,
 so a retrain may list any datasets; the run's own WDBFILE (--wdbfile, or a
-line of the task file or of a file that includes the potential) applies.
+line of a configuration file that includes the potential) applies.
 """
 examples       = ["1.0 0.5 0.1"]
 cli_long_flag  = "--wdbfile"
@@ -2336,7 +2333,7 @@ it as a key line: ignored). A potential's ZERO_COM_FORCE line (a file with
 WEIGHTS that a retrain or a tadah hpo run reads: given with -c, or included
 with CONFIG) is not read (a WARNING names it when it is true and the run
 gives none of its own); the run's own ZERO_COM_FORCE (--zero-com-force, or a
-line of the task file or of a file that includes the potential) applies.
+line of a configuration file that includes the potential) applies.
 """
 default_value  = ["false"]
 examples       = ["true"]
@@ -2425,9 +2422,9 @@ examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 INHERIT = ["TYPES.BOOL"]
 description  = "Retired: the key of --error of tadah predict and tadah properties pairwise; uncertainty output is removed."
 long_description = """
-tadah predict and tadah properties pairwise refuse --error, and an ERROR
-line of their TASK sections, with the reason of the option (tadah explain
-predict.error, tadah explain properties.pairwise.error). A configuration
+tadah predict and tadah properties pairwise refuse --error with the reason
+of the option (tadah explain predict.error, tadah explain
+properties.pairwise.error). A configuration
 or potential with an ERROR line loads with one notice; a fit refuses it
 until the line is deleted.
 """
@@ -2964,8 +2961,8 @@ value_N = [-6]
 [TASKS.train]
 description      = "Trains a model."
 long_description = """
-Trains a model from either a configuration file or a task file. By default,
-it trains on energies; however, forces and stresses can also be included.
+Trains a model from a configuration file. By default, it trains on
+energies; however, forces and stresses can also be included.
 This command requires a configuration file and yields a trained interatomic
 potential which can be used with Tadah! or for molecular
 dynamics simulations in LAMMPS via pair_style tadah.
@@ -2994,7 +2991,7 @@ Output file name for the trained model.
 value_type   = ["STRING"]
 value_format = ["<file>"]
 [TASKS.train.groups.input]
-description      = "A configuration file for a single task or a complete tasks file."
+description      = "The training configuration file."
 cli_required = true
 required_min = 1
 required_max = 1
@@ -3191,11 +3188,11 @@ long_description = """
 Predicts with an already trained model. Energy per atom is always calculated,
 while forces and stresses are optional. By default, energies are written to
 energy.pred, and if forces or stresses are calculated, they are written to
-forces.pred and stress.pred, respectively. A task file lists prediction
-datasets with a DBFILE key, or files and online structures with STRUCTURE
-(tadah explain predict.structure lists the supported types). Alternatively,
-Tadah! datasets or individual structure files or online sources can be given
-on the command line.
+forces.pred and stress.pred, respectively. The data to predict are Tadah!
+datasets (--dbfile), or structure files and online structures (--structure;
+tadah explain predict.structure lists the supported types). The model is
+the potential's, as it was fitted: tadah predict takes no configuration
+file, and a key of the model is changed in the potential file.
 """
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
 [TASKS.predict.keys]
@@ -3203,9 +3200,7 @@ INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEY
 [TASKS.predict.keys.error]
 description = "Retired: an error computed from SIGMA beside every predicted value; uncertainty output is removed."
 long_description = """
-A command line or a TASK predict section that gives it is refused with the
-reason, and so is a task file that gives it in the GLOBAL section, whose
-keys reach every task of the file.
+A command line that gives it is refused with the reason.
 """
 examples = []
 default_value = []
@@ -3516,9 +3511,7 @@ INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS
 [TASKS.data.balance.keys.rescale]
 description = "Retired: the rescaling of the priorities of a dataset by Tadah! 1.5.0."
 long_description = """
-A command line that gives it is refused with the reason, and so is a task
-file that gives it in a TASK data balance section or in the GLOBAL section,
-whose keys reach every task of the file.
+A command line that gives it is refused with the reason.
 """
 examples = []
 default_value = []
@@ -3534,10 +3527,8 @@ only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.threshold]
 description = "Retired: the magnitudes below which the rescaling of Tadah! 1.5.0 set a priority to 1."
 long_description = """
-A command line or a TASK data balance section that gives it is refused
-with the reason. A line of the GLOBAL section of a task file is accepted: it
-sets the key for the other tasks of the file, and the option acted only
-with --rescale, whose line is refused there.
+A command line that gives it is refused with the reason. The option acted
+only with --rescale.
 """
 examples = []
 default_value = []
@@ -3551,10 +3542,8 @@ only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.force]
 description = "Retired: the rescaling of the force priorities by Tadah! 1.5.0."
 long_description = """
-A command line or a TASK data balance section that gives it is refused
-with the reason. A line of the GLOBAL section of a task file is accepted: it
-sets the key for the other tasks of the file, and the option acted only
-with --rescale, whose line is refused there.
+A command line that gives it is refused with the reason. The option acted
+only with --rescale.
 """
 examples = []
 default_value = []
@@ -3567,10 +3556,8 @@ only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.stress]
 description = "Retired: the rescaling of the stress priorities by Tadah! 1.5.0."
 long_description = """
-A command line or a TASK data balance section that gives it is refused
-with the reason. A line of the GLOBAL section of a task file is accepted: it
-sets the key for the other tasks of the file, and the option acted only
-with --rescale, whose line is refused there.
+A command line that gives it is refused with the reason. The option acted
+only with --rescale.
 """
 examples = []
 default_value = []
@@ -3618,9 +3605,7 @@ INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.
 [TASKS.properties.pairwise.keys.error]
 description = "Retired: an error computed from SIGMA beside every value of the energy curve; uncertainty output is removed."
 long_description = """
-A command line or a TASK properties pairwise section that gives it is
-refused with the reason, and so is a task file that gives it in the GLOBAL
-section, whose keys reach every task of the file.
+A command line that gives it is refused with the reason.
 """
 examples = []
 default_value = []
@@ -3716,7 +3701,7 @@ comma) and an index outside the dataset are refused, naming it, before any
 structure is read.
 """
 [TASKS.analysis.descriptor.groups.input]
-description      = "Structure source or a task file. One of the following options:"
+description      = "Structure source. One of the following options:"
 cli_required = true
 required_min = 1
 required_max = 1
@@ -3749,7 +3734,7 @@ examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats
 [TASKS.analysis.dataset_stats.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
 [TASKS.analysis.dataset_stats.groups.input]
-description      = "Structure source or a task file. One of the following options:"
+description      = "Structure source. One of the following options:"
 cli_required = true
 required_min = 1
 required_max = 1
@@ -3778,7 +3763,7 @@ examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile sugg
 [TASKS.analysis.suggest_bounds.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
 [TASKS.analysis.suggest_bounds.groups.input]
-description      = "Source: a training config or a task file."
+description      = "Source: a training configuration file."
 cli_required = true
 required_min = 1
 required_max = 1
@@ -3856,7 +3841,7 @@ description = "Rescales the basis function by the cutoff function. This is usefu
 [TASKS.analysis.bfunc.keys.outfile]
 INHERIT = ["TYPES.STRING"]
 [TASKS.analysis.bfunc.groups.input]
-description      = "Either a potential file, a configuration file, or a task file."
+description      = "Either a potential file or a configuration file."
 cli_required = true
 required_min = 1
 required_max = 1
@@ -3876,7 +3861,7 @@ examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 --type Cu
 [TASKS.analysis.cutoff.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative"]
 [TASKS.analysis.cutoff.groups.input]
-description      = "Either a cutoff type or a task file."
+description      = "The cutoff type."
 cli_required = true
 required_min = 1
 required_max = 1
