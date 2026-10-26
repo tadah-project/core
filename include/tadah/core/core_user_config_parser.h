@@ -37,7 +37,15 @@ const std::vector<std::string> &run_setting_keys();
  * (ignoring blank lines and comments). It validates every key against the allowed keywords
  * provided by the blueprint (via Context): a key that is none is an error at its line ("Invalid
  * key FOOBAR on line 3 of config.train (closest key: FORMAT)"; "on line 3" for lines of no
- * file), a file included with CONFIG naming its own line.
+ * file), a file included with CONFIG naming its own line. So is every other error of a line,
+ * without a Logger line: a value the key does not take ("Invalid value for key RCUT2B on line 3
+ * of config.train: 'abc'", the key's schema, format and examples on the lines that follow; a
+ * value outside its allowed values lists them), more values than the key takes over its lines
+ * ("Too many values for key MODEL on line 4 of config.train: MODEL takes at most 3, and its
+ * lines read so far give 4"), a block that is not closed ("OPTIMIZER on line 2 of config.train
+ * is not closed; expected ENDOPTIMIZER") and a CONFIG line whose file does not open ("Failed to
+ * open config file: other.cfg (CONFIG on line 2 of config.train)") or includes a file of the
+ * chain of includes again.
  *
  * A key the blueprint marks as deprecated (BlueprintKey::deprecated) is accepted so that older
  * configuration and potential files still load: its value is validated like any other, a
@@ -128,7 +136,9 @@ public:
   void refuse_keys(std::map<std::string, std::string> reasons);
 
   /**
-   * @brief Validate a (key, value) pair against Blueprint schema.
+   * @brief Validate a (key, value) pair against Blueprint schema (the
+   *        values of a command-line option; a parse checks the values of
+   *        its lines itself, and names the line in its error).
    *
    * Logs any errors if the value does not comply with the schema for this key
    * (including showing allowed schemas, formats, and examples).

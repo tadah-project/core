@@ -7,6 +7,7 @@
 #include "tadah/core/utils.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <fstream>
 #include <set>
 #include <sstream>
@@ -92,6 +93,71 @@ namespace {
   }
 
   /**
+   * @brief What the error of a value of @p key that its types do not take
+   *        gives after its first line: "  Allowed schema:" and
+   *        "    <key>   <type>" for each value type of the key, "  Format:"
+   *        and "    <key>   <format>" for each of its formats and, when it
+   *        has examples, "  Examples:" and "    <key>   <line>" for each
+   *        non-blank line of each example (an example is a value of the
+   *        key, the blueprint's rule).
+   */
+  std::vector<std::string> valueHelp(const std::string &key,
+                                     const BlueprintKey &keyInfo) {
+    std::vector<std::string> out{"  Allowed schema:"};
+    for (const auto &schema : keyInfo.value_type)
+      out.push_back("    " + key + "   " + schema);
+    out.push_back("  Format:");
+    for (const auto &fmt : keyInfo.value_format)
+      out.push_back("    " + key + "   " + fmt);
+    if (!keyInfo.examples.empty()) {
+      out.push_back("  Examples:");
+      for (const auto &ex : keyInfo.examples) {
+        std::istringstream lines(ex);
+        std::string line;
+        while (std::getline(lines, line)) {
+          line = trim(line);
+          if (!line.empty()) out.push_back("    " + key + "   " + line);
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * @brief The error of the value @p val of the key @p uKey (upper case),
+   *        which its types or its allowed values do not take, at @p where
+   *        ("line 3 of config.train"): "Invalid value for key <KEY> on
+   *        <where>: ", then for a value of the key's types outside its
+   *        allowed values the values allowed; for words a comma or a '+'
+   *        joins, which blanks would make a value, the separator and the
+   *        line to write; for any other value, or none, the key's schema,
+   *        format and examples on the lines that follow (valueHelp).
+   */
+  std::string valueRefusal(const std::string &uKey, const std::string &val,
+                           const BlueprintKey &keyInfo,
+                           const std::string &where) {
+    const std::string value = trim(val);
+    const std::string head =
+        "Invalid value for key " + uKey + " on " + where + ": ";
+    if (!keyInfo.allowed_values.empty() &&
+        CoreUserConfigParser::validateSchemaOnly(val, keyInfo))
+      return head + "'" + value + "' (allowed: " +
+             joinAllowed(keyInfo.allowed_values) + ")";
+    std::string respaced;
+    const std::string seps =
+        CoreUserConfigParser::misusedSeparators(val, keyInfo, respaced);
+    if (!seps.empty())
+      return head + "'" + value + "' separates values with " + seps +
+             ", which a configuration line is not split at (values are "
+             "separated by blanks: " + uKey + " " + respaced + ")";
+    std::string out =
+        head + (value.empty() ? std::string("no value") : "'" + value + "'");
+    for (const std::string &line : valueHelp(uKey, keyInfo))
+      out += "\n" + line;
+    return out;
+  }
+
+  /**
    * @brief The keys whose lines open a verbatim multi-line block (closed by
    *        END<key>), whose body is not made of key lines.
    */
@@ -154,13 +220,16 @@ namespace {
 
   Context parseFile(const std::string &filename,
                     const std::map<std::string, std::string> &refused,
-                    const LineSkip &skip);
+                    const LineSkip &skip, const std::string &includedAt = "");
 
   /**
    * @brief Parse lines into an existing Context object.
    *
-   * lines[i] is line first_line + i of source (empty: no name), which the
-   * errors that name a line report.
+   * lines[i] is line first_line + i of source (empty: no name), which
+   * every error of a line names, with its key: an unknown key, a key the
+   * caller refuses, a value the key does not take, more values than the
+   * key takes, a block that is not closed and a CONFIG line whose file
+   * does not open or includes a file of the chain again.
    *
    * Circular dependency detection is handled by tracking CONFIG filenames
    * in configChain. When a CONFIG line is encountered, the file is pushed
@@ -274,8 +343,9 @@ namespace {
           body += bl + " ";
         }
         if (!closed) {
-          throw std::runtime_error(uKey + " block is not closed with " +
-                                   endTok);
+          throw std::runtime_error(uKey + " on " +
+                                   lineOf(first_line + i, source) +
+                                   " is not closed; expected " + endTok);
         }
         i = k;  // resume after END<block>
         if (!body.empty()) {
@@ -295,33 +365,14 @@ namespace {
             (suggested.empty() ? std::string()
                                : " (closest key: " + suggested + ")"));
       }
-      // validate entry against blueprint schema
+      // The value against the key's types and allowed values: a value it
+      // does not take is an error at its line, with no Logger line.
       std::string val = removeFirstWord(rawLine, key);
       const BlueprintKey &keyInfo = keyMap.at(uKey);
-      bool valid_schema = CoreUserConfigParser::validateWithBlueprint(key, val, keyInfo);
-      if (!valid_schema) {
-        // A value outside the key's allowed_values: name the line.
-        if (!keyInfo.allowed_values.empty() &&
-            CoreUserConfigParser::validateSchemaOnly(val, keyInfo)) {
-          throw std::runtime_error(
-              "Invalid value for key " + uKey + " on " +
-              lineOf(first_line + i, source) + ": '" + trim(val) +
-              "' (allowed: " + joinAllowed(keyInfo.allowed_values) + ")");
-        }
-        // Values joined by a comma or a '+', which the line is not split
-        // at: name the line, the separator and the line to write.
-        std::string respaced;
-        const std::string seps =
-            CoreUserConfigParser::misusedSeparators(val, keyInfo, respaced);
-        if (!seps.empty()) {
-          throw std::runtime_error(
-              "Invalid value for key " + uKey + " on " +
-              lineOf(first_line + i, source) + ": '" + trim(val) +
-              "' separates values with " + seps +
-              ", which a configuration line is not split at (values are "
-              "separated by blanks: " + uKey + " " + respaced + ")");
-        }
-        throw std::runtime_error("Invalid schema for key: " + key);
+      if (!CoreUserConfigParser::validateSchemaOnly(val, keyInfo) ||
+          !keyInfo.isAllowedValue(trim(val))) {
+        throw std::runtime_error(valueRefusal(
+            uKey, val, keyInfo, lineOf(first_line + i, source)));
       }
       if (keyInfo.isDeprecated()) {
         // Accepted so that older files still load, but never stored: the
@@ -364,13 +415,17 @@ namespace {
       }
       if (uKey == "CONFIG") {
         // CONFIG is a special case; check for circular dependency
+        const std::string configLine =
+            "CONFIG on " + lineOf(first_line + i, source);
         if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
           std::string chainStr;
           for (const auto &c : configChain) {
             chainStr += c + " -> ";
           }
           chainStr += val;
-          throw std::runtime_error("Circular dependency detected between CONFIG files: " + chainStr);
+          throw std::runtime_error(
+              "Circular dependency detected between CONFIG files: " +
+              chainStr + " (" + configLine + ")");
         }
         // Push config name before nested parse
         configChain.push_back(val);
@@ -378,7 +433,7 @@ namespace {
         // Perform nested parse, under the same refusal and rule
         Context configCtx;
         try {
-          configCtx = parseFile(val, refused, skip);
+          configCtx = parseFile(val, refused, skip, configLine);
         } catch (...) {
           // Clean up the chain if parsing fails
           configChain.pop_back();
@@ -394,7 +449,22 @@ namespace {
                                           tadah::core::Context::BlockMerge::Append);
         continue; // Skip adding "CONFIG" key or its value to the context
       }
-      // Other keys store their values
+      // Other keys store their values. A key of several values adds the
+      // values of each of its lines, up to the number it takes (value_N);
+      // a line of a key of one value replaces the line before
+      // (Context::add): more is an error at the line that exceeds it.
+      const std::size_t most =
+          static_cast<std::size_t>(std::abs(keyInfo.value_N.at(0)));
+      if (most > 1) {
+        const std::size_t given =
+            (ctx.has_stored(uKey) ? ctx.size(uKey) : 0) + tokens.size() - 1;
+        if (given > most)
+          throw std::runtime_error(
+              "Too many values for key " + uKey + " on " +
+              lineOf(first_line + i, source) + ": " + uKey +
+              " takes at most " + std::to_string(most) +
+              ", and its lines read so far give " + std::to_string(given));
+      }
       for (size_t j = 1; j < tokens.size(); ++j) {
         ctx.add(key, tokens[j]);
       }
@@ -404,19 +474,20 @@ namespace {
   /**
    * @brief One parse of the file @p filename: its lines, under the
    *        refusal @p refused and the rule @p skip (a top-level parse, or
-   *        the file of a CONFIG line).
+   *        the file of the CONFIG line @p includedAt, "CONFIG on line 2 of
+   *        config.train", which the error of a file that does not open
+   *        names: "Failed to open config file: <file> (<includedAt>)").
    */
   Context parseFile(const std::string &filename,
                     const std::map<std::string, std::string> &refused,
-                    const LineSkip &skip) {
+                    const LineSkip &skip, const std::string &includedAt) {
     ParseScope scope;
 
     std::ifstream infile(filename.c_str());
     if (!infile.is_open()) {
-      Logger::instance().log(
-          LogLevel::ERROR,
-          "CoreUserConfigParser::parse -> Failed to open file: ", filename);
-      throw std::runtime_error("Failed to open config file: " + filename);
+      throw std::runtime_error(
+          "Failed to open config file: " + filename +
+          (includedAt.empty() ? std::string() : " (" + includedAt + ")"));
     }
 
     std::vector<std::string> lines;
@@ -537,32 +608,9 @@ bool CoreUserConfigParser::validateWithBlueprintImpl(
       "CoreUserConfigParser::parse -> Invalid format for key: value -> ",
       key, ": ", text);
 
-  // Log allowed schemas
-  Logger::instance().log(LogLevel::ERROR, "  Allowed schema:");
-  for (const auto &schema : keyInfo.value_type) {
-    Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", schema);
-  }
-
-  // Log user-friendly formats
-  Logger::instance().log(LogLevel::ERROR, "  Format:");
-  for (const auto &fmt : keyInfo.value_format) {
-    Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", fmt);
-  }
-
-  // Provide examples if available. An example is a value of the key (the
-  // blueprint's rule): each of its lines is shown as a line of the key.
-  if (!keyInfo.examples.empty()) {
-    Logger::instance().log(LogLevel::ERROR, "  Examples:");
-    for (const auto &ex : keyInfo.examples) {
-      std::istringstream lines(ex);
-      std::string line;
-      while (std::getline(lines, line)) {
-        line = trim(line);
-        if (!line.empty()) {
-          Logger::instance().log(LogLevel::ERROR, "    ", key, "   ", line);
-        }
-      }
-    }
+  // The key's schema, format and examples, one Logger line each.
+  for (const std::string &line : valueHelp(key, keyInfo)) {
+    Logger::instance().log(LogLevel::ERROR, line);
   }
 
   // 4. Indicate failure
