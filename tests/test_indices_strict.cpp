@@ -25,8 +25,8 @@ TEST_CASE("Strict indices reject partial input and unsafe expansion", "[utils][p
 
 /* Pins: parse_dataset_indices, the 1-based index list of the dataset
  * commands (tadah data sample and data balance -i), on a dataset of 10:
- *  - the values form one list, as the command line and a task file give
- *    them: '1, 3' arrives as the values '1,' and '3'; spaces around '-' and
+ *  - the values form one list, as the command line gives them: '1, 3'
+ *    arrives as the values '1,' and '3'; spaces around '-' and
  *    ':' and between indices are allowed; repeated indices are removed;
  *  - an empty segment, a descending range, a step of 0, a token that is not
  *    an index, index 0 and an index above 10 are refused, naming the

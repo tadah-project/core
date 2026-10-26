@@ -134,10 +134,10 @@ TEST_CASE("Blueprint: the cli_excludes and cli_needs of each option name "
  * option of a group of the command is accepted, and so is a command whose
  * names are all its options; every command of the blueprint passes.
  * Before the fix: the check of a command's options when the blueprint
- * loads (then BlueprintParser::checkRetiredOptions) read only the field
- * only_with of its retired options: every command passed (no exception),
- * and the command line threw CLI::OptionNotFound for such a name when
- * tadah started. */
+ * loads (BlueprintParser::checkRetiredOptions, which checkCommandOptions
+ * replaces) read only the field only_with of its retired options: every
+ * command passed (no exception), and the command line threw
+ * CLI::OptionNotFound for such a name when tadah started. */
 TEST_CASE("Blueprint: an option whose cli_excludes or cli_needs names no "
           "option of its command is refused",
           "[BlueprintParser][commands]") {
@@ -152,7 +152,7 @@ TEST_CASE("Blueprint: an option whose cli_excludes or cli_needs names no "
   group.blueprintKeys = {option("gamma")};
   task.blueprintKeys = {a, b};
   task.groups = {group};
-  CHECK_NOTHROW(BlueprintParser::checkRetiredOptions(task));
+  CHECK_NOTHROW(BlueprintParser::checkCommandOptions(task));
 
   for (const bool needs : {false, true}) {
     for (const std::string name : {"delta", "alpha", "ALL"}) {
@@ -161,7 +161,7 @@ TEST_CASE("Blueprint: an option whose cli_excludes or cli_needs names no "
       (needs ? bad.blueprintKeys[0].cli_needs
              : bad.blueprintKeys[0].cli_excludes) = {name};
       REQUIRE_THROWS_WITH(
-          BlueprintParser::checkRetiredOptions(bad),
+          BlueprintParser::checkCommandOptions(bad),
           Contains("command X") && Contains("--alpha") &&
               Contains(needs ? "cli_needs" : "cli_excludes") &&
               Contains("'" + name + "'") &&
@@ -170,11 +170,11 @@ TEST_CASE("Blueprint: an option whose cli_excludes or cli_needs names no "
   }
   BlueprintTask in_group = task;
   in_group.groups[0].blueprintKeys[0].cli_excludes = {"epsilon"};
-  REQUIRE_THROWS_WITH(BlueprintParser::checkRetiredOptions(in_group),
+  REQUIRE_THROWS_WITH(BlueprintParser::checkCommandOptions(in_group),
                       Contains("--gamma") && Contains("'epsilon'"));
 
   for (const auto &kv : BlueprintParser::getTasksMapRef()) {
     INFO(kv.first);
-    CHECK_NOTHROW(BlueprintParser::checkRetiredOptions(kv.second));
+    CHECK_NOTHROW(BlueprintParser::checkCommandOptions(kv.second));
   }
 }

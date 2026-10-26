@@ -18,8 +18,8 @@ namespace core {
  *        file), AUDIT and AUDIT_SAMPLE (the pre-flight audit) and HEALTH_LOG
  *        (the health monitor of tadah hpo).
  *
- * A potential -- a file (or TASK section) whose own key lines give WEIGHTS
- * -- sets none of them: CoreUserConfigParser checks its lines of them as
+ * A potential -- a file whose own key lines give WEIGHTS -- sets none of
+ * them: CoreUserConfigParser checks its lines of them as
  * any line and does not store them, in every parse, so that a program that
  * loads a potential (tadah predict, pair_style tadah, refit --edit, a
  * retrain or tadah hpo -c of a copy of it) runs with its own settings.
@@ -35,7 +35,9 @@ const std::vector<std::string> &run_setting_keys();
  *
  * This implementation assumes that the configuration file contains one key/value pair per line
  * (ignoring blank lines and comments). It validates every key against the allowed keywords
- * provided by the blueprint (via Context). No structural grouping (global vs. task) is performed.
+ * provided by the blueprint (via Context): a key that is none is an error at its line ("Invalid
+ * key FOOBAR on line 3 of config.train (closest key: FORMAT)"; "on line 3" for lines of no
+ * file), a file included with CONFIG naming its own line.
  *
  * A key the blueprint marks as deprecated (BlueprintKey::deprecated) is accepted so that older
  * configuration and potential files still load: its value is validated like any other, a
@@ -54,8 +56,8 @@ const std::vector<std::string> &run_setting_keys();
  * standard error, or to the IgnoredKeyNoticeCapture of pair_style tadah). A fit refuses a
  * Context that records one, with the conversion (require_no_retired_keys()).
  *
- * A line of a key of run_setting_keys() in a file (or block) whose own key
- * lines give WEIGHTS -- a potential -- is checked and not stored, whatever
+ * A line of a key of run_setting_keys() in a file whose own key lines give
+ * WEIGHTS -- a potential -- is checked and not stored, whatever
  * the parse (no Logger level is set by a potential's VERBOSE line, the
  * program that loads the potential keeps its own); the overloads with a
  * KeyLineRule list it in their @c skipped list as a line the rule selects.
@@ -92,31 +94,18 @@ public:
   Context parse(const std::vector<std::string>& lines) const override;
 
   /**
-   * @brief Parses configuration lines that start at line @p first_line of
-   *        @p source (a block of a file, such as a TASK section).
-   *
-   * An error that names a line names the line of @p source ("on line 6 of
-   * run.task"), not its index in @p lines.
-   * @throws std::runtime_error if any key is not allowed or a parsing error occurs.
-   */
-  Context parse(const std::vector<std::string>& lines, std::size_t first_line,
-                const std::string& source) const override;
-
-  /**
-   * @brief parse(lines, first_line, source) that does not store the key
-   *        lines @p skip selects, and lists them in @p skipped
-   *        (IUserConfigParser: every line checked as any line; a file
-   *        included with CONFIG read under the same rule, by the keys of
-   *        its own lines).
-   */
-  Context parse(const std::vector<std::string>& lines, std::size_t first_line,
-                const std::string& source, const KeyLineRule& skip,
-                std::vector<SkippedKeyLine>& skipped) const override;
-
-  /**
    * @brief parse(filename) that does not store the key lines @p skip
-   *        selects, and lists them in @p skipped (the rule of the overload
-   *        for lines).
+   *        selects, and lists them in @p skipped.
+   *
+   * Every line is read and checked as parse(filename) reads it: an unknown
+   * key, an invalid value or a refused key is an error at its line. A key
+   * line (not a CONFIG line, not a block) for which @p skip(file_keys,
+   * key) is true, or that no parse stores (a run setting of a potential),
+   * is appended to @p skipped instead, in the order read; so is a line of a
+   * retired key that @p skip selects, which is then not recorded on the
+   * result (Context::retired_keys()) and not named in the parse's notice. A
+   * file a CONFIG line includes is read under the same rule, with the keys
+   * of its own lines.
    */
   Context parse(const std::string &filename, const KeyLineRule& skip,
                 std::vector<SkippedKeyLine>& skipped) const;

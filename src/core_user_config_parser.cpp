@@ -284,14 +284,16 @@ namespace {
         continue;
       }
 
+      // A key that is no configuration key (a TASK line among them: a
+      // file holds the keys of one command), at its line and file, with
+      // the closest key.
       if (keyMap.find(uKey) == keyMap.end()) {
-        std::string suggested = BlueprintParser::findClosestKey(key, keyMap);
-        Logger::instance().log(
-            LogLevel::ERROR, "CoreUserConfigParser::parse -> Invalid key: ", key);
-        if (!suggested.empty()) {
-          Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
-        }
-        throw std::runtime_error("Invalid key: " + key);
+        const std::string suggested =
+            BlueprintParser::findClosestKey(uKey, keyMap);
+        throw std::runtime_error(
+            "Invalid key " + uKey + " on " + lineOf(first_line + i, source) +
+            (suggested.empty() ? std::string()
+                               : " (closest key: " + suggested + ")"));
       }
       // validate entry against blueprint schema
       std::string val = removeFirstWord(rawLine, key);
@@ -329,8 +331,7 @@ namespace {
       }
       if (keyInfo.isRetired()) {
         // A line the caller's rule selects is the caller's, as any other
-        // line: a task that retires the option with a reason of its own
-        // (ERROR of TASK predict) refuses it with that reason.
+        // line: listed in its skipped lines, not recorded.
         if (skip.rule && (*skip.rule)(ownKeys, uKey)) {
           if (skip.skipped)
             skip.skipped->push_back(SkippedKeyLine{
@@ -482,31 +483,6 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   {
     ParseScope scope;
     parseLines(lines, ctx, 1, "", refused_);
-  }
-  return finishParse(std::move(ctx));
-}
-
-Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
-                                    std::size_t first_line,
-                                    const std::string &source) const {
-  Context ctx;
-  {
-    ParseScope scope;
-    parseLines(lines, ctx, first_line, source, refused_);
-  }
-  return finishParse(std::move(ctx));
-}
-
-Context CoreUserConfigParser::parse(const std::vector<std::string> &lines,
-                                    std::size_t first_line,
-                                    const std::string &source,
-                                    const KeyLineRule &skip,
-                                    std::vector<SkippedKeyLine> &skipped) const {
-  Context ctx;
-  {
-    ParseScope scope;
-    parseLines(lines, ctx, first_line, source, refused_,
-               skip ? LineSkip{&skip, &skipped} : LineSkip());
   }
   return finishParse(std::move(ctx));
 }

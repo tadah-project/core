@@ -147,7 +147,7 @@ TEST_CASE("BlueprintParser loads ALLOWED_KEYS from blueprint_tadah.toml", "[Blue
   }
 }
 
-/* Pins: CHECK (`tadah hpo --check`, CHECK true in a TASK hpo section) is a
+/* Pins: CHECK (`tadah hpo --check`, CHECK true in a configuration file) is a
  * boolean key with default false and the CLI flag --check, without a short
  * flag, and the only blueprint task with it is hpo: the CLI builds the
  * option of `tadah hpo` from it, and the CLI reference and the

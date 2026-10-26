@@ -395,8 +395,7 @@ TEST_CASE("Config parser: refuse_keys does not leak into another parser",
 }
 
 // Pins: the refusal is an option of the parser, not of file input: the
-// stream and line overloads refuse too, naming the line (counted from
-// first_line for a block of a file) and, for a block, its source.
+// stream and line overloads refuse too, naming the line.
 // Before refuse_keys existed this case failed before any parse. A stream
 // or line overload of parse() that does not pass the refused keys on makes
 // it fail.
@@ -416,15 +415,6 @@ TEST_CASE("Config parser: refuse_keys applies to stream and line input",
     const std::string msg =
         runtime_error_of([&] { return parser.parse(lines); }, "parse(lines)");
     check_refusal(msg, "FORCE", 2, "", kForceReason);
-  }
-  SECTION("a block of lines that starts at line 4 of run.task") {
-    /* Lines 4, 5 and 6 of run.task: FORCE is on line 6. */
-    const std::vector<std::string> lines = {"ATOM Ta", "# a comment",
-                                            "FORCE true"};
-    const std::string msg = runtime_error_of(
-        [&] { return parser.parse(lines, 4, "run.task"); },
-        "parse(lines, 4, run.task)");
-    check_refusal(msg, "FORCE", 6, "run.task", kForceReason);
   }
 }
 
@@ -447,14 +437,13 @@ void check_included_keys(const Context &c) {
 } // namespace
 
 // Pins: a CONFIG line whose path is followed by an inline comment (blanks
-// or a tab before the '#') includes the file it names, in a file, a stream
-// and the lines of a TASK block (parse(lines, first_line, source), which is
-// how `tadah --task` parses each TASK section): the included keys are set,
-// and the result equals that of the same line without the comment.
+// or a tab before the '#') includes the file it names, in a file and a
+// stream: the included keys are set, and the result equals that of the same
+// line without the comment.
 // Before the fix: every section threw std::runtime_error "Failed to open
 // config file: <path>   " -- the path was read up to the '#', with the blanks
-// before it, so no such file existed (`tadah --task` and `tadah train -c`
-// stopped with that error).
+// before it, so no such file existed (`tadah train -c` stopped with that
+// error).
 TEST_CASE("Config parser: a CONFIG line with an inline comment includes the "
           "file it names",
           "[config][config_include]") {
@@ -492,14 +481,6 @@ TEST_CASE("Config parser: a CONFIG line with an inline comment includes the "
                           "   # nested config\nINIT2B true\n");
     Context c;
     REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(in));
-    CHECK(c == expected);
-  }
-  SECTION("the lines of a TASK block (lines 4 to 6 of run.task)") {
-    const std::vector<std::string> lines = {
-        "ATOM Ta", "CONFIG " + inner + "   # nested config",
-        "INIT2B true   # two-body"};
-    Context c;
-    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(lines, 4, "run.task"));
     CHECK(c == expected);
   }
 }
@@ -973,9 +954,7 @@ std::vector<std::string> described(const std::vector<SkippedKeyLine> &lines) {
 //  - a skipped line is checked as any line: "EFILTER five 6" in a file with
 //    WEIGHTS is refused, naming EFILTER;
 //  - the body of a block (INIT ... ENDINIT) is not a key line of the file: a
-//    WEIGHTS token inside it does not make the file's EFILTER skipped;
-//  - the lines overload names the line of its source: lines {"WEIGHTS 1",
-//    "EFILTER 1 2"} from line 10 of run.task give "run.task:11 EFILTER 1 2".
+//    WEIGHTS token inside it does not make the file's EFILTER skipped.
 // Before the fix: does not compile (no parse overload with a rule; no
 // SkippedKeyLine).
 TEST_CASE("Config parser: a key line rule skips the lines it selects by the "
@@ -1046,14 +1025,6 @@ TEST_CASE("Config parser: a key line rule skips the lines it selects by the "
     const Context c = parser.parse(blk, skip_in_weights_files, skipped);
     CHECK(c("EFILTER") == std::vector<std::string>{"5", "6"});
     CHECK(skipped.empty());
-  }
-  SECTION("lines of a source from a line of it") {
-    const Context c = parser.parse(
-        std::vector<std::string>{"WEIGHTS 1", "EFILTER 1 2"}, 10, "run.task",
-        skip_in_weights_files, skipped);
-    CHECK_FALSE(c.has_stored("EFILTER"));
-    CHECK(described(skipped) ==
-          std::vector<std::string>{"run.task:11 EFILTER 1 2"});
   }
 }
 

@@ -1,8 +1,8 @@
 // The blueprint field `allowed_values` (BlueprintKey::allowed_values): the
 // only values a STRING key takes. BlueprintParser checks the field;
 // CoreUserConfigParser rejects any other value at the line that sets it --
-// the line of the file, and the file, also for a block of it such as a
-// TASK section -- and so does the CLI path (validateWithBlueprint). EMBF0 (ZERO|FREE,
+// the line of the file, and the file -- and so does the command-line path
+// (validateWithBlueprint). EMBF0 (ZERO|FREE,
 // the DM_REAM embedding reference) is the first key that uses it: a
 // misspelt value used to reach the model and fail only when a DM_REAM
 // descriptor was built -- or, in a potential without one, be dropped with
@@ -161,23 +161,6 @@ TEST_CASE("Config parser: EMBF0 takes ZERO or FREE, any case, and nothing "
     REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(path),
                         Contains("Invalid value for key EMBF0 on line 4 of " +
                                  path + ": 'frei'"));
-  }
-  SECTION("a block of a file (a TASK section) names the file's line, not "
-          "the block's") {
-    Quiet q;
-    /* The block starts at line 4 of run.task; its fourth line is line 7. */
-    REQUIRE_THROWS_WITH(
-        CoreUserConfigParser().parse(
-            std::vector<std::string>{"POTENTIAL pot.tadah", "",
-                                     "# the reference", "EMBF0 frei"},
-            4, "run.task"),
-        Contains("Invalid value for key EMBF0 on line 7 of run.task: "
-                 "'frei'"));
-    /* A block with no source names its line only. */
-    REQUIRE_THROWS_WITH(
-        CoreUserConfigParser().parse(
-            std::vector<std::string>{"EMBF0 frei"}, 12, ""),
-        Contains("Invalid value for key EMBF0 on line 12: 'frei'"));
   }
   SECTION("a second value is an error (one value)") {
     Quiet q;

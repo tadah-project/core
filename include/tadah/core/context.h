@@ -498,9 +498,8 @@ public:
    *
    * A key of ctx2 replaces ctx1's values (allowOverwrite) or is appended to
    * them. Structured blocks follow @p blocks: by default a kind of block
-   * ctx2 declares replaces ctx1's blocks of that kind, as a key would (a
-   * TASK section's DESCRIPTOR over the GLOBAL one, a task's model over the
-   * potential's); BlockMerge::Append composes them (CONFIG includes).
+   * ctx2 declares replaces ctx1's blocks of that kind, as a key would;
+   * BlockMerge::Append composes them (CONFIG includes).
    *
    * @param ctx1 The first context (base).
    * @param ctx2 The second context (overrides).

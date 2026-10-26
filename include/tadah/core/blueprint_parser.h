@@ -13,7 +13,7 @@ namespace core {
 /**
  * @brief The blueprint field `retired` of a key: a table of three non-empty
  *        strings, why the key was retired, what replaces it and how a value
- *        of it converts, and the optional fields only_with and by_deletion.
+ *        of it converts, and the optional field by_deletion.
  *
  * A retired key is accepted in a file so that the potentials that carry it
  * still load: CoreUserConfigParser checks its value against the key's
@@ -29,19 +29,6 @@ struct RetiredKey {
   std::string reason;       ///< Why the key was retired.
   std::string replacement;  ///< The key(s) that replace it, or what to use.
   std::string conversion;   ///< How a value of it converts.
-  /**
-   * The optional fourth field `only_with` of a retired option of a task:
-   * the retired option of the same task without which it had no effect
-   * (tadah data balance --force acted only with --rescale); empty
-   * otherwise. A line of the GLOBAL section of a task file sets the keys of
-   * every task of the file: MLIPUserConfigParser refuses one that gives a
-   * retired option of a task of the file, but not one of an option with
-   * only_with, which the other tasks may take (FORCE true), as the line of
-   * the option it names is refused. BlueprintParser::checkRetiredOptions
-   * checks that it names another retired option of the task, one without
-   * an only_with of its own.
-   */
-  std::string only_with;
   /**
    * The optional field `by_deletion` (true or false; false when absent):
    * deleting a line of the key converts it, whatever the configuration,
@@ -71,8 +58,12 @@ struct BlueprintKey {
   std::vector<std::string> default_value;         ///< Default value (if any)
   std::string cli_long_flag;                      ///< CLI long flag/option (if applicable)
   std::string cli_short_flag;                     ///< CLI short flag/option (if applicable)
-  std::vector<std::string> cli_excludes;          ///< List of CLI keys/options that must not coexist with this key
-  std::vector<std::string> cli_needs;             ///< List of CLI keys/options that are required for this CLI option
+  /// The options of the same command this option excludes, each named by
+  /// its long flag without "--" (BlueprintParser::checkCommandOptions).
+  std::vector<std::string> cli_excludes;
+  /// The options of the same command this option needs, named as in
+  /// cli_excludes.
+  std::vector<std::string> cli_needs;
   bool cli_required;                              ///< Indicates if required in a cli context
   /**
    * Non-empty for a deprecated key: why it is deprecated and what replaces
@@ -90,7 +81,7 @@ struct BlueprintKey {
    * CoreUserConfigParser rejects any other value at the line that sets it
    * ("Invalid value for key K on line N of <file>: 'v' (allowed: A, B)";
    * without "of <file>" for lines that come from no file), and
-   * validateWithBlueprint -- the CLI and task path -- refuses it too. The
+   * validateWithBlueprint -- the command-line path -- refuses it too. The
    * key's default_value and examples must be allowed values.
    */
   std::vector<std::string> allowed_values;
@@ -161,6 +152,11 @@ struct BlueprintTask {
   BlueprintTask() {}
 };
 
+/**
+ * @brief The table [TADAH]: what `tadah` alone prints (-h, --version). It
+ *        has no keys table: tadah alone takes no option but -h and
+ *        --version, and every other option belongs to a command.
+ */
 struct BlueprintTadah: public BlueprintTask {
   std::string logo;                         ///< Name of the Tadah! software.
   std::string version;                      ///< Version of the Tadah! software.
@@ -265,8 +261,8 @@ public:
    * neither `default_value`, a CLI flag nor examples (after inheritance:
    * `examples = []` overrides those of a TYPES table). A `retired` field
    * must be a table of three non-empty strings, `reason`, `replacement`
-   * and `conversion`, and optionally a fourth, `only_with` (RetiredKey),
-   * and of no other field; a retired key must define neither
+   * and `conversion`, and optionally `by_deletion`, true or false
+   * (RetiredKey), and of no other field; a retired key must define neither
    * `default_value` nor examples, may keep a CLI flag, and is not
    * deprecated as well.
    *
@@ -279,18 +275,20 @@ public:
                                const toml::value &table);
 
   /**
-   * @brief Checks the field `only_with` of the retired options of @p task
-   *        (its own options and those of its groups).
+   * @brief Checks the command-line fields of the options of the command
+   *        @p task (its own options and those of its groups).
    *
-   * The only_with of a retired option names, in any letter case, another
-   * option of the task that is retired and has no only_with of its own
-   * (RetiredKey::only_with). The tasks map applies it to every task of the
-   * blueprint.
+   * Each name in the cli_excludes and cli_needs of an option is the long
+   * flag, without "--", of another option of the same command: the command
+   * line excludes or needs exactly that option, and a name that names none
+   * would leave the rule without effect. The tasks map applies it to every
+   * command of the blueprint when it loads.
    *
-   * @throws std::runtime_error naming the option and its only_with when it
-   *         names no such option.
+   * @throws std::runtime_error naming the command, the option, the field
+   *         and the name, for the first name that names no other option of
+   *         the command.
    */
-  static void checkRetiredOptions(const BlueprintTask &task);
+  static void checkCommandOptions(const BlueprintTask &task);
 
   /**
  * @brief Computes the closest matching key name by measuring the edit distance to each valid blueprint key.

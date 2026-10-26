@@ -283,12 +283,10 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     const toml::value &node = table.at("retired");
     const std::string fields =
         "'retired' must be a table of three non-empty strings, reason, "
-        "replacement and conversion, and optionally only_with, a non-empty "
-        "string, and by_deletion, true or false, in key: " + fullKey;
-    const bool with = node.is_table() && node.contains("only_with");
+        "replacement and conversion, and optionally by_deletion, true or "
+        "false, in key: " + fullKey;
     const bool del = node.is_table() && node.contains("by_deletion");
-    if (!node.is_table() ||
-        node.as_table().size() != 3u + (with ? 1u : 0u) + (del ? 1u : 0u))
+    if (!node.is_table() || node.as_table().size() != 3u + (del ? 1u : 0u))
       throw std::runtime_error(fields);
     auto field = [&](const char *name) {
       if (!node.contains(name) || !node.at(name).is_string())
@@ -301,9 +299,6 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     item.retired.reason = field("reason");
     item.retired.replacement = field("replacement");
     item.retired.conversion = field("conversion");
-    // The retired option of the same task without which this one had no
-    // effect (checkRetiredOptions, on the task).
-    if (with) item.retired.only_with = field("only_with");
     // Deleting a line of the key converts it (retired_keys_refusal marks
     // the line and gives the reason).
     if (del) {
@@ -766,9 +761,9 @@ buildBlueprintTasksMap(const std::string &rootTable) {
         parseTaskRec(topName, kv.second, tasksMap);
       }
     }
-    // The only_with of each retired option names a retired option of its
-    // task.
-    for (const auto &kv : tasksMap) BlueprintParser::checkRetiredOptions(kv.second);
+    // Each name in the cli_excludes and cli_needs of an option names
+    // another option of its command.
+    for (const auto &kv : tasksMap) BlueprintParser::checkCommandOptions(kv.second);
   }
   catch (const std::exception &ex) {
     throw std::runtime_error("Error building blueprint tasks map: " + std::string(ex.what()));
@@ -912,25 +907,14 @@ const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
     }
 
     // ------------------------------------------------------------
-    // 6) Parse optional "keys" subtable into a vector of BlueprintKey
+    // 6) No keys: tadah alone takes no option but -h and --version, and
+    //    every other option belongs to a command
     // ------------------------------------------------------------
-    {
-      toml::table::const_iterator it = tadahTable.find("keys");
-      if (it != tadahTable.end()) {
-        // Ensure "keys" is a table
-        if (!it->second.is_table()) {
-          throw std::runtime_error("[TADAH].keys must be a table if present");
-        }
-        const toml::table &keysTbl = it->second.as_table();
-
-        // For each entry under [TADAH.keys], parse as a BlueprintKey
-        // The name is "TADAH.<entryName>"
-        for (toml::table::const_iterator kv = keysTbl.begin(); kv != keysTbl.end(); ++kv) {
-          std::string dottedKeyName = /*std::string("TADAH.") +*/ kv->first;
-          BlueprintKey newKey = buildBlueprintKey(dottedKeyName, kv->second);
-          bt.blueprintKeys.push_back(newKey);
-        }
-      }
+    if (tadahTable.find("keys") != tadahTable.end()) {
+      throw std::runtime_error(
+          "[TADAH] must not have a keys table: tadah alone takes no option "
+          "but -h and --version, and an option belongs to a command "
+          "([TASKS.<command>.keys])");
     }
 
     // ------------------------------------------------------------
@@ -968,29 +952,31 @@ BlueprintParser::getTasksMapRef() {
   return blueprintTasksMap;
 }
 
-void BlueprintParser::checkRetiredOptions(const BlueprintTask &task) {
+void BlueprintParser::checkCommandOptions(const BlueprintTask &task) {
   std::vector<const BlueprintKey *> options;
   for (const BlueprintKey &k : task.blueprintKeys) options.push_back(&k);
   for (const BlueprintKeyGroup &g : task.groups)
     for (const BlueprintKey &k : g.blueprintKeys) options.push_back(&k);
-  // The option's name: the last part of its blueprint name
-  // ("DATA.balance.force" -> "force"), lower case.
-  auto name_of = [](const std::string &key_name) {
-    const auto dot = key_name.rfind('.');
-    return to_lower(dot == std::string::npos ? key_name
-                                             : key_name.substr(dot + 1));
-  };
   for (const BlueprintKey *k : options) {
-    const std::string &with = k->retired.only_with;
-    if (with.empty()) continue;
-    const BlueprintKey *named = nullptr;
-    for (const BlueprintKey *o : options)
-      if (o != k && name_of(o->keyName) == to_lower(with)) named = o;
-    if (!named || !named->isRetired() || !named->retired.only_with.empty())
-      throw std::runtime_error(
-          "Retired option " + k->keyName + " has only_with '" + with +
-          "', which names no other retired option of the task " +
-          task.taskName + " without an only_with of its own");
+    for (const auto &field :
+         {std::make_pair("cli_excludes", &k->cli_excludes),
+          std::make_pair("cli_needs", &k->cli_needs)}) {
+      for (const std::string &name : *field.second) {
+        const bool named = std::any_of(
+            options.begin(), options.end(), [&](const BlueprintKey *o) {
+              return o != k && !o->cli_long_flag.empty() &&
+                     o->cli_long_flag == "--" + name;
+            });
+        if (!named)
+          throw std::runtime_error(
+              "The option " +
+              (k->cli_long_flag.empty() ? k->keyName : k->cli_long_flag) +
+              " of the command " + task.taskName + " has " + field.first +
+              " '" + name +
+              "', which names no other option of the command (an option "
+              "is named by its long flag without --)");
+      }
+    }
   }
 }
 

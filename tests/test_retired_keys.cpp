@@ -298,9 +298,7 @@ TEST_CASE("The error scales, ENORM and ENERGY are keys of a configuration",
  * (Context::retired_keys()) and not in the parse's notice; a retired line
  * the rule does not select is recorded, with the notice.
  * Before the fix: the rule was not asked for a retired key's line, which
- * was recorded and named in the notice. (Converted from a block of lines
- * of a task file to a file: the parse of lines of a file is removed with
- * the task files.) */
+ * was recorded and named in the notice. */
 TEST_CASE("A retired key's line that the caller's rule selects is the "
           "caller's",
           "[config][retired]") {
