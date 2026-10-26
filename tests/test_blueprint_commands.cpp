@@ -294,3 +294,60 @@ TEST_CASE("Blueprint: loading a blueprint refuses a keys table of [TADAH]",
                "command ([TASKS.<command>.keys])"));
   }
 }
+
+namespace {
+
+/* demo_blueprint("") with @p group_fields more fields of its group
+ * input. */
+std::string demo_blueprint_group(const std::string &group_fields) {
+  std::string b = demo_blueprint("");
+  const std::string at = "[TASKS.demo.groups.input]\ndescription = \"One of:\"\n";
+  const auto pos = b.find(at);
+  REQUIRE(pos != std::string::npos);
+  b.insert(pos + at.size(), group_fields);
+  return b;
+}
+
+}  // namespace
+
+/* Pins: loading a blueprint refuses a field of an option group that no
+ * code reads: a group takes description, required_min, required_max and
+ * its keys. A group with required_min 1 and required_max 2 loads (the
+ * group input of DEMO, 1 to 2 options); one with cli_excludes, cli_needs
+ * (fields of an option, which the command line applies to options only),
+ * cli_required (the group's required_min says what it requires) or a
+ * misspelt field (required_mn) is refused with "Error building blueprint
+ * tasks map: The group input of the command DEMO has the field <field>,
+ * which a group does not take ...". The embedded blueprint loads.
+ * Before the fix: each loaded; the group-level cli_excludes and cli_needs
+ * were read into the group and applied nowhere, and a field the reader did
+ * not know was not read, all without a word. */
+TEST_CASE("Blueprint: loading a blueprint refuses a field of an option group "
+          "that no code reads",
+          "[BlueprintParser][commands][groups]") {
+  std::unordered_map<std::string, BlueprintTask> tasks;
+  REQUIRE_NOTHROW(tasks = BlueprintParser::buildTasksMap(parse_toml(
+                      demo_blueprint_group("required_min = 1\n"
+                                           "required_max = 2\n"))));
+  REQUIRE(tasks.count("DEMO") == 1);
+  REQUIRE(tasks.at("DEMO").groups.size() == 1);
+  CHECK(tasks.at("DEMO").groups[0].requiredMin == 1);
+  CHECK(tasks.at("DEMO").groups[0].requiredMax == 2);
+  for (const std::string field :
+       {"cli_excludes = [\"beta\"]", "cli_needs = [\"alpha\"]",
+        "cli_required = true", "required_mn = 1"}) {
+    INFO("group input with " << field);
+    const std::string name = field.substr(0, field.find(' '));
+    std::string what;
+    try {
+      (void)BlueprintParser::buildTasksMap(
+          parse_toml(demo_blueprint_group(field + "\n")));
+    } catch (const std::exception &e) {
+      what = e.what();
+    }
+    CHECK_THAT(what, Contains("Error building blueprint tasks map: The group "
+                              "input of the command DEMO has the field " +
+                              name + ", which a group does not take"));
+  }
+  CHECK_NOTHROW(BlueprintParser::getTasksMapRef());
+}
