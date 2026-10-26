@@ -714,38 +714,37 @@ static void parseTaskRec(const std::string &fullTaskName,
 }
 }
 
+/* The embedded blueprint, blueprint/blueprint_tadah.toml, parsed. */
+static toml::value parseEmbeddedBlueprint() {
+  std::istringstream ss(
+      std::string(blueprint_tadah,
+        blueprint_tadah_size));           // embed-to-stream
+  return toml::parse(ss);
+}
+
+} // end anonymous namespace
+
 /**
- * @brief Builds the blueprint map for tasks from the TOML blueprint file,
- *        handling nested (dot-separated) sub-commands.
- *
- * - Reads the blueprint file from an embedded file.
- * - Expands inheritance for each table.
- * - Locates the "TASKS" subtable to parse top-level and nested tasks.
- * - Calls parseTaskRec(...) to handle each subtable recursively.
- *
- * @param rootTable The top-level key ("TASKS" in your example).
- * @return An unordered_map mapping dot-separated subcommand names to BlueprintTask objects.
- * @throws std::runtime_error If parsing fails or mandatory fields are missing.
+ * Builds the commands of @p blueprint (its [TASKS] table), handling nested
+ * (dot-separated) commands:
+ * - expands inheritance for each table;
+ * - locates the "TASKS" subtable to parse top-level and nested tasks;
+ * - calls parseTaskRec(...) to handle each subtable recursively;
+ * - checks the options of every command (checkCommandOptions).
  */
-static std::unordered_map<std::string, BlueprintTask>
-buildBlueprintTasksMap(const std::string &rootTable) {
+std::unordered_map<std::string, BlueprintTask>
+BlueprintParser::buildTasksMap(const toml::value &blueprint) {
   std::unordered_map<std::string, BlueprintTask> tasksMap;
 
   try {
-    // Parse blueprint file from embedded resource
-    std::istringstream ss(
-        std::string(blueprint_tadah,
-          blueprint_tadah_size));           // embed-to-stream
-    toml::value blueprint = toml::parse(ss);
-
     // Make a copy for safe expansion
     toml::value bpCopy = blueprint;
     prepareKeysInheritanceOneLevelWithMerge(bpCopy);
     expandInheritance(bpCopy, blueprint, "");
 
-    // Locate the top-level tasks subtable (e.g. "TASKS")
+    // Locate the top-level tasks subtable
     // e.g. [TASKS.transform], [TASKS.properties], ...
-    const auto &tasksRootTable = toml::find<toml::table>(bpCopy, rootTable);
+    const auto &tasksRootTable = toml::find<toml::table>(bpCopy, "TASKS");
 
     // For each entry in the "TASKS" table, parse recursively
     for (const auto &kv : tasksRootTable) {
@@ -763,7 +762,7 @@ buildBlueprintTasksMap(const std::string &rootTable) {
     }
     // Each name in the cli_excludes and cli_needs of an option names
     // another option of its command.
-    for (const auto &kv : tasksMap) BlueprintParser::checkCommandOptions(kv.second);
+    for (const auto &kv : tasksMap) checkCommandOptions(kv.second);
   }
   catch (const std::exception &ex) {
     throw std::runtime_error("Error building blueprint tasks map: " + std::string(ex.what()));
@@ -771,8 +770,6 @@ buildBlueprintTasksMap(const std::string &rootTable) {
 
   return tasksMap;
 }
-
-} // end anonymous namespace
 
 bool BlueprintKey::isAllowedValue(const std::string &value) const {
   if (allowed_values.empty()) return true;
@@ -811,118 +808,111 @@ BlueprintTadah BlueprintParser::getBlueprintTadah() {
   return getBlueprintTadahRef();
 }
 /**
- * @brief Returns a reference to a statically cached BlueprintTadah object.
- *
- * This version includes corrected handling for:
- *  - Core TADAH fields (logo, version, website, description, longDescription, examples).
- *  - Optional "keys" subtable, each entry parsed as a BlueprintKey and added to blueprintKeys.
- *
- * @return Const reference to the fully loaded and expanded BlueprintTadah.
- * @throws std::runtime_error if parsing or inheritance expansion fails, or if
- *         mandatory fields are missing in the [TADAH] table.
+ * Builds the [TADAH] table of @p blueprint: the core fields (logo, version,
+ * website, description, long_description, examples), all mandatory. A
+ * keys table is refused: tadah alone takes no option but -h and --version.
+ */
+BlueprintTadah BlueprintParser::buildBlueprintTadah(const toml::value &blueprintIn) {
+  BlueprintTadah bt;
+
+  // ------------------------------------------------------------
+  // 1) Prepare single-level "keys" inheritance if required
+  // ------------------------------------------------------------
+  toml::value blueprint = blueprintIn;
+  prepareKeysInheritanceOneLevelWithMerge(blueprint);
+
+  // ------------------------------------------------------------
+  // 2) Expand all inheritance references recursively
+  // ------------------------------------------------------------
+  toml::value bpCopy = blueprint;
+  expandInheritance(bpCopy, blueprint, "");
+
+  // ------------------------------------------------------------
+  // 3) Access the [TADAH] subtable
+  // ------------------------------------------------------------
+  const toml::value tadahValue = toml::find(bpCopy, "TADAH");
+  if (!tadahValue.is_table()) {
+    throw std::runtime_error("Section [TADAH] must be a table in the blueprint");
+  }
+  const toml::table &tadahTable = tadahValue.as_table();
+
+  // ------------------------------------------------------------
+  // 4) Retrieve mandatory fields
+  // ------------------------------------------------------------
+  // logo
+  {
+    toml::table::const_iterator it = tadahTable.find("logo");
+    if (it == tadahTable.end()) {
+      throw std::runtime_error("[TADAH] is missing mandatory field 'logo'");
+    }
+    bt.logo = toml::get<std::string>(it->second);
+  }
+  // version
+  {
+    toml::table::const_iterator it = tadahTable.find("version");
+    if (it == tadahTable.end()) {
+      throw std::runtime_error("[TADAH] is missing mandatory field 'version'");
+    }
+    bt.version = toml::get<std::string>(it->second);
+  }
+  // website
+  {
+    toml::table::const_iterator it = tadahTable.find("website");
+    if (it == tadahTable.end()) {
+      throw std::runtime_error("[TADAH] is missing mandatory field 'website'");
+    }
+    bt.website = toml::get<std::string>(it->second);
+  }
+  // description
+  {
+    toml::table::const_iterator it = tadahTable.find("description");
+    if (it == tadahTable.end()) {
+      throw std::runtime_error("[TADAH] is missing mandatory field 'description'");
+    }
+    bt.description = toml::get<std::string>(it->second);
+  }
+  // longDescription
+  {
+    toml::table::const_iterator it = tadahTable.find("long_description");
+    if (it == tadahTable.end()) {
+      throw std::runtime_error("[TADAH] is missing mandatory field 'long_description'");
+    }
+    bt.longDescription = toml::get<std::string>(it->second);
+  }
+  // examples (array of strings)
+  {
+    toml::table::const_iterator it = tadahTable.find("examples");
+    if (it == tadahTable.end()) {
+      throw std::runtime_error("[TADAH] is missing mandatory field 'examples'");
+    }
+    // throws if not an array of strings
+    bt.examples = toml::get<std::vector<std::string>>(it->second);
+  }
+
+  // ------------------------------------------------------------
+  // 5) No keys: tadah alone takes no option but -h and --version, and
+  //    every other option belongs to a command
+  // ------------------------------------------------------------
+  if (tadahTable.find("keys") != tadahTable.end()) {
+    throw std::runtime_error(
+        "[TADAH] must not have a keys table: tadah alone takes no option "
+        "but -h and --version, and an option belongs to a command "
+        "([TASKS.<command>.keys])");
+  }
+
+  // ------------------------------------------------------------
+  // Return the fully-constructed structure
+  // ------------------------------------------------------------
+  return bt;
+}
+
+/**
+ * @brief Returns a reference to a statically cached BlueprintTadah object,
+ *        built from the embedded blueprint (buildBlueprintTadah).
  */
 const BlueprintTadah &BlueprintParser::getBlueprintTadahRef() {
-  static BlueprintTadah blueprintTadah = []() -> BlueprintTadah {
-    BlueprintTadah bt;
-
-    // ------------------------------------------------------------
-    // 1) Parse the blueprint file
-    // ------------------------------------------------------------
-    std::istringstream ss(
-        std::string(blueprint_tadah,
-          blueprint_tadah_size));           // embed-to-stream
-    toml::value blueprint = toml::parse(ss);
-
-    // ------------------------------------------------------------
-    // 2) Prepare single-level "keys" inheritance if required
-    // ------------------------------------------------------------
-    prepareKeysInheritanceOneLevelWithMerge(blueprint);
-
-    // ------------------------------------------------------------
-    // 3) Expand all inheritance references recursively
-    // ------------------------------------------------------------
-    toml::value bpCopy = blueprint;
-    expandInheritance(bpCopy, blueprint, "");
-
-    // ------------------------------------------------------------
-    // 4) Access the [TADAH] subtable
-    // ------------------------------------------------------------
-    const toml::value tadahValue = toml::find(bpCopy, "TADAH");
-    if (!tadahValue.is_table()) {
-      throw std::runtime_error("Section [TADAH] must be a table in embedded bluprint");
-    }
-    const toml::table &tadahTable = tadahValue.as_table();
-
-    // ------------------------------------------------------------
-    // 5) Retrieve mandatory fields
-    // ------------------------------------------------------------
-    // logo
-    {
-      toml::table::const_iterator it = tadahTable.find("logo");
-      if (it == tadahTable.end()) {
-        throw std::runtime_error("[TADAH] is missing mandatory field 'logo'");
-      }
-      bt.logo = toml::get<std::string>(it->second);
-    }
-    // version
-    {
-      toml::table::const_iterator it = tadahTable.find("version");
-      if (it == tadahTable.end()) {
-        throw std::runtime_error("[TADAH] is missing mandatory field 'version'");
-      }
-      bt.version = toml::get<std::string>(it->second);
-    }
-    // website
-    {
-      toml::table::const_iterator it = tadahTable.find("website");
-      if (it == tadahTable.end()) {
-        throw std::runtime_error("[TADAH] is missing mandatory field 'website'");
-      }
-      bt.website = toml::get<std::string>(it->second);
-    }
-    // description
-    {
-      toml::table::const_iterator it = tadahTable.find("description");
-      if (it == tadahTable.end()) {
-        throw std::runtime_error("[TADAH] is missing mandatory field 'description'");
-      }
-      bt.description = toml::get<std::string>(it->second);
-    }
-    // longDescription
-    {
-      toml::table::const_iterator it = tadahTable.find("long_description");
-      if (it == tadahTable.end()) {
-        throw std::runtime_error("[TADAH] is missing mandatory field 'long_description'");
-      }
-      bt.longDescription = toml::get<std::string>(it->second);
-    }
-    // examples (array of strings)
-    {
-      toml::table::const_iterator it = tadahTable.find("examples");
-      if (it == tadahTable.end()) {
-        throw std::runtime_error("[TADAH] is missing mandatory field 'examples'");
-      }
-      // throws if not an array of strings
-      bt.examples = toml::get<std::vector<std::string>>(it->second);
-    }
-
-    // ------------------------------------------------------------
-    // 6) No keys: tadah alone takes no option but -h and --version, and
-    //    every other option belongs to a command
-    // ------------------------------------------------------------
-    if (tadahTable.find("keys") != tadahTable.end()) {
-      throw std::runtime_error(
-          "[TADAH] must not have a keys table: tadah alone takes no option "
-          "but -h and --version, and an option belongs to a command "
-          "([TASKS.<command>.keys])");
-    }
-
-    // ------------------------------------------------------------
-    // Return the fully-constructed structure
-    // ------------------------------------------------------------
-    return bt;
-  }();
-
+  static BlueprintTadah blueprintTadah =
+      buildBlueprintTadah(parseEmbeddedBlueprint());
   return blueprintTadah;
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -948,7 +938,7 @@ BlueprintParser::getInternalKeysMapRef() {
 const std::unordered_map<std::string, BlueprintTask> &
 BlueprintParser::getTasksMapRef() {
   static std::unordered_map<std::string, BlueprintTask> blueprintTasksMap =
-      buildBlueprintTasksMap("TASKS");
+      buildTasksMap(parseEmbeddedBlueprint());
   return blueprintTasksMap;
 }
 

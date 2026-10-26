@@ -252,6 +252,44 @@ public:
   static std::unordered_map<std::string, BlueprintKey> getInternalKeysMap();
 
   /**
+   * @brief Builds the commands of a parsed blueprint, its [TASKS] table,
+   *        as the tasks map does for the embedded blueprint.
+   *
+   * Expands the INHERIT references of @p blueprint, builds a BlueprintTask
+   * for every table of [TASKS] that has a description, a long_description
+   * and examples (nested tables are commands named with dots,
+   * "PROPERTIES.PAIRWISE"), and checks the options of every command
+   * (checkCommandOptions). getTasksMapRef() is this function applied to the
+   * embedded blueprint; it is public so that the rules of the load can be
+   * checked on a blueprint of their own.
+   *
+   * @param blueprint The parsed blueprint (toml::parse).
+   * @return The commands by their dot-separated, uppercase names.
+   * @throws std::runtime_error "Error building blueprint tasks map: ..."
+   *         with the reason: a command missing a mandatory field, a key
+   *         that buildKey refuses, an option whose cli_excludes or
+   *         cli_needs names no other option of its command.
+   */
+  static std::unordered_map<std::string, BlueprintTask>
+  buildTasksMap(const toml::value &blueprint);
+
+  /**
+   * @brief Builds the [TADAH] table of a parsed blueprint, as
+   *        getBlueprintTadahRef() does for the embedded blueprint.
+   *
+   * The fields logo, version, website, description, long_description and
+   * examples are mandatory. [TADAH] has no keys table: tadah alone takes
+   * no option but -h and --version, and an option belongs to a command.
+   * Public so that the rules of the load can be checked on a blueprint of
+   * their own.
+   *
+   * @param blueprint The parsed blueprint (toml::parse).
+   * @throws std::runtime_error for a missing field, and for a keys table
+   *         ("[TADAH] must not have a keys table: ...").
+   */
+  static BlueprintTadah buildBlueprintTadah(const toml::value &blueprint);
+
+  /**
    * @brief Builds one BlueprintKey from its (inheritance-expanded) TOML table.
    *
    * This is the constructor used for every key of the embedded blueprint;
@@ -281,8 +319,8 @@ public:
    * Each name in the cli_excludes and cli_needs of an option is the long
    * flag, without "--", of another option of the same command: the command
    * line excludes or needs exactly that option, and a name that names none
-   * would leave the rule without effect. The tasks map applies it to every
-   * command of the blueprint when it loads.
+   * would leave the rule without effect. buildTasksMap() applies it to
+   * every command of a blueprint it loads.
    *
    * @throws std::runtime_error naming the command, the option, the field
    *         and the name, for the first name that names no other option of
