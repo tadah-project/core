@@ -187,6 +187,40 @@ TEST_CASE("BlueprintParser: CHECK is the --check flag of tadah hpo alone",
   CHECK(tasks_with_check == std::vector<std::string>{"HPO"});
 }
 
+/* Pins: the help of CONFIG (`tadah explain CONFIG` prints its description
+ * and long description; the configuration-keys page shows them) states the
+ * rules of an include: the configuration is the concatenation of its lines
+ * ("concatenation", "in place of the CONFIG line"); a key of one value is
+ * set once ("set once"), a second line refused "naming both lines"; the
+ * lines of a key of several values add up ("DBFILE" lists the datasets of
+ * every line); a line that a run does not read sets nothing ("does not
+ * read"); a relative path, of a CONFIG line and in an included file, is
+ * relative to the "working directory", "not to the directory of the file"
+ * that holds it; a file that "includes itself" is refused.
+ * Before the fix: CONFIG has no long description (its help is "Path to a
+ * configuration file."): every check of the text fails. */
+TEST_CASE("BlueprintParser: the help of CONFIG states the rules of an "
+          "include and the base of its paths",
+          "[BlueprintParser][config_include]")
+{
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("CONFIG");
+  const std::string text = k.description + "\n" + k.longDescription;
+  INFO("CONFIG help:\n" << text);
+  // The help is wrapped in the blueprint: compare with single blanks.
+  std::string flat;
+  for (char c : text) {
+    const char b = std::isspace(static_cast<unsigned char>(c)) ? ' ' : c;
+    if (b != ' ' || (!flat.empty() && flat.back() != ' ')) flat += b;
+  }
+  for (const char *phrase :
+       {"concatenation", "in place of the CONFIG line", "set once",
+        "naming both lines", "DBFILE", "does not read", "working directory",
+        "not to the directory of the file", "includes itself"}) {
+    INFO("phrase: " << phrase);
+    CHECK(flat.find(phrase) != std::string::npos);
+  }
+}
+
 /**
  * @brief Tests that an empty map returns an empty string when searching for a closest key.
  */
