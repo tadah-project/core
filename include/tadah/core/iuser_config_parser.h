@@ -32,11 +32,10 @@ struct SkippedKeyLine {
  * @brief Whether a parse skips the line of @p key (upper case) of a file
  *        whose key lines give the keys @p file_keys (upper case).
  *
- * @p file_keys are the keys of the lines of the file (or of the block of a
- * file, such as a TASK section) that holds the line, a CONFIG line and the
- * name of a block (INIT, OPTIMIZER, ...) among them: not the words inside a
- * block, and not the keys of a file it includes with CONFIG, which is
- * judged by its own lines.
+ * @p file_keys are the keys of the lines of the file that holds the line,
+ * a CONFIG line and the name of a block (INIT, OPTIMIZER, ...) among them:
+ * not the words inside a block, and not the keys of a file it includes
+ * with CONFIG, which is judged by its own lines.
  */
 using KeyLineRule = std::function<bool(const std::set<std::string> &file_keys,
                                        const std::string &key)>;
@@ -74,56 +73,6 @@ public:
    * @throws std::runtime_error on any parsing or validation error.
    */
   virtual Context parse(const std::vector<std::string>& lines) const = 0;
-
-  /**
-   * @brief Parses a configuration from lines taken out of a larger source.
-   *
-   * For a block of a file (a TASK section): @p lines[i] is line
-   * @p first_line + i of @p source, so an error that names a line names the
-   * line of the file, and the file.
-   *
-   * @param lines      The lines of the block, blank and comment lines
-   *                   included.
-   * @param first_line The line number (1-based) of @p lines[0] in @p source.
-   * @param source     The name of the source (a file name), or empty when
-   *                   it has none.
-   * @return A Context holding key/value pairs.
-   * @throws std::runtime_error on any parsing or validation error.
-   */
-  virtual Context parse(const std::vector<std::string>& lines,
-                        std::size_t first_line,
-                        const std::string& source) const = 0;
-
-  /**
-   * @brief parse(lines, first_line, source) that skips the key lines
-   *        @p skip selects.
-   *
-   * Every line is read and checked as parse(lines, first_line, source)
-   * reads it: an unknown key, an invalid value or a refused key is an error
-   * at its line. A key line (not a CONFIG line, not a block) for which
-   * @p skip(file_keys, key) is true, or that the parser does not store in
-   * any parse (CoreUserConfigParser: a run setting of a potential), is
-   * appended to @p skipped instead, in the order read; a line of a retired
-   * key that @p skip selects too, which is then not recorded on the result
-   * (Context::retired_keys()) and not named in the parse's notice. A file a
-   * CONFIG line includes is read under the same rule, with the keys of its
-   * own lines.
-   *
-   * @param lines      The lines of the block, blank and comment lines
-   *                   included.
-   * @param first_line The line number (1-based) of @p lines[0] in @p source.
-   * @param source     The name of the source (a file name), or empty when
-   *                   it has none.
-   * @param skip       The rule (KeyLineRule).
-   * @param skipped    The lines not stored are appended to it.
-   * @return A Context holding the key/value pairs stored.
-   * @throws std::runtime_error on any parsing or validation error.
-   */
-  virtual Context parse(const std::vector<std::string>& lines,
-                        std::size_t first_line,
-                        const std::string& source,
-                        const KeyLineRule& skip,
-                        std::vector<SkippedKeyLine>& skipped) const = 0;
 };
 
 } // namespace core

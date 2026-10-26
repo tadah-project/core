@@ -578,8 +578,9 @@ DM_REAM many-body block, and the potential has none (...)", like a deprecated
 key (the Logger level and VERBOSE do not hide it). pair_style tadah writes it
 as a LAMMPS warning on rank 0 instead, in log.lammps and on the screen, each
 time pair_coeff loads such a potential ("WARNING: pair tadah: potential
-'<file>': Key EMBF0 is ignored: ..."). A task value for such a potential
-(tadah predict) is reported the same way.
+'<file>': Key EMBF0 is ignored: ..."). An EMBF0 line of the configuration
+of tadah refit --edit (-c) for such a potential is reported on standard
+error the same way.
 
 Migration: a potential written by tadah 1.5.0 or earlier reproduces its
 energies with `EMBF0 FREE` added. Training a DM_REAM model on absolute reference
@@ -1081,12 +1082,11 @@ of the run: no potential has an HPOTARGET line (best_pot.tadah and the DUMP
 and BDUMP archives name the file in their training record, a comment block
 above their key lines that is never read as keys; the journal, hpo_run.log,
 names it too). The HPOTARGET line of a potential of an earlier version
-(every 1.5.x best_pot.tadah has one) is not read, and a WARNING names it:
-tadah hpo -c and tadah analysis check_bounds -c take the file from
---hpotarget, a TASK hpo or TASK analysis check_bounds section that includes
-such a potential from an HPOTARGET line of its own or above the first TASK
-line of the task file (a run of a task file takes no command-line option).
-A run without one is refused, saying where it goes and naming the
+(every 1.5.x best_pot.tadah has one) is not read, and a WARNING names it.
+tadah hpo -c takes the file from --hpotarget, which it requires; tadah
+analysis check_bounds -c takes it from --hpotarget or from an HPOTARGET line
+of a configuration file without WEIGHTS, such as one that includes the
+potential, and without one is refused, saying where it goes and naming the
 potential's line that was not read.
 """
 examples     = ["hpotargets.txt"]
@@ -1120,17 +1120,15 @@ exits with status 0. It evaluates no candidate and writes no file: no
 journal, no result file and no DUMP or BDUMP directory.
 
 An error ends it with the message and the exit status of tadah hpo; the
-warnings and hints that came before the error are on standard error. In a
-task file, CHECK true in the TASK hpo section, or above the first TASK
-line, makes the same check.
+warnings and hints that came before the error are on standard error.
 
 A setting of the run, as HPOTARGET is. A CHECK true line in a training
 configuration that is not a potential also makes tadah hpo -c a check, and
-tadah train reads no CHECK. A file or TASK section whose own key lines
-include WEIGHTS is a potential, and its CHECK line is not read: tadah hpo
--c of such a file, or a TASK hpo section with WEIGHTS lines, runs, and a
-WARNING names the line; CHECK then goes on the command line or above the
-first TASK line. No potential has a CHECK key line: the training record of
+tadah train reads no CHECK. A file whose own key lines include WEIGHTS is
+a potential, and its CHECK line is not read: tadah hpo -c of such a file
+runs, and a WARNING names the line; CHECK then goes on the command line
+(--check) or in a configuration file that includes the potential with
+CONFIG. No potential has a CHECK key line: the training record of
 a tadah train or tadah refit potential lists the CHECK line of its
 configuration, which neither command reads, and that of a tadah hpo
 potential lists none.
@@ -2075,7 +2073,7 @@ it predicts (--eshift replaces them, --no-eshift subtracts none), and a
 retrain from the potential (tadah train -c pot.tadah, a tadah hpo -c seed)
 uses them; a retrain derives ESHIFT from its own data when the line is
 deleted and the run is given ESHIFT_ATOM or ESHIFT_DBATOM (--eshift-atom,
---eshift-dbatom, or a line of the task file or of a file that includes the
+--eshift-dbatom, or a line of a configuration file that includes the
 potential: a toggle line of the potential itself is not read).
 """
 examples     = ["0.5", "0.5 -0.1"]
@@ -2105,7 +2103,7 @@ line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
 -c, or included with CONFIG) is not read, with or without its ESHIFT line (a
 WARNING names it when it is true, unless the run gives ESHIFT_ATOM itself or
 sets ESHIFT_DBATOM true: the two choose the source of the shift and exclude
-each other, so the run's own toggle is its choice). The run's own ESHIFT_ATOM (--eshift-atom, or a line of the task file or of a file
+each other, so the run's own toggle is its choice). The run's own ESHIFT_ATOM (--eshift-atom, or a line of a configuration file
 that includes the potential) is read, and is overruled by an ESHIFT line as
 in any configuration: to derive ESHIFT from the data of a retrain, delete
 the potential's ESHIFT line and give the run ESHIFT_ATOM.
@@ -2144,8 +2142,8 @@ line (a file with WEIGHTS that a retrain or a tadah hpo run reads: given with
 WARNING names it when it is true, unless the run gives ESHIFT_DBATOM itself
 or sets ESHIFT_ATOM true: the two choose the source of the shift and exclude
 each other, so the run's own toggle is its choice). The run's own
-ESHIFT_DBATOM (--eshift-dbatom, or a line of the task file or of a
-file that includes the potential) is read, and is overruled by an ESHIFT
+ESHIFT_DBATOM (--eshift-dbatom, or a line of a configuration file that
+includes the potential) is read, and is overruled by an ESHIFT
 line as in any configuration: to derive ESHIFT from the data of a retrain,
 delete the potential's ESHIFT line and give the run ESHIFT_DBATOM.
 """
@@ -2205,7 +2203,7 @@ the potential's (one of an earlier version has it as a key line: ignored). A
 potential's EFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
 run reads: given with -c, or included with CONFIG) is not read, with a
 WARNING when the run gives none of its own; the run's own EFILTER (--efilter,
-or a line of the task file or of a file that includes the potential) applies.
+or a line of a configuration file that includes the potential) applies.
 """
 examples       = ["-12.0 -2.0"]
 cli_long_flag  = "--efilter"
@@ -2229,7 +2227,7 @@ the potential's (one of an earlier version has it as a key line: ignored). A
 potential's FFILTER line (a file with WEIGHTS that a retrain or a tadah hpo
 run reads: given with -c, or included with CONFIG) is not read, with a
 WARNING when the run gives none of its own; the run's own FFILTER (--ffilter,
-or a line of the task file or of a file that includes the potential) applies.
+or a line of a configuration file that includes the potential) applies.
 """
 examples       = ["20.0"]
 cli_long_flag  = "--ffilter"
@@ -2260,7 +2258,7 @@ earlier version wrote as a key line. A potential's WDBFILE line (a file with
 WEIGHTS that a retrain or a tadah hpo run reads: given with -c, or included
 with CONFIG) is not read, with a WARNING when the run gives none of its own,
 so a retrain may list any datasets; the run's own WDBFILE (--wdbfile, or a
-line of the task file or of a file that includes the potential) applies.
+line of a configuration file that includes the potential) applies.
 """
 examples       = ["1.0 0.5 0.1"]
 cli_long_flag  = "--wdbfile"
@@ -2336,7 +2334,7 @@ it as a key line: ignored). A potential's ZERO_COM_FORCE line (a file with
 WEIGHTS that a retrain or a tadah hpo run reads: given with -c, or included
 with CONFIG) is not read (a WARNING names it when it is true and the run
 gives none of its own); the run's own ZERO_COM_FORCE (--zero-com-force, or a
-line of the task file or of a file that includes the potential) applies.
+line of a configuration file that includes the potential) applies.
 """
 default_value  = ["false"]
 examples       = ["true"]
@@ -2425,9 +2423,9 @@ examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 INHERIT = ["TYPES.BOOL"]
 description  = "Retired: the key of --error of tadah predict and tadah properties pairwise; uncertainty output is removed."
 long_description = """
-tadah predict and tadah properties pairwise refuse --error, and an ERROR
-line of their TASK sections, with the reason of the option (tadah explain
-predict.error, tadah explain properties.pairwise.error). A configuration
+tadah predict and tadah properties pairwise refuse --error with the reason
+of the option (tadah explain predict.error, tadah explain
+properties.pairwise.error). A configuration
 or potential with an ERROR line loads with one notice; a fit refuses it
 until the line is deleted.
 """
@@ -2881,46 +2879,6 @@ weights.
 """
 examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 
-[ALLOWED_KEYS.task]
-INHERIT = ["ALLOWED_KEYS.config"]
-description = "A file containing task(s) to be executed."
-long_description = """
-The task file is a convenient way to specify multiple tasks without having to
-provide all the command-line arguments for each task. The task file should be
-in the same format as the configuration file, but it can also include additional
-information such as the task name and any specific parameters for that task.
-A task in a task file begins with the keyword 'TASK' followed by the task name.
-The task name is a command, or a command and subcommand, to be executed.
-The lines following the `TASK` keyword should contain parameters required for
-the task specified above. For example, CLI `--verbose 2` is 'VERBOSE 2' in the
-task file; --task takes no other command-line option (`tadah hpo --task
-run.task --hpotarget t.hpo` is refused: "--hpotarget excludes --task").
-Options above the first `TASK` line apply to every task, so a
-`TASK` line with no parameter lines after it runs with those alone. Every task
-name is checked, with or without parameters: an unknown one, or a command that
-needs a subcommand (`TASK data` instead of `TASK data convert`), is an error
-before any task runs.
-
-# Example TASK file containing two tasks:
-# Global options
-NUMERIC 14 # output precision
-VERBOSE 2  # verbosity level
-
-TASK predict
-DBFILE db1.tadah db2.tadah db3.tadah
-DBFILE db4.tadah db5.tadah db6.tadah
-FORCE true
-ANALYTICS true
-
-TASK data print
-STRUCTURE crystal1.cif crystal2.cif
-"""
-examples     = ["path/to/tasks.tadah"]
-cli_long_flag  = "--task"
-cli_short_flag = "-t"
-cli_required     = false
-cli_excludes = ["ALL"]
-
 [ALLOWED_KEYS.option]
 description      = "Positional argument"
 value_type   = ["STRING"]
@@ -3004,8 +2962,8 @@ value_N = [-6]
 [TASKS.train]
 description      = "Trains a model."
 long_description = """
-Trains a model from either a configuration file or a task file. By default,
-it trains on energies; however, forces and stresses can also be included.
+Trains a model from a configuration file. By default, it trains on
+energies; however, forces and stresses can also be included.
 This command requires a configuration file and yields a trained interatomic
 potential which can be used with Tadah! or for molecular
 dynamics simulations in LAMMPS via pair_style tadah.
@@ -3021,7 +2979,7 @@ coefficients of the fit, of the order of n p^2 like the solve, and memory
 of the order of p^2, of a block of 1024 rows and of three rows per dataset,
 not a copy of the rows.
 """
-examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah", "tadah train --task tasks.tadah"]
+examples         = ["tadah train -c config.tadah", "tadah train -c config.tadah --force --stress", "tadah train -c config.tadah --verbose 2 --outfile potential.tadah"]
 [TASKS.train.keys]
 INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.force", "ALLOWED_KEYS.stress", "ALLOWED_KEYS.uncertainty", "ALLOWED_KEYS.outfile", "ALLOWED_KEYS.lscale", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS.eshift_atom", "ALLOWED_KEYS.eshift_dbatom", "ALLOWED_KEYS.efilter", "ALLOWED_KEYS.ffilter", "ALLOWED_KEYS.wdbfile", "ALLOWED_KEYS.wdbfile_auto", "ALLOWED_KEYS.eweight_temp", "ALLOWED_KEYS.zero_com_force"]
 [TASKS.train.keys.outfile]
@@ -3034,12 +2992,12 @@ Output file name for the trained model.
 value_type   = ["STRING"]
 value_format = ["<file>"]
 [TASKS.train.groups.input]
-description      = "A configuration file for a single task or a complete tasks file."
+description      = "The training configuration file."
 cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.train.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.config"]
 
 [TASKS.refit]
 description      = "Refits a tabulated EAM potential into a native Tadah model."
@@ -3154,9 +3112,10 @@ tabulated EAM file:
   file searches around: non-negative AMPGRIDMB boxes and the RHOFORM header
   line under NONNEG/MONOTONE; a target of DM_Embed component paths only
   refuses --rhoform and --rcutmb, the component's FORM and CUTOFF RADIUS
-  being its potential's). A configuration may not set RHOFORM or EMBF0 for
-  --retarget (no effect on an hpotarget); for --edit it may set them only to
-  the potential's own values.
+  being its potential's). A configuration may not set RHOFORM, EMBF0 or
+  NUMERIC for --retarget (no effect on an hpotarget: NUMERIC governs only
+  the potential a refit and --edit write); for --edit it may set RHOFORM and
+  EMBF0 only to the potential's own values.
 A configuration for --edit or --retarget may not set a key that only a
 refit of an EAM file reads (REFIT_*, N2B, NRHO_BASIS, NF_BASIS,
 OUTPUT_GRID_SCALE, SETFL_OUT, the stage blocks; for --retarget also
@@ -3169,7 +3128,8 @@ the largest knot position (the true effective cutoff).
 `tadah explain <KEY>` (e.g. `tadah explain RHOFORM`) prints the full
 description of a configuration key above, including those that are no
 options of tadah refit: RHOFORM, EMBF0 and NUMERIC (keys a configuration may
-set) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the potential). The keys
+set, but not for --retarget) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the
+potential). The keys
 written inside a stage block are no configuration keys:
 `tadah explain refit.optimizer` describes those of an OPTIMIZER block (ALGO,
 LIB and the stopping criteria) and `tadah explain refit.init` the
@@ -3231,11 +3191,12 @@ long_description = """
 Predicts with an already trained model. Energy per atom is always calculated,
 while forces and stresses are optional. By default, energies are written to
 energy.pred, and if forces or stresses are calculated, they are written to
-forces.pred and stress.pred, respectively. A task file lists prediction
-datasets with a DBFILE key, or files and online structures with STRUCTURE
-(tadah explain predict.structure lists the supported types). Alternatively,
-Tadah! datasets or individual structure files or online sources can be given
-on the command line.
+forces.pred and stress.pred, respectively. The data to predict are Tadah!
+datasets (--dbfile), or structure files and online structures (--structure;
+tadah explain predict.structure lists the supported types). The model is
+the potential's, as it was fitted: tadah predict takes no configuration
+file and changes no key of the model but LSCALE and ESHIFT (--lscale,
+--eshift, --no-lscale, --no-eshift).
 """
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
 [TASKS.predict.keys]
@@ -3243,9 +3204,7 @@ INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.force", "ALLOWED_KEY
 [TASKS.predict.keys.error]
 description = "Retired: an error computed from SIGMA beside every predicted value; uncertainty output is removed."
 long_description = """
-A command line or a TASK predict section that gives it is refused with the
-reason, and so is a task file that gives it in the GLOBAL section, whose
-keys reach every task of the file.
+A command line that gives it is refused with the reason.
 """
 examples = []
 default_value = []
@@ -3304,7 +3263,7 @@ cli_required = true
 required_min = 1
 required_max = 2
 [TASKS.predict.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.predict.groups.input.keys.dbfile]
 cli_needs = ["potential"]
 [TASKS.predict.groups.input.keys.structure]
@@ -3353,21 +3312,18 @@ cli_required = true
 required_min = 1
 required_max = 3
 [TASKS.hpo.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.validation","ALLOWED_KEYS.hpotarget", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.validation","ALLOWED_KEYS.hpotarget"]
 [TASKS.hpo.groups.input.keys.config]
 # --validation is optional: PC_OBSERVABLE / PC_LAMMPS provide the loss
 # when no validation set is given (validate_hpo_setup enforces that at
 # least one loss source exists and that PC_ERMSE-style metrics have a
 # validation file).
 cli_needs = ["hpotarget"]
-cli_excludes = ["task"]
 
 [TASKS.data]
 description      = "Dataset management commands."
 long_description = "Dataset management commands (convert, print, write, merge, split, dedup, sample, balance)."
-examples         = ["tadah data --task tasks.tadah"]
-[TASKS.data.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
+examples         = ["tadah data convert --dft-file run1.outcar -o output.tadah", "tadah data print -d dataset.tadah"]
 
 [TASKS.data.convert]
 description      = "Converts DFT output file(s) to Tadah! dataset format."
@@ -3381,9 +3337,8 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.data.convert.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dft-file", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dft-file"]
 [TASKS.data.convert.groups.input.keys.dft-file]
-cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.print]
@@ -3411,14 +3366,13 @@ cli_required = true
 required_min = 1
 required_max = 2
 [TASKS.data.print.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.data.print.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 # cli_needs = ["index"]
 value_N = [1]
 INHERIT = ["TYPES.STRING"]
 [TASKS.data.print.groups.input.keys.structure]
-cli_excludes   = ["task", "index"]
+cli_excludes   = ["index"]
 
 [TASKS.data.write]
 description      = "Writes structures into a chosen format."
@@ -3442,14 +3396,13 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.data.write.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.data.write.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 cli_needs = ["outfile", "index", "format"]
 value_N = [1]
 INHERIT = ["TYPES.STRING"]
 [TASKS.data.write.groups.input.keys.structure]
-cli_excludes   = ["task", "index"]
+cli_excludes   = ["index"]
 cli_needs = ["outfile", "format"]
 
 [TASKS.data.merge]
@@ -3467,9 +3420,8 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.data.merge.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile"]
 [TASKS.data.merge.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.split]
@@ -3491,7 +3443,7 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.data.split.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile"]
 
 [TASKS.data.dedup]
 description      = "Removes duplicate structures from a dataset."
@@ -3505,9 +3457,8 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.data.dedup.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile"]
 [TASKS.data.dedup.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.sample]
@@ -3543,9 +3494,8 @@ comma) and an index outside the dataset are refused, naming it; a range is
 checked before it is expanded.
 """
 [TASKS.data.sample.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile"]
 [TASKS.data.sample.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 [TASKS.data.balance]
@@ -3565,9 +3515,7 @@ INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.eshift", "ALLOWED_KEYS
 [TASKS.data.balance.keys.rescale]
 description = "Retired: the rescaling of the priorities of a dataset by Tadah! 1.5.0."
 long_description = """
-A command line that gives it is refused with the reason, and so is a task
-file that gives it in a TASK data balance section or in the GLOBAL section,
-whose keys reach every task of the file.
+A command line that gives it is refused with the reason.
 """
 examples = []
 default_value = []
@@ -3583,10 +3531,8 @@ only, and writes the priorities of the structures as they are."""
 [TASKS.data.balance.keys.threshold]
 description = "Retired: the magnitudes below which the rescaling of Tadah! 1.5.0 set a priority to 1."
 long_description = """
-A command line or a TASK data balance section that gives it is refused
-with the reason. A line of the GLOBAL section of a task file is accepted: it
-sets the key for the other tasks of the file, and the option acted only
-with --rescale, whose line is refused there.
+A command line that gives it is refused with the reason. The option acted
+only with --rescale.
 """
 examples = []
 default_value = []
@@ -3597,14 +3543,11 @@ priority to 1."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
-only_with = "rescale"
 [TASKS.data.balance.keys.force]
 description = "Retired: the rescaling of the force priorities by Tadah! 1.5.0."
 long_description = """
-A command line or a TASK data balance section that gives it is refused
-with the reason. A line of the GLOBAL section of a task file is accepted: it
-sets the key for the other tasks of the file, and the option acted only
-with --rescale, whose line is refused there.
+A command line that gives it is refused with the reason. The option acted
+only with --rescale.
 """
 examples = []
 default_value = []
@@ -3614,14 +3557,11 @@ priority (fweight) of each structure by the inverse of its forces."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
-only_with = "rescale"
 [TASKS.data.balance.keys.stress]
 description = "Retired: the rescaling of the stress priorities by Tadah! 1.5.0."
 long_description = """
-A command line or a TASK data balance section that gives it is refused
-with the reason. A line of the GLOBAL section of a task file is accepted: it
-sets the key for the other tasks of the file, and the option acted only
-with --rescale, whose line is refused there.
+A command line that gives it is refused with the reason. The option acted
+only with --rescale.
 """
 examples = []
 default_value = []
@@ -3631,7 +3571,6 @@ priority (sweight) of each structure by the inverse of its stress."""
 replacement = "the priorities of the data: the eweight, fweight and sweight of each structure in its data file, and WDBFILE for each dataset"
 conversion = """No option converts it: tadah data balance shifts energies \
 only, and writes the priorities of the structures as they are."""
-only_with = "rescale"
 [TASKS.data.balance.keys.index]
 long_description = """
 The 1-based indices of the structures to shift, counted over the input
@@ -3650,9 +3589,8 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.data.balance.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile"]
 [TASKS.data.balance.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 cli_needs = ["outfile"]
 
 
@@ -3661,8 +3599,6 @@ cli_needs = ["outfile"]
 description      = "Evaluates physical properties for MLIP target evaluation."
 long_description = "Evaluates physical properties for MLIP target evaluation (e.g., pairwise, ecurve, eos, defect, surface, mechanics)."
 examples         = ["tadah properties pairwise -p pot.tadah -o out.txt -r 0 10 100 -a \"Kr Kr\""]
-[TASKS.properties.keys]
-INHERIT          = ["ALLOWED_KEYS.verbose", "ALLOWED_KEYS.task"]
 
 [TASKS.properties.pairwise]
 description      = "Computes E vs. r for a given potential."
@@ -3673,9 +3609,7 @@ INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.
 [TASKS.properties.pairwise.keys.error]
 description = "Retired: an error computed from SIGMA beside every value of the energy curve; uncertainty output is removed."
 long_description = """
-A command line or a TASK properties pairwise section that gives it is
-refused with the reason, and so is a task file that gives it in the GLOBAL
-section, whose keys reach every task of the file.
+A command line that gives it is refused with the reason.
 """
 examples = []
 default_value = []
@@ -3701,9 +3635,8 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.properties.pairwise.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.potential"]
 [TASKS.properties.pairwise.groups.input.keys.potential]
-cli_excludes   = ["task"]
 cli_needs = ["outfile", "range", "atompair"]
 
 # [TASKS.properties.ecurve]
@@ -3753,9 +3686,6 @@ cli_needs = ["outfile", "range", "atompair"]
 description      = "Visual analysis commands."
 long_description = "Visual analysis commands (e.g., descriptor, bfunc, cutoff)."
 examples         = ["tadah analysis descriptor -d dataset.tadah -p pot.tadah -o out.txt"]
-INHERIT          = ["ALLOWED_KEYS.verbose"]
-[TASKS.analysis.keys]
-INHERIT          = ["ALLOWED_KEYS.task"]
 
 [TASKS.analysis.descriptor]
 description      = "Calculates structure descriptors."
@@ -3775,17 +3705,16 @@ comma) and an index outside the dataset are refused, naming it, before any
 structure is read.
 """
 [TASKS.analysis.descriptor.groups.input]
-description      = "Structure source or a task file. One of the following options:"
+description      = "Structure source. One of the following options:"
 cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.analysis.descriptor.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.analysis.descriptor.groups.input.keys.dbfile]
-cli_excludes   = ["task"]
 cli_needs = ["outfile", "potential"]
 [TASKS.analysis.descriptor.groups.input.keys.structure]
-cli_excludes   = ["task", "index"]
+cli_excludes   = ["index"]
 cli_needs = ["outfile", "potential"]
 
 [TASKS.analysis.dataset_stats]
@@ -3809,20 +3738,20 @@ examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats
 [TASKS.analysis.dataset_stats.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
 [TASKS.analysis.dataset_stats.groups.input]
-description      = "Structure source or a task file. One of the following options:"
+description      = "Structure source. One of the following options:"
 cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.analysis.dataset_stats.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.analysis.dataset_stats.groups.input.keys.config]
-cli_excludes   = ["task", "dbfile", "structure"]
+cli_excludes   = ["dbfile", "structure"]
 cli_needs = ["outfile"]
 [TASKS.analysis.dataset_stats.groups.input.keys.dbfile]
-cli_excludes   = ["task", "config"]
+cli_excludes   = ["config"]
 cli_needs = ["outfile"]
 [TASKS.analysis.dataset_stats.groups.input.keys.structure]
-cli_excludes   = ["task", "config"]
+cli_excludes   = ["config"]
 cli_needs = ["outfile"]
 
 [TASKS.analysis.suggest_bounds]
@@ -3838,14 +3767,12 @@ examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile sugg
 [TASKS.analysis.suggest_bounds.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
 [TASKS.analysis.suggest_bounds.groups.input]
-description      = "Source: a training config or a task file."
+description      = "Source: a training configuration file."
 cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.analysis.suggest_bounds.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
-[TASKS.analysis.suggest_bounds.groups.input.keys.config]
-cli_excludes   = ["task"]
+INHERIT          = ["ALLOWED_KEYS.config"]
 
 [TASKS.analysis.check_bounds]
 description      = "Validates HPO bounds: runs the pre-flight audit at every corner of the OPTIM box. Returns non-zero if any corner trips a FAIL finding. CI-friendly."
@@ -3879,9 +3806,7 @@ cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.analysis.check_bounds.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
-[TASKS.analysis.check_bounds.groups.input.keys.config]
-cli_excludes   = ["task"]
+INHERIT          = ["ALLOWED_KEYS.config"]
 
 [TASKS.analysis.bfunc]
 description      = "Evaluates and plots basis functions."
@@ -3920,42 +3845,39 @@ description = "Rescales the basis function by the cutoff function. This is usefu
 [TASKS.analysis.bfunc.keys.outfile]
 INHERIT = ["TYPES.STRING"]
 [TASKS.analysis.bfunc.groups.input]
-description      = "Either a potential file, a configuration file, or a task file."
+description      = "Either a potential file or a configuration file."
 cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.analysis.bfunc.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.config", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.potential", "ALLOWED_KEYS.config"]
 [TASKS.analysis.bfunc.groups.input.keys.potential]
-cli_excludes   = ["task", "config"]
+cli_excludes   = ["config"]
 cli_needs = ["range", "type"]
 [TASKS.analysis.bfunc.groups.input.keys.config]
-cli_excludes   = ["task", "potential"]
+cli_excludes   = ["potential"]
 cli_needs = ["range", "type"]
 
 [TASKS.analysis.cutoff]
 description      = "Evaluates and plots cutoff functions."
 long_description = "Long description: Evaluates and plots cutoff functions."
-examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 -t \"CutCos\" --derivative"]
+examples         = ["tadah analysis cutoff -o cutoff.txt -r 0 3.14 100 --type Cut_Cos --derivative"]
 [TASKS.analysis.cutoff.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.range", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.derivative"]
 [TASKS.analysis.cutoff.groups.input]
-description      = "Either a cutoff type or a task file."
+description      = "The cutoff type."
 cli_required = true
 required_min = 1
 required_max = 1
 [TASKS.analysis.cutoff.groups.input.keys]
-INHERIT          = ["ALLOWED_KEYS.type", "ALLOWED_KEYS.task"]
+INHERIT          = ["ALLOWED_KEYS.type"]
 [TASKS.analysis.cutoff.groups.input.keys.type]
-cli_excludes   = ["task"]
 cli_needs = ["range"]
 
 # [TASKS.transform]
 # description      = "Structure transformation commands."
 # long_description = "Structure transformation commands (rotate, shear, change-coords)."
 # examples         = ["tadah transform rotate ..."]
-# [TASKS.transform.keys]
-# INHERIT = ["ALLOWED_KEYS.task"]
 
 # work in progress
 [TASKS.explain]
@@ -3970,7 +3892,7 @@ description = "Command, option or configuration key to explain, in a dot separat
 long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, 'train.verbose' explains the 'verbose' option of the 'train' command. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'). A single name may also be ALGO, LIB or an optimiser of `tadah hpo`, '<LIB>:<ALGO>' or the ALGO alone ('NLOPT:LN_BOBYQA', 'LD_LBFGS'). Each part is read in any letter case."
 value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>", "<KEY>", "ALGO", "<LIB>:<ALGO>"]
 cli_required = true
-examples = ["tadah explain train.task", "tadah explain data.split.even"]
+examples = ["tadah explain train.verbose", "tadah explain data.split.even"]
 
 ###############################################################################
 # Error Messages (ERROR_MESSAGES) TODO Not in use
@@ -4000,6 +3922,4 @@ description = ""  # not
 long_description = ""
 website = "https://tadah.readthedocs.io"
 version = "1.6.0"
-examples = ["tadah --task tasks.tadah","tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.eshift"]
-[TADAH.keys]
-INHERIT = ["ALLOWED_KEYS.task"]
+examples = ["tadah train -c config.tadah", "tadah predict -p pot.tadah -s crystal.cif", "tadah explain data.balance.eshift"]

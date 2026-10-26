@@ -292,15 +292,23 @@ TEST_CASE("Config parser: a deprecated key is reported once per process, "
   CHECK_FALSE(c.contains("MBLOCK"));
 }
 
+/* Pins: the value of a deprecated key is checked as any value, and refused
+ * naming the key and its line ("Invalid value for key MBLOCK on line 1:
+ * 'sixty-four'", the key's schema, format and examples after it).
+ * Before the fix: refused as "Invalid schema for key: MBLOCK", without the
+ * line. */
 TEST_CASE("Config parser: a deprecated key's value is still checked",
           "[config][deprecated]") {
   StreamCapture cap(LogLevel::WARNING);
-  REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
-                          "MBLOCK sixty-four"}),
-                      Catch::Matchers::Contains("Invalid schema for key: MBLOCK"));
-  REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
-                          "NBLOCK -1"}),
-                      Catch::Matchers::Contains("Invalid schema for key: NBLOCK"));
+  REQUIRE_THROWS_WITH(
+      CoreUserConfigParser().parse(
+          std::vector<std::string>{"MBLOCK sixty-four"}),
+      Catch::Matchers::StartsWith(
+          "Invalid value for key MBLOCK on line 1: 'sixty-four'\n"));
+  REQUIRE_THROWS_WITH(
+      CoreUserConfigParser().parse(std::vector<std::string>{"NBLOCK -1"}),
+      Catch::Matchers::StartsWith(
+          "Invalid value for key NBLOCK on line 1: '-1'\n"));
 }
 
 TEST_CASE("BlueprintParser::findClosestKey never suggests a deprecated key",

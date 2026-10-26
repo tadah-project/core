@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -395,8 +396,7 @@ TEST_CASE("Config parser: refuse_keys does not leak into another parser",
 }
 
 // Pins: the refusal is an option of the parser, not of file input: the
-// stream and line overloads refuse too, naming the line (counted from
-// first_line for a block of a file) and, for a block, its source.
+// stream and line overloads refuse too, naming the line.
 // Before refuse_keys existed this case failed before any parse. A stream
 // or line overload of parse() that does not pass the refused keys on makes
 // it fail.
@@ -416,15 +416,6 @@ TEST_CASE("Config parser: refuse_keys applies to stream and line input",
     const std::string msg =
         runtime_error_of([&] { return parser.parse(lines); }, "parse(lines)");
     check_refusal(msg, "FORCE", 2, "", kForceReason);
-  }
-  SECTION("a block of lines that starts at line 4 of run.task") {
-    /* Lines 4, 5 and 6 of run.task: FORCE is on line 6. */
-    const std::vector<std::string> lines = {"ATOM Ta", "# a comment",
-                                            "FORCE true"};
-    const std::string msg = runtime_error_of(
-        [&] { return parser.parse(lines, 4, "run.task"); },
-        "parse(lines, 4, run.task)");
-    check_refusal(msg, "FORCE", 6, "run.task", kForceReason);
   }
 }
 
@@ -447,14 +438,13 @@ void check_included_keys(const Context &c) {
 } // namespace
 
 // Pins: a CONFIG line whose path is followed by an inline comment (blanks
-// or a tab before the '#') includes the file it names, in a file, a stream
-// and the lines of a TASK block (parse(lines, first_line, source), which is
-// how `tadah --task` parses each TASK section): the included keys are set,
-// and the result equals that of the same line without the comment.
+// or a tab before the '#') includes the file it names, in a file and a
+// stream: the included keys are set, and the result equals that of the same
+// line without the comment.
 // Before the fix: every section threw std::runtime_error "Failed to open
 // config file: <path>   " -- the path was read up to the '#', with the blanks
-// before it, so no such file existed (`tadah --task` and `tadah train -c`
-// stopped with that error).
+// before it, so no such file existed (`tadah train -c` stopped with that
+// error).
 TEST_CASE("Config parser: a CONFIG line with an inline comment includes the "
           "file it names",
           "[config][config_include]") {
@@ -493,48 +483,6 @@ TEST_CASE("Config parser: a CONFIG line with an inline comment includes the "
     Context c;
     REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(in));
     CHECK(c == expected);
-  }
-  SECTION("the lines of a TASK block (lines 4 to 6 of run.task)") {
-    const std::vector<std::string> lines = {
-        "ATOM Ta", "CONFIG " + inner + "   # nested config",
-        "INIT2B true   # two-body"};
-    Context c;
-    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(lines, 4, "run.task"));
-    CHECK(c == expected);
-  }
-}
-
-// Pins: with an inline comment on the CONFIG line, a missing file is reported
-// by its path alone ("Failed to open config file: <path>", nothing after the
-// path), and a circular include names the files of the chain, each by its
-// path alone ("... CONFIG files: <b> -> <a> -> <b>").
-// Before the fix: the missing file was reported as "<path>   " (the blanks
-// before the '#'), and the circular include was never detected: the first
-// CONFIG line already failed to open "<b>  ", so the message was "Failed to
-// open config file: <b>  " instead of the chain.
-TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
-          "file alone in its errors",
-          "[config][config_include]") {
-  RefuseScratch dir;
-
-  SECTION("a missing file") {
-    const std::string missing = dir.path("missing.cfg");
-    const std::string outer = dir.write(
-        "missing_include.cfg", "CONFIG " + missing + "   # not there\n");
-    const std::string msg = runtime_error_of(
-        [&] { return CoreUserConfigParser().parse(outer); }, "parse " + outer);
-    CHECK(msg == "Failed to open config file: " + missing);
-  }
-  SECTION("a circular include") {
-    const std::string b = dir.write(
-        "loop_b.cfg",
-        "WATOM 73\nCONFIG " + dir.path("loop_a.cfg") + "  # back to a\n");
-    const std::string a =
-        dir.write("loop_a.cfg", "ATOM Ta\nCONFIG " + b + "  # on to b\n");
-    const std::string msg = runtime_error_of(
-        [&] { return CoreUserConfigParser().parse(a); }, "parse " + a);
-    CHECK(msg == "Circular dependency detected between CONFIG files: " + b +
-                     " -> " + a + " -> " + b);
   }
 }
 
@@ -589,6 +537,267 @@ std::string trimmed(const std::string &t) {
 }
 
 } // namespace
+
+// Pins: with an inline comment on the CONFIG line, a missing file is reported
+// by its path alone ("Failed to open config file: <path>", the path without
+// the blanks before the '#'), and a circular include names the files of the
+// chain, each by its path alone ("... CONFIG files: <b> -> <a> -> <b>");
+// each names the CONFIG line, its line and its file, as every error of a
+// line does: "Failed to open config file: <path> (CONFIG on line 1 of
+// <outer>)", "... -> <b> (CONFIG on line 2 of <a>)".
+// Before the fix: the missing file was reported as "<path>   " (the blanks
+// before the '#'), and the circular include was never detected: the first
+// CONFIG line already failed to open "<b>  ", so the message was "Failed to
+// open config file: <b>  " instead of the chain. Neither named the CONFIG
+// line ("Failed to open config file: <path>", after the Logger line
+// "CoreUserConfigParser::parse -> Failed to open file: <path>", and the
+// chain alone).
+TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
+          "file alone in its errors",
+          "[config][config_include][line_errors]") {
+  RefuseScratch dir;
+
+  SECTION("a missing file") {
+    const std::string missing = dir.path("missing.cfg");
+    const std::string outer = dir.write(
+        "missing_include.cfg", "CONFIG " + missing + "   # not there\n");
+    CaptureLog log;
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(outer); }, "parse " + outer);
+    CHECK(msg == "Failed to open config file: " + missing +
+                     " (CONFIG on line 1 of " + outer + ")");
+    CHECK(log.text().empty());
+  }
+  SECTION("a circular include") {
+    const std::string b = dir.write(
+        "loop_b.cfg",
+        "WATOM 73\nCONFIG " + dir.path("loop_a.cfg") + "  # back to a\n");
+    const std::string a =
+        dir.write("loop_a.cfg", "ATOM Ta\nCONFIG " + b + "  # on to b\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(a); }, "parse " + a);
+    CHECK(msg == "Circular dependency detected between CONFIG files: " + b +
+                     " -> " + a + " -> " + b + " (CONFIG on line 2 of " + a +
+                     ")");
+  }
+}
+
+/* Pins: a line whose key is no configuration key is refused naming the
+ * key (upper case), its line and its file, with the closest key, in one
+ * message and without a Logger line:
+ *   "Invalid key VERBOS on line 3 of <file> (closest key: VERBOSE)"
+ * for a configuration file (comment and blank lines counted), for a file
+ * it includes with CONFIG (that file and its line), for a potential and,
+ * without a file, for a stream ("on line 2"). A TASK line is such a line:
+ * TASK is no key ("Invalid key TASK on line 2 of <file>"), in a file and
+ * in a file it includes.
+ * Before the fix: the message was "Invalid key: VERBOS", without the line
+ * and the file, after two Logger ERROR lines ("CoreUserConfigParser::parse
+ * -> Invalid key: VERBOS", "  Did you mean: VERBOSE"); a TASK line was read
+ * as the key TASK and stored (no exception). */
+TEST_CASE("Config parser: an unknown key is refused naming the key, the "
+          "line and the file",
+          "[config][unknown_key]") {
+  RefuseScratch dir;
+  const std::string hint = " (closest key: VERBOSE)";
+  SECTION("a configuration file") {
+    const std::string f =
+        dir.write("typo.cfg", "# a comment\n\nVERBOS 1\nATOM Ta\n");
+    CaptureLog log;
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(f); }, "parse " + f);
+    CHECK(msg == "Invalid key VERBOS on line 3 of " + f + hint);
+    CHECK(log.text().empty());
+  }
+  SECTION("a file it includes with CONFIG") {
+    const std::string inner = dir.write("inner_typo.cfg", "ATOM Ta\nverbos 1\n");
+    const std::string outer =
+        dir.write("outer_typo.cfg", "WATOM 73\nCONFIG " + inner + "\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(outer); }, "parse " + outer);
+    CHECK(msg == "Invalid key VERBOS on line 2 of " + inner + hint);
+  }
+  SECTION("a potential") {
+    const std::string pot = dir.write(
+        "typo_pot.tadah", "ATOM Ta\nWATOM 73\nVERBOS 0\nWEIGHTS 1.0 2.0\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(pot); }, "parse " + pot);
+    CHECK(msg == "Invalid key VERBOS on line 3 of " + pot + hint);
+  }
+  SECTION("a stream") {
+    std::istringstream in("ATOM Ta\nVERBOS 1\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(in); }, "parse(stream)");
+    CHECK(msg == "Invalid key VERBOS on line 2" + hint);
+  }
+  SECTION("a TASK line, in a file and in a file it includes") {
+    const std::string f = dir.write(
+        "with_task.cfg", "ATOM Ta\nTASK predict\nDBFILE db.tadah\n");
+    CHECK_THAT(runtime_error_of([&] { return CoreUserConfigParser().parse(f); },
+                                "parse " + f),
+               Catch::Matchers::StartsWith("Invalid key TASK on line 2 of " +
+                                           f + " (closest key: "));
+    const std::string outer =
+        dir.write("includes_task.cfg", "ATOM Ta\n\nCONFIG " + f + "\n");
+    CHECK_THAT(
+        runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                         "parse " + outer),
+        Catch::Matchers::StartsWith("Invalid key TASK on line 2 of " + f));
+  }
+}
+
+namespace {
+
+/* What follows the first line of the refusal of a value of @p key that the
+ * key's types do not take: "  Allowed schema:" and "    <KEY>   <type>"
+ * for each of its value types, "  Format:" and "    <KEY>   <format>" for
+ * each of its formats and, when it has examples, "  Examples:" and
+ * "    <KEY>   <line>" for each non-blank line of each example, each on a
+ * line of its own (the lines the Logger writes for such a value of the
+ * command line). */
+std::string value_help(const std::string &key) {
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at(key);
+  std::string out = "\n  Allowed schema:";
+  for (const std::string &type : k.value_type)
+    out += "\n    " + key + "   " + type;
+  out += "\n  Format:";
+  for (const std::string &format : k.value_format)
+    out += "\n    " + key + "   " + format;
+  if (!k.examples.empty()) {
+    out += "\n  Examples:";
+    for (const std::string &example : k.examples) {
+      std::istringstream lines(example);
+      std::string line;
+      while (std::getline(lines, line))
+        if (!trimmed(line).empty()) out += "\n    " + key + "   " + trimmed(line);
+    }
+  }
+  return out;
+}
+
+}  // namespace
+
+/* Pins: an error of a line of a file names the key, the line and the file
+ * (the line alone for lines of no file), in one message and without a
+ * Logger line, as an unknown key does:
+ *  - a value the key's types do not take, with the key's schema, format and
+ *    examples after the first line: "Invalid value for key RCUT2B on line 3
+ *    of <file>: 'abc'", then "  Allowed schema:", "    RCUT2B   {DOUBLE}",
+ *    "  Format:", "    RCUT2B   <double> [<double> ...]", "  Examples:",
+ *    "    RCUT2B   3.0" and "    RCUT2B   3.0 7.5"; a wrong number of
+ *    values ('MODEL M_BLR', 'EMBF0 ZERO FREE') and a key without a value
+ *    ("...: no value") alike; in a file a configuration includes with
+ *    CONFIG (that file and its line), in a potential, and in a stream ("on
+ *    line 2");
+ *  - more values than the key takes, over its lines: "Too many values for
+ *    key MODEL on line 2 of <file>: MODEL takes at most 3, and its lines
+ *    read so far give 4";
+ *  - a block that is not closed: "OPTIMIZER on line 2 of <file> is not
+ *    closed; expected ENDOPTIMIZER".
+ * Before the fix: "Invalid schema for key: RCUT2B" (and MODEL, EMBF0), with
+ * neither line nor file, after the Logger ERROR lines
+ * "CoreUserConfigParser::parse -> Invalid format for key: value -> RCUT2B:
+ * abc" and the schema, format and examples; "Exceeded capacity for key:
+ * MODEL" after the Logger line "Context::add -> capacity exceeded for:
+ * MODEL"; "OPTIMIZER block is not closed with ENDOPTIMIZER". */
+TEST_CASE("Config parser: an error of a line names the key, the line and "
+          "the file",
+          "[config][line_errors]") {
+  RefuseScratch dir;
+  SECTION("a value the key's types do not take") {
+    const std::string f =
+        dir.write("value.cfg", "# a comment\n\nRCUT2B abc\nATOM Ta\n");
+    CaptureLog log;
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(f); }, "parse " + f);
+    CHECK(msg == "Invalid value for key RCUT2B on line 3 of " + f +
+                     ": 'abc'\n"
+                     "  Allowed schema:\n"
+                     "    RCUT2B   {DOUBLE}\n"
+                     "  Format:\n"
+                     "    RCUT2B   <double> [<double> ...]\n"
+                     "  Examples:\n"
+                     "    RCUT2B   3.0\n"
+                     "    RCUT2B   3.0 7.5");
+    CHECK(log.text().empty());
+  }
+  SECTION("a wrong number of values, and no value") {
+    struct Case {
+      std::string name, body, message;
+    };
+    const std::vector<Case> cases = {
+        {"few.cfg", "ATOM Ta\nMODEL M_BLR\n",
+         "Invalid value for key MODEL on line 2 of " + dir.path("few.cfg") +
+             ": 'M_BLR'" + value_help("MODEL")},
+        {"two.cfg", "ATOM Ta\n# one value\nEMBF0 ZERO FREE\n",
+         "Invalid value for key EMBF0 on line 3 of " + dir.path("two.cfg") +
+             ": 'ZERO FREE'" + value_help("EMBF0")},
+        {"none.cfg", "RCUT2B\n",
+         "Invalid value for key RCUT2B on line 1 of " + dir.path("none.cfg") +
+             ": no value" + value_help("RCUT2B")},
+    };
+    for (const Case &c : cases) {
+      const std::string f = dir.write(c.name, c.body);
+      CaptureLog log;
+      const std::string msg = runtime_error_of(
+          [&] { return CoreUserConfigParser().parse(f); }, "parse " + f);
+      INFO(c.name);
+      CHECK(msg == c.message);
+      CHECK(log.text().empty());
+    }
+  }
+  SECTION("a file it includes with CONFIG, a potential, a stream") {
+    const std::string inner =
+        dir.write("inner_value.cfg", "ATOM Ta\nEMBF0 ZERO FREE\n");
+    const std::string outer =
+        dir.write("outer_value.cfg", "WATOM 73\nCONFIG " + inner + "\n");
+    CHECK(runtime_error_of(
+              [&] { return CoreUserConfigParser().parse(outer); },
+              "parse " + outer) ==
+          "Invalid value for key EMBF0 on line 2 of " + inner +
+              ": 'ZERO FREE'" + value_help("EMBF0"));
+    const std::string pot = dir.write(
+        "value_pot.tadah", "ATOM Ta\nWATOM 73\nRCUT2B abc\nWEIGHTS 1.0 2.0\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(pot); },
+                           "parse " + pot) ==
+          "Invalid value for key RCUT2B on line 3 of " + pot + ": 'abc'" +
+              value_help("RCUT2B"));
+    std::istringstream in("ATOM Ta\nMODEL M_BLR\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(in); },
+                           "parse(stream)") ==
+          "Invalid value for key MODEL on line 2: 'M_BLR'" +
+              value_help("MODEL"));
+  }
+  SECTION("more values than the key takes, over its lines") {
+    const std::string f = dir.write(
+        "twice.cfg", "MODEL M_BLR BF_Linear\nMODEL M_KRR Kern_Linear\n");
+    CaptureLog log;
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(f); },
+                           "parse " + f) ==
+          "Too many values for key MODEL on line 2 of " + f +
+              ": MODEL takes at most 3, and its lines read so far give 4");
+    CHECK(log.text().empty());
+    // A line of a key of one value replaces the value of the line before;
+    // a key of several values adds the values of its lines, up to the
+    // number it takes.
+    const auto &keys = BlueprintParser::getKeysMapRef();
+    REQUIRE(keys.at("ESIGMA").value_N.at(0) == 1);
+    REQUIRE(std::abs(keys.at("ATOM").value_N.at(0)) > 2);
+    Context c;
+    REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
+                        "ESIGMA 1", "ESIGMA 2", "ATOM Ta", "ATOM Nb"}));
+    CHECK(c.get<double>("ESIGMA") == 2);
+    CHECK(c.size("ATOM") == 2);
+  }
+  SECTION("a block that is not closed") {
+    const std::string f =
+        dir.write("open_block.cfg", "ATOM Ta\nOPTIMIZER\nALGO x\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(f); },
+                           "parse " + f) ==
+          "OPTIMIZER on line 2 of " + f + " is not closed; expected "
+                                          "ENDOPTIMIZER");
+  }
+}
 
 /* Pins: when CoreUserConfigParser refuses a value of a key (the value does
  * not have the key's format), the lines it writes under "  Examples:" are,
@@ -661,7 +870,9 @@ TEST_CASE("Config parser: a refused value lists each example once, after "
  * parser's refusal and the configuration-keys page show an example, is not
  * how such a key is written (the parser does not read the rest of the
  * opening line). The block keys are found from the parser itself: the key
- * alone on a line is refused as a block that is not closed.
+ * alone on a line is refused as a block that is not closed ("<KEY> on line
+ * 1 is not closed; expected END<KEY>"; "<KEY> block is not closed with
+ * END<KEY>" before the line was named).
  * Before the fix: all five had an example, "INIT / PHI XMIN PIN / ENDINIT"
  * and the like, and OPTIMIZER's was "see HPO_REFIT_2B_EAM/REDESIGN/configs
  * (OPTIMIZER nested in EXPLORE/REFINE/FUSE)", a directory that is in no
@@ -680,7 +891,8 @@ TEST_CASE("Config parser: a key written as a block has no examples",
         what = e.what();
       }
     }
-    if (what != key + " block is not closed with END" + key) continue;
+    if (what != key + " on line 1 is not closed; expected END" + key)
+      continue;
     blocks.insert(key);
     INFO("block key " << key);
     CHECK(kv.second.examples.empty());
@@ -690,13 +902,20 @@ TEST_CASE("Config parser: a key written as a block has no examples",
 }
 
 namespace {
-/* The message parse() throws for `lines` (first line `first` of `source`),
- * or "no exception". */
-std::string parse_refusal(const std::vector<std::string> &lines,
-                          std::size_t first = 1,
-                          const std::string &source = "") {
+/* The message parse() throws for `lines`, or "no exception". */
+std::string parse_refusal(const std::vector<std::string> &lines) {
   try {
-    (void)CoreUserConfigParser().parse(lines, first, source);
+    (void)CoreUserConfigParser().parse(lines);
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "no exception";
+}
+
+/* The message parse() throws for the file @p path, or "no exception". */
+std::string parse_file_refusal(const std::string &path) {
+  try {
+    (void)CoreUserConfigParser().parse(path);
   } catch (const std::exception &e) {
     return e.what();
   }
@@ -711,13 +930,15 @@ std::string parse_refusal(const std::vector<std::string> &lines,
  *   "Invalid value for key FIXWEIGHT on line 1: '0.1,0.2' separates values
  *    with ',', which a configuration line is not split at (values are
  *    separated by blanks: FIXWEIGHT 0.1 0.2)"
- * also with the file and line of a task section (line 3 of run.task), for
+ * also with the file and line of a configuration file (line 3), for
  * '+' ('MPARAMS 1.0+2.0'), for both ('CGRID2B 1.0,2.0+3.0': "',' and
  * '+'"), with blanks around the comma ('SGRID2B 1.0, 2.0': SGRID2B 1.0
  * 2.0), for a key of several single values ('MODEL M_BLR,BF_Linear'), for an
  * index list joined by '+' ('FIXINDEX 13+14'), and for a line of 2048
- * characters or more. A value that blanks would not make valid either keeps
- * the generic refusal ('SBASIS 1,2': "Invalid schema for key: SBASIS").
+ * characters or more. A value that blanks would not make valid either is
+ * refused as any value the key's types do not take ('SBASIS 1,2': "Invalid
+ * value for key SBASIS on line 1: '1,2'" and the key's schema, format and
+ * examples; "Invalid schema for key: SBASIS" before the line was named).
  * What the parser keeps as one value is accepted: an index list with commas
  * ('FIXINDEX 13,14', its reader splits it), a path with a comma or a '+'
  * ('DBFILE a,b.tadah', 'SETFL Ta+v2.eam.alloy'), an exponent's sign
@@ -756,17 +977,21 @@ TEST_CASE("Config parser: a comma or '+' between values is refused, naming "
       {"FIXINDEX 13+14",
        "Invalid value for key FIXINDEX on line 1: '13+14' separates values "
        "with '+'" + tail + "FIXINDEX 13 14)"},
-      {"SBASIS 1,2", "Invalid schema for key: SBASIS"},
+      {"SBASIS 1,2", "Invalid value for key SBASIS on line 1: '1,2'" +
+                         value_help("SBASIS")},
   };
   for (const Case &c : cases) {
     INFO(c.line);
     CHECK(parse_refusal({c.line}) == c.message);
   }
-  // The file and line of a task section.
-  CHECK(parse_refusal({"# comment", "VERBOSE 1", "FIXWEIGHT 0.1,0.2"}, 1,
-                      "run.task") ==
-        "Invalid value for key FIXWEIGHT on line 3 of run.task: '0.1,0.2' "
-        "separates values with ','" + tail + "FIXWEIGHT 0.1 0.2)");
+  // The file and line of a configuration file.
+  RefuseScratch dir;
+  const std::string file =
+      dir.write("separators.cfg", "# comment\nVERBOSE 1\nFIXWEIGHT 0.1,0.2\n");
+  CHECK(parse_file_refusal(file) ==
+        "Invalid value for key FIXWEIGHT on line 3 of " + file +
+            ": '0.1,0.2' separates values with ','" + tail +
+            "FIXWEIGHT 0.1 0.2)");
   // A line of 2048 characters or more.
   std::string long_line = "FIXWEIGHT 1.0";
   while (long_line.size() < 2100) long_line += ",2.0";
@@ -801,9 +1026,11 @@ TEST_CASE("Config parser: a comma or '+' between values is refused, naming "
  *    by blanks: ATOM Ta Nb)"
  * likewise 'ATOM Ti+Nb', 'atompair Ta+Nb', 'RCTYPE2B Cut_Cos,Cut_Tanh',
  * 'TYPE2B D2_Blip 4 4 Ta,Nb Nb,Ta' and 'WATOM Ta,Ta 0.5'. A names value
- * that blanks would not make valid either is refused with the generic
- * message ('WNOISE E,F 1e-3', 'MODEL M_KRR Kern,Linear 2': "Invalid schema
- * for key: ..."). A '+' after a name or a word that ends in e is a
+ * that blanks would not make valid either is refused as any value the
+ * key's types do not take ('WNOISE E,F 1e-3', 'MODEL M_KRR Kern,Linear 2':
+ * "Invalid value for key WNOISE on line 1: 'E,F 1e-3'" and the key's
+ * schema, format and examples; "Invalid schema for key: ..." before the
+ * line was named). A '+' after a name or a word that ends in e is a
  * separator too, not an exponent's sign: 'TYPE2B D2_Blip 4 4 Fe+Fe' (TYPE2B
  * D2_Blip 4 4 Fe Fe), 'DIMER true+1.0 false' (DIMER true 1.0 false); the
  * sign of an exponent stays in its number ('FIXWEIGHT 1e+5+2': FIXWEIGHT
@@ -840,8 +1067,11 @@ TEST_CASE("Config parser: a comma or '+' in a name is refused as a "
        msg("TYPE2B", "D2_Blip 4 4 Ta,Nb Nb,Ta", "','",
            "TYPE2B D2_Blip 4 4 Ta Nb Nb Ta")},
       {"WATOM Ta,Ta 0.5", msg("WATOM", "Ta,Ta 0.5", "','", "WATOM Ta Ta 0.5")},
-      {"WNOISE E,F 1e-3", "Invalid schema for key: WNOISE"},
-      {"MODEL M_KRR Kern,Linear 2", "Invalid schema for key: MODEL"},
+      {"WNOISE E,F 1e-3", "Invalid value for key WNOISE on line 1: "
+                          "'E,F 1e-3'" + value_help("WNOISE")},
+      {"MODEL M_KRR Kern,Linear 2", "Invalid value for key MODEL on line 1: "
+                                    "'M_KRR Kern,Linear 2'" +
+                                        value_help("MODEL")},
       {"TYPE2B D2_Blip 4 4 Fe+Fe",
        msg("TYPE2B", "D2_Blip 4 4 Fe+Fe", "'+'", "TYPE2B D2_Blip 4 4 Fe Fe")},
       {"DIMER true+1.0 false",
@@ -899,9 +1129,7 @@ std::vector<std::string> described(const std::vector<SkippedKeyLine> &lines) {
 //  - a skipped line is checked as any line: "EFILTER five 6" in a file with
 //    WEIGHTS is refused, naming EFILTER;
 //  - the body of a block (INIT ... ENDINIT) is not a key line of the file: a
-//    WEIGHTS token inside it does not make the file's EFILTER skipped;
-//  - the lines overload names the line of its source: lines {"WEIGHTS 1",
-//    "EFILTER 1 2"} from line 10 of run.task give "run.task:11 EFILTER 1 2".
+//    WEIGHTS token inside it does not make the file's EFILTER skipped.
 // Before the fix: does not compile (no parse overload with a rule; no
 // SkippedKeyLine).
 TEST_CASE("Config parser: a key line rule skips the lines it selects by the "
@@ -972,14 +1200,6 @@ TEST_CASE("Config parser: a key line rule skips the lines it selects by the "
     const Context c = parser.parse(blk, skip_in_weights_files, skipped);
     CHECK(c("EFILTER") == std::vector<std::string>{"5", "6"});
     CHECK(skipped.empty());
-  }
-  SECTION("lines of a source from a line of it") {
-    const Context c = parser.parse(
-        std::vector<std::string>{"WEIGHTS 1", "EFILTER 1 2"}, 10, "run.task",
-        skip_in_weights_files, skipped);
-    CHECK_FALSE(c.has_stored("EFILTER"));
-    CHECK(described(skipped) ==
-          std::vector<std::string>{"run.task:11 EFILTER 1 2"});
   }
 }
 

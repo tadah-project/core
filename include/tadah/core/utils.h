@@ -377,8 +377,9 @@ std::vector<size_t> parse_dataset_indices(const std::vector<std::string>& values
  * (parse_dataset_indices(), tadah data print and analysis descriptor -i) or
  * basis functions (tadah analysis bfunc -i).
  *
- * The values form one list, as the command line and a task file give them
- * ('1, 3' arrives as the values '1,' and '3'; '-i 1 3' as '1' and '3'):
+ * The values form one list, as the command line and a configuration file
+ * give them ('1, 3' arrives as the values '1,' and '3'; '-i 1 3' as '1' and
+ * '3'):
  * entries separated by commas or whitespace, each 'i', 'a-b' or 'a-b:step',
  * with spaces allowed around '-' and ':'. Indices are returned in the given
  * order, repeated ones removed.

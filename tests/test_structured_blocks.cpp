@@ -76,13 +76,11 @@ TEST_CASE("Component radii survive ordinary context updates and copies", "[unifi
 /* Pins: outside a CONFIG include, Context::merge gives the structured blocks
  * of the overriding context the precedence a key has: when ctx2 declares
  * blocks of a kind, the merged context holds ctx2's blocks of that kind and
- * none of ctx1's (a TASK section's DESCRIPTOR replaces the GLOBAL one; a
- * task's model replaces the potential's in tadah predict); when ctx2 has no
- * block of that kind, ctx1's are kept; without overwrite (allowOverwrite
- * false) and across a CONFIG include they are appended, as repeated
- * declarations compose. Before the fix every merge appended, so a
- * task file whose GLOBAL section and TASK predict potential both declared
- * DESCRIPTOR cu failed with "duplicate descriptor ID 'cu'". */
+ * none of ctx1's; when ctx2 has no block of that kind, ctx1's are kept;
+ * without overwrite (allowOverwrite false) and across a CONFIG include they
+ * are appended, as repeated declarations compose. Before the fix every
+ * merge appended, so two contexts that both declared DESCRIPTOR cu failed
+ * with "duplicate descriptor ID 'cu'" when merged. */
 TEST_CASE("Context::merge gives structured blocks the precedence of a key",
           "[unified-dm][config]") {
   auto parse = [](const std::string &text) {

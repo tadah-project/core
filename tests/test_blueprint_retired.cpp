@@ -249,11 +249,10 @@ TEST_CASE("BlueprintParser::findClosestKey never suggests a retired key",
  * priorities of a data file by inverse magnitudes (discontinuous at its
  * threshold); it and the options that only served it, --threshold,
  * --force and --stress, are retired options of data balance (no default,
- * no example; a task file or command line that gives one is refused with
- * the reason). The shared keys stay where other commands use them.
- * Before the fix: the four were no options of data balance, so a TASK
- * data balance section accepted them as configuration keys and ignored
- * them, and the command line refused them as unknown options. */
+ * no example; a command line that gives one is refused with the reason).
+ * The shared keys stay where other commands use them.
+ * Before the fix: the four were no options of data balance, so the command
+ * line refused them as unknown options. */
 TEST_CASE("Blueprint: tadah data balance shifts energies only; analysis "
           "bfunc --rescale and data dedup --threshold stay",
           "[BlueprintParser][retired]") {
@@ -286,49 +285,49 @@ TEST_CASE("Blueprint: tadah data balance shifts energies only; analysis "
   CHECK(t.longDescription.find("rescal") == std::string::npos);
 }
 
-/* Pins: the optional field only_with of `retired` names the retired option
- * of the same task without which a retired option of a task had no effect
- * (tadah data balance --force acted only with --rescale). buildKey reads
- * it; a retired key without it has none; a value that is not a non-empty
- * string is refused, and so is any other field.
- * Before the fix: `retired` was a table of exactly three strings, so a
- * table with only_with was refused. */
-TEST_CASE("BlueprintParser::buildKey reads only_with of `retired`",
+/* Pins: `retired` has no field only_with: a retired table with it (or
+ * any other field than reason, replacement, conversion and by_deletion) is
+ * refused, naming 'retired' and the key; the message lists the fields
+ * without only_with.
+ * Before the fix: only_with, the retired option of the same command
+ * without which a retired option had no effect (tadah data balance
+ * --force acted only with --rescale), was an optional field for the lines
+ * of the GLOBAL section of a task file: buildKey read
+ * only_with = "other" (no exception), and its message named only_with. */
+TEST_CASE("BlueprintParser::buildKey refuses a field only_with of `retired`",
           "[BlueprintParser][retired]") {
-  const BlueprintKey with = BlueprintParser::buildKey(
-      "KEY", key_table("", kNoExamples, kRetired + "only_with = \"other\"\n"));
-  CHECK(with.isRetired());
-  CHECK(with.retired.only_with == "other");
-  CHECK(with.retired.conversion == "OTHER = 1/sqrt(KEY).");
-  CHECK(BlueprintParser::buildKey("KEY", key_table("", kNoExamples, kRetired))
-            .retired.only_with.empty());
   for (const std::string bad :
-       {std::string("only_with = \"\"\n"), std::string("only_with = \" \"\n"),
-        std::string("only_with = 1\n"), std::string("only_with = [\"a\"]\n"),
+       {std::string("only_with = \"other\"\n"),
+        std::string("only_with = \"other\"\nby_deletion = true\n"),
         std::string("with = \"other\"\n")}) {
     INFO(bad);
-    REQUIRE_THROWS_WITH(
-        BlueprintParser::buildKey("KEY",
-                                  key_table("", kNoExamples, kRetired + bad)),
-        Contains("'retired'") && Contains("only_with") && Contains("KEY"));
+    std::string msg;
+    try {
+      (void)BlueprintParser::buildKey(
+          "KEY", key_table("", kNoExamples, kRetired + bad));
+    } catch (const std::runtime_error &e) {
+      msg = e.what();
+    }
+    CHECK_THAT(msg, Contains("'retired'") && Contains("by_deletion") &&
+                        Contains("KEY"));
+    CHECK(msg.find("only_with") == std::string::npos);
   }
 }
 
 /* Pins: the optional field by_deletion of `retired` says that deleting a
  * line of the key converts it (nothing replaces the key: UNCERTAINTY,
  * WCOV, WNOISE, ERROR), which a fit's refusal says of each such line.
- * buildKey reads it, beside only_with too; a retired key without it is
- * not converted by deletion; a value that is not true or false is
- * refused, naming the field and the key.
+ * buildKey reads it; a retired key without it is not converted by
+ * deletion; a value that is not true or false is refused, naming the
+ * field and the key.
  * Before the fix: there was no by_deletion, and a table with it was
- * refused as a fourth field that is not only_with. */
+ * refused as a fourth field. */
 TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
           "[BlueprintParser][retired]") {
   const BlueprintKey del = BlueprintParser::buildKey(
       "KEY", key_table("", kNoExamples, kRetired + "by_deletion = true\n"));
   CHECK(del.isRetired());
   CHECK(del.retired.by_deletion);
-  CHECK(del.retired.only_with.empty());
   CHECK_FALSE(BlueprintParser::buildKey(
                   "KEY", key_table("", kNoExamples,
                                    kRetired + "by_deletion = false\n"))
@@ -336,12 +335,6 @@ TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
   CHECK_FALSE(BlueprintParser::buildKey("KEY",
                                         key_table("", kNoExamples, kRetired))
                   .retired.by_deletion);
-  const BlueprintKey both = BlueprintParser::buildKey(
-      "KEY", key_table("", kNoExamples,
-                       kRetired + "only_with = \"other\"\n"
-                                  "by_deletion = true\n"));
-  CHECK(both.retired.by_deletion);
-  CHECK(both.retired.only_with == "other");
   for (const std::string bad :
        {std::string("by_deletion = \"true\"\n"),
         std::string("by_deletion = 1\n")}) {
@@ -350,91 +343,6 @@ TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
         BlueprintParser::buildKey("KEY",
                                   key_table("", kNoExamples, kRetired + bad)),
         Contains("'retired'") && Contains("by_deletion") && Contains("KEY"));
-  }
-}
-
-namespace {
-
-/* A retired option "TASK.x.<name>" of a task, with only_with @p with. */
-BlueprintKey retired_option(const std::string &name, const std::string &with) {
-  BlueprintKey k;
-  k.keyName = "TASK.x." + name;
-  k.retired.reason = "It acted.";
-  k.retired.replacement = "OTHER";
-  k.retired.conversion = "Delete the line.";
-  k.retired.only_with = with;
-  return k;
-}
-
-}  // namespace
-
-/* Pins: BlueprintParser::checkRetiredOptions accepts a task whose every
- * only_with names another retired option of the task (its name in any
- * letter case, as an option of a group too) that has no only_with of its
- * own, and refuses, naming the option and its only_with, one that names
- * no option of the task, an option that is not retired, the option itself
- * or an option that has an only_with (a GLOBAL line of a task file is
- * refused or accepted by them, MLIPUserConfigParser); every task of the
- * blueprint passes.
- * Before the fix: there was no only_with to check (the test does not
- * compile). */
-TEST_CASE("BlueprintParser::checkRetiredOptions: only_with names a retired "
-          "option of the same task",
-          "[BlueprintParser][retired]") {
-  BlueprintKey plain;
-  plain.keyName = "TASK.x.plain";
-  BlueprintTask task;
-  task.taskName = "TASK.x";
-  task.blueprintKeys = {retired_option("main", ""),
-                        retired_option("part", "MAIN"), plain};
-  CHECK_NOTHROW(BlueprintParser::checkRetiredOptions(task));
-  BlueprintKeyGroup group;
-  group.blueprintKeys = {retired_option("grouped", "main")};
-  task.groups = {group};
-  CHECK_NOTHROW(BlueprintParser::checkRetiredOptions(task));
-  for (const std::string with : {"none", "plain", "part", "self"}) {
-    INFO(with);
-    BlueprintTask bad = task;
-    bad.blueprintKeys.push_back(retired_option("self", with));
-    REQUIRE_THROWS_WITH(BlueprintParser::checkRetiredOptions(bad),
-                        Contains("TASK.x.self") && Contains("only_with") &&
-                            Contains("'" + with + "'"));
-  }
-  for (const auto &[name, t] : BlueprintParser::getTasksMapRef()) {
-    INFO(name);
-    CHECK_NOTHROW(BlueprintParser::checkRetiredOptions(t));
-  }
-}
-
-/* Pins: in Tadah! 1.5.0, --threshold, --force and --stress of tadah data
- * balance had no effect without --rescale (its rescaling read them, and
- * nothing else did): each has only_with "rescale", and --rescale none. A
- * line of the GLOBAL section of a task file that gives RESCALE is refused
- * when it reaches a TASK data balance section, and one of THRESHOLD, FORCE
- * or STRESS, set for the other tasks of the file, is not (Tadah.MLIP). No
- * key of ALLOWED_KEYS has only_with, a field of a retired option of a
- * task.
- * Before the fix: `retired` had no field only_with. */
-TEST_CASE("Blueprint: --threshold, --force and --stress of tadah data "
-          "balance acted only with --rescale",
-          "[BlueprintParser][retired]") {
-  const auto &task = BlueprintParser::getTasksMapRef().at("DATA.balance");
-  auto option = [&](const std::string &name) {
-    for (const BlueprintKey &key : task.blueprintKeys)
-      if (key.keyName == "DATA.balance." + name) return key;
-    FAIL("no option " << name);
-    return BlueprintKey();
-  };
-  CHECK(option("rescale").isRetired());
-  CHECK(option("rescale").retired.only_with.empty());
-  for (const std::string name : {"threshold", "force", "stress"}) {
-    INFO(name);
-    CHECK(option(name).isRetired());
-    CHECK(option(name).retired.only_with == "rescale");
-  }
-  for (const auto &[name, k] : BlueprintParser::getKeysMapRef()) {
-    INFO(name);
-    CHECK(k.retired.only_with.empty());
   }
 }
 

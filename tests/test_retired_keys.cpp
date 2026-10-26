@@ -138,11 +138,17 @@ TEST_CASE("Config parser: a retired key line is checked, recorded on the "
   CHECK(r[4].source.empty());
 }
 
+/* Pins: the value of a retired key is checked as any value, and refused
+ * naming the key and its line ("Invalid value for key EWEIGHT on line 1:
+ * 'heavy'", the key's schema, format and examples after it).
+ * Before the fix: refused as "Invalid schema for key: EWEIGHT", without the
+ * line. */
 TEST_CASE("Config parser: a retired key's value is still checked",
           "[config][retired]") {
   REQUIRE_THROWS_WITH(CoreUserConfigParser().parse(std::vector<std::string>{
                           "EWEIGHT heavy"}),
-                      Contains("Invalid schema for key: EWEIGHT"));
+                      StartsWith("Invalid value for key EWEIGHT on line 1: "
+                                 "'heavy'\n"));
 }
 
 TEST_CASE("Config parser: one notice per parse lists the retired keys of "
@@ -292,30 +298,29 @@ TEST_CASE("The error scales, ENORM and ENERGY are keys of a configuration",
   CHECK(d.get<bool>("ENERGY"));
 }
 
-/* Pins: a parse with a KeyLineRule gives the caller a retired key's line
- * that the rule selects, as it gives any other line: listed in skipped
- * (its source, line, key and values), not recorded on the result
+/* Pins: a parse of a file with a KeyLineRule gives the caller a retired
+ * key's line that the rule selects, as it gives any other line: listed in
+ * skipped (its file, line, key and values), not recorded on the result
  * (Context::retired_keys()) and not in the parse's notice; a retired line
- * the rule does not select is recorded, with the notice. (A task that
- * retires an option with a reason of its own refuses its line so: ERROR
- * in TASK predict, whose key is retired too.)
+ * the rule does not select is recorded, with the notice.
  * Before the fix: the rule was not asked for a retired key's line, which
  * was recorded and named in the notice. */
 TEST_CASE("A retired key's line that the caller's rule selects is the "
           "caller's",
           "[config][retired]") {
   IgnoredKeyNoticeCapture cap;
+  const ScratchDir dir;
+  const std::string file =
+      dir.write_file("rule.cfg", "ATOM Ta\nUNCERTAINTY true\nWCOV 1 0.5\n");
   const KeyLineRule rule = [](const std::set<std::string> &,
                               const std::string &key) {
     return key == "UNCERTAINTY";
   };
   std::vector<SkippedKeyLine> skipped;
-  const Context c = CoreUserConfigParser().parse(
-      std::vector<std::string>{"ATOM Ta", "UNCERTAINTY true", "WCOV 1 0.5"},
-      1, "p.task", rule, skipped);
+  const Context c = CoreUserConfigParser().parse(file, rule, skipped);
   REQUIRE(skipped.size() == 1);
   CHECK(skipped[0].key == "UNCERTAINTY");
-  CHECK(skipped[0].source == "p.task");
+  CHECK(skipped[0].source == file);
   CHECK(skipped[0].line == 2);
   CHECK(skipped[0].values == std::vector<std::string>{"true"});
   const std::vector<RetiredKeyLine> r = c.retired_keys();
@@ -323,7 +328,8 @@ TEST_CASE("A retired key's line that the caller's rule selects is the "
   CHECK(r[0].key == "WCOV");
   REQUIRE(cap.notices().size() == 1);
   CHECK_THAT(cap.notices()[0],
-             StartsWith("Retired key WCOV (line 3 of p.task) is ignored"));
+             StartsWith("Retired key WCOV (line 3 of " + file +
+                        ") is ignored"));
 }
 
 TEST_CASE("retired_keys_refusal names each retired line and its conversion",
