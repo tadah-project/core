@@ -578,8 +578,9 @@ DM_REAM many-body block, and the potential has none (...)", like a deprecated
 key (the Logger level and VERBOSE do not hide it). pair_style tadah writes it
 as a LAMMPS warning on rank 0 instead, in log.lammps and on the screen, each
 time pair_coeff loads such a potential ("WARNING: pair tadah: potential
-'<file>': Key EMBF0 is ignored: ..."). So is an EMBF0 of a configuration
-for such a potential (tadah refit --edit with -c).
+'<file>': Key EMBF0 is ignored: ..."). An EMBF0 line of the configuration
+of tadah refit --edit (-c) for such a potential is reported on standard
+error the same way.
 
 Migration: a potential written by tadah 1.5.0 or earlier reproduces its
 energies with `EMBF0 FREE` added. Training a DM_REAM model on absolute reference
@@ -1081,12 +1082,12 @@ of the run: no potential has an HPOTARGET line (best_pot.tadah and the DUMP
 and BDUMP archives name the file in their training record, a comment block
 above their key lines that is never read as keys; the journal, hpo_run.log,
 names it too). The HPOTARGET line of a potential of an earlier version
-(every 1.5.x best_pot.tadah has one) is not read, and a WARNING names it:
-tadah hpo -c and tadah analysis check_bounds -c take the file from
---hpotarget (which tadah hpo -c requires), or from an HPOTARGET line of a
-configuration file without WEIGHTS that includes such a potential. A run
-without one is refused, saying where it goes and naming the potential's
-line that was not read.
+(every 1.5.x best_pot.tadah has one) is not read, and a WARNING names it.
+tadah hpo -c takes the file from --hpotarget, which it requires; tadah
+analysis check_bounds -c takes it from --hpotarget or from an HPOTARGET line
+of a configuration file without WEIGHTS, such as one that includes the
+potential, and without one is refused, saying where it goes and naming the
+potential's line that was not read.
 """
 examples     = ["hpotargets.txt"]
 cli_long_flag  = "--hpotarget"
@@ -3111,9 +3112,10 @@ tabulated EAM file:
   file searches around: non-negative AMPGRIDMB boxes and the RHOFORM header
   line under NONNEG/MONOTONE; a target of DM_Embed component paths only
   refuses --rhoform and --rcutmb, the component's FORM and CUTOFF RADIUS
-  being its potential's). A configuration may not set RHOFORM or EMBF0 for
-  --retarget (no effect on an hpotarget); for --edit it may set them only to
-  the potential's own values.
+  being its potential's). A configuration may not set RHOFORM, EMBF0 or
+  NUMERIC for --retarget (no effect on an hpotarget: NUMERIC governs only
+  the potential a refit and --edit write); for --edit it may set RHOFORM and
+  EMBF0 only to the potential's own values.
 A configuration for --edit or --retarget may not set a key that only a
 refit of an EAM file reads (REFIT_*, N2B, NRHO_BASIS, NF_BASIS,
 OUTPUT_GRID_SCALE, SETFL_OUT, the stage blocks; for --retarget also
@@ -3126,7 +3128,8 @@ the largest knot position (the true effective cutoff).
 `tadah explain <KEY>` (e.g. `tadah explain RHOFORM`) prints the full
 description of a configuration key above, including those that are no
 options of tadah refit: RHOFORM, EMBF0 and NUMERIC (keys a configuration may
-set) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the potential). The keys
+set, but not for --retarget) and RCUT2B, RCUTMB and AMPGRIDMB (keys of the
+potential). The keys
 written inside a stage block are no configuration keys:
 `tadah explain refit.optimizer` describes those of an OPTIMIZER block (ALGO,
 LIB and the stopping criteria) and `tadah explain refit.init` the
@@ -3192,7 +3195,8 @@ forces.pred and stress.pred, respectively. The data to predict are Tadah!
 datasets (--dbfile), or structure files and online structures (--structure;
 tadah explain predict.structure lists the supported types). The model is
 the potential's, as it was fitted: tadah predict takes no configuration
-file, and a key of the model is changed in the potential file.
+file and changes no key of the model but LSCALE and ESHIFT (--lscale,
+--eshift, --no-lscale, --no-eshift).
 """
 examples         = ["tadah predict -p pot.tadah -s crystal1.cif crystal2.cif --force", "tadah predict -p pot.tadah -d db1.tadah --numeric 12", "tadah predict -p pot.tadah -d db.tadah --stress --outfile predicted_energy.dat predicted_stresses.dat"]
 [TASKS.predict.keys]
@@ -3888,7 +3892,7 @@ description = "Command, option or configuration key to explain, in a dot separat
 long_description = "The command, option or configuration key to explain. The format is dot-separated, where each part represents a level of the command hierarchy. For example, 'train.verbose' explains the 'verbose' option of the 'train' command. The last part may also be any configuration key, alone ('SETFL') or after a command ('refit.rhoform'). A single name may also be ALGO, LIB or an optimiser of `tadah hpo`, '<LIB>:<ALGO>' or the ALGO alone ('NLOPT:LN_BOBYQA', 'LD_LBFGS'). Each part is read in any letter case."
 value_format = ["<command>", "<command>.<option>", "<command>.<subcommand>.<option>", "<KEY>", "ALGO", "<LIB>:<ALGO>"]
 cli_required = true
-examples = ["tadah explain train.config", "tadah explain data.split.even"]
+examples = ["tadah explain train.verbose", "tadah explain data.split.even"]
 
 ###############################################################################
 # Error Messages (ERROR_MESSAGES) TODO Not in use
