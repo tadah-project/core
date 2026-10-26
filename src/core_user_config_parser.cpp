@@ -93,6 +93,37 @@ namespace {
   }
 
   /**
+   * @brief What one public parse knows of the lines it has read, over the
+   *        files its CONFIG lines include (one Context holds them all: the
+   *        configuration is the concatenation of its lines).
+   */
+  struct ParseState {
+    /// Each key of one value read so far -> where its line is (where()).
+    std::map<std::string, std::string> setAt;
+    /// The CONFIG lines that include the file being read, outermost first
+    /// ("CONFIG on line 2 of run.train"); empty for the file of the parse.
+    std::vector<std::string> includedBy;
+  };
+
+  /**
+   * @brief Where line @p line of @p source is: lineOf(), and for a line of
+   *        an included file the CONFIG lines that include it, innermost
+   *        first: "line 2 of inc.train (CONFIG on line 2 of run.train)",
+   *        "line 1 of deep.train (CONFIG on line 3 of mid.train, which
+   *        CONFIG on line 2 of run.train includes)".
+   */
+  std::string where(std::size_t line, const std::string &source,
+                    const ParseState &state) {
+    std::string out = lineOf(line, source);
+    const std::vector<std::string> &by = state.includedBy;
+    if (by.empty()) return out;
+    out += " (" + by.back();
+    for (std::size_t k = by.size() - 1; k-- > 0;)
+      out += ", which " + by[k] + " includes";
+    return out + ")";
+  }
+
+  /**
    * @brief What the error of a value of @p key that its types do not take
    *        gives after its first line: "  Allowed schema:" and
    *        "    <key>   <type>" for each value type of the key, "  Format:"
@@ -230,8 +261,9 @@ namespace {
     std::vector<SkippedKeyLine> *skipped = nullptr;
   };
 
-  Context parseFile(const std::string &filename, const Refusal &refused,
-                    const LineSkip &skip, const std::string &includedAt = "");
+  void parseFile(const std::string &filename, Context &ctx, ParseState &state,
+                 const Refusal &refused, const LineSkip &skip,
+                 const std::string &includedAt = "");
 
   /**
    * @brief Parse lines into an existing Context object.
@@ -239,9 +271,16 @@ namespace {
    * lines[i] is line first_line + i of source (empty: no name), which
    * every error of a line names, with its key: an unknown key, a key the
    * caller refuses, a value the key does not take, more values than the
-   * key takes, a block that is not closed and a CONFIG line whose file
-   * does not open or includes a file of the chain again.
+   * key takes, a second line of a key of one value, a block that is not
+   * closed and a CONFIG line whose file does not open or includes a file
+   * of the chain again.
    *
+   * A CONFIG line reads the lines of its file into @p ctx at its place
+   * (the configuration is the concatenation of its lines), with @p state:
+   * a key of one value (|value_N[0]| 1) is set by one line of the
+   * configuration, and a second line of it, in this file or another, is
+   * refused naming both (where()); a key of several values takes the
+   * values of its lines in line order, up to the number it takes.
    * Circular dependency detection is handled by tracking CONFIG filenames
    * in configChain. When a CONFIG line is encountered, the file is pushed
    * into configChain, parsed, then popped after the nested parse.
@@ -249,12 +288,12 @@ namespace {
    * A run setting of a potential (potentialRunSetting, by the keys of
    * @p lines: fileKeys) is checked and not stored, with or without a rule;
    * with a rule (@p skip), so is a key line the rule selects, and both are
-   * appended to skip.skipped. A CONFIG include is read under the same
-   * rules, by the keys of its own lines.
+   * appended to skip.skipped: such a line sets nothing. A CONFIG include is
+   * read under the same rules, by the keys of its own lines.
    */
   void parseLines(const std::vector<std::string> &lines, Context &ctx,
-                  std::size_t first_line, const std::string &source,
-                  const Refusal &refused,
+                  ParseState &state, std::size_t first_line,
+                  const std::string &source, const Refusal &refused,
                   const LineSkip &skip = LineSkip()) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
     const std::set<std::string> ownKeys = fileKeys(lines);
@@ -485,40 +524,49 @@ namespace {
         }
         // Push config name before nested parse
         configChain.push_back(val);
+        state.includedBy.push_back(configLine);
 
-        // Perform nested parse, under the same refusal and rule
-        Context configCtx;
+        // The included lines, read at this line into the same context,
+        // under the same refusal and rule: their keys add to the lines
+        // read so far, and their structured blocks follow the declarations
+        // made so far.
         try {
-          configCtx = parseFile(val, refused, skip, configLine);
+          parseFile(val, ctx, state, refused, skip, configLine);
         } catch (...) {
           // Clean up the chain if parsing fails
           configChain.pop_back();
+          state.includedBy.pop_back();
           throw;
         }
 
         // Pop config name after nested parse
         configChain.pop_back();
-        
-        // Merge the nested context: its keys override, its structured
-        // blocks follow the declarations made so far.
-        ctx = tadah::core::Context::merge(ctx, configCtx, true,
-                                          tadah::core::Context::BlockMerge::Append);
+        state.includedBy.pop_back();
         continue; // Skip adding "CONFIG" key or its value to the context
       }
-      // Other keys store their values. A key of several values adds the
-      // values of each of its lines, up to the number it takes (value_N);
-      // a line of a key of one value replaces the line before
-      // (Context::add): more is an error at the line that exceeds it.
+      // Other keys store their values. A key of one value is set by one
+      // line of the configuration: a second line is an error naming both.
+      // A key of several values adds the values of each of its lines, up
+      // to the number it takes (value_N): more is an error at the line
+      // that exceeds it.
       const std::size_t most =
           static_cast<std::size_t>(std::abs(keyInfo.value_N.at(0)));
-      if (most > 1) {
+      const std::string here = where(first_line + i, source, state);
+      if (most == 1) {
+        const auto first = state.setAt.emplace(uKey, here);
+        if (!first.second)
+          throw std::runtime_error(
+              "Key " + uKey + " is set on " + first.first->second +
+              " and on " + here +
+              ": a key of one value is set once in a configuration file and "
+              "the files it includes with CONFIG");
+      } else {
         const std::size_t given =
             (ctx.has_stored(uKey) ? ctx.size(uKey) : 0) + tokens.size() - 1;
         if (given > most)
           throw std::runtime_error(
-              "Too many values for key " + uKey + " on " +
-              lineOf(first_line + i, source) + ": " + uKey +
-              " takes at most " + std::to_string(most) +
+              "Too many values for key " + uKey + " on " + here + ": " +
+              uKey + " takes at most " + std::to_string(most) +
               ", and its lines read so far give " + std::to_string(given));
       }
       for (size_t j = 1; j < tokens.size(); ++j) {
@@ -528,14 +576,15 @@ namespace {
   }
 
   /**
-   * @brief One parse of the file @p filename: its lines, under the
+   * @brief Reads the lines of the file @p filename into @p ctx, under the
    *        refusal @p refused and the rule @p skip (a top-level parse, or
    *        the file of the CONFIG line @p includedAt, "CONFIG on line 2 of
    *        config.train", which the error of a file that does not open
    *        names: "Failed to open config file: <file> (<includedAt>)").
    */
-  Context parseFile(const std::string &filename, const Refusal &refused,
-                    const LineSkip &skip, const std::string &includedAt) {
+  void parseFile(const std::string &filename, Context &ctx, ParseState &state,
+                 const Refusal &refused, const LineSkip &skip,
+                 const std::string &includedAt) {
     ParseScope scope;
 
     std::ifstream infile(filename.c_str());
@@ -554,9 +603,7 @@ namespace {
     }
     infile.close();
 
-    Context ctx;
-    parseLines(lines, ctx, 1, filename, refused, skip);
-    return ctx;
+    parseLines(lines, ctx, state, 1, filename, refused, skip);
   }
   /**
    * @brief The end of a public parse: one notice for the retired lines it
@@ -581,25 +628,31 @@ const std::vector<std::string> &run_setting_keys() {
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
-  return finishParse(parseFile(filename, Refusal{refused_, command_},
-                               LineSkip()));
+  Context ctx;
+  ParseState state;
+  parseFile(filename, ctx, state, Refusal{refused_, command_}, LineSkip());
+  return finishParse(std::move(ctx));
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename,
                                     const KeyLineRule &skip,
                                     std::vector<SkippedKeyLine> &skipped) const {
-  return finishParse(parseFile(filename, Refusal{refused_, command_},
-                               skip ? LineSkip{&skip, &skipped} : LineSkip()));
+  Context ctx;
+  ParseState state;
+  parseFile(filename, ctx, state, Refusal{refused_, command_},
+            skip ? LineSkip{&skip, &skipped} : LineSkip());
+  return finishParse(std::move(ctx));
 }
 
 Context CoreUserConfigParser::parse(std::istream &in) const {
   Context ctx;
   {
     ParseScope scope;
+    ParseState state;
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(in, line)) lines.push_back(line);
-    parseLines(lines, ctx, 1, "", Refusal{refused_, command_});
+    parseLines(lines, ctx, state, 1, "", Refusal{refused_, command_});
   }
   return finishParse(std::move(ctx));
 }
@@ -609,7 +662,8 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   Context ctx;
   {
     ParseScope scope;
-    parseLines(lines, ctx, 1, "", Refusal{refused_, command_});
+    ParseState state;
+    parseLines(lines, ctx, state, 1, "", Refusal{refused_, command_});
   }
   return finishParse(std::move(ctx));
 }

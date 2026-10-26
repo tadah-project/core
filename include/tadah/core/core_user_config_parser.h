@@ -42,10 +42,25 @@ const std::vector<std::string> &run_setting_keys();
  * of config.train: 'abc'", the key's schema, format and examples on the lines that follow; a
  * value outside its allowed values lists them), more values than the key takes over its lines
  * ("Too many values for key MODEL on line 4 of config.train: MODEL takes at most 3, and its
- * lines read so far give 4"), a block that is not closed ("OPTIMIZER on line 2 of config.train
- * is not closed; expected ENDOPTIMIZER") and a CONFIG line whose file does not open ("Failed to
- * open config file: other.cfg (CONFIG on line 2 of config.train)") or includes a file of the
- * chain of includes again.
+ * lines read so far give 4"), a second line of a key of one value ("Key BIAS is set on line 1
+ * of config.train and on line 2 of inc.cfg (CONFIG on line 3 of config.train): a key of one
+ * value is set once in a configuration file and the files it includes with CONFIG"), a block
+ * that is not closed ("OPTIMIZER on line 2 of config.train is not closed; expected
+ * ENDOPTIMIZER") and a CONFIG line whose file does not open ("Failed to open config file:
+ * other.cfg (CONFIG on line 2 of config.train)") or includes a file of the chain of includes
+ * again.
+ *
+ * A configuration is the concatenation of its lines: a CONFIG line reads the lines of the file
+ * it names at its place, into the same Context (a nested CONFIG line likewise; the path is
+ * opened as given, relative to the working directory). A key of one value (|value_N[0]| 1) is
+ * set by one line of the configuration: a second line of it, in the same file or in another,
+ * above or below the CONFIG line, is refused naming both lines, each with its file and, for a
+ * line of an included file, the CONFIG lines that include it ("line 2 of deep.cfg (CONFIG on
+ * line 3 of mid.cfg, which CONFIG on line 2 of config.train includes)"); a key of several
+ * values takes the values of its lines in line order, up to the number it takes, and the
+ * structured blocks follow in line order too. A line a parse does not store (a deprecated or
+ * retired key, a run setting of a potential, a line of a key of another command in a
+ * potential, a line the caller's KeyLineRule selects) sets nothing.
  *
  * A key the blueprint marks as deprecated (BlueprintKey::deprecated) is accepted so that older
  * configuration and potential files still load: its value is validated like any other, a
