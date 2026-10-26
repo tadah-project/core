@@ -590,6 +590,70 @@ std::string trimmed(const std::string &t) {
 
 } // namespace
 
+/* Pins: a line whose key is no configuration key is refused naming the
+ * key (upper case), its line and its file, with the closest key, in one
+ * message and without a Logger line:
+ *   "Invalid key VERBOS on line 3 of <file> (closest key: VERBOSE)"
+ * for a configuration file (comment and blank lines counted), for a file
+ * it includes with CONFIG (that file and its line), for a potential and,
+ * without a file, for a stream ("on line 2"). A TASK line is such a line:
+ * TASK is no key ("Invalid key TASK on line 2 of <file>"), in a file and
+ * in a file it includes.
+ * Before the fix: the message was "Invalid key: VERBOS", without the line
+ * and the file, after two Logger ERROR lines ("CoreUserConfigParser::parse
+ * -> Invalid key: VERBOS", "  Did you mean: VERBOSE"); a TASK line was read
+ * as the key TASK and stored (no exception). */
+TEST_CASE("Config parser: an unknown key is refused naming the key, the "
+          "line and the file",
+          "[config][unknown_key]") {
+  RefuseScratch dir;
+  const std::string hint = " (closest key: VERBOSE)";
+  SECTION("a configuration file") {
+    const std::string f =
+        dir.write("typo.cfg", "# a comment\n\nVERBOS 1\nATOM Ta\n");
+    CaptureLog log;
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(f); }, "parse " + f);
+    CHECK(msg == "Invalid key VERBOS on line 3 of " + f + hint);
+    CHECK(log.text().empty());
+  }
+  SECTION("a file it includes with CONFIG") {
+    const std::string inner = dir.write("inner_typo.cfg", "ATOM Ta\nverbos 1\n");
+    const std::string outer =
+        dir.write("outer_typo.cfg", "WATOM 73\nCONFIG " + inner + "\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(outer); }, "parse " + outer);
+    CHECK(msg == "Invalid key VERBOS on line 2 of " + inner + hint);
+  }
+  SECTION("a potential") {
+    const std::string pot = dir.write(
+        "typo_pot.tadah", "ATOM Ta\nWATOM 73\nVERBOS 0\nWEIGHTS 1.0 2.0\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(pot); }, "parse " + pot);
+    CHECK(msg == "Invalid key VERBOS on line 3 of " + pot + hint);
+  }
+  SECTION("a stream") {
+    std::istringstream in("ATOM Ta\nVERBOS 1\n");
+    const std::string msg = runtime_error_of(
+        [&] { return CoreUserConfigParser().parse(in); }, "parse(stream)");
+    CHECK(msg == "Invalid key VERBOS on line 2" + hint);
+  }
+  SECTION("a TASK line, in a file and in a file it includes") {
+    const std::string f = dir.write(
+        "with_task.cfg", "ATOM Ta\nTASK predict\nDBFILE db.tadah\n");
+    CHECK_THAT(runtime_error_of([&] { return CoreUserConfigParser().parse(f); },
+                                "parse " + f),
+               Catch::Matchers::StartsWith("Invalid key TASK on line 2 of " +
+                                           f + " (closest key: "));
+    const std::string outer =
+        dir.write("includes_task.cfg", "ATOM Ta\n\nCONFIG " + f + "\n");
+    CHECK_THAT(
+        runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                         "parse " + outer),
+        Catch::Matchers::StartsWith("Invalid key TASK on line 2 of " + f));
+  }
+}
+
 /* Pins: when CoreUserConfigParser refuses a value of a key (the value does
  * not have the key's format), the lines it writes under "  Examples:" are,
  * for every key whose value can be refused (one of "@", "", "1.5", "@ @ @"
@@ -690,13 +754,20 @@ TEST_CASE("Config parser: a key written as a block has no examples",
 }
 
 namespace {
-/* The message parse() throws for `lines` (first line `first` of `source`),
- * or "no exception". */
-std::string parse_refusal(const std::vector<std::string> &lines,
-                          std::size_t first = 1,
-                          const std::string &source = "") {
+/* The message parse() throws for `lines`, or "no exception". */
+std::string parse_refusal(const std::vector<std::string> &lines) {
   try {
-    (void)CoreUserConfigParser().parse(lines, first, source);
+    (void)CoreUserConfigParser().parse(lines);
+  } catch (const std::exception &e) {
+    return e.what();
+  }
+  return "no exception";
+}
+
+/* The message parse() throws for the file @p path, or "no exception". */
+std::string parse_file_refusal(const std::string &path) {
+  try {
+    (void)CoreUserConfigParser().parse(path);
   } catch (const std::exception &e) {
     return e.what();
   }
@@ -711,7 +782,7 @@ std::string parse_refusal(const std::vector<std::string> &lines,
  *   "Invalid value for key FIXWEIGHT on line 1: '0.1,0.2' separates values
  *    with ',', which a configuration line is not split at (values are
  *    separated by blanks: FIXWEIGHT 0.1 0.2)"
- * also with the file and line of a task section (line 3 of run.task), for
+ * also with the file and line of a configuration file (line 3), for
  * '+' ('MPARAMS 1.0+2.0'), for both ('CGRID2B 1.0,2.0+3.0': "',' and
  * '+'"), with blanks around the comma ('SGRID2B 1.0, 2.0': SGRID2B 1.0
  * 2.0), for a key of several single values ('MODEL M_BLR,BF_Linear'), for an
@@ -762,11 +833,14 @@ TEST_CASE("Config parser: a comma or '+' between values is refused, naming "
     INFO(c.line);
     CHECK(parse_refusal({c.line}) == c.message);
   }
-  // The file and line of a task section.
-  CHECK(parse_refusal({"# comment", "VERBOSE 1", "FIXWEIGHT 0.1,0.2"}, 1,
-                      "run.task") ==
-        "Invalid value for key FIXWEIGHT on line 3 of run.task: '0.1,0.2' "
-        "separates values with ','" + tail + "FIXWEIGHT 0.1 0.2)");
+  // The file and line of a configuration file.
+  RefuseScratch dir;
+  const std::string file =
+      dir.write("separators.cfg", "# comment\nVERBOSE 1\nFIXWEIGHT 0.1,0.2\n");
+  CHECK(parse_file_refusal(file) ==
+        "Invalid value for key FIXWEIGHT on line 3 of " + file +
+            ": '0.1,0.2' separates values with ','" + tail +
+            "FIXWEIGHT 0.1 0.2)");
   // A line of 2048 characters or more.
   std::string long_line = "FIXWEIGHT 1.0";
   while (long_line.size() < 2100) long_line += ",2.0";

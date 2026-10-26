@@ -286,49 +286,49 @@ TEST_CASE("Blueprint: tadah data balance shifts energies only; analysis "
   CHECK(t.longDescription.find("rescal") == std::string::npos);
 }
 
-/* Pins: the optional field only_with of `retired` names the retired option
- * of the same task without which a retired option of a task had no effect
- * (tadah data balance --force acted only with --rescale). buildKey reads
- * it; a retired key without it has none; a value that is not a non-empty
- * string is refused, and so is any other field.
- * Before the fix: `retired` was a table of exactly three strings, so a
- * table with only_with was refused. */
-TEST_CASE("BlueprintParser::buildKey reads only_with of `retired`",
+/* Pins: `retired` has no field only_with: a retired table with it (or
+ * any other field than reason, replacement, conversion and by_deletion) is
+ * refused, naming 'retired' and the key; the message lists the fields
+ * without only_with.
+ * Before the fix: only_with, the retired option of the same command
+ * without which a retired option had no effect (tadah data balance
+ * --force acted only with --rescale), was an optional field for the lines
+ * of the GLOBAL section of a task file: buildKey read
+ * only_with = "other" (no exception), and its message named only_with. */
+TEST_CASE("BlueprintParser::buildKey refuses a field only_with of `retired`",
           "[BlueprintParser][retired]") {
-  const BlueprintKey with = BlueprintParser::buildKey(
-      "KEY", key_table("", kNoExamples, kRetired + "only_with = \"other\"\n"));
-  CHECK(with.isRetired());
-  CHECK(with.retired.only_with == "other");
-  CHECK(with.retired.conversion == "OTHER = 1/sqrt(KEY).");
-  CHECK(BlueprintParser::buildKey("KEY", key_table("", kNoExamples, kRetired))
-            .retired.only_with.empty());
   for (const std::string bad :
-       {std::string("only_with = \"\"\n"), std::string("only_with = \" \"\n"),
-        std::string("only_with = 1\n"), std::string("only_with = [\"a\"]\n"),
+       {std::string("only_with = \"other\"\n"),
+        std::string("only_with = \"other\"\nby_deletion = true\n"),
         std::string("with = \"other\"\n")}) {
     INFO(bad);
-    REQUIRE_THROWS_WITH(
-        BlueprintParser::buildKey("KEY",
-                                  key_table("", kNoExamples, kRetired + bad)),
-        Contains("'retired'") && Contains("only_with") && Contains("KEY"));
+    std::string msg;
+    try {
+      (void)BlueprintParser::buildKey(
+          "KEY", key_table("", kNoExamples, kRetired + bad));
+    } catch (const std::runtime_error &e) {
+      msg = e.what();
+    }
+    CHECK_THAT(msg, Contains("'retired'") && Contains("by_deletion") &&
+                        Contains("KEY"));
+    CHECK(msg.find("only_with") == std::string::npos);
   }
 }
 
 /* Pins: the optional field by_deletion of `retired` says that deleting a
  * line of the key converts it (nothing replaces the key: UNCERTAINTY,
  * WCOV, WNOISE, ERROR), which a fit's refusal says of each such line.
- * buildKey reads it, beside only_with too; a retired key without it is
- * not converted by deletion; a value that is not true or false is
- * refused, naming the field and the key.
+ * buildKey reads it; a retired key without it is not converted by
+ * deletion; a value that is not true or false is refused, naming the
+ * field and the key.
  * Before the fix: there was no by_deletion, and a table with it was
- * refused as a fourth field that is not only_with. */
+ * refused as a fourth field. */
 TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
           "[BlueprintParser][retired]") {
   const BlueprintKey del = BlueprintParser::buildKey(
       "KEY", key_table("", kNoExamples, kRetired + "by_deletion = true\n"));
   CHECK(del.isRetired());
   CHECK(del.retired.by_deletion);
-  CHECK(del.retired.only_with.empty());
   CHECK_FALSE(BlueprintParser::buildKey(
                   "KEY", key_table("", kNoExamples,
                                    kRetired + "by_deletion = false\n"))
@@ -336,12 +336,6 @@ TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
   CHECK_FALSE(BlueprintParser::buildKey("KEY",
                                         key_table("", kNoExamples, kRetired))
                   .retired.by_deletion);
-  const BlueprintKey both = BlueprintParser::buildKey(
-      "KEY", key_table("", kNoExamples,
-                       kRetired + "only_with = \"other\"\n"
-                                  "by_deletion = true\n"));
-  CHECK(both.retired.by_deletion);
-  CHECK(both.retired.only_with == "other");
   for (const std::string bad :
        {std::string("by_deletion = \"true\"\n"),
         std::string("by_deletion = 1\n")}) {
