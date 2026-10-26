@@ -2,6 +2,7 @@
 #include <tadah/core/blueprint_parser.h>
 #include <tadah/core/context.h>
 #include <tadah/core/core_user_config_parser.h>
+#include <tadah/core/key_notice.h>
 #include <tadah/core/logger.h>
 #include <dirent.h>
 
@@ -1408,5 +1409,81 @@ TEST_CASE("Config parser: a potential's CHECK line is not stored, a training "
     }
     INFO("thrown: " << what);
     CHECK(what.find("CHECK") != std::string::npos);
+  }
+}
+
+// Pins: a key that only some commands read -- an option of their command
+// line (ANALYTICS of tadah predict, INDEX of tadah data print and others) or
+// a key of their configuration file (REFIT_MODE and the OPTIMIZER block of
+// tadah refit) -- is no key of a potential. A potential (a file whose own
+// lines give WEIGHTS) of an earlier version may hold such a line, as tadah
+// train wrote what its configuration held: every parse checks the line as
+// any line and does not store it, and gives one notice per key naming its
+// line as written, the line number, the file and the commands that read the
+// key ("Key ANALYTICS is ignored: ANALYTICS true on line 3 of pot.cfg ...
+// tadah predict ..."); the potential's own keys are stored. A file without
+// WEIGHTS stores the same lines (the command that reads a configuration
+// file refuses the keys of other commands, TaskFactory), and a potential's
+// line with a value its key does not take is refused as any line.
+// Before the fix: every parse stored the four keys of the potential and
+// gave no notice.
+TEST_CASE("Config parser: a potential's line of a key of another command is "
+          "not stored, with a notice",
+          "[config][potential_run_settings][command_keys]") {
+  RefuseScratch dir;
+  const CoreUserConfigParser parser;
+  const std::string pot = dir.write(
+      "pot.cfg", "ATOM Ta\nWEIGHTS 0.25 -0.5\nANALYTICS true\n"
+                 "REFIT_MODE dense\nINDEX 1,3\n"
+                 "OPTIMIZER\nALGO LN_SBPLX\nENDOPTIMIZER\n");
+  {
+    IgnoredKeyNoticeCapture cap;
+    const Context c = parser.parse(pot);
+    CHECK(c.has_stored("ATOM"));
+    CHECK(c.has_stored("WEIGHTS"));
+    for (const char *key : {"ANALYTICS", "REFIT_MODE", "INDEX", "OPTIMIZER"}) {
+      INFO("key " << key);
+      CHECK_FALSE(c.has_stored(key));
+    }
+    std::string notices;
+    for (const std::string &n : cap.notices()) notices += n + "\n";
+    INFO(notices);
+    CHECK(cap.notices().size() == 4);
+    for (const auto &[line, owner] :
+         {std::pair<std::string, std::string>{"ANALYTICS true on line 3",
+                                              "tadah predict"},
+          {"REFIT_MODE dense on line 4", "tadah refit"},
+          {"INDEX 1,3 on line 5", "tadah data print"},
+          {"OPTIMIZER on line 6", "tadah refit"}}) {
+      INFO(line);
+      bool named = false;
+      for (const std::string &n : cap.notices())
+        if (n.find(line + " of " + pot) != std::string::npos &&
+            n.find(owner) != std::string::npos)
+          named = true;
+      CHECK(named);
+    }
+  }
+  {
+    const std::string cfg = dir.write(
+        "train.cfg", "ATOM Ta\nANALYTICS true\nREFIT_MODE dense\nINDEX 1,3\n");
+    const Context c = parser.parse(cfg);
+    for (const char *key : {"ANALYTICS", "REFIT_MODE", "INDEX"}) {
+      INFO("key " << key);
+      CHECK(c.has_stored(key));
+    }
+  }
+  {
+    const std::string bad =
+        dir.write("bad.cfg", "ATOM Ta\nWEIGHTS 0.25 -0.5\nANALYTICS maybe\n");
+    std::string what;
+    try {
+      (void)parser.parse(bad);
+    } catch (const std::exception &e) {
+      what = e.what();
+    }
+    INFO("thrown: " << what);
+    CHECK(what.find("ANALYTICS") != std::string::npos);
+    CHECK(names_line(what, 3));
   }
 }

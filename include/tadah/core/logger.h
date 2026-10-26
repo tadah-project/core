@@ -35,8 +35,8 @@ enum class LogLevel {
 /**
  * @brief Logger class for centralized, thread-safe logging.
  *
- * Implements a singleton pattern and now supports per-task log level
- * and file overrides. Global settings are used if no per-task override is provided.
+ * Implements a singleton pattern: one log level and one optional log
+ * file for the process.
  *
  * Log levels can be specified either with an integer or with a string (e.g. "INFO", "ERROR").
  * Log files are opened in append mode.
@@ -54,14 +54,6 @@ public:
 
   // Global log file setter.
   bool setLogFile(const std::string &filename);
-
-  // Per-task log level setters.
-  void setTaskLogLevel(const std::string &task, LogLevel level);
-  void setTaskLogLevel(const std::string &task, int level);
-  void setTaskLogLevel(const std::string &task, const std::string &levelStr);
-
-  // Per-task log file setter.
-  bool setTaskLogFile(const std::string &task, const std::string &filename);
 
   // Converts a string (or integer in string form) to a LogLevel.
   static LogLevel stringToLogLevel(const std::string &s) {
@@ -93,13 +85,7 @@ public:
   // Global logging function.
   template <typename... Args>
   void log(LogLevel messageLevel, Args&&... args) {
-    logInternal("", messageLevel, std::forward<Args>(args)...);
-  }
-
-  // Log function for task-specific messages.
-  template <typename... Args>
-  void logTask(const std::string &task, LogLevel messageLevel, Args&&... args) {
-    logInternal(task, messageLevel, std::forward<Args>(args)...);
+    logInternal(messageLevel, std::forward<Args>(args)...);
   }
 
 private:
@@ -108,52 +94,26 @@ private:
   std::string getCurrentTime() const;
 
   template <typename... Args>
-  void logInternal(const std::string &task, LogLevel messageLevel, Args&&... args) {
+  void logInternal(LogLevel messageLevel, Args&&... args) {
     #if !defined(DEBUG_BUILD)
       if (messageLevel == LogLevel::DEBUG || messageLevel == LogLevel::TRACE)
         return;
     #endif
 
-    LogLevel effectiveLevel = currentLevel;
-    std::ofstream* effectiveStream = &fileStream;
-    std::string taskNorm = "";
-    if (!task.empty()) {
-      taskNorm = toUpper(task);
-      auto itLvl = taskLevelMap.find(taskNorm);
-      if (itLvl != taskLevelMap.end())
-        effectiveLevel = itLvl->second;
-      auto itFile = taskFileMap.find(taskNorm);
-      if (itFile != taskFileMap.end())
-        effectiveStream = &(itFile->second);
-    }
-    if (messageLevel > effectiveLevel)
+    if (messageLevel > currentLevel)
       return;
 
     std::lock_guard<std::mutex> lock(mutex_);
     std::ostringstream oss;
     oss << "[" << getCurrentTime() << "] ";
-    if (!task.empty())
-      oss << "[" << taskNorm << "] ";
     oss << logLevelToString(messageLevel) << ": ";
     appendToStream(oss, std::forward<Args>(args)...);
     const std::string finalMessage = oss.str();
     std::cout << finalMessage << "\n";
-    if (effectiveStream && effectiveStream->is_open()) {
-      *effectiveStream << finalMessage << "\n";
-      effectiveStream->flush();
+    if (fileStream.is_open()) {
+      fileStream << finalMessage << "\n";
+      fileStream.flush();
     }
-  }
-
-  // Utility: normalize a task name.
-  static std::string toUpper(const std::string &s) {
-    return Logger::instance()._toUpper(s);
-  }
-  
-  // Internal conversion that can be used in Logger
-  std::string _toUpper(const std::string &s) const {
-    std::string result(s);
-    std::transform(result.begin(), result.end(), result.begin(), ::toupper);
-    return result;
   }
 
 private:
@@ -161,10 +121,6 @@ private:
   mutable std::mutex mutex_;
   bool fileLoggingEnabled;
   std::ofstream fileStream;
-
-  // Per-task overrides.
-  std::unordered_map<std::string, LogLevel> taskLevelMap;
-  std::unordered_map<std::string, std::ofstream> taskFileMap;
 
 };
 } // namespace core

@@ -34,36 +34,6 @@ bool Logger::setLogFile(const std::string &filename) {
   return fileLoggingEnabled;
 }
 
-  inline std::string toUpper(const std::string &s) {
-    std::string result(s);
-    std::transform(result.begin(), result.end(), result.begin(),
-                   [](unsigned char ch) { return std::toupper(ch); });
-    return result;
-  }
-void Logger::setTaskLogLevel(const std::string &task, LogLevel level) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  taskLevelMap[toUpper(task)] = level;
-}
-
-void Logger::setTaskLogLevel(const std::string &task, int level) {
-  setTaskLogLevel(task, static_cast<LogLevel>(level));
-}
-
-void Logger::setTaskLogLevel(const std::string &task, const std::string &levelStr) {
-  setTaskLogLevel(task, stringToLogLevel(levelStr));
-}
-
-bool Logger::setTaskLogFile(const std::string &task, const std::string &filename) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  std::string taskName = toUpper(task);
-  std::ofstream tempStream;
-  tempStream.open(filename.c_str(), std::ios::out | std::ios::app);
-  if (!tempStream.is_open())
-    return false;
-  taskFileMap[taskName] = std::move(tempStream);
-  return true;
-}
-
 std::string Logger::logLevelToString(LogLevel level) const {
   switch (level) {
     case LogLevel::TRACE: return "TRACE";
