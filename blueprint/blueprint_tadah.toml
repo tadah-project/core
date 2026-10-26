@@ -132,6 +132,30 @@ value_type     = ["STRING"]
 value_format   = ["<file>"]
 value_N        = [1]
 description    = "Path to a configuration file."
+long_description = """
+With -c (--config), the configuration file of the command. As a line of a
+configuration file, CONFIG includes another file. The configuration is the
+concatenation of its lines: the lines of the included file are read in
+place of the CONFIG line, in their order. A file can have several CONFIG
+lines, and an included file can include another the same way. A file that
+includes itself, directly or through the files it includes, is refused.
+
+A key of one value, such as BIAS or ESIGMA, is set once in a configuration
+file and the files it includes: a second line of the key, in the same file
+or in another, above or below the CONFIG line, is refused naming both lines
+and their files. The lines of a key of several values add up in line
+order, up to the number of values the key takes, and a line past that
+number is refused: DBFILE lists the datasets of all its lines. A line the
+run does not read, such as the EFILTER line of an included potential (the
+Training page of the documentation, Retraining from a potential), sets
+nothing. An option of the command line is no line of the file: it takes
+precedence over the lines of its key.
+
+A relative path is relative to the working directory, the directory the
+command runs in, not to the directory of the file that holds the line: the
+path of a CONFIG line, and every path in an included file (a DBFILE or
+CONFIG line among them).
+"""
 examples       = ["config.tadah", "../config.tadah", "/path/to/config.tadah"]
 cli_long_flag  = "--config"
 cli_short_flag = "-c"
