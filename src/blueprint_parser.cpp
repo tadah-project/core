@@ -1082,14 +1082,19 @@ std::string task_command_words(const std::string &task) {
 }
 
 std::vector<std::string> commands_reading_key(const std::string &key) {
+  // A task key that the task retires (an option it refuses with the
+  // reason, such as --rescale of tadah data balance) is not read by it.
+  auto reads_it = [&key](const BlueprintKey &k) {
+    return !k.isRetired() && last_word_upper(k.keyName) == key;
+  };
   std::vector<std::string> tasks;
   for (const auto &kv : BlueprintParser::getTasksMapRef()) {
     bool reads = false;
     for (const BlueprintKey &k : kv.second.blueprintKeys)
-      if (last_word_upper(k.keyName) == key) reads = true;
+      if (reads_it(k)) reads = true;
     for (const BlueprintKeyGroup &g : kv.second.groups)
       for (const BlueprintKey &k : g.blueprintKeys)
-        if (last_word_upper(k.keyName) == key) reads = true;
+        if (reads_it(k)) reads = true;
     if (reads) tasks.push_back(kv.first);
   }
   std::sort(tasks.begin(), tasks.end());
@@ -1103,15 +1108,19 @@ std::string command_key_role(const std::string &key) {
   if (commands.empty()) return "read by no tadah command";
   const auto &keys = BlueprintParser::getKeysMapRef();
   const auto found = keys.find(key);
-  std::string option;
-  if (found != keys.end() &&
-      found->second.cli_long_flag.rfind("--", 0) == 0) {
-    option = found->second.cli_long_flag;
+  const std::string flag =
+      found == keys.end() ? std::string() : found->second.cli_long_flag;
+  // A flag that does not start with '-' names a positional argument
+  // (OPTION of tadah explain).
+  if (!flag.empty() && flag[0] != '-')
+    return "the argument of " + and_list(commands);
+  if (flag.rfind("--", 0) == 0) {
+    std::string option = flag;
     if (!found->second.cli_short_flag.empty())
       option += " (" + found->second.cli_short_flag + ")";
+    return "the option " + option + " of " + and_list(commands);
   }
-  return (option.empty() ? "a key of " : "the option " + option + " of ") +
-         and_list(commands);
+  return "a key of " + and_list(commands);
 }
 
 std::string command_key_text(const std::string &key) {

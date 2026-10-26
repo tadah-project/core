@@ -374,7 +374,9 @@ public:
  * @brief The commands that read the key @p key (upper case): those whose
  *        [TASKS.*] table lists it among its options or the keys of its
  *        option groups, as typed ("tadah predict", "tadah data print"),
- *        sorted.
+ *        sorted. A command whose table retires the key (BlueprintKey::
+ *        isRetired(): an option it refuses with the reason, such as
+ *        --rescale of tadah data balance) does not read it.
  */
 std::vector<std::string> commands_reading_key(const std::string &key);
 
@@ -388,7 +390,9 @@ std::string task_command_words(const std::string &task);
  * @brief What the key @p key (upper case) of BlueprintKey::command_only is,
  *        for a message: "the option --analytics (-A) of tadah predict", "a
  *        key of tadah refit", "the option --index of tadah analysis bfunc,
- *        ... and tadah data write", or "read by no tadah command".
+ *        ... and tadah data write", "the argument of tadah explain" (a
+ *        cli_long_flag that does not start with '-' names a positional
+ *        argument), or "read by no tadah command".
  */
 std::string command_key_role(const std::string &key);
 
