@@ -351,3 +351,34 @@ TEST_CASE("Blueprint: loading a blueprint refuses a field of an option group "
   }
   CHECK_NOTHROW(BlueprintParser::getTasksMapRef());
 }
+
+/* Pins: the commands that read a command key (BlueprintKey::command_only)
+ * are those whose options or group keys list it, without a command whose
+ * table retires it: RESCALE and THRESHOLD, retired options of tadah data
+ * balance (refused there with the reason), are read by tadah analysis
+ * bfunc and by tadah data dedup alone, and a message names those ("RESCALE
+ * is the option --rescale of tadah analysis bfunc"). OPTION, whose
+ * cli_long_flag does not start with "-", is the positional argument of
+ * tadah explain and is named so ("OPTION is the argument of tadah
+ * explain"); ANALYTICS stays the option --analytics (-A) of tadah predict
+ * (a pin).
+ * Before the fix: tadah data balance was named among the commands that
+ * read RESCALE and THRESHOLD, and OPTION was "a key of tadah explain", of a
+ * command that reads no configuration file. */
+TEST_CASE("Blueprint: a command key is named by the commands that read it, "
+          "not by one that retires it, and a positional one as the argument "
+          "of its command",
+          "[BlueprintParser][commands][command_keys]") {
+  CHECK_THAT(commands_reading_key("RESCALE"),
+             Equals(std::vector<std::string>{"tadah analysis bfunc"}));
+  CHECK_THAT(commands_reading_key("THRESHOLD"),
+             Equals(std::vector<std::string>{"tadah data dedup"}));
+  CHECK(command_key_text("RESCALE") ==
+        "RESCALE is the option --rescale of tadah analysis bfunc");
+  CHECK(command_key_text("THRESHOLD") ==
+        "THRESHOLD is the option --threshold of tadah data dedup");
+  CHECK(command_key_text("OPTION") ==
+        "OPTION is the argument of tadah explain");
+  CHECK(command_key_text("ANALYTICS") ==
+        "ANALYTICS is the option --analytics (-A) of tadah predict");
+}
