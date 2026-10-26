@@ -3229,7 +3229,10 @@ metrics: it has no energy, forces or stress tensor of its own (the values
 stored for it are placeholders; tadah data convert stores zero forces and
 stresses with that priority 0 for a file that gives none). A dataset in
 which every structure has that priority 0 is not measured by those metrics:
-nan in its column, left out of the mean, and a note names it. A run in
+nan in its column, left out of the mean, and a note names it. The R^2 of a
+dataset whose reference values are all equal (the forces of ideal crystals,
+all 0, or the energy per atom of one structure) has no value: nan in its
+column, left out of the mean, and a note names it. A run in
 which no dataset has an energy is not refused: its Energy lines are nan.
 With -F (-S), a run in which no dataset has forces (a stress tensor) is
 refused before predicting, and so, with or without them, is a dataset that
