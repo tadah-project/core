@@ -28,9 +28,13 @@ using namespace tadah::core;
 
 namespace tadah {
 namespace core {
-/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential}". */
+/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential,
+ * file a.cfg, 1 value(s), line number 2, ordinal 2}". */
 inline std::ostream &operator<<(std::ostream &os, const KeyLine &l) {
-  return os << "{" << l.where << (l.potential ? ", potential}" : "}");
+  return os << "{" << l.where << (l.potential ? ", potential" : "")
+            << ", file " << l.source << ", " << l.values
+            << " value(s), line number " << l.line << ", ordinal "
+            << l.ordinal << "}";
 }
 }  // namespace core
 }  // namespace tadah
@@ -1961,10 +1965,15 @@ TEST_CASE("Config parser: a file that includes itself is refused as a "
 
 /* The lines that gave each key its values: the parse records them on the
  * Context it returns (Context::key_lines()), in line order, each with where
- * it is (as the errors of a line name it) and whether it is a line of a
- * potential, a file whose own key lines have WEIGHTS. A configuration that
- * includes a potential with CONFIG (pot.tadah: ATOM, WEIGHTS, RCUT2B 5.0 on
- * line 3) and gives RCUT2B 4.0 above or below the CONFIG line:
+ * it is (as the errors of a line name it), whether it is a line of a
+ * potential, a file whose own key lines have WEIGHTS, the file it is in (as
+ * the parse names it: the file given to the parse, or the path of the
+ * CONFIG line that includes it; empty for lines of no file), the number of
+ * values it gave and the number of the line in its file (KeyLine::line, the
+ * number "where" names first). A configuration that includes a potential
+ * with CONFIG
+ * (pot.tadah: ATOM, WEIGHTS 0.25 -0.5, RCUT2B 5.0 on line 3) and gives
+ * RCUT2B 4.0 above or below the CONFIG line:
  *  - above.cfg "RCUT2B 4.0", "CONFIG pot.tadah", "DBFILE a.tadah":
  *    RCUT2B {line 1 of above.cfg, not a potential's; line 3 of pot.tadah
  *    (CONFIG on line 2 of above.cfg), a potential's}; WEIGHTS {line 2 of
@@ -1979,8 +1988,27 @@ TEST_CASE("Config parser: a file that includes itself is refused as a "
  *  - lines of no file "ATOM Ta", "RCUT2B 5.0", "WEIGHTS 1": RCUT2B {line 2,
  *    a potential's};
  *  - a line the parse does not store (the potential's EFILTER under the
- *    rule of its potential lines) sets no line.
- * Before the fix: does not compile (Context has no key_lines()). */
+ *    rule of its potential lines) sets no line;
+ *  - a key of two lines of one file, "RCUT2B 5.0" and "RCUT2B 6.0 7.0" of
+ *    a potential: {line 3, 1 value} and {line 5, 2 values}, both of that
+ *    file;
+ *  - the line of an included file has its number in that file (RCUT2B,
+ *    line 3 of pot.tadah), not the number of the CONFIG line;
+ *  - the number of a line among the lines of its file that hold more than
+ *    blanks and a comment (KeyLine::ordinal): in the files above, without
+ *    such lines, the line's number; in a potential of "ATOM Ta", "# a
+ *    comment", "WEIGHTS 1", a blank line, "RCUT2B 5.0", "  # an indented
+ *    comment", "RCUT2B 6.0 # an inline comment", "LAMBDA 0", "RCUT2B 7.0":
+ *    RCUT2B {line 5, ordinal 3}, {line 7, ordinal 4}, {line 9, ordinal 6},
+ *    so that the first two follow one another and the third does not; and
+ *    the same for lines of no file.
+ * Before the fix: does not compile (KeyLine has no line: a line was
+ * recorded by where it is, whether it is a potential's, its file and the
+ * number of its values, so that two lines of one file could not be told to
+ * be one after the other).
+ * Before the fix of the ordinal: does not compile (KeyLine has no ordinal:
+ * a comment or a blank line between two lines of a key set them apart as
+ * a line of another key does). */
 TEST_CASE("Config parser: the Context records the lines that gave each key "
           "its values and whether each is a potential's line",
           "[config][config_include][key_lines]") {
@@ -1995,14 +2023,14 @@ TEST_CASE("Config parser: the Context records the lines that gave each key "
     const std::string by = " (CONFIG on line 2 of " + above + ")";
     CHECK(c("RCUT2B") == std::vector<std::string>{"4.0", "5.0"});
     CHECK(c.key_lines("RCUT2B") ==
-          std::vector<KeyLine>{{"line 1 of " + above, false},
-                               {"line 3 of " + pot + by, true}});
+          std::vector<KeyLine>{{"line 1 of " + above, false, above, 1, 1, 1},
+                               {"line 3 of " + pot + by, true, pot, 1, 3, 3}});
     CHECK(c.key_lines("WEIGHTS") ==
-          std::vector<KeyLine>{{"line 2 of " + pot + by, true}});
+          std::vector<KeyLine>{{"line 2 of " + pot + by, true, pot, 2, 2, 2}});
     CHECK(c.key_lines("ATOM") ==
-          std::vector<KeyLine>{{"line 1 of " + pot + by, true}});
+          std::vector<KeyLine>{{"line 1 of " + pot + by, true, pot, 1, 1, 1}});
     CHECK(c.key_lines("DBFILE") ==
-          std::vector<KeyLine>{{"line 3 of " + above, false}});
+          std::vector<KeyLine>{{"line 3 of " + above, false, above, 1, 3, 3}});
     CHECK(c.key_lines("LAMBDA").empty());
   }
   SECTION("a line below the CONFIG line") {
@@ -2012,15 +2040,15 @@ TEST_CASE("Config parser: the Context records the lines that gave each key "
     CHECK(c.key_lines("RCUT2B") ==
           std::vector<KeyLine>{
               {"line 3 of " + pot + " (CONFIG on line 1 of " + below + ")",
-               true},
-              {"line 2 of " + below, false}});
+               true, pot, 1, 3, 3},
+              {"line 2 of " + below, false, below, 1, 2, 2}});
   }
   SECTION("the potential read alone") {
     const Context c = CoreUserConfigParser().parse(pot);
     CHECK(c.key_lines("RCUT2B") ==
-          std::vector<KeyLine>{{"line 3 of " + pot, true}});
+          std::vector<KeyLine>{{"line 3 of " + pot, true, pot, 1, 3, 3}});
     CHECK(c.key_lines("EFILTER") ==
-          std::vector<KeyLine>{{"line 4 of " + pot, true}});
+          std::vector<KeyLine>{{"line 4 of " + pot, true, pot, 2, 4, 4}});
   }
   SECTION("a nested include") {
     const std::string mid =
@@ -2030,17 +2058,18 @@ TEST_CASE("Config parser: the Context records the lines that gave each key "
     CHECK(c.key_lines("LAMBDA") ==
           std::vector<KeyLine>{
               {"line 1 of " + mid + " (CONFIG on line 1 of " + top + ")",
-               false}});
+               false, mid, 1, 1, 1}});
     CHECK(c.key_lines("RCUT2B") ==
           std::vector<KeyLine>{{"line 3 of " + pot + " (CONFIG on line 2 of " +
                                     mid + ", which CONFIG on line 1 of " +
                                     top + " includes)",
-                                true}});
+                                true, pot, 1, 3, 3}});
   }
   SECTION("lines of no file") {
     const Context c = CoreUserConfigParser().parse(
         std::vector<std::string>{"ATOM Ta", "RCUT2B 5.0", "WEIGHTS 1"});
-    CHECK(c.key_lines("RCUT2B") == std::vector<KeyLine>{{"line 2", true}});
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 2", true, "", 1, 2, 2}});
   }
   SECTION("a line the parse does not store") {
     const std::string run =
@@ -2051,7 +2080,40 @@ TEST_CASE("Config parser: the Context records the lines that gave each key "
     REQUIRE_FALSE(c.has_stored("EFILTER"));
     CHECK(c.key_lines("EFILTER").empty());
     CHECK(c.key_lines("DBFILE") ==
-          std::vector<KeyLine>{{"line 2 of " + run, false}});
+          std::vector<KeyLine>{{"line 2 of " + run, false, run, 1, 2, 2}});
+  }
+  SECTION("a key of two lines of one file") {
+    const std::string two = dir.write(
+        "lines_two.tadah",
+        "ATOM Ta\nWEIGHTS 0.25 -0.5\nRCUT2B 5.0\nDBFILE a.tadah\n"
+        "RCUT2B 6.0 7.0\n");
+    const Context c = CoreUserConfigParser().parse(two);
+    CHECK(c("RCUT2B") == std::vector<std::string>{"5.0", "6.0", "7.0"});
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 3 of " + two, true, two, 1, 3, 3},
+                               {"line 5 of " + two, true, two, 2, 5, 5}});
+  }
+  SECTION("comments and blank lines between the lines of a key") {
+    const std::vector<std::string> text{
+        "ATOM Ta",          "# a comment",
+        "WEIGHTS 1",        "",
+        "RCUT2B 5.0",       "  # an indented comment",
+        "RCUT2B 6.0 # an inline comment",
+        "LAMBDA 0",         "RCUT2B 7.0"};
+    std::string body;
+    for (const auto &l : text) body += l + "\n";
+    const std::string commented = dir.write("lines_commented.tadah", body);
+    const Context c = CoreUserConfigParser().parse(commented);
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{
+              {"line 5 of " + commented, true, commented, 1, 5, 3},
+              {"line 7 of " + commented, true, commented, 1, 7, 4},
+              {"line 9 of " + commented, true, commented, 1, 9, 6}});
+    const Context nofile = CoreUserConfigParser().parse(text);
+    CHECK(nofile.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 5", true, "", 1, 5, 3},
+                               {"line 7", true, "", 1, 7, 4},
+                               {"line 9", true, "", 1, 9, 6}});
   }
 }
 
