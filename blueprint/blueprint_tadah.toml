@@ -132,6 +132,36 @@ value_type     = ["STRING"]
 value_format   = ["<file>"]
 value_N        = [1]
 description    = "Path to a configuration file."
+long_description = """
+With -c (--config), CONFIG names the configuration file of the command. As
+a line of a configuration file, CONFIG includes another file. The
+configuration is the concatenation of its lines: the lines of the included
+file are read in place of the CONFIG line, in their order. A file can have
+several CONFIG lines, and an included file can include another the same
+way. A file that includes itself, directly or through the files it
+includes, is refused.
+
+A key of one value other than CONFIG, such as BIAS or ESIGMA, is set once
+in a configuration file and the files it includes. So is a key the command
+takes one value of, such as the OUTFILE of tadah train. A second line of
+the key, in the same file or in another, above or below the CONFIG line, is
+refused naming both lines and their files. A file included twice, by two
+CONFIG lines or through two included files, gives its lines twice, so its
+keys of one value are refused. A setting that differs between the files
+that include a shared file goes in each of them, not in the shared file.
+
+The lines of a key of several values add up in line order: DBFILE lists
+the datasets of all its lines. A line past the number of values the key
+takes is refused. A line the run does not read, such as the EFILTER line of
+an included potential (the Training page of the documentation, Retraining
+from a potential), sets nothing. An option of the command line takes
+precedence over the lines of its key.
+
+A relative path is relative to the working directory, the directory the
+command runs in, not to the directory of the file that holds the line. This
+holds for the path of a CONFIG line and for every path in an included file,
+such as a DBFILE line.
+"""
 examples       = ["config.tadah", "../config.tadah", "/path/to/config.tadah"]
 cli_long_flag  = "--config"
 cli_short_flag = "-c"
@@ -3835,6 +3865,10 @@ examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats
                     "tadah analysis dataset_stats -c train.tadah --outfile stats.tadah --close-contact 0.5"]
 [TASKS.analysis.dataset_stats.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
+[TASKS.analysis.dataset_stats.keys.outfile]
+value_N      = [1]
+value_type   = ["STRING"]
+value_format = ["<file>"]
 [TASKS.analysis.dataset_stats.groups.input]
 description      = "Structure source. One of the following options:"
 required_min = 1
@@ -3905,6 +3939,10 @@ with the same range (to --outfile, or to standard output).
 examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
 [TASKS.analysis.suggest_bounds.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
+[TASKS.analysis.suggest_bounds.keys.outfile]
+value_N      = [1]
+value_type   = ["STRING"]
+value_format = ["<file>"]
 [TASKS.analysis.suggest_bounds.groups.input]
 description      = "Source: a training configuration file."
 required_min = 1

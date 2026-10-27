@@ -8,10 +8,12 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 #include <unordered_set>
 
 namespace {
@@ -37,12 +39,41 @@ namespace {
   static thread_local int parseDepth = 0;
 
   /**
-   * @brief Tracks the chain of CONFIG files to detect circular references.
+   * @brief The files whose lines are being read, outermost first: the file
+   *        of the parse, then the file of each CONFIG line being read, each
+   *        by its path as given (ReadingFile).
    *
-   * On each nested parse for CONFIG, the file name is pushed. After that parse
-   * finishes, it is popped. If parseDepth resets to zero, the chain is cleared.
+   * A file is pushed before its lines are read and popped after them. If
+   * parseDepth resets to zero, the chain is cleared.
    */
   static thread_local std::vector<std::string> configChain;
+
+  /**
+   * @brief Holds the file @p path in configChain while its lines are read.
+   */
+  class ReadingFile {
+  public:
+    explicit ReadingFile(const std::string &path) {
+      configChain.push_back(path);
+    }
+    ~ReadingFile() { configChain.pop_back(); }
+    ReadingFile(const ReadingFile &) = delete;
+    ReadingFile &operator=(const ReadingFile &) = delete;
+  };
+
+  /**
+   * @brief Whether @p path names a file of configChain: the same file,
+   *        whatever path names it ("run.train", "./run.train", its absolute
+   *        path or a link to it; std::filesystem::equivalent). A path that
+   *        names no existing file is none of them: the file does not open.
+   */
+  bool beingRead(const std::string &path) {
+    for (const std::string &file : configChain) {
+      std::error_code ec;
+      if (std::filesystem::equivalent(file, path, ec)) return true;
+    }
+    return false;
+  }
 
   /**
    * @brief Writes the notice for a deprecated key to standard error, once
@@ -89,6 +120,98 @@ namespace {
   std::string lineOf(std::size_t line, const std::string &source) {
     std::string out = "line " + std::to_string(line);
     if (!source.empty()) out += " of " + source;
+    return out;
+  }
+
+  /**
+   * @brief What one public parse knows of the lines it has read, over the
+   *        files its CONFIG lines include (one Context holds them all: the
+   *        configuration is the concatenation of its lines).
+   */
+  struct ParseState {
+    /// The CONFIG lines that include the file being read, outermost first
+    /// ("CONFIG on line 2 of run.train"); empty for the file of the parse.
+    std::vector<std::string> includedBy;
+    /// Each key stored so far -> the lines that gave its values, in line
+    /// order (Context::set_key_lines() at the end of the parse).
+    std::map<std::string, std::vector<KeyLine>> lines;
+  };
+
+  /**
+   * @brief The CONFIG lines that include the file being read, innermost
+   *        first: "CONFIG on line 3 of mid.train, which CONFIG on line 2 of
+   *        run.train includes"; empty for the file of the parse.
+   */
+  std::string includedByText(const ParseState &state) {
+    const std::vector<std::string> &by = state.includedBy;
+    if (by.empty()) return std::string();
+    std::string out = by.back();
+    for (std::size_t k = by.size() - 1; k-- > 0;)
+      out += ", which " + by[k] + " includes";
+    return out;
+  }
+
+  /**
+   * @brief Where line @p line of @p source is, as every error of the line
+   *        names it: lineOf(), and for a line of an included file the CONFIG
+   *        lines that include it, innermost first: "line 2 of inc.train
+   *        (CONFIG on line 2 of run.train)", "line 1 of deep.train (CONFIG
+   *        on line 3 of mid.train, which CONFIG on line 2 of run.train
+   *        includes)".
+   */
+  std::string where(std::size_t line, const std::string &source,
+                    const ParseState &state) {
+    const std::string by = includedByText(state);
+    return lineOf(line, source) + (by.empty() ? std::string() : " (" + by + ")");
+  }
+
+  /** "a", "a and b", "a, b and c": the lines @p lines, by where they are. */
+  std::string linesText(const std::vector<KeyLine> &lines) {
+    std::string out;
+    for (std::size_t k = 0; k < lines.size(); ++k)
+      out += (k == 0 ? "" : k + 1 == lines.size() ? " and " : ", ") +
+             lines[k].where;
+    return out;
+  }
+
+  /**
+   * @brief What a refusal of a line of a key adds when the key's lines are a
+   *        potential's and another file's (KeyLine::potential): how a
+   *        potential's value is changed. Empty when they are all of one
+   *        kind (two lines of one copy of a potential among them).
+   */
+  std::string copyAdvice(const std::vector<KeyLine> &before, bool potential) {
+    for (const KeyLine &l : before)
+      if (l.potential != potential)
+        return "; a potential's value is changed by editing its line in a "
+               "copy of the potential (the Training page of the "
+               "documentation, Retraining from a potential)";
+    return std::string();
+  }
+
+  /**
+   * @brief The number of values the command @p task (a blueprint task name,
+   *        "TRAIN"; empty: none) takes of each key of its table (value_N[0]
+   *        of its BlueprintKey). A configuration file of the command is read
+   *        with them: tadah train takes one OUTFILE value, as it writes one
+   *        file, although OUTFILE takes any number.
+   */
+  std::map<std::string, int> commandValueCounts(const std::string &task) {
+    std::map<std::string, int> out;
+    if (task.empty()) return out;
+    const auto &tasks = BlueprintParser::getTasksMapRef();
+    const auto t = tasks.find(task);
+    if (t == tasks.end()) return out;
+    const auto take = [&out](const BlueprintKey &k) {
+      if (k.isRetired() || k.value_N.empty()) return;
+      const std::size_t dot = k.keyName.rfind('.');
+      out[to_upper(dot == std::string::npos ? k.keyName
+                                            : k.keyName.substr(dot + 1))] =
+          k.value_N[0];
+    };
+    for (const BlueprintKey &k : t->second.blueprintKeys) take(k);
+    for (const BlueprintKeyGroup &g : t->second.groups)
+      for (const BlueprintKey &k : g.blueprintKeys) take(k);
     return out;
   }
 
@@ -230,35 +353,52 @@ namespace {
     std::vector<SkippedKeyLine> *skipped = nullptr;
   };
 
-  Context parseFile(const std::string &filename, const Refusal &refused,
-                    const LineSkip &skip, const std::string &includedAt = "");
+  void parseFile(const std::string &filename, Context &ctx, ParseState &state,
+                 const Refusal &refused, const LineSkip &skip,
+                 const std::string &includedAt = "");
 
   /**
    * @brief Parse lines into an existing Context object.
    *
    * lines[i] is line first_line + i of source (empty: no name), which
-   * every error of a line names, with its key: an unknown key, a key the
-   * caller refuses, a value the key does not take, more values than the
-   * key takes, a block that is not closed and a CONFIG line whose file
-   * does not open or includes a file of the chain again.
+   * every error of a line names, with its key and, for a line of an
+   * included file, the CONFIG lines that include it (where()): an unknown
+   * key, a key the caller refuses, a key of another command, a value the
+   * key does not take, more values than the key takes, a second line of a
+   * key of one value, a block that is not closed and a CONFIG line whose
+   * file does not open or includes a file of the chain again.
    *
-   * Circular dependency detection is handled by tracking CONFIG filenames
-   * in configChain. When a CONFIG line is encountered, the file is pushed
-   * into configChain, parsed, then popped after the nested parse.
+   * A CONFIG line reads the lines of its file into @p ctx at its place
+   * (the configuration is the concatenation of its lines), with @p state:
+   * a key of one value (|value_N[0]| 1) is set by one line of the
+   * configuration, and a second line of it, in this file or another, is
+   * refused naming both; a key of several values takes the values of its
+   * lines in line order, up to the number it takes, and a line past it is
+   * refused naming the lines before it. A line of a potential and a line
+   * of another file of one such key are refused with the way to change a
+   * potential's value (copyAdvice()). In a configuration file of a command
+   * (refused.command), a key of the command's table takes the number of
+   * values the table gives it (commandValueCounts(): OUTFILE of tadah
+   * train, one).
+   * A CONFIG line that names a file whose lines are being read (configChain:
+   * the file of the parse and the files of the CONFIG lines being read) is
+   * refused as a circular include before a line of the file is read again.
    *
    * A run setting of a potential (potentialRunSetting, by the keys of
    * @p lines: fileKeys) is checked and not stored, with or without a rule;
    * with a rule (@p skip), so is a key line the rule selects, and both are
-   * appended to skip.skipped. A CONFIG include is read under the same
-   * rules, by the keys of its own lines.
+   * appended to skip.skipped: such a line sets nothing. A CONFIG include is
+   * read under the same rules, by the keys of its own lines.
    */
   void parseLines(const std::vector<std::string> &lines, Context &ctx,
-                  std::size_t first_line, const std::string &source,
-                  const Refusal &refused,
+                  ParseState &state, std::size_t first_line,
+                  const std::string &source, const Refusal &refused,
                   const LineSkip &skip = LineSkip()) {
     const auto keyMap = BlueprintParser::getKeysMapRef();
     const std::set<std::string> ownKeys = fileKeys(lines);
     const bool potential = ownKeys.count("WEIGHTS") > 0;
+    const std::map<std::string, int> commandCounts =
+        commandValueCounts(refused.command);
     // A line of a key that only some commands read
     // (BlueprintKey::command_only), at line @p at (its text @p text, "KEY
     // values" or "KEY" and its block): in a potential it is not read, with
@@ -286,7 +426,8 @@ namespace {
       const std::vector<std::string> readers = commands_reading_key(uKey);
       if (std::find(readers.begin(), readers.end(), command) != readers.end())
         return false;
-      throw std::runtime_error("Key " + uKey + " on " + lineOf(at, source) +
+      throw std::runtime_error("Key " + uKey + " on " +
+                               where(at, source, state) +
                                " is not accepted here: " +
                                command_key_text(uKey) +
                                ", not a key of a configuration file of " +
@@ -320,7 +461,7 @@ namespace {
       // A key the caller refuses for this input (refuse_keys()).
       if (const auto r = refused.keys.find(uKey); r != refused.keys.end()) {
         throw std::runtime_error("Key " + uKey + " on " +
-                                 lineOf(first_line + i, source) +
+                                 where(first_line + i, source, state) +
                                  " is not accepted here: " + r->second);
       }
 
@@ -340,7 +481,7 @@ namespace {
           if (word.rfind("END", 0) == 0) {
             if (has_extra || word != ends.back())
               throw std::runtime_error("Mismatched " + word + " on " +
-                                       lineOf(first_line + k, source) +
+                                       where(first_line + k, source, state) +
                                        "; expected " + ends.back());
             ends.pop_back();
             if (ends.empty()) break;
@@ -350,7 +491,7 @@ namespace {
         }
         if (!ends.empty())
           throw std::runtime_error("DESCRIPTOR on " +
-                                   lineOf(first_line + i, source) +
+                                   where(first_line + i, source, state) +
                                    " is not closed; expected " + ends.back());
         ctx.append_block(block);
         i = k;
@@ -389,7 +530,7 @@ namespace {
         }
         if (!closed) {
           throw std::runtime_error(uKey + " on " +
-                                   lineOf(first_line + i, source) +
+                                   where(first_line + i, source, state) +
                                    " is not closed; expected " + endTok);
         }
         const auto blockKey = keyMap.find(uKey);
@@ -412,7 +553,8 @@ namespace {
         const std::string suggested =
             BlueprintParser::findClosestKey(uKey, keyMap);
         throw std::runtime_error(
-            "Invalid key " + uKey + " on " + lineOf(first_line + i, source) +
+            "Invalid key " + uKey + " on " +
+            where(first_line + i, source, state) +
             (suggested.empty() ? std::string()
                                : " (closest key: " + suggested + ")"));
       }
@@ -423,7 +565,7 @@ namespace {
       if (!CoreUserConfigParser::validateSchemaOnly(val, keyInfo) ||
           !keyInfo.isAllowedValue(trim(val))) {
         throw std::runtime_error(valueRefusal(
-            uKey, val, keyInfo, lineOf(first_line + i, source)));
+            uKey, val, keyInfo, where(first_line + i, source, state)));
       }
       if (keyInfo.command_only) {
         std::string text = uKey;
@@ -470,10 +612,12 @@ namespace {
         continue;
       }
       if (uKey == "CONFIG") {
-        // CONFIG is a special case; check for circular dependency
+        // CONFIG is a special case; check for circular dependency: a file
+        // whose lines are being read, the file of the parse among them, is
+        // refused before a line of it is read again.
         const std::string configLine =
             "CONFIG on " + lineOf(first_line + i, source);
-        if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
+        if (beingRead(val)) {
           std::string chainStr;
           for (const auto &c : configChain) {
             chainStr += c + " -> ";
@@ -483,59 +627,73 @@ namespace {
               "Circular dependency detected between CONFIG files: " +
               chainStr + " (" + configLine + ")");
         }
-        // Push config name before nested parse
-        configChain.push_back(val);
+        state.includedBy.push_back(configLine);
 
-        // Perform nested parse, under the same refusal and rule
-        Context configCtx;
+        // The included lines, read at this line into the same context,
+        // under the same refusal and rule: their keys add to the lines
+        // read so far, and their structured blocks follow the declarations
+        // made so far. A file that does not open is named with every CONFIG
+        // line that includes it.
         try {
-          configCtx = parseFile(val, refused, skip, configLine);
+          parseFile(val, ctx, state, refused, skip, includedByText(state));
         } catch (...) {
-          // Clean up the chain if parsing fails
-          configChain.pop_back();
+          state.includedBy.pop_back();
           throw;
         }
-
-        // Pop config name after nested parse
-        configChain.pop_back();
-        
-        // Merge the nested context: its keys override, its structured
-        // blocks follow the declarations made so far.
-        ctx = tadah::core::Context::merge(ctx, configCtx, true,
-                                          tadah::core::Context::BlockMerge::Append);
+        state.includedBy.pop_back();
         continue; // Skip adding "CONFIG" key or its value to the context
       }
-      // Other keys store their values. A key of several values adds the
-      // values of each of its lines, up to the number it takes (value_N);
-      // a line of a key of one value replaces the line before
-      // (Context::add): more is an error at the line that exceeds it.
-      const std::size_t most =
+      // Other keys store their values. A key of one value is set by one
+      // line of the configuration: a second line is an error naming both.
+      // A key of several values adds the values of each of its lines, up
+      // to the number it takes (value_N; in a configuration file of a
+      // command, the command's): more is an error at the line that exceeds
+      // it, naming the lines before it.
+      const std::size_t keyMost =
           static_cast<std::size_t>(std::abs(keyInfo.value_N.at(0)));
-      if (most > 1) {
-        const std::size_t given =
-            (ctx.has_stored(uKey) ? ctx.size(uKey) : 0) + tokens.size() - 1;
-        if (given > most)
-          throw std::runtime_error(
-              "Too many values for key " + uKey + " on " +
-              lineOf(first_line + i, source) + ": " + uKey +
-              " takes at most " + std::to_string(most) +
-              ", and its lines read so far give " + std::to_string(given));
-      }
+      const auto own = commandCounts.find(uKey);
+      const std::size_t most =
+          own == commandCounts.end()
+              ? keyMost
+              : static_cast<std::size_t>(std::abs(own->second));
+      const std::string here = where(first_line + i, source, state);
+      const std::vector<KeyLine> &before = state.lines[uKey];
+      const std::size_t given =
+          (ctx.has_stored(uKey) ? ctx.size(uKey) : 0) + tokens.size() - 1;
+      if (most == 1 && !before.empty())
+        throw std::runtime_error(
+            "Key " + uKey + " is set on " + before.front().where + " and on " +
+            here +
+            ": a key of one value is set once in a configuration file and "
+            "the files it includes with CONFIG" +
+            copyAdvice(before, potential));
+      if (given > most)
+        throw std::runtime_error(
+            "Too many values for key " + uKey + " on " + here + ": " + uKey +
+            (most == keyMost ? std::string()
+                             : " of " + task_command_words(refused.command)) +
+            " takes at most " + std::to_string(most) +
+            ", and its lines read so far give " + std::to_string(given) +
+            (before.empty() ? std::string()
+                            : ", with " + linesText(before) + " before it") +
+            copyAdvice(before, potential));
       for (size_t j = 1; j < tokens.size(); ++j) {
         ctx.add(key, tokens[j]);
       }
+      state.lines[uKey].push_back(KeyLine{here, potential});
     }
   }
 
   /**
-   * @brief One parse of the file @p filename: its lines, under the
+   * @brief Reads the lines of the file @p filename into @p ctx, under the
    *        refusal @p refused and the rule @p skip (a top-level parse, or
    *        the file of the CONFIG line @p includedAt, "CONFIG on line 2 of
    *        config.train", which the error of a file that does not open
    *        names: "Failed to open config file: <file> (<includedAt>)").
    */
-  Context parseFile(const std::string &filename, const Refusal &refused,
-                    const LineSkip &skip, const std::string &includedAt) {
+  void parseFile(const std::string &filename, Context &ctx, ParseState &state,
+                 const Refusal &refused, const LineSkip &skip,
+                 const std::string &includedAt) {
     ParseScope scope;
 
     std::ifstream infile(filename.c_str());
@@ -554,9 +712,10 @@ namespace {
     }
     infile.close();
 
-    Context ctx;
-    parseLines(lines, ctx, 1, filename, refused, skip);
-    return ctx;
+    // The file is among the files being read while its lines are read, so
+    // that a CONFIG line naming it is refused as a circular include.
+    const ReadingFile reading(filename);
+    parseLines(lines, ctx, state, 1, filename, refused, skip);
   }
   /**
    * @brief The end of a public parse: one notice for the retired lines it
@@ -581,25 +740,34 @@ const std::vector<std::string> &run_setting_keys() {
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename) const {
-  return finishParse(parseFile(filename, Refusal{refused_, command_},
-                               LineSkip()));
+  Context ctx;
+  ParseState state;
+  parseFile(filename, ctx, state, Refusal{refused_, command_}, LineSkip());
+  ctx.set_key_lines(std::move(state.lines));
+  return finishParse(std::move(ctx));
 }
 
 Context CoreUserConfigParser::parse(const std::string &filename,
                                     const KeyLineRule &skip,
                                     std::vector<SkippedKeyLine> &skipped) const {
-  return finishParse(parseFile(filename, Refusal{refused_, command_},
-                               skip ? LineSkip{&skip, &skipped} : LineSkip()));
+  Context ctx;
+  ParseState state;
+  parseFile(filename, ctx, state, Refusal{refused_, command_},
+            skip ? LineSkip{&skip, &skipped} : LineSkip());
+  ctx.set_key_lines(std::move(state.lines));
+  return finishParse(std::move(ctx));
 }
 
 Context CoreUserConfigParser::parse(std::istream &in) const {
   Context ctx;
   {
     ParseScope scope;
+    ParseState state;
     std::vector<std::string> lines;
     std::string line;
     while (std::getline(in, line)) lines.push_back(line);
-    parseLines(lines, ctx, 1, "", Refusal{refused_, command_});
+    parseLines(lines, ctx, state, 1, "", Refusal{refused_, command_});
+    ctx.set_key_lines(std::move(state.lines));
   }
   return finishParse(std::move(ctx));
 }
@@ -609,7 +777,9 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
   Context ctx;
   {
     ParseScope scope;
-    parseLines(lines, ctx, 1, "", Refusal{refused_, command_});
+    ParseState state;
+    parseLines(lines, ctx, state, 1, "", Refusal{refused_, command_});
+    ctx.set_key_lines(std::move(state.lines));
   }
   return finishParse(std::move(ctx));
 }

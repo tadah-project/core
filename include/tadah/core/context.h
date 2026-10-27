@@ -66,6 +66,22 @@ struct RetiredKeyLine {
   }
 };
 
+/** A key line that a parse stored (CoreUserConfigParser records the lines
+ *  of each key on the Context it returns, Context::set_key_lines()): where
+ *  it is, and whether it is a line of a potential. */
+struct KeyLine {
+  /// Where the line is, as an error of the line names it: "line 3 of
+  /// run.train", "line 20 of pot.tadah (CONFIG on line 2 of run.train)";
+  /// "line 3" for lines of no file.
+  std::string where;
+  /// A line of a potential: of a file whose own key lines have WEIGHTS (a
+  /// potential or a copy of one; the lines of no file count as one file).
+  bool potential = false;
+  bool operator==(const KeyLine &o) const {
+    return where == o.where && potential == o.potential;
+  }
+};
+
 /**
  * @class Context
  * @brief Thread-safe key-value container that consults the blueprint for
@@ -93,6 +109,18 @@ public:
   /** The retired lines recorded on this Context, in the order recorded
    *  (a CONFIG include's where its CONFIG line is). */
   std::vector<RetiredKeyLine> retired_keys() const;
+  /** Records the lines that gave each key its values, in line order
+   *  (CoreUserConfigParser, at the end of a parse), in place of the lines
+   *  recorded before. The lines are kept apart from the keys: copies, moves
+   *  and merge() carry them; operator==, serialize(), operator<< and
+   *  write_potential() do not read them. */
+  void set_key_lines(std::map<std::string, std::vector<KeyLine>> lines);
+  /** The lines that gave @p key the values it holds, in line order
+   *  (set_key_lines()). None for a key no parse set, and for a key whose
+   *  values the program has changed since (add(), remove(),
+   *  storage_update(), clear(), deserialize(), or a merge() that gives it
+   *  values no line gave): its values are then the program's. */
+  std::vector<KeyLine> key_lines(const std::string &key) const;
   /** Spatial radii derived by a component owner. They participate in the
    * ordinary RCUT*MAX refresh, so adding an unrelated key cannot erase them.
    * These are evaluation metadata, regenerated from blocks on model load. */
@@ -120,6 +148,7 @@ public:
       : allowedKeys_(other.allowedKeys_), internalKeys_(other.internalKeys_) {
     std::lock_guard<std::mutex> lock(other.mtx_);
     storage_ = other.storage_;
+    keyLines_ = other.keyLines_;
   }
 
   Context &operator=(const Context &other) {
@@ -128,6 +157,7 @@ public:
       std::lock_guard<std::mutex> lock1(mtx_, std::adopt_lock);
       std::lock_guard<std::mutex> lock2(other.mtx_, std::adopt_lock);
       storage_ = other.storage_;
+      keyLines_ = other.keyLines_;
       // allowedKeys_ and internalKeys_ remain unchanged.
     }
     return *this;
@@ -301,6 +331,8 @@ public:
     if (!maxVals) maxVals = static_cast<size_t>(std::abs(bi->value_N[0]));
 
     std::lock_guard<std::mutex> lock(mtx_);
+    // The program changes the values: no line gave them (key_lines()).
+    keyLines_.erase(upKey);
     std::vector<std::string> &bucket = storage_[upKey];
     // Lossless text: a double read back with get<double>() is bit-identical.
     std::string valStr = to_string_lossless(val);
@@ -462,6 +494,7 @@ public:
                       const std::vector<std::string> &values) {
     std::lock_guard<std::mutex> lock(mtx_);
     const std::string upKey = to_upper(key);
+    keyLines_.erase(upKey);
     if (values.empty()) storage_.erase(upKey);
     else                storage_[upKey] = values;
   }
@@ -488,8 +521,10 @@ public:
      *  context holds ctx2's blocks of that kind and none of ctx1's (with
      *  allowOverwrite; without it they are appended, as flat values are). */
     Replace,
-    /** Composition: ctx2's blocks follow ctx1's (a CONFIG include adds its
-     *  declarations to those of the including file). */
+    /** Composition: ctx2's blocks follow ctx1's, as the blocks of a CONFIG
+     *  include follow those above its CONFIG line (CoreUserConfigParser
+     *  reads an include into the including file's Context, in line order,
+     *  without a merge). */
     Append
   };
 
@@ -499,7 +534,7 @@ public:
    * A key of ctx2 replaces ctx1's values (allowOverwrite) or is appended to
    * them. Structured blocks follow @p blocks: by default a kind of block
    * ctx2 declares replaces ctx1's blocks of that kind, as a key would;
-   * BlockMerge::Append composes them (CONFIG includes).
+   * BlockMerge::Append composes them.
    *
    * @param ctx1 The first context (base).
    * @param ctx2 The second context (overrides).
@@ -528,9 +563,9 @@ public:
     for (const auto &pair : ctx2_snapshot) {
       const std::string &key = pair.first;
       // Structured declarations: replaced kind by kind with key precedence,
-      // or composed (CONFIG includes, no overwrite). The opaque records also
-      // travel through storage_snapshot/update and serialize/deserialize
-      // (PC workers and optimizer checkpoints).
+      // or composed (BlockMerge::Append, or no overwrite). The opaque
+      // records also travel through storage_snapshot/update and
+      // serialize/deserialize (PC workers and optimizer checkpoints).
       if (key == "@BLOCKS") {
         if (allowOverwrite && blocks == BlockMerge::Replace) {
           std::vector<ConfigBlock> kept;
@@ -564,6 +599,10 @@ public:
         continue;
       }      
 
+      // ctx1's values of the key and their lines, before contains() can
+      // insert a default
+      const bool held = merged.has_stored(key);
+      const std::vector<KeyLine> held_lines = merged.key_lines(key);
       if (merged.contains(key)) {
         if (!allowOverwrite) {
           core::Logger::instance().log(
@@ -580,6 +619,19 @@ public:
       const std::vector<std::string> &vals = pair.second;
       for (const auto &val : vals) {
         merged.add(key, val);
+      }
+      // The lines that gave the merged values (key_lines()): ctx2's when
+      // they are ctx2's values, ctx1's then ctx2's when ctx2's follow
+      // ctx1's, none when some are neither's (a default).
+      std::vector<KeyLine> lines = ctx2.key_lines(key);
+      const std::size_t now = merged.has_stored(key) ? merged.size(key) : 0;
+      if (now != vals.size()) {
+        if (!held || held_lines.empty() || lines.empty()) lines.clear();
+        else lines.insert(lines.begin(), held_lines.begin(), held_lines.end());
+      }
+      if (!lines.empty()) {
+        std::lock_guard<std::mutex> lock(merged.mtx_);
+        merged.keyLines_[key] = std::move(lines);
       }
     }
     return merged;
@@ -803,6 +855,12 @@ private:
    * Declared mutable so that we can insert defaults even from const getters.
    */
   mutable std::map<std::string, std::vector<std::string>> storage_;
+
+  /**
+   * @brief The lines that gave each key its values (set_key_lines(),
+   * key_lines()); a change of a key's values drops its entry.
+   */
+  std::map<std::string, std::vector<KeyLine>> keyLines_;
 
   /**
    * @brief A reference for [ALLOWED_KEYS] loaded from blueprint.

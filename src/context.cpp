@@ -105,6 +105,19 @@ std::vector<RetiredKeyLine> Context::retired_keys() const {
   return out;
 }
 
+void Context::set_key_lines(std::map<std::string, std::vector<KeyLine>> lines) {
+  std::map<std::string, std::vector<KeyLine>> up;
+  for (auto &[key, l] : lines) up[to_upper(key)] = std::move(l);
+  std::lock_guard<std::mutex> lock(mtx_);
+  keyLines_ = std::move(up);
+}
+
+std::vector<KeyLine> Context::key_lines(const std::string &key) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  const auto it = keyLines_.find(to_upper(key));
+  return it == keyLines_.end() ? std::vector<KeyLine>() : it->second;
+}
+
 void Context::append_block(const ConfigBlock &b) {
   if (b.kind.empty() || b.lines.size() < 2)
     throw std::runtime_error("A structured block needs a header and boundary");
@@ -154,7 +167,8 @@ Context::Context()
 }
 
 Context::Context(Context &&other) noexcept
-    : storage_(std::move(other.storage_)), allowedKeys_(other.allowedKeys_),
+    : storage_(std::move(other.storage_)),
+      keyLines_(std::move(other.keyLines_)), allowedKeys_(other.allowedKeys_),
       internalKeys_(other.internalKeys_) {
   // The mutex is default-constructed in 'this'.
   // 'other' is left valid but with an empty storage_.
@@ -166,6 +180,7 @@ Context &Context::operator=(Context &&other) noexcept {
     // single-thread usage).
     std::lock_guard<std::mutex> lock(mtx_);
     storage_ = std::move(other.storage_);
+    keyLines_ = std::move(other.keyLines_);
     // The blueprint reference remains the same as in the constructor.
   }
   return *this;
@@ -196,6 +211,7 @@ Context::operator()(const std::string &key) const {
 size_t Context::remove(const std::string &key) {
   std::lock_guard<std::mutex> lock(mtx_);
   std::string upKey = to_upper(key);
+  keyLines_.erase(upKey);
   auto it = storage_.find(upKey);
   if (it != storage_.end()) {
     storage_.erase(it);
@@ -211,6 +227,7 @@ size_t Context::remove(const std::string &key) {
 void Context::clear() {
   std::lock_guard<std::mutex> lock(mtx_);
   storage_.clear();
+  keyLines_.clear();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -405,6 +422,7 @@ std::vector<char> Context::serialize() const {
 void Context::deserialize(const std::vector<char> &buffer) {
   std::lock_guard<std::mutex> lock(mtx_);
   storage_.clear();
+  keyLines_.clear();
 
   if (buffer.empty()) {
     return; // no data

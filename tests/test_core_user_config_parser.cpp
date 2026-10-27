@@ -26,6 +26,15 @@
 
 using namespace tadah::core;
 
+namespace tadah {
+namespace core {
+/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential}". */
+inline std::ostream &operator<<(std::ostream &os, const KeyLine &l) {
+  return os << "{" << l.where << (l.potential ? ", potential}" : "}");
+}
+}  // namespace core
+}  // namespace tadah
+
 TEST_CASE( "Testing Context read()", "[config_read]" ) {
   std::string path = "tests_data/valid_configs";
   DIR* dir = opendir(path.c_str());
@@ -542,17 +551,20 @@ std::string trimmed(const std::string &t) {
 // Pins: with an inline comment on the CONFIG line, a missing file is reported
 // by its path alone ("Failed to open config file: <path>", the path without
 // the blanks before the '#'), and a circular include names the files of the
-// chain, each by its path alone ("... CONFIG files: <b> -> <a> -> <b>");
-// each names the CONFIG line, its line and its file, as every error of a
-// line does: "Failed to open config file: <path> (CONFIG on line 1 of
-// <outer>)", "... -> <b> (CONFIG on line 2 of <a>)".
+// chain, from the file of the parse, each by its path alone ("... CONFIG
+// files: <a> -> <b> -> <a>"); each names the CONFIG line, its line and its
+// file, as every error of a line does: "Failed to open config file: <path>
+// (CONFIG on line 1 of <outer>)", "... -> <a> (CONFIG on line 2 of <b>)".
 // Before the fix: the missing file was reported as "<path>   " (the blanks
 // before the '#'), and the circular include was never detected: the first
 // CONFIG line already failed to open "<b>  ", so the message was "Failed to
 // open config file: <b>  " instead of the chain. Neither named the CONFIG
 // line ("Failed to open config file: <path>", after the Logger line
 // "CoreUserConfigParser::parse -> Failed to open file: <path>", and the
-// chain alone).
+// chain alone). Until the file of the parse was among the files being read,
+// the circle was found one include later, after the lines of <a> were read
+// a second time: "... CONFIG files: <b> -> <a> -> <b> (CONFIG on line 2 of
+// <a>)".
 TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
           "file alone in its errors",
           "[config][config_include][line_errors]") {
@@ -577,8 +589,8 @@ TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
         dir.write("loop_a.cfg", "ATOM Ta\nCONFIG " + b + "  # on to b\n");
     const std::string msg = runtime_error_of(
         [&] { return CoreUserConfigParser().parse(a); }, "parse " + a);
-    CHECK(msg == "Circular dependency detected between CONFIG files: " + b +
-                     " -> " + a + " -> " + b + " (CONFIG on line 2 of " + a +
+    CHECK(msg == "Circular dependency detected between CONFIG files: " + a +
+                     " -> " + b + " -> " + a + " (CONFIG on line 2 of " + b +
                      ")");
   }
 }
@@ -588,14 +600,19 @@ TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
  * message and without a Logger line:
  *   "Invalid key VERBOS on line 3 of <file> (closest key: VERBOSE)"
  * for a configuration file (comment and blank lines counted), for a file
- * it includes with CONFIG (that file and its line), for a potential and,
- * without a file, for a stream ("on line 2"). A TASK line is such a line:
- * TASK is no key ("Invalid key TASK on line 2 of <file>"), in a file and
- * in a file it includes.
+ * it includes with CONFIG (that file and its line, and the CONFIG line that
+ * includes it: "Invalid key VERBOS on line 2 of <inner> (CONFIG on line 2
+ * of <outer>) (closest key: VERBOSE)"), for a potential and, without a
+ * file, for a stream ("on line 2"). A TASK line is such a line: TASK is no
+ * key ("Invalid key TASK on line 2 of <file>"), in a file and in a file it
+ * includes.
  * Before the fix: the message was "Invalid key: VERBOS", without the line
  * and the file, after two Logger ERROR lines ("CoreUserConfigParser::parse
  * -> Invalid key: VERBOS", "  Did you mean: VERBOSE"); a TASK line was read
- * as the key TASK and stored (no exception). */
+ * as the key TASK and stored (no exception). Until every error of a line of
+ * an included file named the CONFIG lines that include it, the line of
+ * <inner> was named without its CONFIG line ("Invalid key VERBOS on line 2
+ * of <inner> (closest key: VERBOSE)"). */
 TEST_CASE("Config parser: an unknown key is refused naming the key, the "
           "line and the file",
           "[config][unknown_key]") {
@@ -616,7 +633,8 @@ TEST_CASE("Config parser: an unknown key is refused naming the key, the "
         dir.write("outer_typo.cfg", "WATOM 73\nCONFIG " + inner + "\n");
     const std::string msg = runtime_error_of(
         [&] { return CoreUserConfigParser().parse(outer); }, "parse " + outer);
-    CHECK(msg == "Invalid key VERBOS on line 2 of " + inner + hint);
+    CHECK(msg == "Invalid key VERBOS on line 2 of " + inner +
+                     " (CONFIG on line 2 of " + outer + ")" + hint);
   }
   SECTION("a potential") {
     const std::string pot = dir.write(
@@ -688,11 +706,17 @@ std::string value_help(const std::string &key) {
  *    "    RCUT2B   3.0" and "    RCUT2B   3.0 7.5"; a wrong number of
  *    values ('MODEL M_BLR', 'EMBF0 ZERO FREE') and a key without a value
  *    ("...: no value") alike; in a file a configuration includes with
- *    CONFIG (that file and its line), in a potential, and in a stream ("on
- *    line 2");
- *  - more values than the key takes, over its lines: "Too many values for
- *    key MODEL on line 2 of <file>: MODEL takes at most 3, and its lines
- *    read so far give 4";
+ *    CONFIG (that file and its line, and the CONFIG line that includes it:
+ *    "Invalid value for key EMBF0 on line 2 of <inner> (CONFIG on line 2 of
+ *    <outer>): 'ZERO FREE'"), in a potential, and in a stream ("on line
+ *    2");
+ *  - more values than the key takes, over its lines, naming the lines
+ *    before it: "Too many values for key MODEL on line 2 of <file>: MODEL
+ *    takes at most 3, and its lines read so far give 4, with line 1 of
+ *    <file> before it"; a second line of a key of one value: "Key ESIGMA
+ *    is set on line 1 and on line 2: a key of one value is set once in a
+ *    configuration file and the files it includes with CONFIG" (lines of no
+ *    file), while two lines of ATOM give its two values;
  *  - a block that is not closed: "OPTIMIZER on line 2 of <file> is not
  *    closed; expected ENDOPTIMIZER".
  * Before the fix: "Invalid schema for key: RCUT2B" (and MODEL, EMBF0), with
@@ -700,7 +724,12 @@ std::string value_help(const std::string &key) {
  * "CoreUserConfigParser::parse -> Invalid format for key: value -> RCUT2B:
  * abc" and the schema, format and examples; "Exceeded capacity for key:
  * MODEL" after the Logger line "Context::add -> capacity exceeded for:
- * MODEL"; "OPTIMIZER block is not closed with ENDOPTIMIZER". */
+ * MODEL"; "OPTIMIZER block is not closed with ENDOPTIMIZER". Until the
+ * configuration was read as the concatenation of its lines, the second
+ * ESIGMA line replaced the first (ESIGMA 2, no exception). Until the
+ * refusals of a line named the CONFIG lines of an included line and the
+ * lines of the key before it, the value of <inner> was named without its
+ * CONFIG line, and "Too many values" ended "... read so far give 4". */
 TEST_CASE("Config parser: an error of a line names the key, the line and "
           "the file",
           "[config][line_errors]") {
@@ -756,7 +785,8 @@ TEST_CASE("Config parser: an error of a line names the key, the line and "
               [&] { return CoreUserConfigParser().parse(outer); },
               "parse " + outer) ==
           "Invalid value for key EMBF0 on line 2 of " + inner +
-              ": 'ZERO FREE'" + value_help("EMBF0"));
+              " (CONFIG on line 2 of " + outer + "): 'ZERO FREE'" +
+              value_help("EMBF0"));
     const std::string pot = dir.write(
         "value_pot.tadah", "ATOM Ta\nWATOM 73\nRCUT2B abc\nWEIGHTS 1.0 2.0\n");
     CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(pot); },
@@ -776,18 +806,29 @@ TEST_CASE("Config parser: an error of a line names the key, the line and "
     CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(f); },
                            "parse " + f) ==
           "Too many values for key MODEL on line 2 of " + f +
-              ": MODEL takes at most 3, and its lines read so far give 4");
+              ": MODEL takes at most 3, and its lines read so far give 4, "
+              "with line 1 of " + f + " before it");
     CHECK(log.text().empty());
-    // A line of a key of one value replaces the value of the line before;
-    // a key of several values adds the values of its lines, up to the
-    // number it takes.
+    // A second line of a key of one value is refused, naming both lines
+    // (it replaced the value of the line before: ESIGMA 2); a key of
+    // several values adds the values of its lines, up to the number it
+    // takes.
     const auto &keys = BlueprintParser::getKeysMapRef();
     REQUIRE(keys.at("ESIGMA").value_N.at(0) == 1);
     REQUIRE(std::abs(keys.at("ATOM").value_N.at(0)) > 2);
+    CHECK(runtime_error_of(
+              [] {
+                return CoreUserConfigParser().parse(std::vector<std::string>{
+                    "ESIGMA 1", "ESIGMA 2", "ATOM Ta", "ATOM Nb"});
+              },
+              "parse(lines)") ==
+          "Key ESIGMA is set on line 1 and on line 2: a key of one value is "
+          "set once in a configuration file and the files it includes with "
+          "CONFIG");
     Context c;
     REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
-                        "ESIGMA 1", "ESIGMA 2", "ATOM Ta", "ATOM Nb"}));
-    CHECK(c.get<double>("ESIGMA") == 2);
+                        "ESIGMA 1", "ATOM Ta", "ATOM Nb"}));
+    CHECK(c.get<double>("ESIGMA") == 1);
     CHECK(c.size("ATOM") == 2);
   }
   SECTION("a block that is not closed") {
@@ -1486,4 +1527,727 @@ TEST_CASE("Config parser: a potential's line of a key of another command is "
     CHECK(what.find("ANALYTICS") != std::string::npos);
     CHECK(names_line(what, 3));
   }
+}
+
+// ---------------------------------------------------------------------------
+// A configuration is the concatenation of its lines: a CONFIG line reads the
+// lines of the file it names at its place, and a nested CONFIG line the same
+// way. A key of one value (|value_N[0]| 1 in the blueprint) is set by one
+// line of the configuration: a second line, in the same file or in another
+// file of the configuration, in either order, is refused naming both lines,
+// each with its file and, for a line of an included file, the CONFIG lines
+// that include it. A key of several values takes the values of all its
+// lines in line order, up to the number it takes ("Too many values" at the
+// line that exceeds it, in either order). A line a parse does not read (a
+// potential's run setting, a line the caller's rule skips) sets nothing.
+// ---------------------------------------------------------------------------
+namespace {
+
+/* The rule the refusal of a second line of a key of one value states. */
+const std::string kSetOnce =
+    "a key of one value is set once in a configuration file and the files "
+    "it includes with CONFIG";
+
+/* What a refusal of a line of a key adds when the key's lines are a
+ * potential's and another file's: how a potential's value is changed. */
+const std::string kCopyAdvice =
+    "; a potential's value is changed by editing its line in a copy of the "
+    "potential (the Training page of the documentation, Retraining from a "
+    "potential)";
+
+} // namespace
+
+// Pins: a list key (DBFILE) and a key of several values (ATOM) set above a
+// CONFIG line, in the included file and below the CONFIG line take the
+// values of every line, in line order: outer.cfg "DBFILE a.tadah", "ATOM
+// Ta", "CONFIG inc.cfg", "DBFILE c.tadah", inc.cfg "DBFILE b.tadah", "ATOM
+// Nb", give DBFILE a.tadah b.tadah c.tadah and ATOM Ta Nb; the stream and
+// lines overloads read the CONFIG line the same way.
+// Before the fix: the include's lines replaced every line of their keys
+// above the CONFIG line (Context::merge with overwrite): DBFILE b.tadah
+// c.tadah and ATOM Nb, a.tadah and Ta dropped without a message.
+TEST_CASE("Config parser: a list key above and below a CONFIG include adds "
+          "up in line order",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const std::string inc =
+      dir.write("list_inc.cfg", "DBFILE b.tadah\nATOM Nb\n");
+  const std::string body = "DBFILE a.tadah\nATOM Ta\nCONFIG " + inc +
+                           "\nDBFILE c.tadah\n";
+  const std::string outer = dir.write("list_outer.cfg", body);
+  const std::vector<std::string> dbfiles{"a.tadah", "b.tadah", "c.tadah"};
+  const std::vector<std::string> atoms{"Ta", "Nb"};
+  {
+    const Context c = CoreUserConfigParser().parse(outer);
+    CHECK(c("DBFILE") == dbfiles);
+    CHECK(c("ATOM") == atoms);
+  }
+  {
+    std::istringstream in(body);
+    const Context c = CoreUserConfigParser().parse(in);
+    CHECK(c("DBFILE") == dbfiles);
+    CHECK(c("ATOM") == atoms);
+  }
+  {
+    const Context c = CoreUserConfigParser().parse(std::vector<std::string>{
+        "DBFILE a.tadah", "ATOM Ta", "CONFIG " + inc, "DBFILE c.tadah"});
+    CHECK(c("DBFILE") == dbfiles);
+    CHECK(c("ATOM") == atoms);
+  }
+}
+
+// Pins: a key of one value that a file and a file it includes with CONFIG
+// both set is refused, in either order, naming the key, both lines with
+// their files and the CONFIG line of the included one:
+//  - above: outer.cfg "BIAS true", "CONFIG inc.cfg"; inc.cfg "# shared",
+//    "BIAS false": "Key BIAS is set on line 1 of <outer> and on line 2 of
+//    <inc> (CONFIG on line 2 of <outer>): a key of one value is set once in
+//    a configuration file and the files it includes with CONFIG";
+//  - below: "CONFIG inc.cfg", "bias true": "Key BIAS is set on line 2 of
+//    <inc> (CONFIG on line 1 of <outer>) and on line 2 of <outer>: ...";
+//  - a stream: "BIAS true", "CONFIG inc.cfg": "Key BIAS is set on line 1
+//    and on line 2 of <inc> (CONFIG on line 2): ...";
+//  - a potential the file includes (ATOM, WEIGHTS, RCUT2B 5.0, BIAS
+//    false): "RCUT2B 4.0" above its CONFIG line gives RCUT2B 4.0 5.0 and
+//    below it 5.0 4.0, while "BIAS true" above it is refused naming the
+//    potential's line 4, with the way to change a potential's value ("...
+//    with CONFIG; a potential's value is changed by editing its line in a
+//    copy of the potential (the Training page of the documentation,
+//    Retraining from a potential)");
+//  - a file included twice: "CONFIG inc.cfg" on lines 1 and 2: "Key BIAS is
+//    set on line 2 of <inc> (CONFIG on line 1 of <outer>) and on line 2 of
+//    <inc> (CONFIG on line 2 of <outer>): ...".
+// Before the fix: no section threw. The include's BIAS replaced the line
+// above it (BIAS false; the potential's BIAS false likewise, and its
+// RCUT2B the RCUT2B 4.0 above it: RCUT2B 5.0), a line below the include
+// replaced the include's (BIAS true), the second include replaced the
+// first, and a stream behaved as a file. Until the refusal gave the way to
+// change a potential's value, the potential's case ended at the rule.
+TEST_CASE("Config parser: a key of one value set in a file and in a file it "
+          "includes is refused naming both lines",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const std::string inc = dir.write("once_inc.cfg", "# shared\nBIAS false\n");
+  SECTION("above the CONFIG line") {
+    const std::string outer =
+        dir.write("once_above.cfg", "BIAS true\nCONFIG " + inc + "\n");
+    CaptureLog log;
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                           "parse " + outer) ==
+          "Key BIAS is set on line 1 of " + outer + " and on line 2 of " +
+              inc + " (CONFIG on line 2 of " + outer + "): " + kSetOnce);
+    CHECK(log.text().empty());
+  }
+  SECTION("below the CONFIG line") {
+    const std::string outer =
+        dir.write("once_below.cfg", "CONFIG " + inc + "\nbias true\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                           "parse " + outer) ==
+          "Key BIAS is set on line 2 of " + inc + " (CONFIG on line 1 of " +
+              outer + ") and on line 2 of " + outer + ": " + kSetOnce);
+  }
+  SECTION("a stream") {
+    std::istringstream in("BIAS true\nCONFIG " + inc + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(in); },
+                           "parse(stream)") ==
+          "Key BIAS is set on line 1 and on line 2 of " + inc +
+              " (CONFIG on line 2): " + kSetOnce);
+  }
+  SECTION("a potential the file includes") {
+    const std::string pot =
+        dir.write("once_pot.tadah",
+                  "ATOM Ta\nWEIGHTS 0.25 -0.5\nRCUT2B 5.0\nBIAS false\n");
+    const std::string above = dir.write(
+        "pot_above.cfg", "RCUT2B 4.0\nCONFIG " + pot + "\n");
+    const std::string below = dir.write(
+        "pot_below.cfg", "CONFIG " + pot + "\nRCUT2B 4.0\n");
+    CHECK(CoreUserConfigParser().parse(above)("RCUT2B") ==
+          std::vector<std::string>{"4.0", "5.0"});
+    CHECK(CoreUserConfigParser().parse(below)("RCUT2B") ==
+          std::vector<std::string>{"5.0", "4.0"});
+    const std::string bias =
+        dir.write("pot_bias.cfg", "BIAS true\nCONFIG " + pot + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(bias); },
+                           "parse " + bias) ==
+          "Key BIAS is set on line 1 of " + bias + " and on line 4 of " +
+              pot + " (CONFIG on line 2 of " + bias + "): " + kSetOnce +
+              kCopyAdvice);
+  }
+  SECTION("a file included twice") {
+    const std::string outer = dir.write(
+        "twice_inc.cfg", "CONFIG " + inc + "\nCONFIG " + inc + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                           "parse " + outer) ==
+          "Key BIAS is set on line 2 of " + inc + " (CONFIG on line 1 of " +
+              outer + ") and on line 2 of " + inc + " (CONFIG on line 2 of " +
+              outer + "): " + kSetOnce);
+  }
+}
+
+// Pins: a key of one value set by two lines of one file is refused naming
+// both lines, whatever the values and the letter case: "ESIGMA 1", "#
+// again", "ESIGMA 2" gives "Key ESIGMA is set on line 1 of <f> and on line
+// 3 of <f>: a key of one value is set once in a configuration file and the
+// files it includes with CONFIG"; "bias true", "BIAS true" (the same
+// value) "Key BIAS is set on line 1 of <f> and on line 2 of <f>: ..."; the
+// lines overload "ESIGMA 1", "ESIGMA 2" "Key ESIGMA is set on line 1 and on
+// line 2: ...". A key of several values set by two lines is read (ATOM Ta,
+// ATOM Nb: ATOM Ta Nb).
+// Before the fix: the second line replaced the first without a message
+// (ESIGMA 2, BIAS true; Context::add overwrites a key of one value).
+TEST_CASE("Config parser: a key of one value set twice in one file is "
+          "refused naming both lines",
+          "[config][concatenation]") {
+  RefuseScratch dir;
+  const std::string f = dir.write("esigma_twice.cfg",
+                                  "ESIGMA 1\n# again\nESIGMA 2\n");
+  CaptureLog log;
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(f); },
+                         "parse " + f) ==
+        "Key ESIGMA is set on line 1 of " + f + " and on line 3 of " + f +
+            ": " + kSetOnce);
+  const std::string same = dir.write("bias_twice.cfg", "bias true\nBIAS true\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(same); },
+                         "parse " + same) ==
+        "Key BIAS is set on line 1 of " + same + " and on line 2 of " + same +
+            ": " + kSetOnce);
+  CHECK(runtime_error_of(
+            [&] {
+              return CoreUserConfigParser().parse(
+                  std::vector<std::string>{"ESIGMA 1", "ESIGMA 2"});
+            },
+            "parse(lines)") ==
+        "Key ESIGMA is set on line 1 and on line 2: " + kSetOnce);
+  CHECK(log.text().empty());
+  const Context c = CoreUserConfigParser().parse(
+      std::vector<std::string>{"ATOM Ta", "ATOM Nb"});
+  CHECK(c("ATOM") == std::vector<std::string>{"Ta", "Nb"});
+}
+
+// Pins: a key of several values set above a CONFIG line and in the file
+// it includes adds up as below it, so more values than the key takes are
+// refused in either order at the line that exceeds the number, with the
+// CONFIG line of an included line and the lines of the key before it:
+// outer.cfg "OALGO 1 1e-12", "CONFIG inc.cfg", inc.cfg "OALGO 1 1e-13",
+// gives "Too many values for key OALGO on line 1 of <inc> (CONFIG on line 2
+// of <outer>): OALGO takes at most 2, and its lines read so far give 4,
+// with line 1 of <outer> before it"; "CONFIG inc.cfg", "OALGO 1 1e-12"
+// gives "Too many values for key OALGO on line 2 of <outer>: OALGO takes at
+// most 2, and its lines read so far give 4, with line 1 of <inc> (CONFIG on
+// line 1 of <outer>) before it".
+// Before the fix: above the CONFIG line the include's OALGO replaced the
+// line (OALGO 1 1e-13, no exception); below it the refusal was the same.
+// Until the refusal named the lines of the key before it, both ended "...
+// read so far give 4", without the line of the other file.
+TEST_CASE("Config parser: a key of several values adds up across a CONFIG "
+          "include, up to the number it takes, in either order",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const std::string inc = dir.write("oalgo_inc.cfg", "OALGO 1 1e-13\n");
+  const std::string above =
+      dir.write("oalgo_above.cfg", "OALGO 1 1e-12\nCONFIG " + inc + "\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(above); },
+                         "parse " + above) ==
+        "Too many values for key OALGO on line 1 of " + inc +
+            " (CONFIG on line 2 of " + above +
+            "): OALGO takes at most 2, and its lines read so far give 4, "
+            "with line 1 of " + above + " before it");
+  const std::string below =
+      dir.write("oalgo_below.cfg", "CONFIG " + inc + "\nOALGO 1 1e-12\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(below); },
+                         "parse " + below) ==
+        "Too many values for key OALGO on line 2 of " + below +
+            ": OALGO takes at most 2, and its lines read so far give 4, "
+            "with line 1 of " + inc + " (CONFIG on line 1 of " + below +
+            ") before it");
+}
+
+// Pins: a file and a file it includes that set different keys give every
+// key as its line sets it, with no exception, no Logger line and no
+// notice: outer.cfg "BIAS true", "CONFIG inc.cfg", "OALGO 3"; inc.cfg
+// "LAMBDA 0", "RCUT2B 5.0".
+// Before the fix: passes as well (a pin: the rule of a key set twice
+// leaves the keys set once as they were).
+TEST_CASE("Config parser: a file and a file it includes that set different "
+          "keys give both, with no message",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const std::string inc = dir.write("apart_inc.cfg", "LAMBDA 0\nRCUT2B 5.0\n");
+  const std::string outer = dir.write(
+      "apart_outer.cfg", "BIAS true\nCONFIG " + inc + "\nOALGO 3\n");
+  CaptureLog log;
+  IgnoredKeyNoticeCapture notices;
+  Context c;
+  REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(outer));
+  CHECK(c("BIAS") == std::vector<std::string>{"true"});
+  CHECK(c("LAMBDA") == std::vector<std::string>{"0"});
+  CHECK(c("RCUT2B") == std::vector<std::string>{"5.0"});
+  CHECK(c("OALGO") == std::vector<std::string>{"3"});
+  CHECK(log.text().empty());
+  CHECK(notices.notices().empty());
+}
+
+// Pins: the lines of a potential that a parse does not read set nothing, so
+// a file that includes the potential with CONFIG gives its own lines of
+// those keys above or below the CONFIG line: pot.cfg (ATOM, WEIGHTS,
+// EFILTER 5 6, ESHIFT 0.5, ESHIFT_ATOM true, VERBOSE 2), read with a rule
+// that skips EFILTER, and ESHIFT_ATOM beside ESHIFT, in a file with WEIGHTS:
+//  - outer.cfg "EFILTER -9 -2", "VERBOSE 0", "CONFIG pot.cfg", "ESHIFT_ATOM
+//    false" gives EFILTER -9 -2, VERBOSE 0 and ESHIFT_ATOM false, and the
+//    skipped lines pot.cfg:3 EFILTER 5 6, pot.cfg:5 ESHIFT_ATOM true and
+//    pot.cfg:6 VERBOSE 2 (a run setting of a potential, never stored);
+//  - "CONFIG pot.cfg", "EFILTER -9 -2" gives EFILTER -9 -2.
+// Before the fix: passes as well (a pin: a skipped line was never stored,
+// so the merge of the include had nothing of these keys to replace).
+TEST_CASE("Config parser: a potential's lines a parse does not read do not "
+          "clash with the lines of their keys around its CONFIG line",
+          "[config][config_include][concatenation][skip_key_lines]") {
+  RefuseScratch dir;
+  const std::string pot = dir.write("skip_pot.cfg",
+                                    "ATOM Ta\n"            // 1
+                                    "WEIGHTS 0.25 -0.5\n"  // 2
+                                    "EFILTER 5 6\n"        // 3
+                                    "ESHIFT 0.5\n"         // 4
+                                    "ESHIFT_ATOM true\n"   // 5
+                                    "VERBOSE 2\n");        // 6
+  const CoreUserConfigParser parser;
+  LoggerAt at(LogLevel::WARNING);
+  {
+    const std::string outer = dir.write("skip_outer.cfg",
+                                        "EFILTER -9 -2\nVERBOSE 0\nCONFIG " +
+                                            pot + "\nESHIFT_ATOM false\n");
+    std::vector<SkippedKeyLine> skipped;
+    Context c;
+    REQUIRE_NOTHROW(c = parser.parse(outer, skip_in_weights_files, skipped));
+    CHECK(c("EFILTER") == std::vector<std::string>{"-9", "-2"});
+    CHECK(c("VERBOSE") == std::vector<std::string>{"0"});
+    CHECK(c("ESHIFT_ATOM") == std::vector<std::string>{"false"});
+    CHECK(described(skipped) ==
+          std::vector<std::string>{pot + ":3 EFILTER 5 6",
+                                   pot + ":5 ESHIFT_ATOM true",
+                                   pot + ":6 VERBOSE 2"});
+  }
+  {
+    const std::string outer =
+        dir.write("skip_below.cfg", "CONFIG " + pot + "\nEFILTER -9 -2\n");
+    std::vector<SkippedKeyLine> skipped;
+    Context c;
+    REQUIRE_NOTHROW(c = parser.parse(outer, skip_in_weights_files, skipped));
+    CHECK(c("EFILTER") == std::vector<std::string>{"-9", "-2"});
+  }
+}
+
+// Pins: in a nested include the refusal of a key of one value names the
+// file of each line and the CONFIG lines that include it, innermost first:
+// top.cfg "BIAS true", "CONFIG mid.cfg"; mid.cfg "ATOM Ta", "CONFIG
+// deep.cfg"; deep.cfg "WATOM 73", "BIAS false": "Key BIAS is set on line 1
+// of <top> and on line 2 of <deep> (CONFIG on line 2 of <mid>, which CONFIG
+// on line 2 of <top> includes): ..."; with top.cfg "CONFIG mid.cfg", "BIAS
+// true": "Key BIAS is set on line 2 of <deep> (CONFIG on line 2 of <mid>,
+// which CONFIG on line 1 of <top> includes) and on line 2 of <top>: ...".
+// Before the fix: neither threw (BIAS false above the CONFIG line, BIAS
+// true below it).
+TEST_CASE("Config parser: a key of one value set in a nested include is "
+          "refused naming its file and the CONFIG lines that include it",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const std::string deep = dir.write("deep.cfg", "WATOM 73\nBIAS false\n");
+  const std::string mid = dir.write("mid.cfg", "ATOM Ta\nCONFIG " + deep + "\n");
+  const std::string top =
+      dir.write("top.cfg", "BIAS true\nCONFIG " + mid + "\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(top); },
+                         "parse " + top) ==
+        "Key BIAS is set on line 1 of " + top + " and on line 2 of " + deep +
+            " (CONFIG on line 2 of " + mid + ", which CONFIG on line 2 of " +
+            top + " includes): " + kSetOnce);
+  const std::string after =
+      dir.write("top_after.cfg", "CONFIG " + mid + "\nBIAS true\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(after); },
+                         "parse " + after) ==
+        "Key BIAS is set on line 2 of " + deep + " (CONFIG on line 2 of " +
+            mid + ", which CONFIG on line 1 of " + after +
+            " includes) and on line 2 of " + after + ": " + kSetOnce);
+}
+
+// Pins: a CONFIG line that names a file whose lines are being read, the file
+// of the parse among them, is refused as a circular include before a line
+// of that file is read again, so a key of one value, or of a bounded number
+// of values, above the CONFIG line is not read twice. A file is the same
+// file whatever its path ("<dir>/./same.cfg" names <dir>/same.cfg):
+//  - self.cfg "BIAS true", "CONFIG self.cfg": "Circular dependency detected
+//    between CONFIG files: <self> -> <self> (CONFIG on line 2 of <self>)",
+//    through parse(file) and parse(file, rule, skipped);
+//  - oalgo_self.cfg "OALGO 1 1e-12", "CONFIG oalgo_self.cfg": "... <o> ->
+//    <o> (CONFIG on line 2 of <o>)";
+//  - cycle_a.cfg "BIAS true", "CONFIG cycle_b.cfg"; cycle_b.cfg "LAMBDA 0",
+//    "CONFIG cycle_a.cfg": "... <a> -> <b> -> <a> (CONFIG on line 2 of
+//    <b>)";
+//  - same.cfg "BIAS true", "CONFIG <dir>/./same.cfg": "... <same> ->
+//    <dir>/./same.cfg (CONFIG on line 2 of <same>)"; the parse of
+//    "<dir>/./same_top.cfg" ("BIAS true", "CONFIG <dir>/same_top.cfg"):
+//    "... <dir>/./same_top.cfg -> <same_top> (CONFIG on line 2 of
+//    <dir>/./same_top.cfg)".
+// Before the fix: the file of the parse was not among the files being read
+// and a path was compared by its text, so the lines of the file were read a
+// second time first, and the second line of a key was refused instead of
+// the circle: "Key BIAS is set on line 1 of <self> and on line 1 of <self>
+// (CONFIG on line 2 of <self>): a key of one value is set once in a
+// configuration file and the files it includes with CONFIG"; "Too many
+// values for key OALGO on line 1 of <o> (CONFIG on line 2 of <o>): OALGO
+// takes at most 2, and its lines read so far give 4"; "Key BIAS is set on
+// line 1 of <a> and on line 1 of <a> (CONFIG on line 2 of <b>, which CONFIG
+// on line 2 of <a> includes): ..."; "Key BIAS is set on line 1 of <same>
+// and on line 1 of <dir>/./same.cfg (CONFIG on line 2 of <same>): ...".
+TEST_CASE("Config parser: a file that includes itself is refused as a "
+          "circular include before its lines are read again",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const auto circle = [](const std::vector<std::string> &chain,
+                         const std::string &config_line) {
+    std::string out = "Circular dependency detected between CONFIG files: ";
+    for (std::size_t k = 0; k < chain.size(); ++k)
+      out += (k ? " -> " : "") + chain[k];
+    return out + " (" + config_line + ")";
+  };
+  SECTION("a key of one value above the CONFIG line") {
+    const std::string self = dir.write(
+        "self.cfg", "BIAS true\nCONFIG " + dir.path("self.cfg") + "\n");
+    const std::string expected =
+        circle({self, self}, "CONFIG on line 2 of " + self);
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(self); },
+                           "parse " + self) == expected);
+    std::vector<SkippedKeyLine> skipped;
+    CHECK(runtime_error_of(
+              [&] {
+                return CoreUserConfigParser().parse(self, skip_in_weights_files,
+                                                    skipped);
+              },
+              "parse " + self + " with a rule") == expected);
+  }
+  SECTION("a key of a bounded number of values above the CONFIG line") {
+    const std::string self =
+        dir.write("oalgo_self.cfg",
+                  "OALGO 1 1e-12\nCONFIG " + dir.path("oalgo_self.cfg") + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(self); },
+                           "parse " + self) ==
+          circle({self, self}, "CONFIG on line 2 of " + self));
+  }
+  SECTION("a circle of two files") {
+    const std::string b = dir.write(
+        "cycle_b.cfg", "LAMBDA 0\nCONFIG " + dir.path("cycle_a.cfg") + "\n");
+    const std::string a =
+        dir.write("cycle_a.cfg", "BIAS true\nCONFIG " + b + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(a); },
+                           "parse " + a) ==
+          circle({a, b, a}, "CONFIG on line 2 of " + b));
+  }
+  SECTION("the same file by another path") {
+    const std::string other = dir.path("./same.cfg");
+    REQUIRE(other != dir.path("same.cfg"));
+    const std::string same =
+        dir.write("same.cfg", "BIAS true\nCONFIG " + other + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(same); },
+                           "parse " + same) ==
+          circle({same, other}, "CONFIG on line 2 of " + same));
+    const std::string top = dir.write(
+        "same_top.cfg", "BIAS true\nCONFIG " + dir.path("same_top.cfg") + "\n");
+    const std::string top_other = dir.path("./same_top.cfg");
+    CHECK(runtime_error_of(
+              [&] { return CoreUserConfigParser().parse(top_other); },
+              "parse " + top_other) ==
+          circle({top_other, top}, "CONFIG on line 2 of " + top_other));
+  }
+}
+
+/* The lines that gave each key its values: the parse records them on the
+ * Context it returns (Context::key_lines()), in line order, each with where
+ * it is (as the errors of a line name it) and whether it is a line of a
+ * potential, a file whose own key lines have WEIGHTS. A configuration that
+ * includes a potential with CONFIG (pot.tadah: ATOM, WEIGHTS, RCUT2B 5.0 on
+ * line 3) and gives RCUT2B 4.0 above or below the CONFIG line:
+ *  - above.cfg "RCUT2B 4.0", "CONFIG pot.tadah", "DBFILE a.tadah":
+ *    RCUT2B {line 1 of above.cfg, not a potential's; line 3 of pot.tadah
+ *    (CONFIG on line 2 of above.cfg), a potential's}; WEIGHTS {line 2 of
+ *    pot.tadah (CONFIG on line 2 of above.cfg), a potential's}; DBFILE
+ *    {line 3 of above.cfg};
+ *  - below.cfg "CONFIG pot.tadah", "RCUT2B 4.0": the potential's line first;
+ *  - the potential read alone: RCUT2B {line 3 of pot.tadah, a potential's};
+ *  - a nested include, top.cfg "CONFIG mid.cfg", mid.cfg "LAMBDA 0",
+ *    "CONFIG pot.tadah": LAMBDA {line 1 of mid.cfg (CONFIG on line 1 of
+ *    top.cfg)}, RCUT2B {line 3 of pot.tadah (CONFIG on line 2 of mid.cfg,
+ *    which CONFIG on line 1 of top.cfg includes), a potential's};
+ *  - lines of no file "ATOM Ta", "RCUT2B 5.0", "WEIGHTS 1": RCUT2B {line 2,
+ *    a potential's};
+ *  - a line the parse does not store (the potential's EFILTER under the
+ *    rule of its potential lines) sets no line.
+ * Before the fix: does not compile (Context has no key_lines()). */
+TEST_CASE("Config parser: the Context records the lines that gave each key "
+          "its values and whether each is a potential's line",
+          "[config][config_include][key_lines]") {
+  RefuseScratch dir;
+  const std::string pot =
+      dir.write("lines_pot.tadah", "ATOM Ta\nWEIGHTS 0.25 -0.5\nRCUT2B 5.0\n"
+                                   "EFILTER -9 -2\n");
+  SECTION("a line above the CONFIG line") {
+    const std::string above = dir.write(
+        "lines_above.cfg", "RCUT2B 4.0\nCONFIG " + pot + "\nDBFILE a.tadah\n");
+    const Context c = CoreUserConfigParser().parse(above);
+    const std::string by = " (CONFIG on line 2 of " + above + ")";
+    CHECK(c("RCUT2B") == std::vector<std::string>{"4.0", "5.0"});
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 1 of " + above, false},
+                               {"line 3 of " + pot + by, true}});
+    CHECK(c.key_lines("WEIGHTS") ==
+          std::vector<KeyLine>{{"line 2 of " + pot + by, true}});
+    CHECK(c.key_lines("ATOM") ==
+          std::vector<KeyLine>{{"line 1 of " + pot + by, true}});
+    CHECK(c.key_lines("DBFILE") ==
+          std::vector<KeyLine>{{"line 3 of " + above, false}});
+    CHECK(c.key_lines("LAMBDA").empty());
+  }
+  SECTION("a line below the CONFIG line") {
+    const std::string below =
+        dir.write("lines_below.cfg", "CONFIG " + pot + "\nRCUT2B 4.0\n");
+    const Context c = CoreUserConfigParser().parse(below);
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{
+              {"line 3 of " + pot + " (CONFIG on line 1 of " + below + ")",
+               true},
+              {"line 2 of " + below, false}});
+  }
+  SECTION("the potential read alone") {
+    const Context c = CoreUserConfigParser().parse(pot);
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 3 of " + pot, true}});
+    CHECK(c.key_lines("EFILTER") ==
+          std::vector<KeyLine>{{"line 4 of " + pot, true}});
+  }
+  SECTION("a nested include") {
+    const std::string mid =
+        dir.write("lines_mid.cfg", "LAMBDA 0\nCONFIG " + pot + "\n");
+    const std::string top = dir.write("lines_top.cfg", "CONFIG " + mid + "\n");
+    const Context c = CoreUserConfigParser().parse(top);
+    CHECK(c.key_lines("LAMBDA") ==
+          std::vector<KeyLine>{
+              {"line 1 of " + mid + " (CONFIG on line 1 of " + top + ")",
+               false}});
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 3 of " + pot + " (CONFIG on line 2 of " +
+                                    mid + ", which CONFIG on line 1 of " +
+                                    top + " includes)",
+                                true}});
+  }
+  SECTION("lines of no file") {
+    const Context c = CoreUserConfigParser().parse(
+        std::vector<std::string>{"ATOM Ta", "RCUT2B 5.0", "WEIGHTS 1"});
+    CHECK(c.key_lines("RCUT2B") == std::vector<KeyLine>{{"line 2", true}});
+  }
+  SECTION("a line the parse does not store") {
+    const std::string run =
+        dir.write("lines_run.cfg", "CONFIG " + pot + "\nDBFILE a.tadah\n");
+    std::vector<SkippedKeyLine> skipped;
+    const Context c =
+        CoreUserConfigParser().parse(run, skip_in_weights_files, skipped);
+    REQUIRE_FALSE(c.has_stored("EFILTER"));
+    CHECK(c.key_lines("EFILTER").empty());
+    CHECK(c.key_lines("DBFILE") ==
+          std::vector<KeyLine>{{"line 2 of " + run, false}});
+  }
+}
+
+/* Pins: every error of a line of a file that a configuration includes with
+ * CONFIG names that file, its line and the CONFIG lines that include it,
+ * innermost first, as the refusal of a second line of a key of one value
+ * does; outer.cfg is "WATOM 73", "CONFIG <inc>":
+ *  - inc.cfg "ATOM Ta", "OPTIMIZER", "ALGO x": "OPTIMIZER on line 2 of
+ *    <inc> (CONFIG on line 2 of <outer>) is not closed; expected
+ *    ENDOPTIMIZER";
+ *  - desc.cfg "DESCRIPTOR", "ENDFOO": "Mismatched ENDFOO on line 2 of
+ *    <desc> (CONFIG on line 2 of <outer>); expected ENDDESCRIPTOR";
+ *    open.cfg "DESCRIPTOR", "TYPE x": "DESCRIPTOR on line 1 of <open>
+ *    (CONFIG on line 2 of <outer>) is not closed; expected ENDDESCRIPTOR";
+ *  - a key the parser refuses (refuse_keys), force.cfg "ATOM Ta", "FORCE
+ *    true": "Key FORCE on line 2 of <force> (CONFIG on line 2 of <outer>)
+ *    is not accepted here: <reason>";
+ *  - a key of another command in a configuration file of tadah train,
+ *    cmd.cfg "ANALYTICS true": "Key ANALYTICS on line 1 of <cmd> (CONFIG on
+ *    line 2 of <outer>) is not accepted here: ANALYTICS is the option
+ *    --analytics (-A) of tadah predict, ...";
+ *  - a CONFIG line of a nested include whose file does not open: top.cfg
+ *    "CONFIG mid.cfg", mid.cfg "ATOM Ta", "CONFIG missing.cfg": "Failed to
+ *    open config file: <missing> (CONFIG on line 2 of <mid>, which CONFIG
+ *    on line 1 of <top> includes)".
+ * Before the fix: each error named the line and its file alone ("OPTIMIZER
+ * on line 2 of <inc> is not closed; ...", "Key FORCE on line 2 of <force>
+ * is not accepted here: ..."), and the file that does not open the
+ * innermost CONFIG line alone ("(CONFIG on line 2 of <mid>)"). */
+TEST_CASE("Config parser: an error of a line of an included file names the "
+          "CONFIG lines that include it",
+          "[config][config_include][line_errors]") {
+  RefuseScratch dir;
+  const auto outer_of = [&dir](const std::string &name,
+                               const std::string &inc) {
+    return dir.write(name, "WATOM 73\nCONFIG " + inc + "\n");
+  };
+  const auto by = [](const std::string &outer) {
+    return " (CONFIG on line 2 of " + outer + ")";
+  };
+  SECTION("a block that is not closed") {
+    const std::string inc =
+        dir.write("open_inc.cfg", "ATOM Ta\nOPTIMIZER\nALGO x\n");
+    const std::string outer = outer_of("open_outer.cfg", inc);
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                           "parse " + outer) ==
+          "OPTIMIZER on line 2 of " + inc + by(outer) +
+              " is not closed; expected ENDOPTIMIZER");
+  }
+  SECTION("a DESCRIPTOR block") {
+    const std::string desc = dir.write("desc_inc.cfg", "DESCRIPTOR\nENDFOO\n");
+    const std::string outer = outer_of("desc_outer.cfg", desc);
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(outer); },
+                           "parse " + outer) ==
+          "Mismatched ENDFOO on line 2 of " + desc + by(outer) +
+              "; expected ENDDESCRIPTOR");
+    const std::string open =
+        dir.write("desc_open.cfg", "DESCRIPTOR\nTYPE x\n");
+    const std::string around = outer_of("desc_around.cfg", open);
+    CHECK(runtime_error_of(
+              [&] { return CoreUserConfigParser().parse(around); },
+              "parse " + around) ==
+          "DESCRIPTOR on line 1 of " + open + by(around) +
+              " is not closed; expected ENDDESCRIPTOR");
+  }
+  SECTION("a key the parser refuses") {
+    const std::string inc =
+        dir.write("refused_inc.cfg", "ATOM Ta\nFORCE true\n");
+    const std::string outer = outer_of("refused_outer.cfg", inc);
+    CoreUserConfigParser parser;
+    parser.refuse_keys({{"FORCE", kForceReason}});
+    CHECK(runtime_error_of([&] { return parser.parse(outer); },
+                           "parse " + outer) ==
+          "Key FORCE on line 2 of " + inc + by(outer) +
+              " is not accepted here: " + kForceReason);
+  }
+  SECTION("a key of another command") {
+    const std::string inc = dir.write("command_inc.cfg", "ANALYTICS true\n");
+    const std::string outer = outer_of("command_outer.cfg", inc);
+    CoreUserConfigParser parser;
+    parser.set_command("TRAIN");
+    CHECK_THAT(runtime_error_of([&] { return parser.parse(outer); },
+                                "parse " + outer),
+               Catch::Matchers::StartsWith(
+                   "Key ANALYTICS on line 1 of " + inc + by(outer) +
+                   " is not accepted here: ANALYTICS is the option "
+                   "--analytics (-A) of tadah predict"));
+  }
+  SECTION("a nested include whose file does not open") {
+    const std::string missing = dir.path("missing.cfg");
+    const std::string mid =
+        dir.write("missing_mid.cfg", "ATOM Ta\nCONFIG " + missing + "\n");
+    const std::string top =
+        dir.write("missing_top.cfg", "CONFIG " + mid + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(top); },
+                           "parse " + top) ==
+          "Failed to open config file: " + missing + " (CONFIG on line 2 of " +
+              mid + ", which CONFIG on line 1 of " + top + " includes)");
+  }
+}
+
+/* Pins: a second line of a key that a potential's own lines set, in a file
+ * that includes the potential with CONFIG, is refused with the way to
+ * change a potential's value; pot.tadah is "ATOM Ta", "WEIGHTS 0.25 -0.5",
+ * "MODEL M_BLR BF_Linear", "BIAS false":
+ *  - model.cfg "MODEL M_BLR BF_Linear", "CONFIG pot.tadah": "Too many values
+ *    for key MODEL on line 3 of <pot> (CONFIG on line 2 of <model>): MODEL
+ *    takes at most 3, and its lines read so far give 4, with line 1 of
+ *    <model> before it; a potential's value is changed by editing its line
+ *    in a copy of the potential (the Training page of the documentation,
+ *    Retraining from a potential)";
+ *  - below.cfg "CONFIG pot.tadah", "BIAS true": "Key BIAS is set on line 4
+ *    of <pot> (CONFIG on line 1 of <below>) and on line 2 of <below>: a key
+ *    of one value is set once in a configuration file and the files it
+ *    includes with CONFIG; a potential's value is changed ...";
+ *  - a copy of the potential with a second BIAS line: both lines are the
+ *    potential's, and the refusal states the rule alone ("Key BIAS is set
+ *    on line 4 of <copy> and on line 5 of <copy>: a key of one value is set
+ *    once in a configuration file and the files it includes with CONFIG").
+ * Before the fix: the first two ended at the rule ("... read so far give
+ * 4", "... the files it includes with CONFIG"), the first without the line
+ * of <model>. */
+TEST_CASE("Config parser: a second line of a potential's key in a file that "
+          "includes it gives the way to change the potential's value",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const std::string body =
+      "ATOM Ta\nWEIGHTS 0.25 -0.5\nMODEL M_BLR BF_Linear\nBIAS false\n";
+  const std::string pot = dir.write("advice_pot.tadah", body);
+  const std::string model = dir.write(
+      "advice_model.cfg", "MODEL M_BLR BF_Linear\nCONFIG " + pot + "\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(model); },
+                         "parse " + model) ==
+        "Too many values for key MODEL on line 3 of " + pot +
+            " (CONFIG on line 2 of " + model +
+            "): MODEL takes at most 3, and its lines read so far give 4, "
+            "with line 1 of " + model + " before it" + kCopyAdvice);
+  const std::string below =
+      dir.write("advice_below.cfg", "CONFIG " + pot + "\nBIAS true\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(below); },
+                         "parse " + below) ==
+        "Key BIAS is set on line 4 of " + pot + " (CONFIG on line 1 of " +
+            below + ") and on line 2 of " + below + ": " + kSetOnce +
+            kCopyAdvice);
+  const std::string copy =
+      dir.write("advice_copy.tadah", body + "BIAS true\n");
+  CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(copy); },
+                         "parse " + copy) ==
+        "Key BIAS is set on line 4 of " + copy + " and on line 5 of " + copy +
+            ": " + kSetOnce);
+}
+
+/* Pins: a key that a command takes fewer values of than the key itself (the
+ * command's table in the blueprint gives the key a number of its own:
+ * OUTFILE of tadah train, tadah refit and tadah analysis bfunc,
+ * suggest_bounds and dataset_stats, each of which writes one file) is read
+ * with the command's number in a configuration file of that command
+ * (set_command()):
+ *  - outer.cfg "OUTFILE a.tadah", "CONFIG inc.cfg", inc.cfg "OUTFILE
+ *    b.tadah": "Key OUTFILE is set on line 1 of <outer> and on line 1 of
+ *    <inc> (CONFIG on line 2 of <outer>): a key of one value is set once in
+ *    a configuration file and the files it includes with CONFIG";
+ *  - one.cfg "OUTFILE a.tadah b.tadah": "Too many values for key OUTFILE on
+ *    line 1 of <one>: OUTFILE of tadah train takes at most 1, and its lines
+ *    read so far give 2" (of tadah refit, ... for the others);
+ *  - a parse of no command reads both lines, and both values of one line,
+ *    as OUTFILE takes any number of values.
+ * Before the fix: every parse read both lines and both values (OUTFILE
+ * a.tadah b.tadah), and the command wrote the first file, a.tadah, the
+ * other ignored without a message. */
+TEST_CASE("Config parser: a key a command takes one value of is set once in "
+          "a configuration file of that command",
+          "[config][config_include][concatenation][command_counts]") {
+  RefuseScratch dir;
+  const std::string inc = dir.write("outfile_inc.cfg", "OUTFILE b.tadah\n");
+  const std::string outer = dir.write(
+      "outfile_outer.cfg", "OUTFILE a.tadah\nCONFIG " + inc + "\n");
+  const std::string one =
+      dir.write("outfile_one.cfg", "OUTFILE a.tadah b.tadah\n");
+  for (const std::string task :
+       {"TRAIN", "REFIT", "ANALYSIS.bfunc", "ANALYSIS.suggest_bounds",
+        "ANALYSIS.dataset_stats"}) {
+    INFO("command " << task);
+    CoreUserConfigParser parser;
+    parser.set_command(task);
+    CHECK(runtime_error_of([&] { return parser.parse(outer); },
+                           "parse " + outer) ==
+          "Key OUTFILE is set on line 1 of " + outer + " and on line 1 of " +
+              inc + " (CONFIG on line 2 of " + outer + "): " + kSetOnce);
+    CHECK(runtime_error_of([&] { return parser.parse(one); },
+                           "parse " + one) ==
+          "Too many values for key OUTFILE on line 1 of " + one +
+              ": OUTFILE of " + task_command_words(task) +
+              " takes at most 1, and its lines read so far give 2");
+  }
+  const std::vector<std::string> both{"a.tadah", "b.tadah"};
+  CHECK(CoreUserConfigParser().parse(outer)("OUTFILE") == both);
+  CHECK(CoreUserConfigParser().parse(one)("OUTFILE") == both);
 }

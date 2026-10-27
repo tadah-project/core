@@ -20,6 +20,15 @@
 
 using namespace tadah::core;
 
+namespace tadah {
+namespace core {
+/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential}". */
+inline std::ostream &operator<<(std::ostream &os, const KeyLine &l) {
+  return os << "{" << l.where << (l.potential ? ", potential}" : "}");
+}
+}  // namespace core
+}  // namespace tadah
+
   auto split_lines = [](const std::string& str) {
     std::vector<std::string> lines;
     std::istringstream iss(str);
@@ -1455,5 +1464,85 @@ TEST_CASE("Context: a short configuration line with commas in a list is "
           "Conversion failed for key=" + l.key + ", value=\"" + l.token +
               "\": a finite decimal number is required");
     if (l.tokens == 2) CHECK(c.get<double>(l.key, 1) == 3.0);
+  }
+}
+
+/* The lines of a key (Context::key_lines(), recorded by a parse) describe
+ * the values the key holds: copies and moves carry them, a change the
+ * program makes to the key's values (add(), remove(), storage_update(),
+ * clear(), deserialize()) drops the key's lines and no other key's, and
+ * merge() gives a key the lines of the context its values come from (ctx2's
+ * values replacing ctx1's: ctx2's lines; ctx2's values appended to ctx1's:
+ * both, in order). operator== compares the values alone.
+ * Before the fix: does not compile (Context has no key_lines()). */
+TEST_CASE("Context: the lines of a key follow its values",
+          "[context][key_lines]") {
+  const Context parsed = CoreUserConfigParser().parse(std::vector<std::string>{
+      "ATOM Ta", "RCUT2B 5.0", "DBFILE a.tadah", "DBFILE b.tadah",
+      "WEIGHTS 1 2"});
+  const std::vector<KeyLine> rcut{{"line 2", true}};
+  const std::vector<KeyLine> dbfile{{"line 3", true}, {"line 4", true}};
+  REQUIRE(parsed.key_lines("RCUT2B") == rcut);
+  REQUIRE(parsed.key_lines("dbfile") == dbfile);
+  SECTION("copies and moves") {
+    Context copy = parsed;
+    CHECK(copy.key_lines("RCUT2B") == rcut);
+    Context assigned;
+    assigned = parsed;
+    CHECK(assigned.key_lines("RCUT2B") == rcut);
+    Context moved = std::move(copy);
+    CHECK(moved.key_lines("RCUT2B") == rcut);
+    Context move_assigned;
+    move_assigned = std::move(assigned);
+    CHECK(move_assigned.key_lines("DBFILE") == dbfile);
+  }
+  SECTION("a change of the values drops the key's lines") {
+    Context c = parsed;
+    c.add("RCUT2B", 6.0);
+    CHECK(c.key_lines("RCUT2B").empty());
+    CHECK(c.key_lines("DBFILE") == dbfile);
+    c.remove("DBFILE");
+    c.add("DBFILE", "a.tadah b.tadah");
+    CHECK(c.key_lines("DBFILE").empty());
+    c.storage_update("ATOM", {"Nb"});
+    CHECK(c.key_lines("ATOM").empty());
+    CHECK(c.key_lines("WEIGHTS") == std::vector<KeyLine>{{"line 5", true}});
+    Context d = parsed;
+    d.deserialize(parsed.serialize());
+    CHECK(d == parsed);
+    CHECK(d.key_lines("WEIGHTS").empty());
+    d = parsed;
+    d.clear();
+    CHECK(d.key_lines("WEIGHTS").empty());
+  }
+  SECTION("merge") {
+    Context run;
+    run.add("RCUT2B", 6.0);
+    // the command line over the file (TaskFactory): RCUT2B is the run's
+    const Context over = Context::merge(parsed, run);
+    CHECK(over.key_lines("RCUT2B").empty());
+    CHECK(over.key_lines("DBFILE") == dbfile);
+    // the file over the run (tadah analysis bfunc): RCUT2B is the file's
+    const Context under = Context::merge(run, parsed);
+    CHECK(under("RCUT2B") == std::vector<std::string>{"5.0"});
+    CHECK(under.key_lines("RCUT2B") == rcut);
+    CHECK(under.key_lines("DBFILE") == dbfile);
+    // appended: the lines of both, in order, when both have lines
+    const Context both = Context::merge(parsed, parsed, false);
+    CHECK(both.key_lines("DBFILE") ==
+          std::vector<KeyLine>{dbfile[0], dbfile[1], dbfile[0], dbfile[1]});
+    const Context partly = Context::merge(run, parsed, false);
+    CHECK(partly("RCUT2B") == std::vector<std::string>{"6", "5.0"});
+    CHECK(partly.key_lines("RCUT2B").empty());
+  }
+  SECTION("operator== compares the values") {
+    Context made;
+    made.add("ATOM", "Ta");
+    made.add("RCUT2B", "5.0");
+    made.add("DBFILE", "a.tadah");
+    made.add("DBFILE", "b.tadah");
+    made.add("WEIGHTS", "1 2");
+    CHECK(made.key_lines("RCUT2B").empty());
+    CHECK(made == parsed);
   }
 }

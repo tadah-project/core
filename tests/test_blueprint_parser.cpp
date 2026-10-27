@@ -187,6 +187,50 @@ TEST_CASE("BlueprintParser: CHECK is the --check flag of tadah hpo alone",
   CHECK(tasks_with_check == std::vector<std::string>{"HPO"});
 }
 
+/* Pins: the help of CONFIG (`tadah explain CONFIG` prints its long
+ * description; the configuration-keys page shows its description and long
+ * description) states what -c names ("CONFIG names the configuration
+ * file") and the rules of an include: the configuration is the
+ * concatenation of its lines ("concatenation", "in place of the CONFIG
+ * line"); a key of one value "other than CONFIG" is set once ("set once"),
+ * a second line refused "naming both lines", and so are the lines of a file
+ * "included twice"; a setting that differs between the files that include
+ * a shared file "goes in each of them"; the lines of a key of several
+ * values add up ("DBFILE" lists the datasets of every line); a line that a
+ * run does not read sets nothing ("does not read"); a relative path, of a
+ * CONFIG line and in an included file, is relative to the "working
+ * directory", "not to the directory of the file" that holds it; a file
+ * that "includes itself" is refused.
+ * Before the fix: CONFIG has no long description (its help is "Path to a
+ * configuration file."): every check of the text fails. Until the help
+ * opened with a sentence and named the file included twice, the shared
+ * setting and CONFIG's own count, "CONFIG names the configuration file",
+ * "other than CONFIG", "included twice" and "goes in each of them" were
+ * not found. */
+TEST_CASE("BlueprintParser: the help of CONFIG states the rules of an "
+          "include and the base of its paths",
+          "[BlueprintParser][config_include]")
+{
+  const BlueprintKey &k = BlueprintParser::getKeysMapRef().at("CONFIG");
+  const std::string text = k.description + "\n" + k.longDescription;
+  INFO("CONFIG help:\n" << text);
+  // The help is wrapped in the blueprint: compare with single blanks.
+  std::string flat;
+  for (char c : text) {
+    const char b = std::isspace(static_cast<unsigned char>(c)) ? ' ' : c;
+    if (b != ' ' || (!flat.empty() && flat.back() != ' ')) flat += b;
+  }
+  for (const char *phrase :
+       {"CONFIG names the configuration file", "concatenation",
+        "in place of the CONFIG line", "other than CONFIG", "set once",
+        "naming both lines", "included twice", "goes in each of them",
+        "DBFILE", "does not read", "working directory",
+        "not to the directory of the file", "includes itself"}) {
+    INFO("phrase: " << phrase);
+    CHECK(flat.find(phrase) != std::string::npos);
+  }
+}
+
 /**
  * @brief Tests that an empty map returns an empty string when searching for a closest key.
  */
