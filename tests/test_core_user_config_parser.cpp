@@ -542,17 +542,20 @@ std::string trimmed(const std::string &t) {
 // Pins: with an inline comment on the CONFIG line, a missing file is reported
 // by its path alone ("Failed to open config file: <path>", the path without
 // the blanks before the '#'), and a circular include names the files of the
-// chain, each by its path alone ("... CONFIG files: <b> -> <a> -> <b>");
-// each names the CONFIG line, its line and its file, as every error of a
-// line does: "Failed to open config file: <path> (CONFIG on line 1 of
-// <outer>)", "... -> <b> (CONFIG on line 2 of <a>)".
+// chain, from the file of the parse, each by its path alone ("... CONFIG
+// files: <a> -> <b> -> <a>"); each names the CONFIG line, its line and its
+// file, as every error of a line does: "Failed to open config file: <path>
+// (CONFIG on line 1 of <outer>)", "... -> <a> (CONFIG on line 2 of <b>)".
 // Before the fix: the missing file was reported as "<path>   " (the blanks
 // before the '#'), and the circular include was never detected: the first
 // CONFIG line already failed to open "<b>  ", so the message was "Failed to
 // open config file: <b>  " instead of the chain. Neither named the CONFIG
 // line ("Failed to open config file: <path>", after the Logger line
 // "CoreUserConfigParser::parse -> Failed to open file: <path>", and the
-// chain alone).
+// chain alone). Until the file of the parse was among the files being read,
+// the circle was found one include later, after the lines of <a> were read
+// a second time: "... CONFIG files: <b> -> <a> -> <b> (CONFIG on line 2 of
+// <a>)".
 TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
           "file alone in its errors",
           "[config][config_include][line_errors]") {
@@ -577,8 +580,8 @@ TEST_CASE("Config parser: a CONFIG line with an inline comment names the "
         dir.write("loop_a.cfg", "ATOM Ta\nCONFIG " + b + "  # on to b\n");
     const std::string msg = runtime_error_of(
         [&] { return CoreUserConfigParser().parse(a); }, "parse " + a);
-    CHECK(msg == "Circular dependency detected between CONFIG files: " + b +
-                     " -> " + a + " -> " + b + " (CONFIG on line 2 of " + a +
+    CHECK(msg == "Circular dependency detected between CONFIG files: " + a +
+                     " -> " + b + " -> " + a + " (CONFIG on line 2 of " + b +
                      ")");
   }
 }
@@ -1823,4 +1826,94 @@ TEST_CASE("Config parser: a key of one value set in a nested include is "
         "Key BIAS is set on line 2 of " + deep + " (CONFIG on line 2 of " +
             mid + ", which CONFIG on line 1 of " + after +
             " includes) and on line 2 of " + after + ": " + kSetOnce);
+}
+
+// Pins: a CONFIG line that names a file whose lines are being read, the file
+// of the parse among them, is refused as a circular include before a line
+// of that file is read again, so a key of one value, or of a bounded number
+// of values, above the CONFIG line is not read twice. A file is the same
+// file whatever its path ("<dir>/./same.cfg" names <dir>/same.cfg):
+//  - self.cfg "BIAS true", "CONFIG self.cfg": "Circular dependency detected
+//    between CONFIG files: <self> -> <self> (CONFIG on line 2 of <self>)",
+//    through parse(file) and parse(file, rule, skipped);
+//  - oalgo_self.cfg "OALGO 1 1e-12", "CONFIG oalgo_self.cfg": "... <o> ->
+//    <o> (CONFIG on line 2 of <o>)";
+//  - cycle_a.cfg "BIAS true", "CONFIG cycle_b.cfg"; cycle_b.cfg "LAMBDA 0",
+//    "CONFIG cycle_a.cfg": "... <a> -> <b> -> <a> (CONFIG on line 2 of
+//    <b>)";
+//  - same.cfg "BIAS true", "CONFIG <dir>/./same.cfg": "... <same> ->
+//    <dir>/./same.cfg (CONFIG on line 2 of <same>)"; the parse of
+//    "<dir>/./same_top.cfg" ("BIAS true", "CONFIG <dir>/same_top.cfg"):
+//    "... <dir>/./same_top.cfg -> <same_top> (CONFIG on line 2 of
+//    <dir>/./same_top.cfg)".
+// Before the fix: the file of the parse was not among the files being read
+// and a path was compared by its text, so the lines of the file were read a
+// second time first, and the second line of a key was refused instead of
+// the circle: "Key BIAS is set on line 1 of <self> and on line 1 of <self>
+// (CONFIG on line 2 of <self>): a key of one value is set once in a
+// configuration file and the files it includes with CONFIG"; "Too many
+// values for key OALGO on line 1 of <o> (CONFIG on line 2 of <o>): OALGO
+// takes at most 2, and its lines read so far give 4"; "Key BIAS is set on
+// line 1 of <a> and on line 1 of <a> (CONFIG on line 2 of <b>, which CONFIG
+// on line 2 of <a> includes): ..."; "Key BIAS is set on line 1 of <same>
+// and on line 1 of <dir>/./same.cfg (CONFIG on line 2 of <same>): ...".
+TEST_CASE("Config parser: a file that includes itself is refused as a "
+          "circular include before its lines are read again",
+          "[config][config_include][concatenation]") {
+  RefuseScratch dir;
+  const auto circle = [](const std::vector<std::string> &chain,
+                         const std::string &config_line) {
+    std::string out = "Circular dependency detected between CONFIG files: ";
+    for (std::size_t k = 0; k < chain.size(); ++k)
+      out += (k ? " -> " : "") + chain[k];
+    return out + " (" + config_line + ")";
+  };
+  SECTION("a key of one value above the CONFIG line") {
+    const std::string self = dir.write(
+        "self.cfg", "BIAS true\nCONFIG " + dir.path("self.cfg") + "\n");
+    const std::string expected =
+        circle({self, self}, "CONFIG on line 2 of " + self);
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(self); },
+                           "parse " + self) == expected);
+    std::vector<SkippedKeyLine> skipped;
+    CHECK(runtime_error_of(
+              [&] {
+                return CoreUserConfigParser().parse(self, skip_in_weights_files,
+                                                    skipped);
+              },
+              "parse " + self + " with a rule") == expected);
+  }
+  SECTION("a key of a bounded number of values above the CONFIG line") {
+    const std::string self =
+        dir.write("oalgo_self.cfg",
+                  "OALGO 1 1e-12\nCONFIG " + dir.path("oalgo_self.cfg") + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(self); },
+                           "parse " + self) ==
+          circle({self, self}, "CONFIG on line 2 of " + self));
+  }
+  SECTION("a circle of two files") {
+    const std::string b = dir.write(
+        "cycle_b.cfg", "LAMBDA 0\nCONFIG " + dir.path("cycle_a.cfg") + "\n");
+    const std::string a =
+        dir.write("cycle_a.cfg", "BIAS true\nCONFIG " + b + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(a); },
+                           "parse " + a) ==
+          circle({a, b, a}, "CONFIG on line 2 of " + b));
+  }
+  SECTION("the same file by another path") {
+    const std::string other = dir.path("./same.cfg");
+    REQUIRE(other != dir.path("same.cfg"));
+    const std::string same =
+        dir.write("same.cfg", "BIAS true\nCONFIG " + other + "\n");
+    CHECK(runtime_error_of([&] { return CoreUserConfigParser().parse(same); },
+                           "parse " + same) ==
+          circle({same, other}, "CONFIG on line 2 of " + same));
+    const std::string top = dir.write(
+        "same_top.cfg", "BIAS true\nCONFIG " + dir.path("same_top.cfg") + "\n");
+    const std::string top_other = dir.path("./same_top.cfg");
+    CHECK(runtime_error_of(
+              [&] { return CoreUserConfigParser().parse(top_other); },
+              "parse " + top_other) ==
+          circle({top_other, top}, "CONFIG on line 2 of " + top_other));
+  }
 }
