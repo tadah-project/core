@@ -150,23 +150,15 @@ CONFIG lines or through two included files, gives its lines twice, so its
 keys of one value are refused. A setting that differs between the files
 that include a shared file goes in each of them, not in the shared file.
 
-The lines of a key of several values add up in line order: DBFILE lists
-the datasets of all its lines. A line past the number of values the key
-takes is refused. A potential (a file with WEIGHTS) has one line for each
-key of its descriptors: their RCTYPE and RCUT keys, and the grid keys
-CGRID2B, SGRID2B, KDEG2B, CGRIDMB, SGRIDMB, AMPGRIDMB, KDEGMB, KDEGEMB,
-CEMBFUNC and SEMBFUNC; it has its TYPE2B and TYPEMB keys as tadah writes
-them, on lines one after another, a new line at each descriptor's name (a
-D2_mJoin or DM_mJoin line has one line per descriptor). A command that
-reads its configuration file with -c (tadah train, tadah hpo, tadah refit
-and the analysis commands that take -c), and tadah refit --edit, refuses
-a second line of such a key in the potential file, and TYPE2B or TYPEMB
-lines other than those tadah writes, naming the lines. A potential's value
-is changed by editing its line (the Training page of the documentation,
-Retraining from a potential). A line
-the run does not read, such as the EFILTER line of an included potential
-(the same page), sets nothing. An option of the command line takes
-precedence over the lines of its key.
+The lines of a key of several values add up in line order: DBFILE lists the
+datasets of all its lines. A line past the number of values the key takes
+is refused. A key of the descriptors of a potential (a file with WEIGHTS)
+is set by the potential's own line; a second line of it in the potential
+file, or a TYPE2B or TYPEMB line other than those tadah writes, is refused
+(the Training page of the documentation, Retraining from a potential). A
+line the run does not read, such as the EFILTER line of an included
+potential (the same page), sets nothing. An option of the command line
+takes precedence over the lines of its key.
 
 A relative path is relative to the working directory, the directory the
 command runs in, not to the directory of the file that holds the line. This
@@ -774,43 +766,39 @@ long_description = """
 Pre-flight audit mode of tadah train and tadah hpo: 'off' (default) skips
 the audit, 'warn' emits diagnostics but proceeds, 'error' makes any
 FAIL-level finding fatal (exit status 1). The audit's data scan is sampled
-by default (AUDIT_SAMPLE); when the sample gives a FAIL finding, the audit
-is made again on every structure. It checks the parameters of each
-descriptor
-against the neighbour distances of the data between the element pairs its
-TYPE2B or TYPEMB line names (the PAIRS of a DESCRIPTOR block), the
-neighbours it sums over: the Ta-W distances alone for TYPE2B D2_Blip 4 4
-Ta W (a line with * * names every pair). A descriptor fails when its
-cutoff (RCUT2B, RCUTMB, or the cutoff RADIUS of a DESCRIPTOR block) holds
-none of them, a cutoff below the smallest or data without such a pair
-within it; a radial channel of a many-body density fails when it reaches
-none of them within its cutoff (a Gaussian when it is below 1e-6 at all
-of them, a blip when its support holds none), whatever its centre. A
-finding names the pairs ("below the smallest (Ta, W) neighbour distance
-of the dataset"). D2_Knot5, or a knot DM_REAM density, is judged at its
+by default (AUDIT_SAMPLE, which says when every structure is scanned). It
+checks the parameters of each descriptor against the neighbour distances of
+the element pairs it sums over, those its TYPE2B or TYPEMB line names or
+the PAIRS of its DESCRIPTOR block: the (Ta, W) distances alone for TYPE2B
+D2_Blip 4 4 Ta W (a line with * * names every pair). A descriptor fails
+when its cutoff (RCUT2B, RCUTMB, or the cutoff RADIUS of a DESCRIPTOR
+block) holds none of them, a cutoff below the smallest or data without such
+a pair within it; a radial channel of a many-body density fails when it
+reaches none of them within its cutoff (a Gaussian when it is below 1e-6 at
+all of them, a blip when its support holds none), whatever its centre. A
+finding names the pairs ("below the smallest (Ta, W) neighbour distance of
+the dataset"). D2_Knot5, or a knot DM_REAM density, is judged at its
 largest knot, the cutoff tadah train and tadah hpo give it (on a joined
-line, its own RCUT2B or RCUTMB entry).
-Each descriptor of a D2_mJoin or DM_mJoin line, and each descriptor that
-TYPEMB places among DESCRIPTOR blocks (TYPEMB DM_EAD ... Ta Ta and TYPEMB
-@ta), is judged by the element pairs of its own line and its own channels
-and cutoff, and a channel is named by its entry of the whole key.
-Under tadah hpo it also warns about a critical parameter that the seed
-fixes and the search space leaves out, for a descriptor that has a key in
-the search space; the warning names the descriptor's entries of the key
-(RCUTMB(2)). A key counts as searched for a descriptor when the search
-space holds one of that descriptor's own entries of it: OPTIM RCUT2B (1)
-searches the cutoff of the first descriptor of a D2_mJoin line, not that
-of the second. Each descriptor of a joined line is judged by its own
-values there too: a descriptor whose own centres are all at the origin
-gets no warning about its centres. The cutoff of D2_Knot5 or of a knot
-DM_REAM density is not flagged: tadah hpo derives it from the largest
-knot. Nor is that of D2_Blip, D2_Blip5 or a blip DM_REAM density under
-Cut_Dummy, whose bumps tadah hpo keeps within it. Both rules apply on a
-line of one descriptor and on a D2_mJoin or DM_mJoin line. A setting of
-the run: no potential has an
-AUDIT line (its training record lists the run's), and an AUDIT line of a
-potential of an earlier version is not read by a retrain or tadah hpo -c
-of it.
+line, its own RCUT2B or RCUTMB entry). Each descriptor of a D2_mJoin or
+DM_mJoin line, and each descriptor that TYPEMB places among DESCRIPTOR
+blocks (TYPEMB DM_EAD ... Ta Ta and TYPEMB @ta), is judged by the element
+pairs of its own line and its own channels and cutoff, and a channel is
+named by its entry of the whole key. Under tadah hpo it also warns about a
+critical parameter that the seed fixes and the search space leaves out, for
+a descriptor that has a key in the search space; the warning names the
+descriptor's entries of the key (RCUTMB(2)). A key counts as searched for a
+descriptor when the search space holds one of that descriptor's own entries
+of it: OPTIM RCUT2B (1) searches the cutoff of the first descriptor of a
+D2_mJoin line, not that of the second. Each descriptor of a joined line is
+judged by its own values there too: a descriptor whose own centres are all
+at the origin gets no warning about its centres. The cutoff of D2_Knot5 or
+of a knot DM_REAM density is not flagged: tadah hpo derives it from the
+largest knot. Nor is that of D2_Blip, D2_Blip5 or a blip DM_REAM density
+under Cut_Dummy, whose bumps tadah hpo keeps within it. Both rules apply on
+a line of one descriptor and on a D2_mJoin or DM_mJoin line. A setting of
+the run: no potential has an AUDIT line (its training record lists the
+run's), and an AUDIT line of a potential of an earlier version is not read
+by a retrain or tadah hpo -c of it.
 """
 default_value = ["off"]
 examples = ["off", "warn", "error"]
@@ -821,13 +809,12 @@ description = "Number of training structures sampled (deterministic random) for 
 long_description = """
 Number of training structures sampled (deterministic random) for the
 pre-flight audit's dataset stats; 0 means the entire StructureDB. Has no
-effect when AUDIT is 'off'. When the sample gives a FAIL finding, the
-audit is made again on every structure, so that an element pair that only
+effect when AUDIT is 'off'. When the sample gives a FAIL finding, the audit
+is made again on every structure, so that an element pair that only
 structures outside the sample hold is not reported as absent from the
-dataset. A setting of the run: no potential has an
-AUDIT_SAMPLE line (its training record lists the run's), and an
-AUDIT_SAMPLE line of a potential of an earlier version is not read by a
-retrain or tadah hpo -c of it.
+dataset. A setting of the run: no potential has an AUDIT_SAMPLE line (its
+training record lists the run's), and an AUDIT_SAMPLE line of a potential
+of an earlier version is not read by a retrain or tadah hpo -c of it.
 """
 default_value = ["256"]
 examples = ["256", "1024", "0"]
@@ -3925,50 +3912,48 @@ DESCRIPTOR block), then walks the metadata of each configured descriptor
 and proposes one OPTIM bound per parameter entry. The shells, peaks and
 percentiles a range is taken from are those of the element pairs the
 descriptor's TYPE2B or TYPEMB line names, the neighbours it sums over: the
-Ta-W distances for TYPE2B D2_Blip 4 4 Ta W. For a line of several pairs
+(Ta, W) distances for TYPE2B D2_Blip 4 4 Ta W. For a line of several pairs
 the range holds the range of each pair, and a rationale taken from the
 distances names the pair of each. The parameters of a DESCRIPTOR block get
 ranges around the seed's values, which the distances do not set. Each
 descriptor of a D2_mJoin or DM_mJoin line, and each descriptor that TYPEMB
 places among DESCRIPTOR blocks, gets the rows of its own values and the
-element pairs of its own line, numbered as the whole key numbers them.
-A key that the descriptors of a
-joined line share (RCUTENV) gets one row. Each row gives its rationale:
-the form the range assumes and the data it comes from (the cutoffs, and
-the centres and widths of the densities), "fixed range" and why (the
-ranges of the densities ρ, which the statistics do not hold), or the
-scale and the role of the parameter. The range of a cutoff runs from 1.05
-times the distance of the second neighbour shell (or the median distance)
-to the 99th percentile of the distances, so it can end past the seed's
-cutoff. Every range holds the seed's value, where a search of tadah hpo
-starts. Where the data alone give a range that does not hold the seed's
-value, the range is widened to hold it, and its rationale says so. A row
-gets no OPTIM line, and its rationale says why, when the data give it no
-range: data without a pair of atoms of the descriptor's element pairs
-within the reach of the statistics (the rationale names the pairs), a
+element pairs of its own line, numbered as the whole key numbers them. A
+key that the descriptors of a joined line share (RCUTENV) gets one row.
+Each row gives its rationale: the form the range assumes and the data it
+comes from (the cutoffs, and the centres and widths of the densities),
+"fixed range" and why (the ranges of the densities ρ, which the statistics
+do not hold), or the scale and the role of the parameter. The range of a
+cutoff runs from 1.05 times the distance of the second neighbour shell (or
+the median distance) to the 99th percentile of the distances, so it can end
+past the seed's cutoff. Every range holds the seed's value, where a search
+of tadah hpo starts. Where the data alone give a range that does not hold
+the seed's value, the range is widened to hold it, and its rationale says
+so. A row gets no OPTIM line, and its rationale says why, when the data
+give it no range: data without a pair of atoms of the descriptor's element
+pairs within the reach of the statistics (the rationale names the pairs), a
 range of zero width (which tadah hpo refuses), the grids of DM_REAM (which
 the neighbour distances do not set) and its knot degrees (which tadah hpo
-does not search). The cutoff of D2_Knot5, or of a knot DM_REAM density,
-is its largest knot, which tadah train and tadah hpo derive (on a
-D2_mJoin or DM_mJoin line, the descriptor's own entry). Its row has no
-OPTIM line, as tadah hpo warns that such a line has no effect. The ranges
-of a Gaussian
-or a blip density depend on the seed's centre. A centre at the origin
-(CGRIDMB 0) gets no OPTIM line, as its width sets its reach. The width
-of a Gaussian there gets the widths over which the Gaussian drops by
-a factor of 0.9 to 1/20 from the first neighbour shell to the second, up to
-the width at which it is 1e-6 at the nearest neighbour. The width of a
-blip there gets the widths whose reach, the distance at which the blip
-falls to 1e-6, runs from the nearest neighbour to the farthest within
-RCUTMB. Any other centre gets the range of itself +- the FWHM of the
-neighbour shell nearest to it, kept within the neighbour distances unless
-the centre lies outside them; its width gets 0.25/w^2 to 9/w^2 (Gaussian)
-or 1/w to 6/w (blip), with w that FWHM. A value of a descriptor's TYPE2B
-line (the screening parameters of D2_ZBL, the exponents of D2_MIE) gets a
-row without an OPTIM line, numbered as an OPTIM line numbers the values of
-the key, by the numbers among them: tadah hpo does not search it. Prints
-the table and writes the OPTIM lines, one line per run of entries of a key
-with the same range (to --outfile, or to standard output).
+does not search). The cutoff of D2_Knot5, or of a knot DM_REAM density, is
+its largest knot, which tadah train and tadah hpo derive (on a D2_mJoin or
+DM_mJoin line, the descriptor's own entry). Its row has no OPTIM line, as
+tadah hpo warns that such a line has no effect. The ranges of a Gaussian or
+a blip density depend on the seed's centre. A centre at the origin (CGRIDMB
+0) gets no OPTIM line, as its width sets its reach. The width of a Gaussian
+there gets the widths over which the Gaussian drops by a factor of 0.9 to
+1/20 from the first neighbour shell to the second, up to the width at which
+it is 1e-6 at the nearest neighbour. The width of a blip there gets the
+widths whose reach, the distance at which the blip falls to 1e-6, runs from
+the nearest neighbour to the farthest within RCUTMB. Any other centre gets
+the range of itself +- the FWHM of the neighbour shell nearest to it, kept
+within the neighbour distances unless the centre lies outside them; its
+width gets 0.25/w^2 to 9/w^2 (Gaussian) or 1/w to 6/w (blip), with w that
+FWHM. A value of a descriptor's TYPE2B line (the screening parameters of
+D2_ZBL, the exponents of D2_MIE) gets a row without an OPTIM line, numbered
+as an OPTIM line numbers the values of the key, by the numbers among them:
+tadah hpo does not search it. Prints the table and writes the OPTIM lines,
+one line per run of entries of a key with the same range (to --outfile, or
+to standard output).
 """
 examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
 [TASKS.analysis.suggest_bounds.keys]
