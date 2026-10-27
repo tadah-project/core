@@ -3916,10 +3916,10 @@ range: data without a pair of atoms within the reach of the statistics, a
 range of zero width (which tadah hpo refuses), the grids of DM_REAM (which
 the neighbour distances do not set) and its knot degrees (which tadah hpo
 does not search). The cutoff of D2_Knot5, or of a knot DM_REAM density,
-alone on its TYPE2B or TYPEMB line is its largest knot, which tadah train
-and tadah hpo derive: its row has no OPTIM line (tadah hpo warns that such
-a line has no effect). On a D2_mJoin or DM_mJoin line it gets a range, as
-tadah hpo takes the stated cutoff there. The ranges of a Gaussian
+alone on its TYPE2B or TYPEMB line or on a D2_mJoin or DM_mJoin line (its
+own value of RCUT2B or RCUTMB), is its largest knot, which tadah train and
+tadah hpo derive: its row has no OPTIM line (tadah hpo warns that such a
+line has no effect). The ranges of a Gaussian
 or a blip density depend on the seed's centre. A centre at the origin
 (CGRIDMB 0) gets no OPTIM line, as its width sets its reach. The width
 of a Gaussian there gets the widths over which the Gaussian drops by
@@ -3979,7 +3979,8 @@ DM_REAM seed, which must declare RHOFORM, the limits of the density form
 (under NONNEG and MONOTONE: AMPGRIDMB >= 0, WATOM > 0, and SGRIDMB > 0
 under MONOTONE and for a Gaussian density under NONNEG), and in every form
 a radial bump width > 0 (SGRIDMB of a Blip or Blip5 density, SGRID2B of a
-D2_Blip or D2_Blip5 pair term or of a D2_mJoin with one).
+D2_Blip or D2_Blip5 pair term, alone or on a D2_mJoin line, where the
+entries of another descriptor keep its own rule).
 Returns exit code 0 if all corners pass and 1 if any corner produces a
 FAIL finding.
 """
