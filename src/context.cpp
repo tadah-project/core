@@ -576,7 +576,7 @@ void Context::keyNotFoundLogSuggestThrow(const std::string &key,
   } else {
     std::string suggested = BlueprintParser::findClosestKey(key, allowedKeys_);
     if (!suggested.empty()) {
-      Logger::instance().log(LogLevel::ERROR, "  Did you mean: ", suggested);
+      Logger::instance().log(LogLevel::ERROR, "  closest key: ", suggested);
     }
     throw std::runtime_error("Key not allowed: " + key);
   }
