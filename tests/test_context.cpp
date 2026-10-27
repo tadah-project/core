@@ -24,11 +24,12 @@ using namespace tadah::core;
 namespace tadah {
 namespace core {
 /* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential,
- * file a.cfg, 1 value(s), line number 2}". */
+ * file a.cfg, 1 value(s), line number 2, ordinal 2}". */
 inline std::ostream &operator<<(std::ostream &os, const KeyLine &l) {
   return os << "{" << l.where << (l.potential ? ", potential" : "")
             << ", file " << l.source << ", " << l.values
-            << " value(s), line number " << l.line << "}";
+            << " value(s), line number " << l.line << ", ordinal "
+            << l.ordinal << "}";
 }
 }  // namespace core
 }  // namespace tadah
@@ -921,16 +922,24 @@ TEST_CASE("Context write_potential: same layout as operator<<",
  *  - TYPE2B D2_Blip 2 2 Ta Ta: {5};
  *  - TYPEMB @ta DM_Blip 0 1 1 Ta Ta, a DESCRIPTOR block placed before a
  *    descriptor: {1, 6};
+ *  - TYPEMB DM_EAD 0 1 1 W W @ta, a DESCRIPTOR block placed after a
+ *    descriptor: {6, 1}, a new line at the block's ID as at a descriptor's
+ *    name;
+ *  - TYPEMB @ta @tb, two DESCRIPTOR blocks: {1, 1};
  *  - RCUT2B 5 4.5, a key written on one line: {2};
  *  - DBFILE a.tadah b.tadah, a key written a line per value: {1, 1};
  *  - no values, and a key of no blueprint entry (which the writer does not
  *    write): no line;
  *  and the TYPE2B and TYPEMB lines write_potential() writes for a Context of
- *  the joined TYPE2B line and of TYPEMB @ta DM_Blip 0 1 1 Ta Ta hold those
- *  numbers of values.
+ *  the joined TYPE2B line and of each TYPEMB line above hold those numbers
+ *  of values.
  * Before the fix: does not compile (Context has no written_line_sizes():
  * the lines of a key in a potential could only be read off the written
- * text). */
+ * text).
+ * Before the fix of the block IDs: DM_EAD 0 1 1 W W @ta gave {7} and @ta
+ * @tb {2}, and the writer wrote them on one line ("TYPEMB DM_EAD 0 1 1 W W
+ * @ta", "TYPEMB @ta @tb"), which no TYPEMB value schema takes: no command
+ * read the potential. */
 TEST_CASE("Context: written_line_sizes gives the lines the writer writes a "
           "key's values on",
           "[context][pot][key_lines]") {
@@ -940,30 +949,37 @@ TEST_CASE("Context: written_line_sizes gives the lines the writer writes a "
                                         "2",        "Ta",      "Ta"};
   const std::vector<std::string> block_first{"@ta", "DM_Blip", "0", "1",
                                              "1",   "Ta",      "Ta"};
+  const std::vector<std::string> block_last{"DM_EAD", "0", "1",  "1",
+                                            "W",      "W", "@ta"};
+  const std::vector<std::string> two_blocks{"@ta", "@tb"};
   using Sizes = std::vector<std::size_t>;
   CHECK(c.written_line_sizes("TYPE2B", joined) == Sizes{1, 5, 5});
   CHECK(c.written_line_sizes("TYPE2B", {"D2_Blip", "2", "2", "Ta", "Ta"}) ==
         Sizes{5});
   CHECK(c.written_line_sizes("TYPEMB", block_first) == Sizes{1, 6});
+  CHECK(c.written_line_sizes("TYPEMB", block_last) == Sizes{6, 1});
+  CHECK(c.written_line_sizes("TYPEMB", two_blocks) == Sizes{1, 1});
   CHECK(c.written_line_sizes("RCUT2B", {"5", "4.5"}) == Sizes{2});
   CHECK(c.written_line_sizes("DBFILE", {"a.tadah", "b.tadah"}) ==
         Sizes{1, 1});
   CHECK(c.written_line_sizes("TYPE2B", {}).empty());
   CHECK(c.written_line_sizes("NOT_A_KEY", {"1", "2"}).empty());
 
-  Context pot;
-  for (const auto &v : joined) pot.add("TYPE2B", v);
-  for (const auto &v : block_first) pot.add("TYPEMB", v);
-  std::ostringstream os;
-  pot.write_potential(os, 18);
-  INFO(os.str());
-  std::map<std::string, Sizes> written;
-  for (const auto &l : split_lines(os.str())) {
-    const auto t = ctx_tokens(l);
-    if (!t.empty()) written[t[0]].push_back(t.size() - 1);
+  for (const auto *typemb : {&block_first, &block_last, &two_blocks}) {
+    Context pot;
+    for (const auto &v : joined) pot.add("TYPE2B", v);
+    for (const auto &v : *typemb) pot.add("TYPEMB", v);
+    std::ostringstream os;
+    pot.write_potential(os, 18);
+    INFO(os.str());
+    std::map<std::string, Sizes> written;
+    for (const auto &l : split_lines(os.str())) {
+      const auto t = ctx_tokens(l);
+      if (!t.empty()) written[t[0]].push_back(t.size() - 1);
+    }
+    CHECK(written["TYPE2B"] == c.written_line_sizes("TYPE2B", joined));
+    CHECK(written["TYPEMB"] == c.written_line_sizes("TYPEMB", *typemb));
   }
-  CHECK(written["TYPE2B"] == c.written_line_sizes("TYPE2B", joined));
-  CHECK(written["TYPEMB"] == c.written_line_sizes("TYPEMB", block_first));
 }
 
 /* Pins: a potential written at 17, 18 and 12 significant digits parses back
@@ -1532,8 +1548,9 @@ TEST_CASE("Context: a short configuration line with commas in a list is "
  * merge() gives a key the lines of the context its values come from (ctx2's
  * values replacing ctx1's: ctx2's lines; ctx2's values appended to ctx1's:
  * both, in order). operator== compares the values alone. A line of no file
- * has no file (source "") and gives the number of values written on it and
- * its number among the lines given (line 2).
+ * has no file (source "") and gives the number of values written on it,
+ * its number among the lines given (line 2) and its number among those
+ * that hold more than blanks and a comment (ordinal 2).
  * Before the fix: does not compile (KeyLine has no line: a line was
  * recorded by where it is, whether it is a potential's, its file and the
  * number of its values, so that two lines of one file could not be told to
@@ -1543,9 +1560,9 @@ TEST_CASE("Context: the lines of a key follow its values",
   const Context parsed = CoreUserConfigParser().parse(std::vector<std::string>{
       "ATOM Ta", "RCUT2B 5.0", "DBFILE a.tadah", "DBFILE b.tadah",
       "WEIGHTS 1 2"});
-  const std::vector<KeyLine> rcut{{"line 2", true, "", 1, 2}};
-  const std::vector<KeyLine> dbfile{{"line 3", true, "", 1, 3},
-                                    {"line 4", true, "", 1, 4}};
+  const std::vector<KeyLine> rcut{{"line 2", true, "", 1, 2, 2}};
+  const std::vector<KeyLine> dbfile{{"line 3", true, "", 1, 3, 3},
+                                    {"line 4", true, "", 1, 4, 4}};
   REQUIRE(parsed.key_lines("RCUT2B") == rcut);
   REQUIRE(parsed.key_lines("dbfile") == dbfile);
   SECTION("copies and moves") {
@@ -1571,7 +1588,7 @@ TEST_CASE("Context: the lines of a key follow its values",
     c.storage_update("ATOM", {"Nb"});
     CHECK(c.key_lines("ATOM").empty());
     CHECK(c.key_lines("WEIGHTS") ==
-          std::vector<KeyLine>{{"line 5", true, "", 2, 5}});
+          std::vector<KeyLine>{{"line 5", true, "", 2, 5, 5}});
     Context d = parsed;
     d.deserialize(parsed.serialize());
     CHECK(d == parsed);
