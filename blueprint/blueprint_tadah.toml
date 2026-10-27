@@ -3436,10 +3436,10 @@ Ctrl-C (SIGINT) or SIGTERM stops the run once the evaluations in progress
 finish, writing its results, and tadah says so on standard error at once. A
 second Ctrl-C, or a second SIGTERM, ends it at once, as SIGKILL would:
 best_pot.tadah keeps the last best it saved, and the history files can lack
-the rows still queued. TADAH:ANNEAL_PT, TADAH:ANNEAL_PA and ASA:ASA hold the
-result of an evaluation they run at once with others until every evaluation
-numbered before it among them has ended, so such an ending also loses the
-results held then.
+the rows still queued. TADAH:ANNEAL_PT, TADAH:ANNEAL_PA and ASA:ASA with
+Gener_Block_Max above 1 hold the result of an evaluation they run at once
+with others until every lower-numbered evaluation run with it has ended, so
+such an ending also loses the results held then.
 
 Each new best potential gets the balance table of the fit of its evaluation
 at the end of the training record of best_pot.tadah: one pass of the order
