@@ -47,8 +47,10 @@ const std::vector<std::string> &run_setting_keys();
  * value is set once in a configuration file and the files it includes with CONFIG"), a block
  * that is not closed ("OPTIMIZER on line 2 of config.train is not closed; expected
  * ENDOPTIMIZER") and a CONFIG line whose file does not open ("Failed to open config file:
- * other.cfg (CONFIG on line 2 of config.train)") or includes a file of the chain of includes
- * again.
+ * other.cfg (CONFIG on line 2 of config.train)") or names a file whose lines are being read,
+ * the file of the parse among them, whatever path names it ("Circular dependency detected
+ * between CONFIG files: config.train -> inc.cfg -> config.train (CONFIG on line 1 of
+ * inc.cfg)"), refused before a line of that file is read again.
  *
  * A configuration is the concatenation of its lines: a CONFIG line reads the lines of the file
  * it names at its place, into the same Context (a nested CONFIG line likewise; the path is

@@ -8,10 +8,12 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 #include <unordered_set>
 
 namespace {
@@ -37,12 +39,41 @@ namespace {
   static thread_local int parseDepth = 0;
 
   /**
-   * @brief Tracks the chain of CONFIG files to detect circular references.
+   * @brief The files whose lines are being read, outermost first: the file
+   *        of the parse, then the file of each CONFIG line being read, each
+   *        by its path as given (ReadingFile).
    *
-   * On each nested parse for CONFIG, the file name is pushed. After that parse
-   * finishes, it is popped. If parseDepth resets to zero, the chain is cleared.
+   * A file is pushed before its lines are read and popped after them. If
+   * parseDepth resets to zero, the chain is cleared.
    */
   static thread_local std::vector<std::string> configChain;
+
+  /**
+   * @brief Holds the file @p path in configChain while its lines are read.
+   */
+  class ReadingFile {
+  public:
+    explicit ReadingFile(const std::string &path) {
+      configChain.push_back(path);
+    }
+    ~ReadingFile() { configChain.pop_back(); }
+    ReadingFile(const ReadingFile &) = delete;
+    ReadingFile &operator=(const ReadingFile &) = delete;
+  };
+
+  /**
+   * @brief Whether @p path names a file of configChain: the same file,
+   *        whatever path names it ("run.train", "./run.train", its absolute
+   *        path or a link to it; std::filesystem::equivalent). A path that
+   *        names no existing file is none of them: the file does not open.
+   */
+  bool beingRead(const std::string &path) {
+    for (const std::string &file : configChain) {
+      std::error_code ec;
+      if (std::filesystem::equivalent(file, path, ec)) return true;
+    }
+    return false;
+  }
 
   /**
    * @brief Writes the notice for a deprecated key to standard error, once
@@ -281,9 +312,9 @@ namespace {
    * configuration, and a second line of it, in this file or another, is
    * refused naming both (where()); a key of several values takes the
    * values of its lines in line order, up to the number it takes.
-   * Circular dependency detection is handled by tracking CONFIG filenames
-   * in configChain. When a CONFIG line is encountered, the file is pushed
-   * into configChain, parsed, then popped after the nested parse.
+   * A CONFIG line that names a file whose lines are being read (configChain:
+   * the file of the parse and the files of the CONFIG lines being read) is
+   * refused as a circular include before a line of the file is read again.
    *
    * A run setting of a potential (potentialRunSetting, by the keys of
    * @p lines: fileKeys) is checked and not stored, with or without a rule;
@@ -509,10 +540,12 @@ namespace {
         continue;
       }
       if (uKey == "CONFIG") {
-        // CONFIG is a special case; check for circular dependency
+        // CONFIG is a special case; check for circular dependency: a file
+        // whose lines are being read, the file of the parse among them, is
+        // refused before a line of it is read again.
         const std::string configLine =
             "CONFIG on " + lineOf(first_line + i, source);
-        if (std::find(configChain.begin(), configChain.end(), val) != configChain.end()) {
+        if (beingRead(val)) {
           std::string chainStr;
           for (const auto &c : configChain) {
             chainStr += c + " -> ";
@@ -522,8 +555,6 @@ namespace {
               "Circular dependency detected between CONFIG files: " +
               chainStr + " (" + configLine + ")");
         }
-        // Push config name before nested parse
-        configChain.push_back(val);
         state.includedBy.push_back(configLine);
 
         // The included lines, read at this line into the same context,
@@ -533,14 +564,9 @@ namespace {
         try {
           parseFile(val, ctx, state, refused, skip, configLine);
         } catch (...) {
-          // Clean up the chain if parsing fails
-          configChain.pop_back();
           state.includedBy.pop_back();
           throw;
         }
-
-        // Pop config name after nested parse
-        configChain.pop_back();
         state.includedBy.pop_back();
         continue; // Skip adding "CONFIG" key or its value to the context
       }
@@ -603,6 +629,9 @@ namespace {
     }
     infile.close();
 
+    // The file is among the files being read while its lines are read, so
+    // that a CONFIG line naming it is refused as a circular include.
+    const ReadingFile reading(filename);
     parseLines(lines, ctx, state, 1, filename, refused, skip);
   }
   /**
