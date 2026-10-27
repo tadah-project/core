@@ -143,8 +143,12 @@ bool parse_decimal_normal(std::string_view tok, double &out);
  * number of characters consumed), except that a literal that UNDERFLOWS
  * is accepted with the value istringstream (and so Context::get<double>)
  * reads for it: the subnormal, or +-0. std::stod throws out_of_range for
- * such a literal, although format_roundtrip() and write_potential() write
- * one for every subnormal double (e.g. "1e-310").
+ * such a literal whenever strtod sets ERANGE for it, which the C standard
+ * leaves to the C library: glibc sets it for every one whose value it
+ * rounds ("1e-310") and not for an exact subnormal ("0x1p-1074"); musl
+ * not for every rounded one. format_roundtrip() and write_potential()
+ * write one for every subnormal double (e.g. "1e-310"). to_double accepts
+ * it whatever strtod reports.
  *
  * @throws std::invalid_argument if no conversion can be performed.
  * @throws std::out_of_range if the value overflows.
