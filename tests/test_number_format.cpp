@@ -324,6 +324,19 @@ TEST_CASE("Context round trip of a DBL_MAX NSTDEV at every NUMERIC",
   }
 }
 
+/* Pins: parse_number, to_double and is_number accept every literal that
+ * underflows, with the value istringstream reads (the subnormal, or +-0),
+ * whatever the C library's strtod reports for it. std::stod, which the
+ * readers used before, keeps its own contract on the platform: it throws
+ * out_of_range exactly for the literals whose strtod sets ERANGE, and
+ * otherwise returns the value parse_number gives. Whether strtod sets ERANGE
+ * on an underflow is the C library's choice (C11 7.22.1.3): glibc sets it
+ * for each literal here, musl not for 4.9406564584124654e-324 (it returns
+ * denorm_min without ERANGE).
+ * Before the fix: passes as well (a pin of the readers; the defect was in
+ * this test, which asserted that std::stod throws for every literal here
+ * and failed with musl (Alpine 3.19): 'no exception was thrown where one
+ * was expected' for 4.9406564584124654e-324). */
 TEST_CASE("to_double / parse_number: std::stod plus subnormals",
           "[number_format][lossless]") {
   const double sub = 1e-310;
@@ -338,8 +351,20 @@ TEST_CASE("to_double / parse_number: std::stod plus subnormals",
       CHECK(bits_of(v) == bits_of(parse_iss(t)));
       CHECK(bits_of(to_double(t)) == bits_of(v));
       CHECK(is_number(t));
-      // what the readers used before (glibc: ERANGE on underflow)
-      CHECK_THROWS_AS(static_cast<void>(std::stod(t)), std::out_of_range);
+      // What the readers used before: std::stod, which throws out_of_range
+      // when strtod sets ERANGE and gives strtod's value otherwise.
+      errno = 0;
+      const double c = std::strtod(t, nullptr);
+      const bool erange = errno == ERANGE;
+      INFO("strtod sets ERANGE: " << (erange ? "yes" : "no"));
+      CHECK(bits_of(c) == bits_of(v));
+      if (erange) {
+        CHECK_THROWS_AS(static_cast<void>(std::stod(t)), std::out_of_range);
+      } else {
+        double s = 42.0;
+        CHECK_NOTHROW(s = std::stod(t));
+        CHECK(bits_of(s) == bits_of(v));
+      }
     }
   }
   SECTION("same acceptance as std::stod otherwise") {

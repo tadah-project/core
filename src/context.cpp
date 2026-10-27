@@ -96,12 +96,51 @@ void Context::record_retired_key(const RetiredKeyLine &r) {
     dest.push_back(record);
 }
 
-std::vector<RetiredKeyLine> Context::retired_keys() const {
+void Context::record_deprecated_key(const RetiredKeyLine &r) {
+  const BlueprintKey *bk = findBlueprintKey(to_upper(r.key), "ALLOWED_KEYS");
+  if (bk == nullptr || !bk->isDeprecated())
+    throw std::invalid_argument("Context::record_deprecated_key: " + r.key +
+                                " is not a deprecated key");
+  RetiredKeyLine up = r;
+  up.key = to_upper(r.key);
+  const std::string record = encode_retired(up);
   std::lock_guard<std::mutex> lock(mtx_);
+  auto &dest = storage_[kRetiredRecordKey];
+  if (std::find(dest.begin(), dest.end(), record) == dest.end())
+    dest.push_back(record);
+}
+
+std::vector<RetiredKeyLine> Context::retired_keys() const {
   std::vector<RetiredKeyLine> out;
-  const auto it = storage_.find(kRetiredRecordKey);
-  if (it == storage_.end()) return out;
-  for (const auto &record : it->second) out.push_back(decode_retired(record));
+  std::vector<std::string> records;
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+    const auto it = storage_.find(kRetiredRecordKey);
+    if (it == storage_.end()) return out;
+    records = it->second;
+  }
+  for (const auto &record : records) {
+    RetiredKeyLine l = decode_retired(record);
+    const BlueprintKey *bk = findBlueprintKey(l.key, "ALLOWED_KEYS");
+    if (bk != nullptr && bk->isRetired()) out.push_back(std::move(l));
+  }
+  return out;
+}
+
+std::vector<RetiredKeyLine> Context::deprecated_keys() const {
+  std::vector<RetiredKeyLine> out;
+  std::vector<std::string> records;
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+    const auto it = storage_.find(kRetiredRecordKey);
+    if (it == storage_.end()) return out;
+    records = it->second;
+  }
+  for (const auto &record : records) {
+    RetiredKeyLine l = decode_retired(record);
+    const BlueprintKey *bk = findBlueprintKey(l.key, "ALLOWED_KEYS");
+    if (bk != nullptr && bk->isDeprecated()) out.push_back(std::move(l));
+  }
   return out;
 }
 
@@ -354,7 +393,8 @@ void Context::print_NoLock(std::ostream &os, bool potential,
         for (const auto &line : decode_block(record).lines) os << line << '\n';
       continue;
     }
-    // The retired lines a parse recorded are not keys: never written.
+    // The retired and deprecated lines a parse recorded are not keys:
+    // never written.
     if (key == kRetiredRecordKey) continue;
 
     // NUMERIC is a writer setting, never part of a potential file.

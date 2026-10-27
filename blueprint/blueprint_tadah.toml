@@ -565,8 +565,8 @@ examples = ["5 5 3"]
 
 [ALLOWED_KEYS.EMBF0]
 INHERIT = ["TYPES.STRING"]
-# Explicit default "ZERO": DM_REAM reads the key in its constructor and in
-# reinit(), which materialises the default into the model Context. Every
+# Explicit default "ZERO": DM_REAM reads the key in its constructor, which
+# materialises the default into the model Context. Every
 # DM_REAM potential tadah writes therefore carries an explicit EMBF0 line, and
 # binaries whose blueprint predates the key refuse such files ("Invalid key:
 # EMBF0") instead of silently evaluating the raw embedding. Only DM_REAM reads
@@ -603,17 +603,19 @@ Differences between the two modes:
   DM_REAM block vanishes at rho = 0, other many-body blocks keep their value.
 
 Values: ZERO or FREE, in any case; any other value is an error at its line
-when the configuration or potential is read. The key has no effect on a
-potential without a DM_REAM block: it is accepted, never written into such a
-potential (tadah train, tadah refit, tadah hpo), and reported once per process
-on standard error, "WARNING: Key EMBF0 is ignored: it applies only to a
-DM_REAM many-body block, and the potential has none (...)", like a deprecated
-key (the Logger level and VERBOSE do not hide it). pair_style tadah writes it
-as a LAMMPS warning on rank 0 instead, in log.lammps and on the screen, each
-time pair_coeff loads such a potential ("WARNING: pair tadah: potential
-'<file>': Key EMBF0 is ignored: ..."). An EMBF0 line of the configuration
-of tadah refit --edit (-c) for such a potential is reported on standard
-error the same way.
+when the configuration or potential is read. The key has no effect without a
+DM_REAM block: a fit (tadah train, tadah hpo) refuses a configuration without
+one that has the key, naming its line (tadah refit, which reads it from a
+configuration without DESCRIPTOR blocks, takes it); a potential without one
+that has the key still loads, the key is never written into such a potential,
+and it is reported once per process on standard error, "WARNING: Key EMBF0 is
+ignored: it applies only to a DM_REAM many-body block, and the potential has
+none (...)", like a deprecated key (the Logger level and VERBOSE do not hide
+it). pair_style tadah writes it as a LAMMPS warning on rank 0 instead, in
+log.lammps and on the screen, each time pair_coeff loads such a potential
+("WARNING: pair tadah: potential '<file>': Key EMBF0 is ignored: ..."). An
+EMBF0 line of the configuration of tadah refit --edit (-c) for such a
+potential is reported on standard error the same way.
 
 Migration: a potential written by tadah 1.5.0 or earlier reproduces its
 energies with `EMBF0 FREE` added. Training a DM_REAM model on absolute reference
@@ -670,15 +672,17 @@ a non-negative knot density is already non-increasing with a non-increasing
 cutoff). The cutoff must be one of Cut_Dummy, Cut_Cos, Cut_CosS, Cut_Tanh,
 Cut_PT, Cut_Poly and Cut_PolyS.
 
-The key is global: every DM_REAM block, including the DM_mJoin children,
-uses the same form. Values: SIGNED, NONNEG or MONOTONE, in any case (written
-in upper case); any other value is an error at its line when the
-configuration or potential is read, also without a DM_REAM block. A valid
-value has no effect on a potential without a DM_REAM block: it is accepted,
-never written into such a potential, and reported once per process on
-standard error ("WARNING: Key RHOFORM is ignored: ..."; by pair_style tadah as
-a LAMMPS warning on rank 0 each time pair_coeff loads such a potential), like
-a deprecated key and as EMBF0.
+The key is global: every DM_REAM block, including the DM_mJoin children, uses
+the same form. Values: SIGNED, NONNEG or MONOTONE, in any case (written in
+upper case); any other value is an error at its line when the configuration or
+potential is read, also without a DM_REAM block. A valid value has no effect
+without a DM_REAM block: a fit (tadah train, tadah hpo) refuses a
+configuration without one that has the key, naming its line (tadah refit reads
+it from a configuration without DESCRIPTOR blocks); a potential without one
+that has it still loads, the key is never written into such a potential, and
+it is reported once per process on standard error ("WARNING: Key RHOFORM is
+ignored: ..."; by pair_style tadah as a LAMMPS warning on rank 0 each time
+pair_coeff loads such a potential), like a deprecated key and as EMBF0.
 
 Migration: the key is new in tadah 1.6.0, and a DM_REAM potential or
 configuration without RHOFORM is an error. A potential written before
@@ -2565,12 +2569,27 @@ names = true
 value_type   = ["{STRING STRING DOUBLE} ", "{DOUBLE}"]
 value_format = ["{<element> <element> <weight>}>", "{<weight>}"]
 value_N = [-118]
-description = """
-Atom-pair weights. Two formats accepted:
-  Per-species (parallel to ATOM): WATOM w1 w2 ...
-    Pair weights are computed as geometric mean: w(Zi,Zj) = sqrt(wi*wj).
-  Explicit pair triples: WATOM sym1 sym2 val  sym1 sym2 val  ...
-    Directly sets symmetric pair weights: w(sym1,sym2) = w(sym2,sym1) = val.
+description = """Atom-pair weights of the descriptors that read them, per species or per element pair."""
+long_description = """
+Two formats are accepted:
+
+- Per species, parallel to ATOM: WATOM w1 w2 ...; the weight of a pair is
+  the geometric mean, w(Zi,Zj) = sqrt(wi*wj).
+- Explicit pair triples: WATOM sym1 sym2 val sym1 sym2 val ...; each sets
+  w(sym1,sym2) = w(sym2,sym1) = val.
+
+WATOM weights the pairs of the descriptors that read it: every descriptor but
+D2_EAM and DM_EAM (which take their pair and density functions from the
+SETFL file as they are) and the dummies D2_Dummy and DM_Dummy. Without a
+WATOM line, tadah train and tadah hpo give each species the weight Z, its
+atomic number, when a descriptor of the configuration reads WATOM, and no
+WATOM otherwise. A fit refuses a WATOM with a value other than 1 when no
+descriptor of its configuration reads it, naming the line (tadah refit, which
+writes WATOM 1 into the potential it fits, refuses such a WATOM whatever the
+descriptors). A potential with one still loads, with one notice per process,
+"WARNING: Key WATOM (2.5) is ignored: no descriptor of the potential reads it
+(...)"; pair_style tadah writes it as a LAMMPS warning on rank 0 each time
+pair_coeff loads such a potential.
 """
 examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
@@ -2863,10 +2882,11 @@ diagonal and the magnitudes of the entries of the covariance can be
 recovered from it: the signs of the off-diagonal entries and the noise
 scale need the training data. The key is accepted so that those potentials
 still load (`tadah predict`, `pair_style tadah`), with one notice, and is
-not stored. Uncertainty output is removed (tadah explain predict.error
-gives the reason).
+not stored; a fit refuses a configuration with a SIGMA line (a retrain of
+such a potential among them), naming the line. Uncertainty output is removed
+(tadah explain predict.error gives the reason).
 """
-deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. The key is accepted so that those potentials still load; its value is ignored. Uncertainty output is removed: the errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations, and no calibrated estimate replaces them."""
+deprecated = """Tadah! 1.0.0 to 1.5.0 wrote SIGMA with a transposed formula and without the noise variance: it is not the covariance of the weights, and only its diagonal and the magnitudes of its entries survive, not their signs, the quadratic form or the noise scale. A potential that has it loads, and its value is ignored. A fit refuses it. Uncertainty output is removed: the errors of Tadah! 1.0.0 to 1.5.0 were not standard deviations, and no calibrated estimate replaces them."""
 examples = []
 
 [ALLOWED_KEYS.WCOV]
@@ -2950,19 +2970,19 @@ the instruction to retrain it.
 [ALLOWED_KEYS.MPIWPCKG]
 INHERIT = ["TYPES.UINT"]
 description = """Number of structures in one MPI work package of the removed MPI training build."""
-deprecated = """Removed in 1.6.0 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. The line can be deleted."""
+deprecated = """Removed in 1.6.0 with the MPI training build (TADAH_BUILD_MPI): the key has no effect. A potential that has it loads, and its value is ignored. A fit refuses it."""
 examples = []
 
 [ALLOWED_KEYS.MBLOCK]
 INHERIT = ["TYPES.UINT"]
 description = """ScaLAPACK row block size MB of the removed MPI training build."""
-deprecated = """Removed in 1.6.0 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. The line can be deleted."""
+deprecated = """Removed in 1.6.0 with the MPI training build (TADAH_BUILD_MPI): the key has no effect. A potential that has it loads, and its value is ignored. A fit refuses it."""
 examples = []
 
 [ALLOWED_KEYS.NBLOCK]
 INHERIT = ["TYPES.UINT"]
 description = """ScaLAPACK column block size NB of the removed MPI training build."""
-deprecated = """Removed in 1.6.0 with the legacy MPI training build (TADAH_BUILD_MPI). The key is accepted so that older potential files still load; its value is ignored. The line can be deleted."""
+deprecated = """Removed in 1.6.0 with the MPI training build (TADAH_BUILD_MPI): the key has no effect. A potential that has it loads, and its value is ignored. A fit refuses it."""
 examples = []
 
 [ALLOWED_KEYS.FIXWEIGHT]
@@ -3456,7 +3476,10 @@ Ctrl-C (SIGINT) or SIGTERM stops the run once the evaluations in progress
 finish, writing its results, and tadah says so on standard error at once. A
 second Ctrl-C, or a second SIGTERM, ends it at once, as SIGKILL would:
 best_pot.tadah keeps the last best it saved, and the history files can lack
-the rows still queued.
+the rows still queued. TADAH:ANNEAL_PT, TADAH:ANNEAL_PA and ASA:ASA with
+Gener_Block_Max above 1 hold the result of an evaluation they run at once
+with others until every lower-numbered evaluation run with it has ended, so
+such an ending also loses the results held then.
 
 Each new best potential gets the balance table of the fit of its evaluation
 at the end of the training record of best_pot.tadah: one pass of the order
@@ -3879,6 +3902,14 @@ and a material-class label over the supplied DBFILEs / STRUCTUREs. Writes
 the result to the file given with --outfile, a report: tadah analysis
 suggest_bounds, tadah analysis check_bounds and the pre-flight audit
 compute the statistics they need themselves.
+
+The cutoff is the largest cutoff of the configuration given with -c
+(RCUT2B, RCUTMB or the cutoff RADIUS of a DESCRIPTOR block). The data are
+the DBFILE and STRUCTURE lines of the configuration. With --dbfile or
+--structure, the data are the datasets or structures the option names, and
+these lines are not read. --dbfile and --structure need -c and exclude
+each other.
+
 Every pair strictly inside the cutoff counts, a pair at distance 0 (two
 atoms at one position) included, so r_min is 0 for such a dataset.
 It also prints how many structures have a non-symmetric cell and lists
@@ -3888,6 +3919,8 @@ With --close-contact <A> it lists every pair of atoms closer than A
 Angstrom by structure, atoms and distance.
 """
 examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats.tadah",
+                    "tadah analysis dataset_stats -c train.tadah -d test.tadah -o stats.tadah",
+                    "tadah analysis dataset_stats -c train.tadah -s crystal.cif -o stats.tadah",
                     "tadah analysis dataset_stats -c train.tadah --outfile stats.tadah --close-contact 0.5"]
 [TASKS.analysis.dataset_stats.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
@@ -3896,20 +3929,19 @@ value_N      = [1]
 value_type   = ["STRING"]
 value_format = ["<file>"]
 [TASKS.analysis.dataset_stats.groups.input]
-description      = "Structure source. One of the following options:"
+description      = "The configuration (-c), which gives the cutoff, alone or with the data of --dbfile or --structure:"
 required_min = 1
-required_max = 1
+required_max = 2
 [TASKS.analysis.dataset_stats.groups.input.keys]
 INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.analysis.dataset_stats.groups.input.keys.config]
-cli_excludes   = ["dbfile", "structure"]
 cli_needs = ["outfile"]
 [TASKS.analysis.dataset_stats.groups.input.keys.dbfile]
-cli_excludes   = ["config"]
-cli_needs = ["outfile"]
+cli_excludes   = ["structure"]
+cli_needs = ["outfile", "config"]
 [TASKS.analysis.dataset_stats.groups.input.keys.structure]
-cli_excludes   = ["config"]
-cli_needs = ["outfile"]
+cli_excludes   = ["dbfile"]
+cli_needs = ["outfile", "config"]
 
 [TASKS.analysis.suggest_bounds]
 description      = "Suggests OPTIM bounds for the configured descriptors from the data and the seed."
