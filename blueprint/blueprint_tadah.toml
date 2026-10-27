@@ -2021,7 +2021,7 @@ cli_required     = false
 command_only = true
 INHERIT = ["TYPES.STRING"]
 value_format = ["<fmt>"]
-description  = "Output format (e.g., vasp, castep, lammps)."
+description  = "Output format: castep, lammps or vasp, in any letter case."
 examples     = ["castep", "lammps", "vasp"]
 cli_long_flag  = "--format"
 cli_short_flag = "-f"
@@ -2231,8 +2231,8 @@ WARNING names it when it is true, unless the run gives ESHIFT_ATOM itself or
 sets ESHIFT_DBATOM true: the two choose the source of the shift and exclude
 each other, so the run's own toggle is its choice). The run's own ESHIFT_ATOM (--eshift-atom, or a line of a configuration file
 that includes the potential) is read, and is overruled by an ESHIFT line as
-in any configuration: to derive ESHIFT from the data of a retrain, delete
-the potential's ESHIFT line and give the run ESHIFT_ATOM.
+in any configuration: a retrain derives ESHIFT from its data when the
+potential's ESHIFT line is deleted and the run is given ESHIFT_ATOM.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -2270,8 +2270,8 @@ or sets ESHIFT_ATOM true: the two choose the source of the shift and exclude
 each other, so the run's own toggle is its choice). The run's own
 ESHIFT_DBATOM (--eshift-dbatom, or a line of a configuration file that
 includes the potential) is read, and is overruled by an ESHIFT
-line as in any configuration: to derive ESHIFT from the data of a retrain,
-delete the potential's ESHIFT line and give the run ESHIFT_DBATOM.
+line as in any configuration: a retrain derives ESHIFT from its data when
+the potential's ESHIFT line is deleted and the run is given ESHIFT_DBATOM.
 """
 default_value = ["false"]
 examples     = ["true"]
@@ -3511,7 +3511,7 @@ cli_excludes   = ["index"]
 [TASKS.data.write]
 description      = "Writes structures into a chosen format."
 long_description = "Writes structures from a dataset or a structure file or online source into a chosen format."
-examples         = ["tadah data write -d dataset.tadah -o output.cell -f cell -i 7"]
+examples         = ["tadah data write -d dataset.tadah -o output.cell -f castep -i 7"]
 [TASKS.data.write.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.index", "ALLOWED_KEYS.format", "ALLOWED_KEYS.numeric", "ALLOWED_KEYS.verbose"]
 [TASKS.data.write.keys.index]
