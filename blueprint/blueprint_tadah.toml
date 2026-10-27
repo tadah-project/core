@@ -3879,6 +3879,11 @@ and a material-class label over the supplied DBFILEs / STRUCTUREs. Writes
 the result to the file given with --outfile, a report: tadah analysis
 suggest_bounds, tadah analysis check_bounds and the pre-flight audit
 compute the statistics they need themselves.
+The configuration given with -c gives the cutoff, its largest RCUT2B or
+RCUTMB value, and the data, its DBFILE and STRUCTURE lines. --dbfile or
+--structure, given with -c, gives the data in place of these lines, which
+are then not read, so a training configuration gives its cutoff to other
+data. --dbfile and --structure need -c and exclude each other.
 Every pair strictly inside the cutoff counts, a pair at distance 0 (two
 atoms at one position) included, so r_min is 0 for such a dataset.
 It also prints how many structures have a non-symmetric cell and lists
@@ -3888,6 +3893,8 @@ With --close-contact <A> it lists every pair of atoms closer than A
 Angstrom by structure, atoms and distance.
 """
 examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats.tadah",
+                    "tadah analysis dataset_stats -c train.tadah -d candidates.tadah --outfile stats.tadah",
+                    "tadah analysis dataset_stats -c train.tadah -s crystal.cif --outfile stats.tadah",
                     "tadah analysis dataset_stats -c train.tadah --outfile stats.tadah --close-contact 0.5"]
 [TASKS.analysis.dataset_stats.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
@@ -3896,7 +3903,7 @@ value_N      = [1]
 value_type   = ["STRING"]
 value_format = ["<file>"]
 [TASKS.analysis.dataset_stats.groups.input]
-description      = "Structure source. One of the following options:"
+description      = "The configuration (-c), which gives the cutoff, alone or with the data of --dbfile or --structure:"
 required_min = 1
 required_max = 2
 [TASKS.analysis.dataset_stats.groups.input.keys]
