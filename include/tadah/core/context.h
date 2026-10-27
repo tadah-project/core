@@ -70,7 +70,8 @@ struct RetiredKeyLine {
 /** A key line that a parse stored (CoreUserConfigParser records the lines
  *  of each key on the Context it returns, Context::set_key_lines()): where
  *  it is, whether it is a line of a potential, its file, the number of
- *  values it gave and its number in its file. */
+ *  values it gave, its number in its file and its number among the lines of
+ *  its file that hold more than blanks and a comment. */
 struct KeyLine {
   /// Where the line is, as an error of the line names it: "line 3 of
   /// run.train", "line 20 of pot.tadah (CONFIG on line 2 of run.train)";
@@ -89,9 +90,16 @@ struct KeyLine {
   /// first: 20 for "line 20 of pot.tadah (CONFIG on line 2 of run.train)");
   /// for lines of no file, its number among them.
   std::size_t line = 0;
+  /// The number of the line among the lines of its file that hold more
+  /// than blanks and a comment (key lines and the lines of blocks), from 1:
+  /// two lines with only comments or blank lines between them have
+  /// consecutive numbers. For lines of no file, its number among them so
+  /// counted.
+  std::size_t ordinal = 0;
   bool operator==(const KeyLine &o) const {
     return where == o.where && potential == o.potential &&
-           source == o.source && values == o.values && line == o.line;
+           source == o.source && values == o.values && line == o.line &&
+           ordinal == o.ordinal;
   }
 };
 
@@ -463,10 +471,12 @@ public:
    * DBFILE) has a line for each value; any other key one line, except a key
    * whose blueprint entry has a `formatting` text (TYPE2B "D2_", TYPEMB
    * "DM_": a descriptor's name), which starts a new line at each value
-   * after the first that holds that text: TYPE2B D2_mJoin D2_Blip 2 2 Ta Ta
-   * D2_BP 2 2 Ta Ta is written on lines of 1, 5 and 5 values, TYPEMB @ta
-   * DM_Blip 0 1 1 Ta Ta on lines of 1 and 6. No line for no values, nor for
-   * a key the writer does not write (value_N 0, or no blueprint entry).
+   * after the first that holds that text or that is a DESCRIPTOR block's ID
+   * (starts with '@'): TYPE2B D2_mJoin D2_Blip 2 2 Ta Ta D2_BP 2 2 Ta Ta is
+   * written on lines of 1, 5 and 5 values, TYPEMB @ta DM_Blip 0 1 1 Ta Ta
+   * on lines of 1 and 6, TYPEMB DM_EAD 0 1 1 W W @ta on lines of 6 and 1,
+   * TYPEMB @ta @tb on lines of 1 and 1. No line for no values, nor for a
+   * key the writer does not write (value_N 0, or no blueprint entry).
    */
   std::vector<std::size_t>
   written_line_sizes(const std::string &key,

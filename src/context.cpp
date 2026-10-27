@@ -309,12 +309,16 @@ bool has_double_position(const BlueprintKey &bk) {
 }
 
 // Whether the writer starts a new line of the key @p bk, written on lines
-// of several values (value_N < 0), at its value @p v after the first: a
-// value that holds the text of the key's blueprint `formatting` (TYPE2B
-// "D2_", TYPEMB "DM_": a descriptor's name).
+// of several values (value_N < 0), at its value @p v after the first: for
+// a key whose blueprint entry has a `formatting` text (TYPE2B "D2_", TYPEMB
+// "DM_"), a value that holds it (a descriptor's name) or the ID of a
+// DESCRIPTOR block (a value that starts with '@': TYPEMB @ta). Each TYPEMB
+// value schema takes a block's ID alone on its line, so a line that holds a
+// block's ID after another value would be read by no command.
 bool starts_written_line(const BlueprintKey &bk, const std::string &v) {
   return !bk.formatting.empty() &&
-         v.find(bk.formatting[0]) != std::string::npos;
+         (v.find(bk.formatting[0]) != std::string::npos ||
+          (!v.empty() && v.front() == '@'));
 }
 } // namespace
 

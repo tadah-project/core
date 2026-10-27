@@ -397,6 +397,13 @@ namespace {
     const auto keyMap = BlueprintParser::getKeysMapRef();
     const std::set<std::string> ownKeys = fileKeys(lines);
     const bool potential = ownKeys.count("WEIGHTS") > 0;
+    // The number of each line among the lines that hold more than blanks
+    // and a comment (KeyLine::ordinal), from 1.
+    std::vector<std::size_t> ordinal(lines.size(), 0);
+    for (std::size_t i = 0, n = 0; i < lines.size(); ++i) {
+      if (!trim(lines[i].substr(0, lines[i].find('#'))).empty()) ++n;
+      ordinal[i] = n;
+    }
     const std::map<std::string, int> commandCounts =
         commandValueCounts(refused.command);
     // A line of a key that only some commands read
@@ -681,7 +688,8 @@ namespace {
         ctx.add(key, tokens[j]);
       }
       state.lines[uKey].push_back(KeyLine{here, potential, source,
-                                          tokens.size() - 1, first_line + i});
+                                          tokens.size() - 1, first_line + i,
+                                          ordinal[i]});
     }
   }
 
