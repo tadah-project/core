@@ -50,10 +50,12 @@ struct ConfigBlock {
 };
 
 /** A line of a retired key (blueprint field `retired`,
- *  BlueprintKey::isRetired()) that a parse read. CoreUserConfigParser
- *  records it on the Context it returns (Context::record_retired_key())
+ *  BlueprintKey::isRetired()) or of a deprecated key (field `deprecated`)
+ *  that a parse read. CoreUserConfigParser records it on the Context it
+ *  returns (Context::record_retired_key(), record_deprecated_key())
  *  instead of storing the key: no getter reads it, no writer writes it,
- *  and a fit refuses a Context that records one (retired_keys.h). */
+ *  and a fit refuses a Context that records one (retired_keys.h; MODELS
+ *  inert_keys.h for a deprecated key). */
 struct RetiredKeyLine {
   std::string key;                  ///< The key, upper case.
   std::string source;               ///< Its file; empty for lines without one.
@@ -109,6 +111,16 @@ public:
   /** The retired lines recorded on this Context, in the order recorded
    *  (a CONFIG include's where its CONFIG line is). */
   std::vector<RetiredKeyLine> retired_keys() const;
+  /** Records a line of a deprecated key that a parse read
+   *  (CoreUserConfigParser), as record_retired_key() records a retired
+   *  one: copies, merge(), serialize() and deserialize() carry it, and
+   *  neither operator<< nor write_potential() writes it.
+   *  @throws std::invalid_argument for a key the blueprint does not mark
+   *  as deprecated. */
+  void record_deprecated_key(const RetiredKeyLine &line);
+  /** The deprecated lines recorded on this Context, in the order recorded
+   *  (a CONFIG include's where its CONFIG line is). */
+  std::vector<RetiredKeyLine> deprecated_keys() const;
   /** Records the lines that gave each key its values, in line order
    *  (CoreUserConfigParser, at the end of a parse), in place of the lines
    *  recorded before. The lines are kept apart from the keys: copies, moves
@@ -584,8 +596,9 @@ public:
         dest.insert(dest.end(), pair.second.begin(), pair.second.end());
         continue;
       }
-      // The retired lines of both sides, each once (record_retired_key):
-      // whatever overrides what, a fit of the merged context refuses them.
+      // The retired and deprecated lines of both sides, each once
+      // (record_retired_key, record_deprecated_key): whatever overrides
+      // what, a fit of the merged context refuses them.
       if (key == kRetiredRecordKey) {
         std::lock_guard<std::mutex> lock(merged.mtx_);
         auto &dest = merged.storage_[key];
@@ -687,8 +700,10 @@ public:
   }
 
 private:
-  /** The storage entry that holds the retired lines (record_retired_key()),
-   *  one encoded record per line; not a key (no key starts with '@'). */
+  /** The storage entry that holds the retired and deprecated lines
+   *  (record_retired_key(), record_deprecated_key()), one encoded record
+   *  per line; not a key (no key starts with '@'). retired_keys() and
+   *  deprecated_keys() tell them apart by the blueprint entry of the key. */
   static constexpr const char *kRetiredRecordKey = "@RETIRED";
 
   /**
