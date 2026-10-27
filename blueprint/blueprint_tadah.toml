@@ -773,12 +773,13 @@ the PAIRS of its DESCRIPTOR block: the (Ta, W) distances alone for TYPE2B
 D2_Blip 4 4 Ta W (a line with * * names every pair). Each pair is judged on
 its own, as a pair that the cutoff, or every channel of a density, does not
 reach adds nothing to the descriptor. A pair of the line with * stands for
-each element pair of the data it matches: on Ta-W data, Ta * for the (Ta,
-Ta) and (Ta, W) pairs, judged as Ta Ta Ta W is. A descriptor fails when its
-cutoff (RCUT2B, RCUTMB, or the cutoff RADIUS of a DESCRIPTOR block) holds
-no neighbour distance of one of its pairs, a cutoff below the smallest or
-data without that pair within it: D2_Blip ... Ta Ta W W with a cutoff that
-holds the (W, W) distances and no (Ta, Ta) one, 0 for every Ta atom, fails.
+each element pair it matches, of the elements of the data and those the
+line names: on Ta-W data, Ta * for the (Ta, Ta) and (Ta, W) pairs, judged
+as Ta Ta Ta W is. A descriptor fails when its cutoff (RCUT2B, RCUTMB, or
+the cutoff RADIUS of a DESCRIPTOR block) holds no neighbour distance of one
+of its pairs, a cutoff below the smallest or data without that pair within
+it: D2_Blip ... Ta Ta W W with a cutoff that holds the (W, W) distances and
+no (Ta, Ta) one, 0 for every Ta atom, fails.
 The radial channels of a many-body density are judged together within its
 cutoff: a channel fails when it reaches no neighbour distance of any pair
 of the line, and a pair fails when no channel reaches its distances (a
