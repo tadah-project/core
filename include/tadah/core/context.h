@@ -69,8 +69,8 @@ struct RetiredKeyLine {
 
 /** A key line that a parse stored (CoreUserConfigParser records the lines
  *  of each key on the Context it returns, Context::set_key_lines()): where
- *  it is, whether it is a line of a potential, its file and the number of
- *  values it gave. */
+ *  it is, whether it is a line of a potential, its file, the number of
+ *  values it gave and its number in its file. */
 struct KeyLine {
   /// Where the line is, as an error of the line names it: "line 3 of
   /// run.train", "line 20 of pot.tadah (CONFIG on line 2 of run.train)";
@@ -85,9 +85,13 @@ struct KeyLine {
   std::string source;
   /// The number of values the line gave the key (the words after the key).
   std::size_t values = 0;
+  /// The number of the line in its file, from 1 (the number @c where names
+  /// first: 20 for "line 20 of pot.tadah (CONFIG on line 2 of run.train)");
+  /// for lines of no file, its number among them.
+  std::size_t line = 0;
   bool operator==(const KeyLine &o) const {
     return where == o.where && potential == o.potential &&
-           source == o.source && values == o.values;
+           source == o.source && values == o.values && line == o.line;
   }
 };
 
@@ -449,6 +453,24 @@ public:
    *        normally resolve_pot_digits(ctx).digits.
    */
   void write_potential(std::ostream &os, int sig_digits) const;
+
+  /**
+   * @brief The lines write_potential() and operator<< write the values
+   * @p values of the key @p key on, as the number of values of each line,
+   * in order.
+   *
+   * A key of the blueprint written a line per value (value_N > 0, such as
+   * DBFILE) has a line for each value; any other key one line, except a key
+   * whose blueprint entry has a `formatting` text (TYPE2B "D2_", TYPEMB
+   * "DM_": a descriptor's name), which starts a new line at each value
+   * after the first that holds that text: TYPE2B D2_mJoin D2_Blip 2 2 Ta Ta
+   * D2_BP 2 2 Ta Ta is written on lines of 1, 5 and 5 values, TYPEMB @ta
+   * DM_Blip 0 1 1 Ta Ta on lines of 1 and 6. No line for no values, nor for
+   * a key the writer does not write (value_N 0, or no blueprint entry).
+   */
+  std::vector<std::size_t>
+  written_line_sizes(const std::string &key,
+                     const std::vector<std::string> &values) const;
 
   /**
    * @brief Serializes all data into a vector of chars (plaintext).

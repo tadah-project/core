@@ -680,8 +680,8 @@ namespace {
       for (size_t j = 1; j < tokens.size(); ++j) {
         ctx.add(key, tokens[j]);
       }
-      state.lines[uKey].push_back(
-          KeyLine{here, potential, source, tokens.size() - 1});
+      state.lines[uKey].push_back(KeyLine{here, potential, source,
+                                          tokens.size() - 1, first_line + i});
     }
   }
 

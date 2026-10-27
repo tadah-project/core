@@ -307,7 +307,32 @@ bool has_double_position(const BlueprintKey &bk) {
     if (vt.find("DOUBLE") != std::string::npos) return true;
   return false;
 }
+
+// Whether the writer starts a new line of the key @p bk, written on lines
+// of several values (value_N < 0), at its value @p v after the first: a
+// value that holds the text of the key's blueprint `formatting` (TYPE2B
+// "D2_", TYPEMB "DM_": a descriptor's name).
+bool starts_written_line(const BlueprintKey &bk, const std::string &v) {
+  return !bk.formatting.empty() &&
+         v.find(bk.formatting[0]) != std::string::npos;
+}
 } // namespace
+
+std::vector<std::size_t>
+Context::written_line_sizes(const std::string &key,
+                            const std::vector<std::string> &values) const {
+  const BlueprintKey *bi = findBlueprintKey(to_upper(key), "ALLOWED_KEYS");
+  if (bi == nullptr || bi->value_N.empty() || bi->value_N[0] == 0 ||
+      values.empty())
+    return {};
+  if (bi->value_N[0] > 0) return std::vector<std::size_t>(values.size(), 1);
+  std::vector<std::size_t> sizes{0};
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    if (i > 0 && starts_written_line(*bi, values[i])) sizes.push_back(0);
+    ++sizes.back();
+  }
+  return sizes;
+}
 
 void Context::print_NoLock(std::ostream &os, bool potential,
                            int sig_digits) const {
@@ -379,10 +404,8 @@ void Context::print_NoLock(std::ostream &os, bool potential,
       os << std::left << std::setw(max_key_len) << key;
       bool doFormatting = false;
       for (auto const &v : vals) {
-        bool formatingAvail = false;
-        if (bi->formatting.size() && v.find(bi->formatting[0]) != std::string::npos) {
-          formatingAvail = true;
-        }
+        // A new line at a value that starts one (written_line_sizes()).
+        const bool formatingAvail = starts_written_line(*bi, v);
 
         if (formatingAvail && doFormatting) {
           os << bi->formatting[1] << std::left << std::setw(max_key_len) << key << space;
