@@ -3898,18 +3898,17 @@ value_format = ["<file>"]
 [TASKS.analysis.dataset_stats.groups.input]
 description      = "Structure source. One of the following options:"
 required_min = 1
-required_max = 1
+required_max = 2
 [TASKS.analysis.dataset_stats.groups.input.keys]
 INHERIT          = ["ALLOWED_KEYS.config", "ALLOWED_KEYS.dbfile", "ALLOWED_KEYS.structure"]
 [TASKS.analysis.dataset_stats.groups.input.keys.config]
-cli_excludes   = ["dbfile", "structure"]
 cli_needs = ["outfile"]
 [TASKS.analysis.dataset_stats.groups.input.keys.dbfile]
-cli_excludes   = ["config"]
-cli_needs = ["outfile"]
+cli_excludes   = ["structure"]
+cli_needs = ["outfile", "config"]
 [TASKS.analysis.dataset_stats.groups.input.keys.structure]
-cli_excludes   = ["config"]
-cli_needs = ["outfile"]
+cli_excludes   = ["dbfile"]
+cli_needs = ["outfile", "config"]
 
 [TASKS.analysis.suggest_bounds]
 description      = "Suggests OPTIM bounds for the configured descriptors from the data and the seed."
