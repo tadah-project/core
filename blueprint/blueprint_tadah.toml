@@ -736,18 +736,24 @@ FAIL-level finding fatal (exit status 1). The audit's data scan is sampled
 by default (AUDIT_SAMPLE). It checks the parameters of each descriptor
 against the neighbour distances of the data: a descriptor fails when its
 cutoff holds none of them (a cutoff below the smallest, or data without a
-pair within it), and a radial channel of a many-body density when it
-reaches none of them within its cutoff (a Gaussian when it is below 1e-6
-at all of them, a blip when its support holds none), whatever its centre.
+pair within it; a line of D2_Knot5 or of a knot DM_REAM density is judged
+at its largest knot, the cutoff tadah train and tadah hpo give it), and a
+radial channel of a many-body density when it reaches none of them within
+its cutoff (a Gaussian when it is below 1e-6 at all of them, a blip when
+its support holds none), whatever its centre.
 Each descriptor of a D2_mJoin or DM_mJoin line is judged by its own
 channels and cutoff, and a channel is named by its entry of the whole key.
 Under tadah hpo it also warns about a critical parameter that the seed
 fixes and the search space leaves out, for a descriptor that has another
 parameter in the search space; each descriptor of a joined line is judged
 by its own values there too (a centre of its own at the origin is not
-flagged). A setting of the run: no potential has an AUDIT line (its
-training record lists the run's), and an AUDIT line of a potential of an
-earlier version is not read by a retrain or tadah hpo -c of it.
+flagged). The cutoff of a line of one knot descriptor, or of one bump
+descriptor under a hard cutoff, is not flagged, as tadah hpo derives it
+from the largest knot or keeps the bump supports within it; that of such
+a descriptor on a joined line is. A setting of the run: no potential has an
+AUDIT line (its training record lists the run's), and an AUDIT line of a
+potential of an earlier version is not read by a retrain or tadah hpo -c
+of it.
 """
 default_value = ["off"]
 examples = ["off", "warn", "error"]
@@ -3842,8 +3848,9 @@ Reads the training configuration (DBFILE, TYPE2B, TYPEMB and the seed
 values; a radial grid given by a generator, LIN or GEOM, is the grid it
 makes), computes dataset statistics (per-pair r_ij percentiles and KDE
 peaks, no densities) from the neighbour distances up to 1.25 times the
-largest cutoff of the seed, then walks the metadata of each configured
-descriptor and proposes one OPTIM bound per parameter entry. Each
+largest cutoff of the seed (RCUT2B, RCUTMB or the cutoff RADIUS of a
+DESCRIPTOR block), then walks the metadata of each configured descriptor
+and proposes one OPTIM bound per parameter entry. Each
 descriptor of a D2_mJoin or DM_mJoin line gets the rows of its own values,
 numbered as the whole key numbers them. A key that the descriptors of a
 joined line share (RCUTENV) gets one row. Each row gives its rationale:
@@ -3904,10 +3911,13 @@ corners (full 2^k for k <= 12, otherwise a Latin-hypercube subsample of
 at each corner in the context tadah hpo evaluates: the seed with the
 corner's value of each OPTIM line in its own entry of the key (OPTIM KEY
 (i) sets entry i; the other entries keep the seed's values; a radial grid
-given by a generator is the grid it makes). The statistics of the data
-are computed once, at the largest cutoff of the box. Each corner is judged
-by the rules of AUDIT, with that corner's cutoff. A corner that breaks a
-lower limit tadah hpo sets on a box is a FAIL finding as well: for a
+given by a generator is the grid it makes; a line of D2_Knot5 or of a knot
+DM_REAM density has its largest knot as its cutoff, as tadah hpo takes it,
+and a stated cutoff that differs is replaced, with a WARNING). The
+statistics of the data are computed once, at the largest cutoff of the
+seed and of the corners. Each corner is judged by the rules of AUDIT, with
+that corner's cutoff. A corner that breaks a lower limit tadah hpo sets on
+a box is a FAIL finding as well: for a
 DM_REAM seed, which must declare RHOFORM, the limits of the density form
 (under NONNEG and MONOTONE: AMPGRIDMB >= 0, WATOM > 0, and SGRIDMB > 0
 under MONOTONE and for a Gaussian density under NONNEG), and in every form
