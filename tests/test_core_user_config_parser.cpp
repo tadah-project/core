@@ -26,6 +26,15 @@
 
 using namespace tadah::core;
 
+namespace tadah {
+namespace core {
+/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential}". */
+inline std::ostream &operator<<(std::ostream &os, const KeyLine &l) {
+  return os << "{" << l.where << (l.potential ? ", potential}" : "}");
+}
+}  // namespace core
+}  // namespace tadah
+
 TEST_CASE( "Testing Context read()", "[config_read]" ) {
   std::string path = "tests_data/valid_configs";
   DIR* dir = opendir(path.c_str());
@@ -1915,5 +1924,101 @@ TEST_CASE("Config parser: a file that includes itself is refused as a "
               [&] { return CoreUserConfigParser().parse(top_other); },
               "parse " + top_other) ==
           circle({top_other, top}, "CONFIG on line 2 of " + top_other));
+  }
+}
+
+/* The lines that gave each key its values: the parse records them on the
+ * Context it returns (Context::key_lines()), in line order, each with where
+ * it is (as the errors of a line name it) and whether it is a line of a
+ * potential, a file whose own key lines have WEIGHTS. A configuration that
+ * includes a potential with CONFIG (pot.tadah: ATOM, WEIGHTS, RCUT2B 5.0 on
+ * line 3) and gives RCUT2B 4.0 above or below the CONFIG line:
+ *  - above.cfg "RCUT2B 4.0", "CONFIG pot.tadah", "DBFILE a.tadah":
+ *    RCUT2B {line 1 of above.cfg, not a potential's; line 3 of pot.tadah
+ *    (CONFIG on line 2 of above.cfg), a potential's}; WEIGHTS {line 2 of
+ *    pot.tadah (CONFIG on line 2 of above.cfg), a potential's}; DBFILE
+ *    {line 3 of above.cfg};
+ *  - below.cfg "CONFIG pot.tadah", "RCUT2B 4.0": the potential's line first;
+ *  - the potential read alone: RCUT2B {line 3 of pot.tadah, a potential's};
+ *  - a nested include, top.cfg "CONFIG mid.cfg", mid.cfg "LAMBDA 0",
+ *    "CONFIG pot.tadah": LAMBDA {line 1 of mid.cfg (CONFIG on line 1 of
+ *    top.cfg)}, RCUT2B {line 3 of pot.tadah (CONFIG on line 2 of mid.cfg,
+ *    which CONFIG on line 1 of top.cfg includes), a potential's};
+ *  - lines of no file "ATOM Ta", "RCUT2B 5.0", "WEIGHTS 1": RCUT2B {line 2,
+ *    a potential's};
+ *  - a line the parse does not store (the potential's EFILTER under the
+ *    rule of its potential lines) sets no line.
+ * Before the fix: does not compile (Context has no key_lines()). */
+TEST_CASE("Config parser: the Context records the lines that gave each key "
+          "its values and whether each is a potential's line",
+          "[config][config_include][key_lines]") {
+  RefuseScratch dir;
+  const std::string pot =
+      dir.write("lines_pot.tadah", "ATOM Ta\nWEIGHTS 0.25 -0.5\nRCUT2B 5.0\n"
+                                   "EFILTER -9 -2\n");
+  SECTION("a line above the CONFIG line") {
+    const std::string above = dir.write(
+        "lines_above.cfg", "RCUT2B 4.0\nCONFIG " + pot + "\nDBFILE a.tadah\n");
+    const Context c = CoreUserConfigParser().parse(above);
+    const std::string by = " (CONFIG on line 2 of " + above + ")";
+    CHECK(c("RCUT2B") == std::vector<std::string>{"4.0", "5.0"});
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 1 of " + above, false},
+                               {"line 3 of " + pot + by, true}});
+    CHECK(c.key_lines("WEIGHTS") ==
+          std::vector<KeyLine>{{"line 2 of " + pot + by, true}});
+    CHECK(c.key_lines("ATOM") ==
+          std::vector<KeyLine>{{"line 1 of " + pot + by, true}});
+    CHECK(c.key_lines("DBFILE") ==
+          std::vector<KeyLine>{{"line 3 of " + above, false}});
+    CHECK(c.key_lines("LAMBDA").empty());
+  }
+  SECTION("a line below the CONFIG line") {
+    const std::string below =
+        dir.write("lines_below.cfg", "CONFIG " + pot + "\nRCUT2B 4.0\n");
+    const Context c = CoreUserConfigParser().parse(below);
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{
+              {"line 3 of " + pot + " (CONFIG on line 1 of " + below + ")",
+               true},
+              {"line 2 of " + below, false}});
+  }
+  SECTION("the potential read alone") {
+    const Context c = CoreUserConfigParser().parse(pot);
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 3 of " + pot, true}});
+    CHECK(c.key_lines("EFILTER") ==
+          std::vector<KeyLine>{{"line 4 of " + pot, true}});
+  }
+  SECTION("a nested include") {
+    const std::string mid =
+        dir.write("lines_mid.cfg", "LAMBDA 0\nCONFIG " + pot + "\n");
+    const std::string top = dir.write("lines_top.cfg", "CONFIG " + mid + "\n");
+    const Context c = CoreUserConfigParser().parse(top);
+    CHECK(c.key_lines("LAMBDA") ==
+          std::vector<KeyLine>{
+              {"line 1 of " + mid + " (CONFIG on line 1 of " + top + ")",
+               false}});
+    CHECK(c.key_lines("RCUT2B") ==
+          std::vector<KeyLine>{{"line 3 of " + pot + " (CONFIG on line 2 of " +
+                                    mid + ", which CONFIG on line 1 of " +
+                                    top + " includes)",
+                                true}});
+  }
+  SECTION("lines of no file") {
+    const Context c = CoreUserConfigParser().parse(
+        std::vector<std::string>{"ATOM Ta", "RCUT2B 5.0", "WEIGHTS 1"});
+    CHECK(c.key_lines("RCUT2B") == std::vector<KeyLine>{{"line 2", true}});
+  }
+  SECTION("a line the parse does not store") {
+    const std::string run =
+        dir.write("lines_run.cfg", "CONFIG " + pot + "\nDBFILE a.tadah\n");
+    std::vector<SkippedKeyLine> skipped;
+    const Context c =
+        CoreUserConfigParser().parse(run, skip_in_weights_files, skipped);
+    REQUIRE_FALSE(c.has_stored("EFILTER"));
+    CHECK(c.key_lines("EFILTER").empty());
+    CHECK(c.key_lines("DBFILE") ==
+          std::vector<KeyLine>{{"line 2 of " + run, false}});
   }
 }
