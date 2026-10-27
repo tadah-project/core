@@ -64,6 +64,13 @@ const std::vector<std::string> &run_setting_keys();
  * retired key, a run setting of a potential, a line of a key of another command in a
  * potential, a line the caller's KeyLineRule selects) sets nothing.
  *
+ * The returned Context records the lines that gave each key its values (Context::key_lines()),
+ * in line order: where each line is, as its errors name it, and whether it is a line of a
+ * potential, a file whose own key lines give WEIGHTS. A reader of a key tells the values of a
+ * potential's own lines from those of the lines of a file that includes it with CONFIG (above
+ * or below the CONFIG line) by them, and names the lines in its errors (D_mJoin: the RCTYPE,
+ * RCUT and list values of a potential that its descriptors do not take).
+ *
  * A key the blueprint marks as deprecated (BlueprintKey::deprecated) is accepted so that older
  * configuration and potential files still load: its value is validated like any other, a
  * notice naming the key and the reason (`WARNING: Deprecated key MBLOCK is ignored: ...`) is

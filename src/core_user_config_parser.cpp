@@ -134,6 +134,9 @@ namespace {
     /// The CONFIG lines that include the file being read, outermost first
     /// ("CONFIG on line 2 of run.train"); empty for the file of the parse.
     std::vector<std::string> includedBy;
+    /// Each key stored so far -> the lines that gave its values, in line
+    /// order (Context::set_key_lines() at the end of the parse).
+    std::map<std::string, std::vector<KeyLine>> lines;
   };
 
   /**
@@ -598,6 +601,7 @@ namespace {
       for (size_t j = 1; j < tokens.size(); ++j) {
         ctx.add(key, tokens[j]);
       }
+      state.lines[uKey].push_back(KeyLine{here, potential});
     }
   }
 
@@ -660,6 +664,7 @@ Context CoreUserConfigParser::parse(const std::string &filename) const {
   Context ctx;
   ParseState state;
   parseFile(filename, ctx, state, Refusal{refused_, command_}, LineSkip());
+  ctx.set_key_lines(std::move(state.lines));
   return finishParse(std::move(ctx));
 }
 
@@ -670,6 +675,7 @@ Context CoreUserConfigParser::parse(const std::string &filename,
   ParseState state;
   parseFile(filename, ctx, state, Refusal{refused_, command_},
             skip ? LineSkip{&skip, &skipped} : LineSkip());
+  ctx.set_key_lines(std::move(state.lines));
   return finishParse(std::move(ctx));
 }
 
@@ -682,6 +688,7 @@ Context CoreUserConfigParser::parse(std::istream &in) const {
     std::string line;
     while (std::getline(in, line)) lines.push_back(line);
     parseLines(lines, ctx, state, 1, "", Refusal{refused_, command_});
+    ctx.set_key_lines(std::move(state.lines));
   }
   return finishParse(std::move(ctx));
 }
@@ -693,6 +700,7 @@ CoreUserConfigParser::parse(const std::vector<std::string> &lines) const {
     ParseScope scope;
     ParseState state;
     parseLines(lines, ctx, state, 1, "", Refusal{refused_, command_});
+    ctx.set_key_lines(std::move(state.lines));
   }
   return finishParse(std::move(ctx));
 }
