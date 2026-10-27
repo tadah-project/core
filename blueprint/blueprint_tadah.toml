@@ -770,23 +770,24 @@ none of them, a cutoff below the smallest or data without a pair within
 it; a radial channel of a many-body density fails when it reaches none of
 them within its cutoff (a Gaussian when it is below 1e-6 at all of them, a
 blip when its support holds none), whatever its centre. D2_Knot5, or a
-knot DM_REAM density, alone on its TYPE2B or TYPEMB line is judged at its
-largest knot, the cutoff tadah train and tadah hpo give it; on a D2_mJoin
-or DM_mJoin line it is judged at its stated cutoff, which they keep.
+knot DM_REAM density, is judged at its largest knot, the cutoff tadah
+train and tadah hpo give it, alone on its TYPE2B or TYPEMB line or on a
+D2_mJoin or DM_mJoin line (its own value of RCUT2B or RCUTMB).
 Each descriptor of a D2_mJoin or DM_mJoin line is judged by its own
 channels and cutoff, and a channel is named by its entry of the whole key.
 Under tadah hpo it also warns about a critical parameter that the seed
 fixes and the search space leaves out, for a descriptor that has a key in
 the search space; the warning names the descriptor's entries of the key
-(RCUTMB(2)). A key counts as searched when the search space holds any of
-its entries, for every entry of the key and every descriptor of a joined
-line that has it. Each descriptor of a joined line is judged by its own
+(RCUTMB(2)). A key counts as searched for a descriptor when the search
+space holds one of that descriptor's own entries of it: OPTIM RCUT2B (1)
+searches the cutoff of the first descriptor of a D2_mJoin line, not that
+of the second. Each descriptor of a joined line is judged by its own
 values there too: a descriptor whose own centres are all at the origin
 gets no warning about its centres. The cutoff of D2_Knot5 or of a knot
 DM_REAM density (its largest knot, which tadah hpo derives), and that of
 D2_Blip, D2_Blip5 or a blip DM_REAM density under Cut_Dummy (whose bumps
-tadah hpo keeps within it), is not flagged when the descriptor is alone on
-its TYPE2B or TYPEMB line; inside D2_mJoin or DM_mJoin it is. A setting of
+tadah hpo keeps within it), is not flagged, alone on its TYPE2B or TYPEMB
+line or inside D2_mJoin or DM_mJoin. A setting of
 the run: no potential has an
 AUDIT line (its training record lists the run's), and an AUDIT line of a
 potential of an earlier version is not read by a retrain or tadah hpo -c
@@ -3967,10 +3968,9 @@ at each corner in the context tadah hpo evaluates: the seed with the
 corner's value of each OPTIM line in its own entry of the key (OPTIM KEY
 (i) sets entry i; the other entries keep the seed's values; a radial grid
 given by a generator is the grid it makes; D2_Knot5, or a knot DM_REAM
-density, alone on its TYPE2B or TYPEMB line has its largest knot as its
-cutoff, as tadah hpo takes it, and a stated cutoff that differs is
-replaced, with a WARNING; on a D2_mJoin or DM_mJoin line the stated cutoff
-stays, as in tadah hpo). The
+density, has its largest knot as its cutoff, as tadah hpo takes it, its
+own value of RCUT2B or RCUTMB on a D2_mJoin or DM_mJoin line, and a stated
+cutoff that differs is replaced, with a WARNING). The
 statistics of the data are computed once, at the largest cutoff of the
 seed and of the corners. Each corner is judged by the rules of AUDIT, with
 that corner's cutoff. A corner that breaks a lower limit tadah hpo sets on
@@ -3979,7 +3979,7 @@ DM_REAM seed, which must declare RHOFORM, the limits of the density form
 (under NONNEG and MONOTONE: AMPGRIDMB >= 0, WATOM > 0, and SGRIDMB > 0
 under MONOTONE and for a Gaussian density under NONNEG), and in every form
 a radial bump width > 0 (SGRIDMB of a Blip or Blip5 density, SGRID2B of a
-D2_Blip or D2_Blip5 pair term).
+D2_Blip or D2_Blip5 pair term or of a D2_mJoin with one).
 Returns exit code 0 if all corners pass and 1 if any corner produces a
 FAIL finding.
 """
