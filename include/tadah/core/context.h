@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <iterator>
 #include <limits>
 #include <map>
@@ -68,7 +69,8 @@ struct RetiredKeyLine {
 
 /** A key line that a parse stored (CoreUserConfigParser records the lines
  *  of each key on the Context it returns, Context::set_key_lines()): where
- *  it is, and whether it is a line of a potential. */
+ *  it is, whether it is a line of a potential, its file and the number of
+ *  values it gave. */
 struct KeyLine {
   /// Where the line is, as an error of the line names it: "line 3 of
   /// run.train", "line 20 of pot.tadah (CONFIG on line 2 of run.train)";
@@ -77,8 +79,15 @@ struct KeyLine {
   /// A line of a potential: of a file whose own key lines have WEIGHTS (a
   /// potential or a copy of one; the lines of no file count as one file).
   bool potential = false;
+  /// The file the line is in, as the parse names it: the file given to the
+  /// parse, or the path of the CONFIG line that includes it ("pot.tadah");
+  /// empty for lines of no file.
+  std::string source;
+  /// The number of values the line gave the key (the words after the key).
+  std::size_t values = 0;
   bool operator==(const KeyLine &o) const {
-    return where == o.where && potential == o.potential;
+    return where == o.where && potential == o.potential &&
+           source == o.source && values == o.values;
   }
 };
 
