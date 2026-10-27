@@ -13,6 +13,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <iostream>
 #include <sstream>
 #include <atomic>
 #include <thread>
@@ -1545,4 +1546,35 @@ TEST_CASE("Context: the lines of a key follow its values",
     CHECK(made.key_lines("RCUT2B").empty());
     CHECK(made == parsed);
   }
+}
+
+/* Pins: a read of a key the blueprint does not know (Context::operator(),
+ * here VERBOS) throws "Key not allowed: VERBOS" and writes the blueprint's
+ * closest key to the log as "  closest key: VERBOSE", the words of the
+ * parser's refusal of such a line ("(closest key: VERBOSE)"); no log line
+ * asks the reader a question.
+ * Before the fix: the log line read "  Did you mean: VERBOSE". */
+TEST_CASE("Context: a read of an unknown key names the closest key in the "
+          "log",
+          "[context]") {
+  struct CoutCapture {
+    std::ostringstream text;
+    std::streambuf *old = std::cout.rdbuf(text.rdbuf());
+    ~CoutCapture() { std::cout.rdbuf(old); }
+  };
+  const Context c;
+  std::string error, log;
+  {
+    CoutCapture capture;
+    try {
+      (void)c("VERBOS");
+    } catch (const std::runtime_error &e) {
+      error = e.what();
+    }
+    log = capture.text.str();
+  }
+  INFO("log:\n" << log);
+  CHECK(error == "Key not allowed: VERBOS");
+  CHECK(log.find("  closest key: VERBOSE\n") != std::string::npos);
+  CHECK(log.find("Did you mean") == std::string::npos);
 }
