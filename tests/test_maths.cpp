@@ -2,6 +2,9 @@
 #include <tadah/core/core_types.h>
 #include <tadah/core/maths.h>
 #include <iomanip>
+#include <limits>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -831,4 +834,104 @@ TEST_CASE("Matrix3d * Matrix3d is the row-by-column product",
           "[matrix3d][stress_convention]") {
     CHECK(has_matrix_product<Matrix3d>::value);
     check_matrix_product<Matrix3d>();
+}
+
+/* Pins: Matrix_Base::load takes exactly rows() x cols() values: a Matrix3d
+ * given 8, 10 or 11 values throws std::invalid_argument naming the count
+ * ("8 values", "a 3 x 3 matrix takes 9") and keeps every element; 9 values
+ * load as before. (12 or more values, which wrote past the array of the
+ * Matrix3d, are refused by the same check; a call with them is not run, as
+ * before the fix it writes out of bounds.)
+ * Before the fix: no count was checked: 8 values loaded the first eight
+ * elements and left element (2,2) as it was, and the 10th and 11th values
+ * overwrote elements (0,1) and (0,2) (load's index i past 8 wrapped back
+ * into the array), all without an error. */
+TEST_CASE("Matrix3d load() refuses a number of values other than 9",
+          "[matrix3d]") {
+    auto unchanged = [](const Matrix3d &m) {
+        for (size_t i = 0; i < 3; ++i)
+            for (size_t j = 0; j < 3; ++j) {
+                INFO("element (" << i << ", " << j << ")");
+                CHECK(m(i, j) == -1.0);
+            }
+    };
+    auto filled = []() {
+        Matrix3d m;
+        for (size_t k = 0; k < 9; ++k) m[k] = -1.0;
+        return m;
+    };
+    {
+        Matrix3d m = filled();
+        CHECK_THROWS_AS(m.load(1, 2, 3, 4, 5, 6, 7, 8), std::invalid_argument);
+        CHECK_THROWS_WITH(m.load(1, 2, 3, 4, 5, 6, 7, 8),
+                          Catch::Contains("8 values") &&
+                              Catch::Contains("a 3 x 3 matrix takes 9"));
+        unchanged(m);
+    }
+    {
+        Matrix3d m = filled();
+        CHECK_THROWS_AS(m.load(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+                        std::invalid_argument);
+        CHECK_THROWS_WITH(m.load(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+                          Catch::Contains("11 values"));
+        unchanged(m);
+    }
+    Matrix3d m = filled();
+    m.load(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    CHECK(m(2, 2) == 9.0);
+    CHECK(m(1, 0) == 4.0);
+}
+
+/* Pins: Matrix3d::inverse throws std::domain_error, naming the
+ * determinant, for a matrix whose determinant is 0 (rows 1 2 3, 4 5 6,
+ * 7 8 9; the zero matrix), is not a finite number (an entry NaN or
+ * infinite) or whose reciprocal is not (1e-110 on the diagonal: det 1e-330
+ * is 0 in double); the inverse of an invertible matrix is as before (diag
+ * 2 4 8: diag 0.5 0.25 0.125, exactly).
+ * Before the fix: none threw: the inverse of a singular matrix was
+ * 1/0 = inf times the cofactors (inf, -inf and NaN entries). */
+TEST_CASE("Matrix3d inverse() refuses a matrix whose determinant is 0 or "
+          "not finite", "[matrix3d]") {
+    std::vector<std::pair<std::string, Matrix3d>> bad;
+    {
+        Matrix3d m;
+        m.load(1, 2, 3, 4, 5, 6, 7, 8, 9);
+        bad.emplace_back("rows 1 2 3, 4 5 6, 7 8 9", m);
+    }
+    {
+        Matrix3d m;
+        m.set_zero();
+        bad.emplace_back("the zero matrix", m);
+    }
+    {
+        Matrix3d m = Matrix3d::Identity();
+        m(1, 2) = std::numeric_limits<double>::quiet_NaN();
+        bad.emplace_back("an entry NaN", m);
+    }
+    {
+        Matrix3d m = Matrix3d::Identity();
+        m(0, 0) = std::numeric_limits<double>::infinity();
+        bad.emplace_back("an entry infinite", m);
+    }
+    {
+        Matrix3d m;
+        m.set_zero();
+        m(0, 0) = m(1, 1) = m(2, 2) = 1e-110;
+        bad.emplace_back("diag 1e-110", m);
+    }
+    for (const auto &b : bad) {
+        INFO(b.first);
+        CHECK_THROWS_AS(b.second.inverse(), std::domain_error);
+        CHECK_THROWS_WITH(b.second.inverse(), Catch::Contains("determinant"));
+    }
+    Matrix3d d;
+    d.set_zero();
+    d(0, 0) = 2.0;
+    d(1, 1) = 4.0;
+    d(2, 2) = 8.0;
+    const Matrix3d inv = d.inverse();
+    CHECK(inv(0, 0) == 0.5);
+    CHECK(inv(1, 1) == 0.25);
+    CHECK(inv(2, 2) == 0.125);
+    CHECK(inv(0, 1) == 0.0);
 }
