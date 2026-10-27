@@ -3437,8 +3437,9 @@ finish, writing its results, and tadah says so on standard error at once. A
 second Ctrl-C, or a second SIGTERM, ends it at once, as SIGKILL would:
 best_pot.tadah keeps the last best it saved, and the history files can lack
 the rows still queued. TADAH:ANNEAL_PT, TADAH:ANNEAL_PA and ASA:ASA hold the
-results of the evaluations they run at once until the last of them ends, so
-such an ending loses those results too.
+result of an evaluation they run at once with others until every evaluation
+numbered before it among them has ended, so such an ending also loses the
+results held then.
 
 Each new best potential gets the balance table of the fit of its evaluation
 at the end of the training record of best_pot.tadah: one pass of the order
