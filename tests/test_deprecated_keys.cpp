@@ -321,3 +321,58 @@ TEST_CASE("BlueprintParser::findClosestKey never suggests a deprecated key",
     for (const auto &key : kMpiKeys) CHECK(suggested != key);
   }
 }
+
+/* Pins: each line of a deprecated key that a parse reads is recorded on the
+ * Context it returns (Context::deprecated_keys(), in line order, the lines
+ * of a file included with CONFIG where its CONFIG line is): the key, the
+ * file, the line number, the values and the line; retired_keys() does not
+ * list them. A copy and merge() carry them (each once), and neither
+ * operator<< nor a written potential has them. record_deprecated_key()
+ * refuses a key that is not deprecated (std::invalid_argument). A fit
+ * refuses a Context that records one (MODELS require_no_inert_keys), naming
+ * its line and file.
+ * Before the fix: does not compile (Context had no deprecated_keys()): a
+ * deprecated line was not recorded, so nothing could name it. */
+TEST_CASE("Config parser: the lines of a deprecated key are recorded on the "
+          "Context, with their file and line",
+          "[config][deprecated]") {
+  const ScratchDir dir;
+  const auto sub = dir.write_file("sub.cfg", "NBLOCK 8\nWATOM 73\n");
+  const auto top = dir.write_file(
+      "top.cfg", "ATOM Ta\nMBLOCK 64\nCONFIG " + sub.string() + "\n");
+  StreamCapture cap(LogLevel::WARNING);
+  const Context c = CoreUserConfigParser().parse(top.string());
+  const std::vector<RetiredKeyLine> lines = c.deprecated_keys();
+  REQUIRE(lines.size() == 2u);
+  CHECK(lines[0].key == "MBLOCK");
+  CHECK(lines[0].source == top.string());
+  CHECK(lines[0].line == 2u);
+  CHECK(lines[0].values == std::vector<std::string>{"64"});
+  CHECK(lines[0].text == "MBLOCK 64");
+  CHECK(lines[1].key == "NBLOCK");
+  CHECK(lines[1].source == sub.string());
+  CHECK(lines[1].line == 1u);
+  CHECK(lines[1].values == std::vector<std::string>{"8"});
+  CHECK(c.retired_keys().empty());
+
+  const Context copy = c;
+  CHECK((copy.deprecated_keys() == lines));
+  Context other;
+  other.add("ATOM", "Ta");
+  const Context merged = Context::merge(other, c);
+  CHECK((merged.deprecated_keys() == lines));
+  const Context twice = Context::merge(c, c);
+  CHECK((twice.deprecated_keys() == lines));
+
+  const std::string pot = serialized(c);
+  CHECK_FALSE(has_key_line(pot, "MBLOCK"));
+  CHECK_FALSE(has_key_line(pot, "NBLOCK"));
+
+  Context bare;
+  CHECK_THROWS_AS(bare.record_deprecated_key(RetiredKeyLine{
+                      "ATOM", "x", 1, {"Ta"}, "ATOM Ta"}),
+                  std::invalid_argument);
+  CHECK_THROWS_AS(bare.record_deprecated_key(RetiredKeyLine{
+                      "EWEIGHT", "x", 1, {"1"}, "EWEIGHT 1"}),
+                  std::invalid_argument);
+}

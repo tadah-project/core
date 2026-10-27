@@ -575,7 +575,13 @@ namespace {
       if (keyInfo.isDeprecated()) {
         // Accepted so that older files still load, but never stored: the
         // key has no effect and must not be written back to a potential.
+        // The line is recorded on the result, so that a fit refuses it
+        // naming the line and the file (MODELS inert_keys.h).
         reportDeprecatedKey(uKey, keyInfo.deprecated);
+        ctx.record_deprecated_key(RetiredKeyLine{
+            uKey, source, first_line + i,
+            std::vector<std::string>(tokens.begin() + 1, tokens.end()),
+            trim(lines[i])});
         continue;
       }
       if (keyInfo.isRetired()) {
