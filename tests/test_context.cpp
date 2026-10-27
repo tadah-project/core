@@ -23,9 +23,11 @@ using namespace tadah::core;
 
 namespace tadah {
 namespace core {
-/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential}". */
+/* A KeyLine as a failed check prints it: "{line 2 of a.cfg, potential,
+ * file a.cfg, 1 value(s)}". */
 inline std::ostream &operator<<(std::ostream &os, const KeyLine &l) {
-  return os << "{" << l.where << (l.potential ? ", potential}" : "}");
+  return os << "{" << l.where << (l.potential ? ", potential" : "")
+            << ", file " << l.source << ", " << l.values << " value(s)}";
 }
 }  // namespace core
 }  // namespace tadah
@@ -1474,15 +1476,18 @@ TEST_CASE("Context: a short configuration line with commas in a list is "
  * clear(), deserialize()) drops the key's lines and no other key's, and
  * merge() gives a key the lines of the context its values come from (ctx2's
  * values replacing ctx1's: ctx2's lines; ctx2's values appended to ctx1's:
- * both, in order). operator== compares the values alone.
- * Before the fix: does not compile (Context has no key_lines()). */
+ * both, in order). operator== compares the values alone. A line of no file
+ * has no file (source "") and gives the number of values written on it.
+ * Before the fix: does not compile (KeyLine has no source and no values:
+ * a line was recorded by where it is and whether it is a potential's). */
 TEST_CASE("Context: the lines of a key follow its values",
           "[context][key_lines]") {
   const Context parsed = CoreUserConfigParser().parse(std::vector<std::string>{
       "ATOM Ta", "RCUT2B 5.0", "DBFILE a.tadah", "DBFILE b.tadah",
       "WEIGHTS 1 2"});
-  const std::vector<KeyLine> rcut{{"line 2", true}};
-  const std::vector<KeyLine> dbfile{{"line 3", true}, {"line 4", true}};
+  const std::vector<KeyLine> rcut{{"line 2", true, "", 1}};
+  const std::vector<KeyLine> dbfile{{"line 3", true, "", 1},
+                                    {"line 4", true, "", 1}};
   REQUIRE(parsed.key_lines("RCUT2B") == rcut);
   REQUIRE(parsed.key_lines("dbfile") == dbfile);
   SECTION("copies and moves") {
@@ -1507,7 +1512,8 @@ TEST_CASE("Context: the lines of a key follow its values",
     CHECK(c.key_lines("DBFILE").empty());
     c.storage_update("ATOM", {"Nb"});
     CHECK(c.key_lines("ATOM").empty());
-    CHECK(c.key_lines("WEIGHTS") == std::vector<KeyLine>{{"line 5", true}});
+    CHECK(c.key_lines("WEIGHTS") ==
+          std::vector<KeyLine>{{"line 5", true, "", 2}});
     Context d = parsed;
     d.deserialize(parsed.serialize());
     CHECK(d == parsed);
