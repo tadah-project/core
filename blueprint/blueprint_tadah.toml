@@ -153,14 +153,17 @@ that include a shared file goes in each of them, not in the shared file.
 The lines of a key of several values add up in line order: DBFILE lists
 the datasets of all its lines. A line past the number of values the key
 takes is refused. A potential (a file with WEIGHTS) has one line for each
-key of its descriptors: TYPE2B and TYPEMB (a D2_mJoin or DM_mJoin line has
-one line per descriptor), their RCTYPE and RCUT keys, and the grid keys
+key of its descriptors: their RCTYPE and RCUT keys, and the grid keys
 CGRID2B, SGRID2B, KDEG2B, CGRIDMB, SGRIDMB, AMPGRIDMB, KDEGMB, KDEGEMB,
-CEMBFUNC and SEMBFUNC. A command that reads its configuration file with
--c (tadah train, tadah hpo, tadah refit and the analysis commands that
-take -c) refuses a second line of such a key in the potential file,
-naming both. A potential's value is changed by editing its line (the
-Training page of the documentation, Retraining from a potential). A line
+CEMBFUNC and SEMBFUNC; it has its TYPE2B and TYPEMB keys as tadah writes
+them, on lines one after another, a new line at each descriptor's name (a
+D2_mJoin or DM_mJoin line has one line per descriptor). A command that
+reads its configuration file with -c (tadah train, tadah hpo, tadah refit
+and the analysis commands that take -c), and tadah refit --edit, refuses
+a second line of such a key in the potential file, and TYPE2B or TYPEMB
+lines other than those tadah writes, naming the lines. A potential's value
+is changed by editing its line (the Training page of the documentation,
+Retraining from a potential). A line
 the run does not read, such as the EFILTER line of an included potential
 (the same page), sets nothing. An option of the command line takes
 precedence over the lines of its key.
@@ -771,7 +774,9 @@ long_description = """
 Pre-flight audit mode of tadah train and tadah hpo: 'off' (default) skips
 the audit, 'warn' emits diagnostics but proceeds, 'error' makes any
 FAIL-level finding fatal (exit status 1). The audit's data scan is sampled
-by default (AUDIT_SAMPLE). It checks the parameters of each descriptor
+by default (AUDIT_SAMPLE); when the sample gives a FAIL finding, the audit
+is made again on every structure. It checks the parameters of each
+descriptor
 against the neighbour distances of the data between the element pairs its
 TYPE2B or TYPEMB line names (the PAIRS of a DESCRIPTOR block), the
 neighbours it sums over: the Ta-W distances alone for TYPE2B D2_Blip 4 4
@@ -785,8 +790,10 @@ finding names the pairs ("below the smallest (Ta, W) neighbour distance
 of the dataset"). D2_Knot5, or a knot DM_REAM density, is judged at its
 largest knot, the cutoff tadah train and tadah hpo give it (on a joined
 line, its own RCUT2B or RCUTMB entry).
-Each descriptor of a D2_mJoin or DM_mJoin line is judged by its own
-channels and cutoff, and a channel is named by its entry of the whole key.
+Each descriptor of a D2_mJoin or DM_mJoin line, and each descriptor that
+TYPEMB places among DESCRIPTOR blocks (TYPEMB DM_EAD ... Ta Ta and TYPEMB
+@ta), is judged by the element pairs of its own line and its own channels
+and cutoff, and a channel is named by its entry of the whole key.
 Under tadah hpo it also warns about a critical parameter that the seed
 fixes and the search space leaves out, for a descriptor that has a key in
 the search space; the warning names the descriptor's entries of the key
@@ -814,7 +821,10 @@ description = "Number of training structures sampled (deterministic random) for 
 long_description = """
 Number of training structures sampled (deterministic random) for the
 pre-flight audit's dataset stats; 0 means the entire StructureDB. Has no
-effect when AUDIT is 'off'. A setting of the run: no potential has an
+effect when AUDIT is 'off'. When the sample gives a FAIL finding, the
+audit is made again on every structure, so that an element pair that only
+structures outside the sample hold is not reported as absent from the
+dataset. A setting of the run: no potential has an
 AUDIT_SAMPLE line (its training record lists the run's), and an
 AUDIT_SAMPLE line of a potential of an earlier version is not read by a
 retrain or tadah hpo -c of it.
@@ -3914,13 +3924,15 @@ largest cutoff of the seed (RCUT2B, RCUTMB or the cutoff RADIUS of a
 DESCRIPTOR block), then walks the metadata of each configured descriptor
 and proposes one OPTIM bound per parameter entry. The shells, peaks and
 percentiles a range is taken from are those of the element pairs the
-descriptor's TYPE2B or TYPEMB line names (the PAIRS of a DESCRIPTOR
-block), the neighbours it sums over: the Ta-W distances for TYPE2B D2_Blip
-4 4 Ta W. For a line of several pairs the range holds the range of each
-pair, and a rationale taken from the distances names the pair of each.
-Each
-descriptor of a D2_mJoin or DM_mJoin line gets the rows of its own values,
-numbered as the whole key numbers them. A key that the descriptors of a
+descriptor's TYPE2B or TYPEMB line names, the neighbours it sums over: the
+Ta-W distances for TYPE2B D2_Blip 4 4 Ta W. For a line of several pairs
+the range holds the range of each pair, and a rationale taken from the
+distances names the pair of each. The parameters of a DESCRIPTOR block get
+ranges around the seed's values, which the distances do not set. Each
+descriptor of a D2_mJoin or DM_mJoin line, and each descriptor that TYPEMB
+places among DESCRIPTOR blocks, gets the rows of its own values and the
+element pairs of its own line, numbered as the whole key numbers them.
+A key that the descriptors of a
 joined line share (RCUTENV) gets one row. Each row gives its rationale:
 the form the range assumes and the data it comes from (the cutoffs, and
 the centres and widths of the densities), "fixed range" and why (the
