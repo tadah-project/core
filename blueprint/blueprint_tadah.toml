@@ -152,9 +152,17 @@ that include a shared file goes in each of them, not in the shared file.
 
 The lines of a key of several values add up in line order: DBFILE lists
 the datasets of all its lines. A line past the number of values the key
-takes is refused. A line the run does not read, such as the EFILTER line of
-an included potential (the Training page of the documentation, Retraining
-from a potential), sets nothing. An option of the command line takes
+takes is refused. A potential (a file with WEIGHTS) has one line for each
+key of its descriptors: TYPE2B and TYPEMB (a D2_mJoin or DM_mJoin line has
+one line per descriptor), their RCTYPE and RCUT keys, and the grid keys
+CGRID2B, SGRID2B, KDEG2B, CGRIDMB, SGRIDMB, AMPGRIDMB, KDEGMB, KDEGEMB,
+CEMBFUNC and SEMBFUNC. A command that reads its configuration file with
+-c (tadah train, tadah hpo, tadah refit and the analysis commands that
+take -c) refuses a second line of such a key in the potential file,
+naming both. A potential's value is changed by editing its line (the
+Training page of the documentation, Retraining from a potential). A line
+the run does not read, such as the EFILTER line of an included potential
+(the same page), sets nothing. An option of the command line takes
 precedence over the lines of its key.
 
 A relative path is relative to the working directory, the directory the
@@ -764,15 +772,19 @@ Pre-flight audit mode of tadah train and tadah hpo: 'off' (default) skips
 the audit, 'warn' emits diagnostics but proceeds, 'error' makes any
 FAIL-level finding fatal (exit status 1). The audit's data scan is sampled
 by default (AUDIT_SAMPLE). It checks the parameters of each descriptor
-against the neighbour distances of the data: a descriptor fails when its
+against the neighbour distances of the data between the element pairs its
+TYPE2B or TYPEMB line names (the PAIRS of a DESCRIPTOR block), the
+neighbours it sums over: the Ta-W distances alone for TYPE2B D2_Blip 4 4
+Ta W (a line with * * names every pair). A descriptor fails when its
 cutoff (RCUT2B, RCUTMB, or the cutoff RADIUS of a DESCRIPTOR block) holds
-none of them, a cutoff below the smallest or data without a pair within
-it; a radial channel of a many-body density fails when it reaches none of
-them within its cutoff (a Gaussian when it is below 1e-6 at all of them, a
-blip when its support holds none), whatever its centre. D2_Knot5, or a
-knot DM_REAM density, is judged at its largest knot, the cutoff tadah
-train and tadah hpo give it (on a joined line, its own RCUT2B or RCUTMB
-entry).
+none of them, a cutoff below the smallest or data without such a pair
+within it; a radial channel of a many-body density fails when it reaches
+none of them within its cutoff (a Gaussian when it is below 1e-6 at all
+of them, a blip when its support holds none), whatever its centre. A
+finding names the pairs ("below the smallest (Ta, W) neighbour distance
+of the dataset"). D2_Knot5, or a knot DM_REAM density, is judged at its
+largest knot, the cutoff tadah train and tadah hpo give it (on a joined
+line, its own RCUT2B or RCUTMB entry).
 Each descriptor of a D2_mJoin or DM_mJoin line is judged by its own
 channels and cutoff, and a channel is named by its entry of the whole key.
 Under tadah hpo it also warns about a critical parameter that the seed
@@ -3901,9 +3913,12 @@ peaks, no densities) from the neighbour distances up to 1.25 times the
 largest cutoff of the seed (RCUT2B, RCUTMB or the cutoff RADIUS of a
 DESCRIPTOR block), then walks the metadata of each configured descriptor
 and proposes one OPTIM bound per parameter entry. The shells, peaks and
-percentiles a range is taken from are those of the first element pair of
-the data in alphabetical order of the symbols (Ta-Ta for Ta-W data), which
-the rationale names. Each
+percentiles a range is taken from are those of the element pairs the
+descriptor's TYPE2B or TYPEMB line names (the PAIRS of a DESCRIPTOR
+block), the neighbours it sums over: the Ta-W distances for TYPE2B D2_Blip
+4 4 Ta W. For a line of several pairs the range holds the range of each
+pair, and a rationale taken from the distances names the pair of each.
+Each
 descriptor of a D2_mJoin or DM_mJoin line gets the rows of its own values,
 numbered as the whole key numbers them. A key that the descriptors of a
 joined line share (RCUTENV) gets one row. Each row gives its rationale:
@@ -3917,7 +3932,8 @@ cutoff. Every range holds the seed's value, where a search of tadah hpo
 starts. Where the data alone give a range that does not hold the seed's
 value, the range is widened to hold it, and its rationale says so. A row
 gets no OPTIM line, and its rationale says why, when the data give it no
-range: data without a pair of atoms within the reach of the statistics, a
+range: data without a pair of atoms of the descriptor's element pairs
+within the reach of the statistics (the rationale names the pairs), a
 range of zero width (which tadah hpo refuses), the grids of DM_REAM (which
 the neighbour distances do not set) and its knot degrees (which tadah hpo
 does not search). The cutoff of D2_Knot5, or of a knot DM_REAM density,
