@@ -2549,25 +2549,27 @@ names = true
 value_type   = ["{STRING STRING DOUBLE} ", "{DOUBLE}"]
 value_format = ["{<element> <element> <weight>}>", "{<weight>}"]
 value_N = [-118]
-description = """
-Atom-pair weights. Two formats accepted:
-  Per-species (parallel to ATOM): WATOM w1 w2 ...
-    Pair weights are computed as geometric mean: w(Zi,Zj) = sqrt(wi*wj).
-  Explicit pair triples: WATOM sym1 sym2 val  sym1 sym2 val  ...
-    Directly sets symmetric pair weights: w(sym1,sym2) = w(sym2,sym1) = val.
-"""
+description = """Atom-pair weights of the descriptors that read them, per species or per element pair."""
 long_description = """
+Two formats are accepted:
+
+- Per species, parallel to ATOM: WATOM w1 w2 ...; the weight of a pair is
+  the geometric mean, w(Zi,Zj) = sqrt(wi*wj).
+- Explicit pair triples: WATOM sym1 sym2 val sym1 sym2 val ...; each sets
+  w(sym1,sym2) = w(sym2,sym1) = val.
+
 WATOM weights the pairs of the descriptors that read it: every descriptor but
-D2_EAM and DM_EAM, which take their pair and density functions from the SETFL
-file as they are. Without a WATOM line, tadah train and tadah hpo give each
-species the weight Z, its atomic number, when a descriptor of the
-configuration reads WATOM, and no WATOM otherwise. A fit refuses a WATOM with
-a value other than 1 when no descriptor of its configuration reads it, naming
-the line (tadah refit, which writes WATOM 1 into the potential it fits,
-refuses such a WATOM whatever the descriptors). A potential with one still
-loads, with one notice per process, "WARNING: Key WATOM (2.5) is ignored: no
-descriptor of the potential reads it (...)"; pair_style tadah writes it as a
-LAMMPS warning on rank 0 each time pair_coeff loads such a potential.
+D2_EAM and DM_EAM (which take their pair and density functions from the
+SETFL file as they are) and the dummies D2_Dummy and DM_Dummy. Without a
+WATOM line, tadah train and tadah hpo give each species the weight Z, its
+atomic number, when a descriptor of the configuration reads WATOM, and no
+WATOM otherwise. A fit refuses a WATOM with a value other than 1 when no
+descriptor of its configuration reads it, naming the line (tadah refit, which
+writes WATOM 1 into the potential it fits, refuses such a WATOM whatever the
+descriptors). A potential with one still loads, with one notice per process,
+"WARNING: Key WATOM (2.5) is ignored: no descriptor of the potential reads it
+(...)"; pair_style tadah writes it as a LAMMPS warning on rank 0 each time
+pair_coeff loads such a potential.
 """
 examples = ['1.0 1.5', 'Kr Kr 0.5', 'Kr Kr 0.5 Ar Ar 0.8 Kr Ar 0.6']
 
