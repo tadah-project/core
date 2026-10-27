@@ -460,6 +460,10 @@ TEST_CASE("Matrix3d_T inverse()", "[matrix3d][new]") {
         }
     }
 
+    // Pins: the inverse of a singular matrix (rows linearly dependent,
+    // determinant 0) is refused with std::domain_error.
+    // Before the fix: it did not throw (this section required that) and
+    // returned 1/0 times the cofactors, entries that are not numbers.
     SECTION("Singular matrix (zero determinant)") {
         Matrix3d S;
         // Make rows linearly dependent
@@ -470,12 +474,7 @@ TEST_CASE("Matrix3d_T inverse()", "[matrix3d][new]") {
         S(0,2) = 3; S(1,2) = 6; S(2,2) = 9;
 
         // This matrix is singular -> determinant = 0
-        // The code doesn't handle that explicitly (no throw).
-        // Dividing by zero occurs => INF or NaN in many compilers.
-        REQUIRE_NOTHROW(S.inverse());
-        // The result may be Inf/NaN; it is not checked strictly:
-        [[maybe_unused]] auto Sinv = S.inverse();
-        SUCCEED("S.inverse() called on singular matrix. Typically produces Inf or NaN.");
+        REQUIRE_THROWS_AS(S.inverse(), std::domain_error);
     }
 }
 
