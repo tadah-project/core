@@ -37,17 +37,24 @@ const std::vector<std::string> &run_setting_keys();
  * (ignoring blank lines and comments). It validates every key against the allowed keywords
  * provided by the blueprint (via Context): a key that is none is an error at its line ("Invalid
  * key FOOBAR on line 3 of config.train (closest key: FORMAT)"; "on line 3" for lines of no
- * file), a file included with CONFIG naming its own line. So is every other error of a line,
- * without a Logger line: a value the key does not take ("Invalid value for key RCUT2B on line 3
- * of config.train: 'abc'", the key's schema, format and examples on the lines that follow; a
- * value outside its allowed values lists them), more values than the key takes over its lines
- * ("Too many values for key MODEL on line 4 of config.train: MODEL takes at most 3, and its
- * lines read so far give 4"), a second line of a key of one value ("Key BIAS is set on line 1
- * of config.train and on line 2 of inc.cfg (CONFIG on line 3 of config.train): a key of one
- * value is set once in a configuration file and the files it includes with CONFIG"), a block
- * that is not closed ("OPTIMIZER on line 2 of config.train is not closed; expected
- * ENDOPTIMIZER") and a CONFIG line whose file does not open ("Failed to open config file:
- * other.cfg (CONFIG on line 2 of config.train)") or names a file whose lines are being read,
+ * file), a line of a file included with CONFIG named with the CONFIG lines that include it
+ * ("Invalid key FOOBAR on line 1 of inc.cfg (CONFIG on line 2 of config.train) (closest key:
+ * FORMAT)"). So is every other error of a line, without a Logger line: a value the key does
+ * not take ("Invalid value for key RCUT2B on line 3 of config.train: 'abc'", the key's schema,
+ * format and examples on the lines that follow; a value outside its allowed values lists them),
+ * more values than the key takes over its lines, with the lines before it ("Too many values for
+ * key MODEL on line 4 of config.train: MODEL takes at most 3, and its lines read so far give 4,
+ * with line 1 of config.train before it"), a second line of a key of one value ("Key BIAS is
+ * set on line 1 of config.train and on line 2 of inc.cfg (CONFIG on line 3 of config.train): a
+ * key of one value is set once in a configuration file and the files it includes with
+ * CONFIG"), both ending, when the key's lines are a potential's and another file's, with the
+ * way to change a potential's value ("; a potential's value is changed by editing its line in a
+ * copy of the potential (the Training page of the documentation, Retraining from a
+ * potential)"), a block that is not closed ("OPTIMIZER on line 2 of config.train is not closed;
+ * expected ENDOPTIMIZER") and a CONFIG line whose file does not open ("Failed to open config
+ * file: other.cfg (CONFIG on line 2 of config.train)"; in a nested include every CONFIG line
+ * that includes it, "(CONFIG on line 1 of mid.cfg, which CONFIG on line 2 of config.train
+ * includes)") or names a file whose lines are being read,
  * the file of the parse among them, whatever path names it ("Circular dependency detected
  * between CONFIG files: config.train -> inc.cfg -> config.train (CONFIG on line 1 of
  * inc.cfg)"), refused before a line of that file is read again.
@@ -178,6 +185,15 @@ public:
    * --analytics (-A) of tadah predict, not a key of a potential; the line is
    * not read"), so that a potential written before 1.6.0, whose training
    * configuration held such a key, still loads.
+   *
+   * With a command, a key of the command's table takes the number of
+   * values that table gives it: tadah train, tadah refit and tadah analysis
+   * bfunc, suggest_bounds and dataset_stats take one OUTFILE value (each
+   * writes one file), although OUTFILE takes any number, so a second
+   * OUTFILE line is refused as a second line of a key of one value, and a
+   * line of two values as too many ("Too many values for key OUTFILE on
+   * line 1 of config.train: OUTFILE of tadah train takes at most 1, and its
+   * lines read so far give 2").
    * @throws std::invalid_argument for a name that is no blueprint task.
    */
   void set_command(const std::string &task);

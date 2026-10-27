@@ -3840,6 +3840,10 @@ examples         = ["tadah analysis dataset_stats -c train.tadah --outfile stats
                     "tadah analysis dataset_stats -c train.tadah --outfile stats.tadah --close-contact 0.5"]
 [TASKS.analysis.dataset_stats.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose", "ALLOWED_KEYS.close_contact"]
+[TASKS.analysis.dataset_stats.keys.outfile]
+value_N      = [1]
+value_type   = ["STRING"]
+value_format = ["<file>"]
 [TASKS.analysis.dataset_stats.groups.input]
 description      = "Structure source. One of the following options:"
 required_min = 1
@@ -3890,6 +3894,10 @@ standard output).
 examples         = ["tadah analysis suggest_bounds -c train.tadah --outfile suggested.hpo"]
 [TASKS.analysis.suggest_bounds.keys]
 INHERIT          = ["ALLOWED_KEYS.outfile", "ALLOWED_KEYS.verbose"]
+[TASKS.analysis.suggest_bounds.keys.outfile]
+value_N      = [1]
+value_type   = ["STRING"]
+value_format = ["<file>"]
 [TASKS.analysis.suggest_bounds.groups.input]
 description      = "Source: a training configuration file."
 required_min = 1
