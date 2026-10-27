@@ -14,11 +14,27 @@
 #include <random>
 #include <chrono>
 #include <cstring> // for std::memcpy
+#include <sstream>
 
 #include <array>
+#include <cstdint>
+#include <string>
 
 namespace tadah {
 namespace core {
+
+namespace detail {
+/** True unless @p x is an infinity or a NaN, tested on the exponent bits:
+ *  under -ffast-math the compiler may fold std::isfinite to true. */
+inline bool maths_is_finite(double x) {
+  static_assert(sizeof(double) == sizeof(std::uint64_t),
+                "double must be 64-bit");
+  std::uint64_t bits;
+  std::memcpy(&bits, &x, sizeof(bits));
+  return (bits & UINT64_C(0x7ff0000000000000)) !=
+         UINT64_C(0x7ff0000000000000);
+}
+}  // namespace detail
 
 /** A dense matrix. operator()(i, j) is row i, column j; the storage behind
  *  operator[], data() and ptr() is column-major: element (i, j) is
@@ -197,10 +213,19 @@ public:
   //          return mat;
   //      }
   /** Set the elements from values in row-major reading order: row 0
-   *  first, i.e. (0,0), (0,1), ..., (0,cols-1), (1,0), ... */
+   *  first, i.e. (0,0), (0,1), ..., (0,cols-1), (1,0), ...
+   *  @throws std::invalid_argument, changing no element, unless exactly
+   *  rows() x cols() values are given (more would be written past the
+   *  storage or over elements already set, fewer leave elements as they
+   *  were). */
   template <typename... T>
   void load(T... list)
   {
+    if (sizeof...(T) != rows() * cols())
+      throw std::invalid_argument(
+          "Matrix load: " + std::to_string(sizeof...(T)) + " values, but a " +
+          std::to_string(rows()) + " x " + std::to_string(cols()) +
+          " matrix takes " + std::to_string(rows() * cols()));
     size_t i=0;
     for( const auto elem : {list...} )
     {
@@ -344,6 +369,10 @@ public:
     }
     return temp;
   }
+  /** The inverse, from the cofactors and the determinant.
+   *  @throws std::domain_error, naming the determinant, when the
+   *  determinant is 0 or not a finite number, or its reciprocal is not
+   *  (the matrix has no inverse in double precision). */
   inline Matrix3d_T<T> inverse() const
   {
     // computes the inverse of a 3x3 matrix
@@ -354,6 +383,14 @@ public:
       (*this)(0, 2) * ((*this)(1, 0) * (*this)(2, 1) -
       (*this)(1, 1) * (*this)(2, 0));
 
+    if (!detail::maths_is_finite(det) || det == 0.0 ||
+        !detail::maths_is_finite(1 / det)) {
+      std::ostringstream os;
+      os.precision(17);
+      os << "Matrix3d inverse: the determinant is " << det
+         << ", so the matrix has no inverse in double precision";
+      throw std::domain_error(os.str());
+    }
     double invdet = 1 / det;
 
     Matrix3d_T<T> minv;
