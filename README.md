@@ -1,7 +1,5 @@
-[![pipeline](https://git.ecdf.ed.ac.uk/tadah/core/badges/v1-dev/pipeline.svg)](https://git.ecdf.ed.ac.uk/tadah/core/-/commits/v1-dev)
-[![coverage](https://git.ecdf.ed.ac.uk/tadah/core/badges/v1-dev/coverage.svg)](https://git.ecdf.ed.ac.uk/tadah/core/-/commits/v1-dev)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
-[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://git.ecdf.ed.ac.uk/tadah/core/-/tags)
+[![version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/tadah-project/core/tags)
 
 # CORE
 
@@ -26,7 +24,7 @@ CORE is an internal module of the Tadah! MLIP toolchain. It is
 fetched automatically (via CMake `FetchContent`) by every Tadah!
 consumer (MODELS, MLIP, MD, HPO, Tadah.LAMMPS, Tadah.MLIP). End users
 install the umbrella project
-[Tadah!MLIP](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip) — see the
+[Tadah!MLIP](https://github.com/tadah-project/tadah.mlip) — see the
 [installation guide](https://tadah.readthedocs.io/v1-dev/installation.html).
 
 ## Contributing
@@ -41,7 +39,7 @@ GPL-3.0; see [LICENSE](LICENSE).
 
 ## Reporting issues
 
-Bugs and feature requests:
-[CORE issues](https://git.ecdf.ed.ac.uk/tadah/core/-/issues).
-For end-user questions please use the umbrella project
-[Tadah!MLIP](https://git.ecdf.ed.ac.uk/tadah/tadah.mlip).
+This repository is a component of Tadah! and has no issue tracker of
+its own. Bugs, feature requests and questions go to the tracker of
+the umbrella project,
+[Tadah!MLIP](https://github.com/tadah-project/tadah.mlip/issues).
