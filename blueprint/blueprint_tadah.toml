@@ -1370,7 +1370,7 @@ long_description = """
 Switches `tadah refit` into hpotarget-retargeting mode: it reads an existing
 hpotarget file (as written by `tadah refit` or a previous --retarget run) and
 rewrites the bounds of every line `OPTIM <KEY> (<index>) <low> <high>` —
-active AND commented, preserving the comment state and a comment after the
+active AND commented, keeping the comment state and a comment after the
 bounds — around the recovered parameter values. Keys are read in any case,
 and each rewritten line keeps its key as written. An OPTIM line of another
 form (an AUTO box, several indices, a shape tag, a continued line, a line
@@ -1398,7 +1398,10 @@ finite, zero or a normal double: 5x, 0x10, inf, nan and 1e-320 are errors).
   (active OPTIM RCUT lines are commented out with a warning; the training
   config needs the same RCUT).
 
-Everything but the rewritten OPTIM lines is preserved byte-for-byte. The output
+The rest of the file is kept byte for byte, except the `Bounds are +-X%`
+header and the `# KEY  (+-X%, ...)` group comments, which --pct rewrites,
+the lines --rcut2b, --rcutmb and --rhoform change (above), and the
+commented RCUT lines of a knot-family potential (below). The output
 goes to -o (default: <input>_retargeted.hpotarget, which no other mode of
 tadah refit writes by default: --edit writes refit_edited.hpotarget) or back
 into the input with --in-place. For knot-family potentials the commented
@@ -4027,7 +4030,7 @@ required_max = 1
 INHERIT          = ["ALLOWED_KEYS.config"]
 
 [TASKS.analysis.check_bounds]
-description      = "Validates HPO bounds: runs the pre-flight audit at every corner of the boxes tadah hpo searches. Returns non-zero if any corner trips a FAIL finding. CI-friendly."
+description      = "Validates the search bounds of a target file: runs the pre-flight audit at every corner of the boxes tadah hpo searches. Returns non-zero if an OPTIM line is refused or any corner trips a FAIL finding. CI-friendly."
 long_description = """
 Reads the hpotarget file of the run (--hpotarget, or an HPOTARGET line of
 the seed configuration: the HPOTARGET line of a seed potential of an
@@ -4064,7 +4067,8 @@ under MONOTONE and for a Gaussian density under NONNEG), and in every form
 a radial bump width > 0 (SGRIDMB of a Blip or Blip5 density, SGRID2B of a
 D2_Blip or D2_Blip5 pair term, alone or on a D2_mJoin line, where the
 entries of another descriptor keep its own rule).
-Returns exit code 0 if all corners pass and 1 if any corner produces a
+Returns exit code 0 if all corners pass, and 1 if the run is refused (an
+OPTIM line tadah hpo refuses among the reasons) or any corner produces a
 FAIL finding.
 """
 examples         = ["tadah analysis check_bounds -c train.tadah --hpotarget config.hpo"]
