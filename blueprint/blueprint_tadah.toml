@@ -206,7 +206,54 @@ INHERIT = ["TYPES.BOOL"]
 # the Context injects it on first query, so pair_tadah reads true unless the
 # user sets EAMFAST false. Same mechanism as refit_constrain_f0 above.
 default_value = ["true"]
-description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah. For a single-species linear model the potential collapses exactly to scalar radial functions: a radial two-body block alone (INITMB false, any radial D2 descriptor) collapses to a pair function phi(r); a two-body block plus one EAM-form many-body block, a DM_Embed component (what tadah refit writes, e.g. D2_Knot5 + DM_Embed) or DM_REAM, the many-body descriptors for which this EAM collapse is implemented, additionally collapses to density and embedding functions. The pair style then evaluates cubic-Hermite tables sampled from the descriptors themselves (plus the analytic embedding and scalar ghost communication in the EAM case; the pure two-body case needs no ghost communication at all), which makes force calls faster; the gain grows with the cost of the descriptors (MD of 250 atoms: 1.6x for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy), 3.4x for D2_LJ + DM_REAM, 4.5x for a 21-knot D2_Knot5 pair term). Each table is certified when the potential is loaded: scanning down from the cutoff, the pair style bounds the error of every table segment from 31 check points and finds the smallest distance r_lo above which every segment meets a relative tolerance of 1e-9 for the value and the derivative (energy and force, relative to the function's own scale above that distance, and at least its scale over the outer half of the cutoff). Below r_lo it evaluates the analytic function, at the cost of the generic kernel. The fast path therefore agrees with the generic kernel to 1e-9 relative accuracy inside the certified range and exactly below it; the bound assumes the function is smooth on the scale of 1/32 of the table spacing apart from isolated knots and cutoff junctions. The certified range is one interval ending at the cutoff, so a single segment that misses the tolerance, for example at a knot of a C2 basis such as Blip or at the inner radius of a switching cutoff such as Cut_PolyS, sets r_lo there even where the table is accurate further in. The LAMMPS log states each certified range, the tolerance, the error bounds and where the analytic evaluation takes over, e.g. for a D2_LJ potential (RCUT2B 6.5, Cut_Dummy): Tadah! pair-collapse fast path ON (2b-only, nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy 3e-13, force 1e-9); analytic below r=2.80125. Distances are in the potential's units. A table that misses the tolerance already in its top segment, immediately below the cutoff, has no certified range: the log gives the reason and the generic kernel is used. EAMFAST false serves a bitwise comparison against the generic kernel, or drivers that capture adjoint state on EAM-form models (pure two-body adjoint capture works under the fast path via the generic kernel). Silently ignored, generic kernel used, for models that do not collapse: nonlinear or normalised models, per-species bias, multi-species, dimers, or a many-body descriptor other than one DM_Embed component or DM_REAM (DM_mBlipEnv, for example)."
+description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah."
+long_description = """
+For a single-species linear model the potential collapses exactly to scalar
+radial functions: a radial two-body block alone (INITMB false, any radial D2
+descriptor) collapses to a pair function phi(r). A two-body block plus one
+EAM-form many-body block, a DM_Embed component (what tadah refit writes,
+e.g. D2_Knot5 + DM_Embed) or DM_REAM, the many-body descriptors for which
+this EAM collapse is implemented, additionally collapses to density and
+embedding functions. The pair style then evaluates cubic-Hermite tables
+sampled from the descriptors themselves (plus the analytic embedding and
+scalar ghost communication in the EAM case; the pure two-body case needs no
+ghost communication at all), which makes force calls faster. The gain grows
+with the cost of the descriptors (MD of 250 atoms: 1.6x for a D2_LJ
+potential (RCUT2B 6.5, Cut_Dummy), 3.4x for D2_LJ + DM_REAM, 4.5x for a
+21-knot D2_Knot5 pair term).
+
+Each table is certified when the potential is loaded: scanning down from the
+cutoff, the pair style bounds the error of every table segment from 31 check
+points and finds the smallest distance r_lo above which every segment meets
+a relative tolerance of 1e-9 for the value and the derivative (energy and
+force, relative to the function's own scale above that distance, and at
+least its scale over the outer half of the cutoff). Below r_lo it evaluates
+the analytic function, at the cost of the generic kernel. The fast path
+therefore agrees with the generic kernel to 1e-9 relative accuracy inside
+the certified range and exactly below it. The bound assumes the function is
+smooth on the scale of 1/32 of the table spacing apart from isolated knots
+and cutoff junctions. The certified range is one interval ending at the
+cutoff, so a single segment that misses the tolerance, for example at a knot
+of a C2 basis such as Blip or at the inner radius of a switching cutoff such
+as Cut_PolyS, sets r_lo there even where the table is accurate further in.
+
+The LAMMPS log states each certified range, the tolerance, the error bounds
+and where the analytic evaluation takes over, e.g. for a D2_LJ potential
+(RCUT2B 6.5, Cut_Dummy): Tadah! pair-collapse fast path ON (2b-only,
+nr=8192): table certified for r in [2.80125, 6.5] (rel tol 1e-9: energy
+3e-13, force 1e-9); analytic below r=2.80125. Distances are in the
+potential's units. A table that misses the tolerance already in its top
+segment, immediately below the cutoff, has no certified range: the log gives
+the reason and the generic kernel is used.
+
+EAMFAST false serves a bitwise comparison against the generic kernel, or
+drivers that capture adjoint state on EAM-form models (pure two-body adjoint
+capture works under the fast path via the generic kernel). Silently ignored,
+generic kernel used, for models that do not collapse: nonlinear or
+normalised models, per-species bias, multi-species, dimers, or a many-body
+descriptor other than one DM_Embed component or DM_REAM (DM_mBlipEnv, for
+example).
+"""
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -400,8 +447,9 @@ description  = "Controls the centre positions for radial basis functions (two-bo
 long_description = """
 With D2_Blip, D2_Blip5 or D2_BP, the number of centres equals the number of
 inverse widths (SGRID2B), and a different number is refused. D2_Knot5 reads
-its knot positions from this key and refuses SGRID2B. The centres lie below
-the cutoff distance.
+its knot positions from this key and refuses SGRID2B. The centres normally
+lie at or below the cutoff distance (RCUT2B): every function is zero beyond
+it.
 The values of all lines form one list. With the meta descriptor D2_mJoin,
 each joined descriptor takes as many centres as its TYPE2B line asks for,
 in the order of the TYPE2B lines, and more or fewer values are refused.
@@ -478,7 +526,8 @@ value_format = ["<width> ...",  "(<generator> <n> <start> <stop>) [...]"]
 value_N      = [-2147483647]
 description  = "Specifies the inverse widths of the many-body radial basis functions (Å^-2 for Gaussian functions, Å^-1 for blip functions): a larger value gives a narrower function."
 long_description = """
-The number of values equals the number of centres (CGRIDMB).
+The number of values equals the number of centres (CGRIDMB); a knot
+DM_REAM density (basis code 2) takes none.
 The values of all lines form one list. With the meta descriptor DM_mJoin,
 each joined descriptor takes as many values as its TYPEMB line asks for,
 in the order of the TYPEMB lines, and more or fewer values are refused.
@@ -504,17 +553,18 @@ long_description = """
 Read by the embedding function of a many-body descriptor and by DM_REAM.
 F_RLR and F_SQRT take one value per radial function (the size of SGRIDMB),
 the factor in front of the function; without the key, F_SQRT uses 1 for
-every value. F_Blip takes one value per value of CEMBFUNC, the inverse width
-of an embedding blip in the density. For DM_REAM the values are the inverse
-widths of the embedding basis functions (rho^-1, and rho^-2 for the Gaussian
-basis); a knot basis takes none. With the DM_mJoin descriptor, the key holds
-one list of parameters for each descriptor, consistent with CEMBFUNC.
+every value. F_Blip and F_mEnv take one value per value of CEMBFUNC, the
+inverse width of an embedding blip in the density. For DM_REAM the values
+are the inverse widths of the embedding basis functions (rho^-1, and rho^-2
+for the Gaussian basis); a knot basis takes none. With the DM_mJoin
+descriptor, the key holds one list of parameters for each descriptor,
+consistent with CEMBFUNC.
 """
 examples = ["0.14 0.45 1.00 1.1"]
 
 [ALLOWED_KEYS.CEMBFUNC]
 INHERIT = ["TYPES.DOUBLES"]
-description  = "Centres of the embedding basis functions in the density (F_Blip, DM_REAM) or, for F_RLR, the factor of the density inside the logarithm."
+description  = "Centres of the embedding basis functions in the density (F_Blip, F_mEnv, DM_REAM) or, for F_RLR, the factor of the density inside the logarithm."
 long_description = """
 Read by the embedding function of a many-body descriptor (for example F_RLR
 and F_Blip) and by DM_REAM. With DM_mJoin, the key holds one or more lists
@@ -559,7 +609,7 @@ long_description = """
 Optional per-basis-function degree list for the DM_REAM density expansion
 under basis code 2 (knot functions). Same length as CGRIDMB; absent = all
 quintic. On a TYPEMB line that joins several descriptors, the list is split
-among them. Values other than 3 and 5 are refused when the potential is
+among them. Values other than 3 and 5 are refused when the descriptor is
 built, and an OPTIM line of tadah hpo cannot name the key. Written by
 'tadah refit' for REFIT_BASIS Knot3/KnotMix.
 """
@@ -592,7 +642,7 @@ INHERIT = ["TYPES.STRING"]
 default_value = ["ZERO"]
 allowed_values = ["ZERO", "FREE"]
 value_format = ["ZERO|FREE"]
-description  = "DM_REAM embedding reference: ZERO (default) or FREE. ZERO evaluates the zero-referenced embedding basis g~_m(rho) = g_m(rho) - g_m(0), so F(0) = 0 exactly for any coefficients and any CEMBFUNC/SEMBFUNC/KDEGEMB: an isolated atom has zero embedding energy by construction. FREE is the raw basis, where F(0) = sum_m w_m g_m(0). A property of the potential, written into every DM_REAM pot.tadah; a potential without the key is read as ZERO. Not an OPTIM target."
+description  = "DM_REAM embedding reference: ZERO (default), the zero-referenced basis g~_m(rho) = g_m(rho) - g_m(0) with F(0) = 0 exactly, or FREE, the raw basis g_m with F(0) = sum_m w_m g_m(0). A property of the potential, written into every DM_REAM pot.tadah and read as ZERO when absent; not an OPTIM target."
 long_description = """
 EMBF0 selects the reference of the DM_REAM embedding function
 F(rho) = sum_m w_m g_m(rho).
@@ -661,7 +711,7 @@ INHERIT = ["TYPES.STRING"]
 # as for EMBF0; DM_REAM refuses it too in a Context built in code.
 allowed_values = ["SIGNED", "NONNEG", "MONOTONE"]
 value_format = ["SIGNED|NONNEG|MONOTONE"]
-description  = "DM_REAM density form, mandatory for every DM_REAM potential and configuration: SIGNED, NONNEG or MONOTONE. SIGNED allows amplitudes of any sign and keeps the density of a potential written before tadah 1.6.0; NONNEG requires every AMPGRIDMB entry >= 0, so rho >= 0 by construction; MONOTONE uses integrated-bump step functions with AMPGRIDMB >= 0, so rho >= 0 and non-increasing by construction. A property of the potential, written into every DM_REAM pot.tadah. Not an OPTIM target."
+description  = "DM_REAM density form, mandatory for every DM_REAM potential and configuration: SIGNED (amplitudes of any sign), NONNEG (every AMPGRIDMB entry >= 0, so rho >= 0 by construction) or MONOTONE (integrated-bump step functions with AMPGRIDMB >= 0, so rho >= 0 and non-increasing by construction). A property of the potential, written into every DM_REAM pot.tadah; not an OPTIM target."
 long_description = """
 RHOFORM selects how the DM_REAM pair density rho(r) is built from the
 density grids CGRIDMB, SGRIDMB and AMPGRIDMB (W = the WATOM pair weight,
@@ -776,11 +826,11 @@ each naming implementation 1, which fits them. Its solve, a Cholesky
 factorisation, reads no OALGO: an OALGO other than the default (OALGO 1,
 with no second value or 1e-8) is refused the same way.
 
-Every kernel but Kern_Linear draws SBASIS basis vectors from the training
-data. Kern_Linear draws them only with implementation 2, whose solve needs
-them. Its coefficients are then the descriptor coefficients of the basis
-vectors (sum_j w_j b_j, the same model, as the kernel is linear): DSIZE of
-them and no BASIS, as with implementation 1.
+Every kernel but Kern_Linear works on SBASIS basis vectors (SBASIS says how
+they are drawn). Kern_Linear uses them only with implementation 2, whose
+solve needs them. Its coefficients are then the descriptor coefficients of
+the basis vectors (sum_j w_j b_j, the same model, as the kernel is linear):
+DSIZE of them and no BASIS, as with implementation 1.
 """
 examples     = [
     "M_BLR BF_Linear",
@@ -1212,8 +1262,7 @@ of a `tadah hpo` run (`tadah analysis check_bounds` reads it too). An input
 of the run: no potential has an HPOTARGET line (best_pot.tadah and the DUMP
 and BDUMP archives name the file in their training record, a comment block
 above their key lines that is never read as keys; the journal, hpo_run.log,
-names it too). An HPOTARGET line in a potential is not read, and a WARNING
-names it.
+names it too).
 
 tadah hpo -c takes the file from --hpotarget, which it requires.
 tadah analysis check_bounds -c takes it from --hpotarget or from an
@@ -1338,7 +1387,8 @@ produces more than one output.
 OUTFILE is a setting of the run. A potential written by the run has no
 OUTFILE line; its training record lists the OUTFILE of the run that wrote
 it. An OUTFILE line in a potential file is not read: a run writes to its own
-OUTFILE, and a retrain of the potential names the line in a WARNING.
+OUTFILE, and a retrain of the potential names the line in a WARNING when its
+value is not pot.tadah and the run gives no OUTFILE of its own.
 """
 examples     = ["output.tadah"]
 cli_long_flag  = "--outfile"
@@ -1445,9 +1495,9 @@ Options:
   same run — recentres the file's OPTIM RCUT reference on r and truncates the
   rewritten CGRID/SGRID boxes to the bump-support rule c + w/eta <= r
   (active OPTIM RCUT lines are commented out with a warning; the training
-  configuration needs the same RCUT). --rcutmb is refused when the file has
-  no CGRIDMB, SGRIDMB or RCUTMB group, which is the case when its many-body
-  parameters are DM_Embed component paths only.
+  configuration needs the same RCUT). --rcutmb is refused when the file's
+  many-body parameters are DM_Embed component paths only (no CGRIDMB,
+  SGRIDMB or RCUTMB group).
 
 The numbers of --pct and --set follow the target-file number grammar
 (decimal, finite, zero or a normal double: 5x, 0x10, inf, nan and 1e-320 are
@@ -1463,7 +1513,7 @@ into the input with --in-place. For knot-family potentials the commented
 RCUT2B/RCUTMB lines are recomputed from the largest knot position (the true
 effective cutoff). When the file declares a knot-support cap for a key, the
 upper bound of every rewritten OPTIM line of that key is at most the cap
-RADIUS, and a knot centre outside the cap is refused.
+RADIUS; a line whose lower bound would reach the cap is refused.
 """
 examples     = ["refit.hpotarget"]
 cli_long_flag  = "--retarget"
@@ -1487,14 +1537,15 @@ value_format = ["<centre>"]
 description  = "`tadah refit --edit`: inserts a basis function at this centre (r in Angstrom for phi/rho, electron density for F) with coefficient 0 — the potential is unchanged until `tadah hpo` varies the inserted coefficient (exact unless NUMERIC < 17 applies)."
 long_description = """
 Inserts one basis function into the curve selected by --func, centred at the
-given position. The inserted coefficient (a basis-function coefficient for phi/F, a
-density amplitude for rho) is 0, so the edited potential predicts EXACTLY
-like the input — the inserted basis function only adds capacity for a subsequent
-`tadah hpo` run (its OPTIM line is written to the regenerated target file).
-Exact unless a NUMERIC below 17 is set for the run (a NUMERIC line of the
-input potential is not read): the edited file's numbers are then written with that many significant digits,
-with a WARNING (the cutoffs and grids, RCUT2B/RCUTMB and CGRID*/SGRID*,
-exactly); without NUMERIC the edit is exact.
+given position. The inserted coefficient (a basis-function coefficient for
+phi/F, a density amplitude for rho) is 0, so the edited potential predicts
+EXACTLY like the input — the inserted basis function only adds capacity for
+a subsequent `tadah hpo` run (its OPTIM line is written to the regenerated
+target file). Exact unless a NUMERIC below 17 is set for the run (a NUMERIC
+line of the input potential is not read): the edited file's numbers are then
+written with that many significant digits, with a WARNING (the cutoffs and
+grids, RCUT2B/RCUTMB and CGRID*/SGRID*, exactly); without NUMERIC the edit is
+exact.
 
 Knot families (Knot5/Knot3): the knot position is the only shape parameter
 (--eta is refused: a knot has no width). --deg 3|5 selects the knot
@@ -1591,7 +1642,10 @@ allowed_values = ["SIGNED", "NONNEG", "MONOTONE"]
 value_format = ["SIGNED|NONNEG|MONOTONE"]
 description  = "`tadah refit --retarget`: the DM_REAM density form (RHOFORM) of the potential the target file searches around. Under NONNEG or MONOTONE the rewritten AMPGRIDMB bounds are non-negative (lo = max(0, v - d), the rule `tadah refit` also applies when it writes a target file)."
 long_description = """
-`tadah refit --retarget`: the DM_REAM density form (RHOFORM) of the potential the target file searches around. Under NONNEG or MONOTONE the rewritten AMPGRIDMB bounds are non-negative (lo = max(0, v - d), the rule `tadah refit` also applies when it writes a target file).
+`tadah refit --retarget`: the DM_REAM density form (RHOFORM) of the potential
+the target file searches around. Under NONNEG or MONOTONE the rewritten
+AMPGRIDMB bounds are non-negative (lo = max(0, v - d), the rule `tadah refit`
+also applies when it writes a target file).
 
 Under NONNEG or MONOTONE the file also gets the parsed header line
 '# RHOFORM <form>: AMPGRIDMB bounds are non-negative (lo = max(0, v - d))',
@@ -1632,13 +1686,47 @@ cli_required   = false
 [ALLOWED_KEYS.refit_pair_basis]
 command_only = true
 INHERIT = ["TYPES.STRING"]
-description = "Pair basis for component-block EAM refit: Blip, Blip5, Gaussian or Knot5 (including its degree aliases). With component blocks REFIT_BASIS is inactive and refused. Defaults to Blip5. A Knot5 basis requires REFIT_MODE compact (the default with component blocks)."
+description = "Pair basis for component-block EAM refit: Blip, Blip5, Gaussian or Knot5 (including its degree aliases); default Blip5."
+long_description = """
+With component blocks REFIT_BASIS is inactive and refused. A Knot5 basis
+requires REFIT_MODE compact (the default).
+"""
 examples = ["Blip5"]
 
 [ALLOWED_KEYS.refit_basis]
 command_only = true
 INHERIT = ["TYPES.STRING"]
-description  = "Flexible-basis family used by `tadah refit`. Family x mode matrix — DEFAULT: 'Knot5' in compact mode, 'Blip' in dense mode (an explicit REFIT_BASIS always wins). 'Blip' (cubic B-spline bumps, C2; dense AND compact modes) | 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact; its accuracy depends on the material, so a Blip5 potential needs comparing with the input EAM file) | 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland form, exact for knotted-cubic source tables; compact only) | 'Knot5' (one-sided QUINTIC knot functions, C4; the recommended family in compact mode; compact only) | 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic atoms inserted where they win the per-insertion energy contest. The cubic atoms can degrade the elastic constants compared with pure Knot5, which is preferable unless the energy-volume curve is the only target; compact only) | 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit; a Gaussian never vanishes, so without DESCRIPTOR blocks the refit fits and writes the pair function and the density with the smooth cutoff Cut_Poly at the table's rcut (RCTYPE2B Cut_Poly, the density's CUTOFF TYPE Cut_Poly): a DM_Embed Gaussian density needs a real smooth cutoff; dense mode only — any other family is preferable). Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5, Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian, gaussian, BP, D2_BP. Another spelling names no family and is refused before the EAM file is read. Compact-only families need a tadah built with TADAH_ENABLE_NFP and TADAH_ENABLE_CERES. NOTE for `tadah hpo`: the SGRID2B width entries of the Knot* families are pinned to 1.0 (a knot has no width), so OPTIM lines on them have no effect; the knot density and embedding of the written DM_Embed component have no widths."
+description  = "Flexible-basis family used by `tadah refit`: Blip, Blip5, Knot3, Knot5, KnotMix or Gaussian; the default is Knot5 in compact mode and Blip in dense mode (an explicit REFIT_BASIS always wins)."
+long_description = """
+- 'Blip' (cubic B-spline bumps, C2; dense AND compact modes)
+- 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact;
+  its accuracy depends on the material, so a Blip5 potential needs comparing
+  with the input EAM file)
+- 'Knot3' (one-sided CUBIC knot functions (t-r)_+^3 — the Mendelev/Ackland
+  form, exact for knotted-cubic source tables; compact only)
+- 'Knot5' (one-sided QUINTIC knot functions, C4; the recommended family in
+  compact mode; compact only)
+- 'KnotMix' (EXPERIMENTAL auto mode: quintic knot atoms by default, cubic
+  atoms inserted where they win the per-insertion energy contest. The cubic
+  atoms can degrade the elastic constants compared with pure Knot5, which is
+  preferable unless the energy-volume curve is the only target; compact only)
+- 'Gaussian' (EXPERIMENTAL/UNVALIDATED for refit; a Gaussian never vanishes,
+  so without DESCRIPTOR blocks the refit fits and writes the pair function and
+  the density with the smooth cutoff Cut_Poly at the table's rcut (RCTYPE2B
+  Cut_Poly, the density's CUTOFF TYPE Cut_Poly): a DM_Embed Gaussian density
+  needs a real smooth cutoff; dense mode only — any other family is
+  preferable).
+
+Spellings: Blip, BLIP, blip; Blip5, BLIP5, blip5, M6; Knot5, KNOT5, knot5,
+Knot3, KNOT3, knot3, KnotMix, KNOTMIX, knotmix, Mixed, MIXED; Gaussian,
+gaussian, BP, D2_BP. Another spelling names no family and is refused before
+the EAM file is read. Compact-only families need a tadah built with
+TADAH_ENABLE_NFP and TADAH_ENABLE_CERES.
+
+For `tadah hpo`: a Knot* potential has no width keys (no SGRID2B; a knot
+has no width), so an OPTIM SGRID2B line is refused; the knot density and
+embedding of the written DM_Embed component have no widths either.
+"""
 examples     = ["Blip", "Blip5", "Knot3", "Knot5", "KnotMix"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1710,7 +1798,12 @@ cli_required   = false
 [ALLOWED_KEYS.refit_tol_compressed]
 command_only = true
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit` faithfulness tolerance (meV/atom) for the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42). With REFIT_MODE dense and no DESCRIPTOR blocks, the refit adds basis functions while the self-test error is above this tolerance, for at most REFIT_MAX_ESCALATIONS rounds. A number > 0. Default 1.0."
+description  = "`tadah refit` faithfulness tolerance (meV/atom; a number > 0, default 1.0) for the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42)."
+long_description = """
+With REFIT_MODE dense and no DESCRIPTOR blocks, the refit adds basis
+functions while the self-test error is above this tolerance, for at most
+REFIT_MAX_ESCALATIONS rounds.
+"""
 examples     = ["5.0"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1745,7 +1838,13 @@ cli_required   = false
 [ALLOWED_KEYS.refit_reach_smin]
 command_only = true
 INHERIT = ["TYPES.DOUBLE"]
-description  = "`tadah refit`: the smallest linear compression a/a0 at which the refit must still reproduce the input potential (0.75 corresponds to V/V0 = 0.42, a pressure of several hundred GPa). It sets the reachable pair-distance and density window of the fit and the compression range of its self-test. A number from 0.1 to 1 (the neighbour lists of the compressed lattice grow as smin^-3, and the search for the reachable window lists neighbours out to rcut/0.1 only). Default 0.75."
+description  = "`tadah refit`: the smallest linear compression a/a0 at which the refit must still reproduce the input potential, a number from 0.1 to 1 (default 0.75, which corresponds to V/V0 = 0.42, a pressure of several hundred GPa)."
+long_description = """
+It sets the reachable pair-distance and density window of the fit and the
+compression range of its self-test. The range ends at 0.1: the neighbour
+lists of the compressed lattice grow as smin^-3, and the search for the
+reachable window lists neighbours out to rcut/0.1 only.
+"""
 examples     = ["0.75", "0.65"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1778,7 +1877,26 @@ cli_required   = false
 [ALLOWED_KEYS.refit_mode]
 command_only = true
 INHERIT = ["TYPES.STRING"]
-description  = "`tadah refit` fitting mode, in any letter case (another value is an error): 'compact' (DEFAULT; optimised blip centres/widths via ladder + analytic-gradient Ceres polish, ~30-120 params — the search space that suits `tadah hpo`; needs the compact fitter, which a tadah built with TADAH_ENABLE_NFP and TADAH_ENABLE_CERES has: a tadah built without them refuses compact mode, written or the default) or 'dense' (region-uniform grids + auto-escalation, ~300-450 params, fastest fit). A key that only the other mode reads is an error naming it and the mode that reads it: REFIT_LEVEL, N2B, NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS, REFIT_PLACEMENT and REFIT_CONSTRAIN_F0 are dense-only; the REFIT_COMPACT_* keys, REFIT_OBJECTIVE curve, REFIT_CURVE_WEIGHTING, REFIT_CURVE_RELAX, REFIT_CURVE_DERIV_WEIGHT and the INIT, EXPLORE, REFINE and FUSE blocks are compact-only, and REFIT_COMPACT_MERGE, REFIT_COMPACT_OPT_EVERY and REFIT_COMPACT_INSERT_TOPK, which the knot families alone read, are refused with REFIT_BASIS Blip or Blip5. A default that tadah stores for a key the configuration does not set is not refused."
+description  = "`tadah refit` fitting mode, in any letter case (another value is an error): 'compact' (the default) or 'dense'."
+long_description = """
+'compact' optimises the blip centres and widths through a ladder and an
+analytic-gradient Ceres polish (about 30-120 parameters, the search space
+that suits `tadah hpo`). It needs the compact fitter, which a tadah built
+with TADAH_ENABLE_NFP and TADAH_ENABLE_CERES has: a tadah built without them
+refuses compact mode, written or the default. 'dense' fits region-uniform
+grids with automatic basis escalation (about 300-450 parameters) and is the
+fastest fit.
+
+A key that only the other mode reads is an error naming it and the mode that
+reads it. REFIT_LEVEL, N2B, NRHO_BASIS, NF_BASIS, REFIT_MAX_ESCALATIONS,
+REFIT_PLACEMENT and REFIT_CONSTRAIN_F0 are dense-only. The REFIT_COMPACT_*
+keys, REFIT_OBJECTIVE curve, REFIT_CURVE_WEIGHTING, REFIT_CURVE_RELAX,
+REFIT_CURVE_DERIV_WEIGHT and the INIT, EXPLORE, REFINE and FUSE blocks are
+compact-only. REFIT_COMPACT_MERGE, REFIT_COMPACT_OPT_EVERY and
+REFIT_COMPACT_INSERT_TOPK, which the knot families alone read, are refused
+with REFIT_BASIS Blip or Blip5. A default that tadah stores for a key the
+configuration does not set is not refused.
+"""
 examples     = ["dense", "compact"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1787,7 +1905,16 @@ cli_required   = false
 [ALLOWED_KEYS.refit_compact_opt_every]
 command_only = true
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode, knot families (Knot5, Knot3, KnotMix): runs the full per-rung optimisation (explore + polish) only on every K-th rung of the ladder, K being the value of this key; the rungs between grow by energy-aware insertion (REFIT_COMPACT_INSERT_TOPK) followed by a linear solve, with one final full optimisation of the best fit. Default 1 (every rung optimised). 999 = insertion-only growth + final optimisation: suits ladders that do not stall, but can underfit if a ladder stalls during growth. An integer from 1. The Blip families optimise every rung: REFIT_BASIS Blip or Blip5 refuses it, and so does REFIT_MODE dense."
+description  = "`tadah refit` compact mode, knot families (Knot5, Knot3, KnotMix): runs the full per-rung optimisation (explore + polish) only on every K-th rung of the ladder, K being the value of this key. An integer from 1; default 1 (every rung optimised)."
+long_description = """
+The rungs between grow by insertion at the best of the
+REFIT_COMPACT_INSERT_TOPK residual peaks followed by a linear solve, and one
+final full optimisation polishes the best fit. 999 gives insertion-only
+growth and the final optimisation: it suits ladders that do not stall, but
+can underfit if a ladder stalls during growth. The Blip families optimise
+every rung: REFIT_BASIS Blip or Blip5 refuses the key, and so does
+REFIT_MODE dense.
+"""
 examples     = ["1", "3"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1816,14 +1943,17 @@ command_only = true
 INHERIT = ["TYPES.STRING"]
 description  = "`tadah refit` optimisation-log file (default refit_opt.log); every line is flushed when written, so the file can be read while the fit runs."
 long_description = """
-Read by a refit of an EAM file in either REFIT_MODE; --edit and --retarget
-refuse the key.
+Read by a refit of an EAM file in either REFIT_MODE; a compact refit with
+DESCRIPTOR blocks writes no log and refuses the key, and so do --edit and
+--retarget.
 
 In REFIT_MODE compact the log has one timestamped line per ladder rung. The
-line reports, for the winning candidate of the rung, the metric (the energy
-gate that drives the selection) and the rmse, d1 and d2 (the RMSE of the
+line reports, for the winning candidate of the rung, the metric (the score
+that selects candidates and rungs: the crystal energy metric, or the curve
+score under REFIT_OBJECTIVE curve) and the rmse, d1 and d2 (the RMSE of the
 value, the first derivative and the second derivative against the tabulated
-EAM function) across the checkpoints insert, explore, refine and merge. It
+EAM function) across the checkpoints insert, explore, refine and, for the
+knot families, merge. It
 also gives the number of candidates in which the coalescence guard merged
 knots, and the stop reason and work done of each stage. The log holds the
 global seed, the summary of the joint refinement (FUSE) and the crystal
@@ -1877,7 +2007,17 @@ cli_required   = false
 [ALLOWED_KEYS.refit_compact_jitters]
 command_only = true
 INHERIT = ["TYPES.UINT"]
-description  = "`tadah refit` compact mode: number of randomised warm restarts per ladder rung. Each rung runs jitters+1 candidates (1 warm start + this many perturbed restarts) through the full EXPLORE -> REFINE pipeline and keeps the energy-metric-best — exploration that stops the local search locking into a poor local minimum. This is why the coalescence guard can fire several times within one rung (once per candidate). An integer from 0 to 2147483646. Default 2 (3 candidates/rung). 0 = warm start only (cheaper, with a higher risk of a poor local minimum). REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode: number of randomised warm restarts per optimised ladder rung, an integer from 0 to 2147483646. Default 2 (3 candidates per rung)."
+long_description = """
+Each optimised rung runs jitters+1 candidates (the warm start and this many
+perturbed restarts) through EXPLORE and REFINE and keeps the one with the
+best score: the crystal energy metric, or the curve score under
+REFIT_OBJECTIVE curve. The restarts keep the local search from locking into
+a poor local minimum. The coalescence guard runs once per candidate, so it
+can merge knots several times within one rung. 0 runs the warm start only:
+cheaper, with a higher risk of a poor local minimum. REFIT_MODE dense
+refuses the key.
+"""
 examples     = ["2", "0", "4"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1887,7 +2027,32 @@ cli_required   = false
 command_only = true
 INHERIT = ["TYPES.STRING"]
 default_value = ["energy"]
-description  = "`tadah refit` compact mode: what the WHOLE fitting chain (seed, EXPLORE, REFINE, FUSE, and the rung selection / stall / stop decisions) optimises toward. 'energy' (default) = the crystal energy metric. 'curve' = a normalised combined RMSE of the fitted VALUE + 1st-derivative + 2nd-derivative against the tabulated function (each term divided by the table's own RMS over the window, then RMS-combined). In curve mode the coefficients are solved from a stacked value+d1+d2 least-squares, the knot positions are searched with the configured EXPLORE optimiser on that objective, FUSE is a per-function curve refine that drops the energy term, and the energy metric is unused end-to-end. The target 1st/2nd derivatives are the EXACT analytic derivatives of the setfl cubic spline (no finite differencing). OPTIMISER POLICY: curve mode HONOURS the configured optimiser at every stage (EXPLORE inner, REFINE, FUSE; ENABLED false or ALGO NONE skips a stage); the per-stage legal set is enforced at parse time and the actual stack is logged. The pressure-relaxed weighting (REFIT_CURVE_WEIGHTING, ON by default) concentrates the fit where the crystal actually probes (ambient r/rho) so an aggressive least-squares optimiser does not over-fit the unprobed high-magnitude regions and wreck the crystal. FUSE keeps NO crystal E-V coupling (curve mode is independent of energy mode). The ladder grows until stall / n_max (the curve score has no tolerance threshold). REFIT_MODE dense refuses 'curve' (and accepts 'energy')."
+description  = "`tadah refit` compact mode: the objective of the whole fitting chain, 'energy' (default; the crystal energy metric) or 'curve' (a normalised RMSE of the fitted functions and their first two derivatives against the tables). REFIT_MODE dense refuses 'curve' and accepts 'energy'."
+long_description = """
+The objective drives the seed, EXPLORE, REFINE and FUSE, and the rung
+selection, stall and stop decisions.
+
+'curve' is a normalised combined RMSE of the fitted value and its first and
+second derivatives against the tabulated function: each term is divided by
+the table's own RMS over the fit window, and the three are RMS-combined. The
+target derivatives are the exact analytic derivatives of the setfl cubic
+spline (no finite differences). In curve mode the coefficients come from a
+stacked value + d1 + d2 least-squares solve, the EXPLORE optimiser searches
+the knot positions on that objective, and FUSE refines each function against
+its curve, without the energy term or any crystal energy-volume coupling.
+The energy metric is not used at all.
+
+Curve mode runs the configured optimiser of every stage (EXPLORE INNER,
+REFINE and FUSE). ENABLED false or ALGO NONE skips REFINE or FUSE, and ALGO
+NONE in INNER skips the local search. The parser checks each stage's ALGO
+against the algorithms that stage accepts, and the log names the optimisers
+run. The pressure-relaxed weighting (REFIT_CURVE_WEIGHTING, on by default)
+concentrates the fit on the range of r and rho that the crystal samples near
+ambient pressure, so an aggressive least-squares optimiser does not over-fit
+the high-magnitude regions the crystal does not sample. The ladder grows
+until it stalls or reaches REFIT_COMPACT_NMAX: the curve score has no
+tolerance threshold.
+"""
 examples     = ["energy", "curve"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -1911,7 +2076,24 @@ INHERIT = ["TYPES.BOOL"]
 # bget() sees `true` unless the user sets the key. Without it weighting would
 # silently default OFF (the inherited false would be injected).
 default_value = ["true"]
-description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve weighting (on by default). Concentrates the fit on the range of r and rho that the crystal samples near ambient pressure and relaxes the weighting toward the high-pressure extremes, so a fixed knot budget gives most of its accuracy to that range: phi(r) and rho(r) are weighted 1 between the ambient nearest-neighbour distance r_amb and the cutoff, ramping smoothly down to REFIT_CURVE_RELAX toward smaller r (compression); F(rho) is weighted 1 from rho=0 up to the ambient density rho_amb, ramping down to the floor for higher rho (compression). r_amb and rho_amb are derived self-contained from the lattice geometry and the EAM tables (no crystal energy-volume scan dependency). The weights apply to BOTH the stacked value+d1+d2 coefficient solve AND the rung-selection metrics, so fit and selection agree. false = uniform weighting, under which REFIT_CURVE_RELAX, the floor of the weighting, is refused. Under REFIT_OBJECTIVE energy, written or the default, this key is refused (it has no effect there). Multiplies with REFIT_CURVE_DERIV_WEIGHT (orthogonal: deriv_weight scales d1/d2 vs value; this scales per-region). REFIT_MODE dense refuses it."
+description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve weighting (on by default), which concentrates the fit on the range of r and rho that the crystal samples near ambient pressure. false gives uniform weighting; REFIT_MODE dense, and REFIT_OBJECTIVE energy (written or the default), refuse the key."
+long_description = """
+The weighting relaxes toward the high-pressure extremes, so a fixed knot
+budget gives most of its accuracy to the ambient range. phi(r) and rho(r)
+are weighted 1 between the ambient nearest-neighbour distance r_amb and the
+cutoff, and ramp smoothly down to REFIT_CURVE_RELAX toward smaller r
+(compression). F(rho) is weighted 1 from rho = 0 up to the ambient density
+rho_amb, and ramps down to the same floor for higher rho (compression).
+r_amb and rho_amb are derived from the lattice geometry and the EAM tables
+alone, without the crystal energy-volume scan.
+
+The weights apply to both the stacked value + d1 + d2 coefficient solve and
+the rung-selection metrics, so fit and selection agree. They multiply with
+REFIT_CURVE_DERIV_WEIGHT: that key scales the derivative terms against the
+value, this one scales each region. With false (uniform weighting)
+REFIT_CURVE_RELAX, the floor of the weighting, is refused. Under
+REFIT_OBJECTIVE energy the key has no effect.
+"""
 examples     = ["true", "false"]
 cli_long_flag  = ""
 cli_short_flag = ""
@@ -2058,8 +2240,9 @@ long_description = """
 `tadah refit` EXPLORE stage block (`EXPLORE ... ENDEXPLORE`): global seed
 search at rung 0 of the basis ladder, then basis growth. Takes `MAX_ADD <n>`
 or `MAX_ADD <phi> <rho> <F>` (the largest number of basis functions added to
-each function, or to phi, rho and F separately; integers >= 0; without
-MAX_ADD the growth has no cap) and a nested OPTIMIZER block (default global
+the starting basis of each function, or of phi, rho and F separately;
+integers >= 0; REFIT_COMPACT_NMAX caps the basis either way, and without
+MAX_ADD it is the only cap) and a nested OPTIMIZER block (default global
 MLSL with an INNER local SBPLX). REFIT_MODE compact only: REFIT_MODE dense
 refuses the block.
 
@@ -2188,9 +2371,10 @@ Below 17 they are written as the shortest text that reads back as the same
 value (RCUT2B 5.58190742024 at NUMERIC 6).
 NUMERIC itself is never a key line of a potential file (its training record,
 a comment block never read as keys, lists the NUMERIC the run was given, as
-written). A NUMERIC line in a potential file is not read: a retrain, tadah hpo -c and tadah refit --edit of it write with their
-own NUMERIC (a retrain and tadah hpo -c name the line in a WARNING, refit
---edit moves it into the edit's training record). The '#' comment lines of
+written). A NUMERIC line in a potential file is not read: a retrain,
+tadah hpo -c and tadah refit --edit of it write with their own NUMERIC (a
+retrain and tadah hpo -c name the line in a WARNING, refit --edit moves it
+into the edit's training record). The '#' comment lines of
 a potential (the header tadah hpo writes, the training record) are
 annotations not governed by NUMERIC; its machine-read lines (# HPO_BEST_LOSS,
 # HOT) are always exact. The target files
@@ -2228,7 +2412,7 @@ cli_required     = false
 [ALLOWED_KEYS.shuffle]
 command_only = true
 INHERIT = ["TYPES.BOOL"]
-description  = "Randomises the order of the structures before splitting. The order differs on every run."
+description  = "Randomises the order of the structures before splitting. Each run draws a new random order, and no key or option makes it reproducible."
 cli_long_flag    = "--shuffle"
 cli_short_flag   = ""
 cli_required     = false
@@ -2370,8 +2554,8 @@ When a retrain or a tadah hpo run reads a potential (a file with WEIGHTS,
 given with -c or included with CONFIG), the ESHIFT_ATOM line of the
 potential is not read, with or without its ESHIFT line. A WARNING names the
 line when its value is true. No WARNING is logged when the run gives
-ESHIFT_ATOM itself or sets ESHIFT_DBATOM true: the two toggles choose the
-source of the shift and exclude each other, so the run's own toggle applies.
+ESHIFT_ATOM itself or sets ESHIFT_DBATOM true: the run's own toggle then
+takes the place of the potential's.
 The run's own ESHIFT_ATOM (--eshift-atom, or a line of a configuration file
 that includes the potential) is read, and is overruled by an ESHIFT line as
 in any configuration: a retrain derives ESHIFT from its data when the
@@ -2412,8 +2596,8 @@ When a retrain or a tadah hpo run reads a potential (a file with WEIGHTS,
 given with -c or included with CONFIG), the ESHIFT_DBATOM line of the
 potential is not read, with or without its ESHIFT line. A WARNING names the
 line when its value is true. No WARNING is logged when the run gives
-ESHIFT_DBATOM itself or sets ESHIFT_ATOM true: the two toggles choose the
-source of the shift and exclude each other, so the run's own toggle applies.
+ESHIFT_DBATOM itself or sets ESHIFT_ATOM true: the run's own toggle then
+takes the place of the potential's.
 The run's own ESHIFT_DBATOM (--eshift-dbatom, or a line of a configuration
 file that includes the potential) is read, and is overruled by an ESHIFT
 line as in any configuration: a retrain derives ESHIFT from its data when
@@ -2552,7 +2736,7 @@ long_description = """
 A potential that contains the key loads with one notice. A fit refuses the
 key and states its conversion. The page
 :ref:`What a Fit Minimises <fit_objective_conversion>` lists the conversions
-of all retired keys.
+of EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP.
 """
 examples       = []
 cli_long_flag  = "--wdbfile-auto"
@@ -2581,7 +2765,7 @@ long_description = """
 A potential that contains the key loads with one notice. A fit refuses the
 key and states its conversion. The page
 :ref:`What a Fit Minimises <fit_objective_conversion>` lists the conversions
-of all retired keys.
+of EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP.
 """
 examples       = []
 cli_long_flag  = "--eweight-temp"
@@ -2651,7 +2835,8 @@ description  = "(predict) Applies no LSCALE: the value recorded in the loaded po
 long_description = """
 At predict time, no LSCALE is applied: neither the value recorded in the
 loaded potential file nor an LSCALE given to predict. This suits a dataset
-that is already at the scale of the training data.
+that is already at the length scale of the model (that of the training data
+after LSCALE).
 """
 default_value  = ["false"]
 examples       = ["true"]
@@ -2679,8 +2864,8 @@ description  = "Chemical elements of the potential, one symbol per element."
 long_description = """
 Without an ATOM line, tadah train and tadah hpo set it from the elements of
 the training datasets. An ATOM line must list exactly the elements of the
-datasets, in order of atomic number, or the run is refused. BIAS true needs
-an ATOM line, and tadah hpo without a training DBFILE needs one.
+datasets, in order of atomic number, or the run is refused. tadah hpo
+without a training DBFILE needs an ATOM line.
 """
 examples     = ['"Kr"']
 cli_long_flag  = "--atom"
@@ -2921,7 +3106,7 @@ long_description = """
 A potential that contains the key loads with one notice. A fit refuses the
 key and states its conversion. The page
 :ref:`What a Fit Minimises <fit_objective_conversion>` lists the conversions
-of all retired keys.
+of EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP.
 """
 examples = []
 [ALLOWED_KEYS.EWEIGHT.retired]
@@ -2945,7 +3130,7 @@ long_description = """
 A potential that contains the key loads with one notice. A fit refuses the
 key and states its conversion. The page
 :ref:`What a Fit Minimises <fit_objective_conversion>` lists the conversions
-of all retired keys.
+of EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP.
 """
 examples = []
 [ALLOWED_KEYS.FWEIGHT.retired]
@@ -2963,7 +3148,7 @@ long_description = """
 A potential that contains the key loads with one notice. A fit refuses the
 key and states its conversion. The page
 :ref:`What a Fit Minimises <fit_objective_conversion>` lists the conversions
-of all retired keys.
+of EWEIGHT, FWEIGHT, SWEIGHT, WDBFILE_AUTO and EWEIGHT_TEMP.
 """
 examples = []
 [ALLOWED_KEYS.SWEIGHT.retired]
@@ -3170,7 +3355,8 @@ descending range (14-13), a step of 0, a malformed or empty entry (1,,2),
 index 0, an index above the number of coefficients of the model, a
 coefficient named twice (13,13,14, with two FIXWEIGHT values, one per
 distinct coefficient, or with three) and any other number of indices than
-FIXWEIGHT's values (counted before a range is expanded).
+FIXWEIGHT's values (a range counts as the indices it names; a mismatch is
+refused before any range is expanded).
 
 Without a training DBFILE, FIXINDEX must cover every coefficient of the
 model (there is no data to fit the rest). With one, a FIXINDEX that covers
@@ -3198,7 +3384,7 @@ examples     = ["1,3,5", "1-4,7,9", "1-10:2"]
 
 [ALLOWED_KEYS.option]
 command_only = true
-description      = "Name that tadah explain describes: <command>, <command>.<option>, <command>.<subcommand>.<option> or a configuration key."
+description      = "Name that tadah explain describes: a command, subcommand, option or configuration key in dot-separated form (<command>, <command>.<subcommand>, <command>.<option>, <command>.<subcommand>.<option>, <KEY>), or an optimiser of tadah hpo (ALGO, LIB, <LIB>:<ALGO>)."
 value_type   = ["STRING"]
 value_format = ["<arg>"]
 value_N      = [1]
@@ -3596,9 +3782,11 @@ description = "Optimises the model architecture and hyperparameters."
 long_description = """
 Refines a model's architecture and hyperparameters with Tadah!'s nested
 fitting procedure. Each evaluation trains a potential and scores it with the
-loss terms of the target file. A loss term compares the potential with a
-validation configuration, with the results of LAMMPS scripts (properties
-such as surface energies or phase stability), or with both. The optimiser
+loss terms of the target file. Some loss terms measure the errors of the
+potential on the datasets of the validation configuration. Others compare a
+property computed with the potential, by a LAMMPS script (such as a surface
+energy or a phase stability) or by tadah itself (PC_OBSERVABLE), with a
+target value. The optimiser
 named in the OPTIMIZER block searches the search space of the target file
 and keeps the best potential. The target file also defines the loss-term
 weight of each loss term.
@@ -4239,7 +4427,7 @@ step of 0, a malformed or empty entry and an index outside the functions are
 refused, naming it. Without --index every function is evaluated.
 """
 [TASKS.analysis.bfunc.keys.rescale]
-description = "Rescales the basis function by the cutoff function. This is useful for visualisation purposes. It is refused for functions without a spatial cutoff, such as embedding functions."
+description = "Rescales the basis function by the cutoff function, for visualisation. It is refused for functions without a spatial cutoff, such as embedding functions."
 [TASKS.analysis.bfunc.keys.outfile]
 INHERIT = ["TYPES.STRING"]
 [TASKS.analysis.bfunc.groups.input]
