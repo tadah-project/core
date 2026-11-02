@@ -208,6 +208,8 @@ INHERIT = ["TYPES.BOOL"]
 default_value = ["true"]
 description  = "Table-collapse fast path in the LAMMPS pair style, pair_style tadah."
 long_description = """
+Table-collapse fast path in the LAMMPS pair style, pair_style tadah.
+
 For a single-species linear model the potential collapses exactly to scalar
 radial functions: a radial two-body block alone (INITMB false, any radial D2
 descriptor) collapses to a pair function phi(r). A two-body block plus one
@@ -1688,6 +1690,9 @@ command_only = true
 INHERIT = ["TYPES.STRING"]
 description = "Pair basis for component-block EAM refit: Blip, Blip5, Gaussian or Knot5 (including its degree aliases); default Blip5."
 long_description = """
+Pair basis for component-block EAM refit: Blip, Blip5, Gaussian or Knot5
+(including its degree aliases); default Blip5.
+
 With component blocks REFIT_BASIS is inactive and refused. A Knot5 basis
 requires REFIT_MODE compact (the default).
 """
@@ -1698,6 +1703,10 @@ command_only = true
 INHERIT = ["TYPES.STRING"]
 description  = "Flexible-basis family used by `tadah refit`: Blip, Blip5, Knot3, Knot5, KnotMix or Gaussian; the default is Knot5 in compact mode and Blip in dense mode (an explicit REFIT_BASIS always wins)."
 long_description = """
+Flexible-basis family used by `tadah refit`: Blip, Blip5, Knot3, Knot5,
+KnotMix or Gaussian; the default is Knot5 in compact mode and Blip in dense
+mode (an explicit REFIT_BASIS always wins).
+
 - 'Blip' (cubic B-spline bumps, C2; dense AND compact modes)
 - 'Blip5' (M6 quintic B-spline bumps, C4, local support; dense AND compact;
   its accuracy depends on the material, so a Blip5 potential needs comparing
@@ -1800,6 +1809,9 @@ command_only = true
 INHERIT = ["TYPES.DOUBLE"]
 description  = "`tadah refit` faithfulness tolerance (meV/atom; a number > 0, default 1.0) for the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42)."
 long_description = """
+`tadah refit` faithfulness tolerance (meV/atom; a number > 0, default 1.0) for
+the COMPRESSED crystal self-test (a/a0 0.75-0.95, V/V0 down to ~0.42).
+
 With REFIT_MODE dense and no DESCRIPTOR blocks, the refit adds basis
 functions while the self-test error is above this tolerance, for at most
 REFIT_MAX_ESCALATIONS rounds.
@@ -1840,6 +1852,10 @@ command_only = true
 INHERIT = ["TYPES.DOUBLE"]
 description  = "`tadah refit`: the smallest linear compression a/a0 at which the refit must still reproduce the input potential, a number from 0.1 to 1 (default 0.75, which corresponds to V/V0 = 0.42, a pressure of several hundred GPa)."
 long_description = """
+`tadah refit`: the smallest linear compression a/a0 at which the refit must
+still reproduce the input potential, a number from 0.1 to 1 (default 0.75,
+which corresponds to V/V0 = 0.42, a pressure of several hundred GPa).
+
 It sets the reachable pair-distance and density window of the fit and the
 compression range of its self-test. The range ends at 0.1: the neighbour
 lists of the compressed lattice grow as smin^-3, and the search for the
@@ -1879,6 +1895,9 @@ command_only = true
 INHERIT = ["TYPES.STRING"]
 description  = "`tadah refit` fitting mode, in any letter case (another value is an error): 'compact' (the default) or 'dense'."
 long_description = """
+`tadah refit` fitting mode, in any letter case (another value is an error):
+'compact' (the default) or 'dense'.
+
 'compact' optimises the blip centres and widths through a ladder and an
 analytic-gradient Ceres polish (about 30-120 parameters, the search space
 that suits `tadah hpo`). It needs the compact fitter, which a tadah built
@@ -1907,6 +1926,11 @@ command_only = true
 INHERIT = ["TYPES.UINT"]
 description  = "`tadah refit` compact mode, knot families (Knot5, Knot3, KnotMix): runs the full per-rung optimisation (explore + polish) only on every K-th rung of the ladder, K being the value of this key. An integer from 1; default 1 (every rung optimised)."
 long_description = """
+`tadah refit` compact mode, knot families (Knot5, Knot3, KnotMix): runs the
+full per-rung optimisation (explore + polish) only on every K-th rung of the
+ladder, K being the value of this key. An integer from 1; default 1 (every
+rung optimised).
+
 The rungs between grow by insertion at the best of the
 REFIT_COMPACT_INSERT_TOPK residual peaks followed by a linear solve, and one
 final full optimisation polishes the best fit. 999 gives insertion-only
@@ -2009,6 +2033,10 @@ command_only = true
 INHERIT = ["TYPES.UINT"]
 description  = "`tadah refit` compact mode: number of randomised warm restarts per optimised ladder rung, an integer from 0 to 2147483646. Default 2 (3 candidates per rung)."
 long_description = """
+`tadah refit` compact mode: number of randomised warm restarts per optimised
+ladder rung, an integer from 0 to 2147483646. Default 2 (3 candidates per
+rung).
+
 Each optimised rung runs jitters+1 candidates (the warm start and this many
 perturbed restarts) through EXPLORE and REFINE and keeps the one with the
 best score: the crystal energy metric, or the curve score under
@@ -2029,6 +2057,11 @@ INHERIT = ["TYPES.STRING"]
 default_value = ["energy"]
 description  = "`tadah refit` compact mode: the objective of the whole fitting chain, 'energy' (default; the crystal energy metric) or 'curve' (a normalised RMSE of the fitted functions and their first two derivatives against the tables). REFIT_MODE dense refuses 'curve' and accepts 'energy'."
 long_description = """
+`tadah refit` compact mode: the objective of the whole fitting chain, 'energy'
+(default; the crystal energy metric) or 'curve' (a normalised RMSE of the
+fitted functions and their first two derivatives against the tables).
+REFIT_MODE dense refuses 'curve' and accepts 'energy'.
+
 The objective drives the seed, EXPLORE, REFINE and FUSE, and the rung
 selection, stall and stop decisions.
 
@@ -2078,6 +2111,12 @@ INHERIT = ["TYPES.BOOL"]
 default_value = ["true"]
 description  = "`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve weighting (on by default), which concentrates the fit on the range of r and rho that the crystal samples near ambient pressure. false gives uniform weighting; REFIT_MODE dense, and REFIT_OBJECTIVE energy (written or the default), refuse the key."
 long_description = """
+`tadah refit` compact mode, REFIT_OBJECTIVE curve only: pressure-relaxed curve
+weighting (on by default), which concentrates the fit on the range of r and
+rho that the crystal samples near ambient pressure. false gives uniform
+weighting; REFIT_MODE dense, and REFIT_OBJECTIVE energy (written or the
+default), refuse the key.
+
 The weighting relaxes toward the high-pressure extremes, so a fixed knot
 budget gives most of its accuracy to the ambient range. phi(r) and rho(r)
 are weighted 1 between the ambient nearest-neighbour distance r_amb and the
