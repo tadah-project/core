@@ -1375,7 +1375,8 @@ bounds — around the recovered parameter values. Keys are read in any case,
 and each rewritten line keeps its key as written. An OPTIM line of another
 form (an AUTO box, several indices, a shape tag, a continued line, a line
 tadah hpo refuses) is kept as written, with a WARNING naming its line and
-why; so is a commented one of another form that tadah hpo would read.
+why. A commented line `# OPTIM <KEY> (...` is read as an active one and
+named the same way; another comment that starts with OPTIM is not.
 
 Bound width control:
 - --pct <N>: global +-percent half-width (default: OPTIM_PCT, else 5).
