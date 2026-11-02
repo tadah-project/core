@@ -1369,14 +1369,22 @@ description  = "Retarget mode for `tadah refit`: rewrites the OPTIM search bound
 long_description = """
 Switches `tadah refit` into hpotarget-retargeting mode: it reads an existing
 hpotarget file (as written by `tadah refit` or a previous --retarget run) and
-rewrites the bounds of every OPTIM line — active AND commented, preserving the
-comment state — around the recovered parameter values.
+rewrites the bounds of every line `OPTIM <KEY> (<index>) <low> <high>` —
+active AND commented, keeping the comment state and a comment after the
+bounds — around the recovered parameter values. Keys are read in any case,
+and each rewritten line keeps its key as written. An OPTIM line of another
+form (an AUTO box, several indices, a shape tag, a continued line, a line
+tadah hpo refuses) is kept as written, with a WARNING naming its line and
+why. A commented line `# OPTIM <KEY> (...` is read as an active one and
+named the same way; another comment that starts with OPTIM is not.
 
 Bound width control:
 - --pct <N>: global +-percent half-width (default: OPTIM_PCT, else 5).
 - --pct KEY=N: per-key override, e.g. --pct FIXWEIGHT=2 (repeatable;
   combines with the global value: --pct 10 CGRID2B=2). KEY needs an OPTIM line in
-  the file (active or commented).
+  the file (active or commented) that is rewritten; a KEY whose lines are kept
+  as written is refused, naming them, and so is a --set on one of their
+  indices.
 - --set 'KEY(i)=lo,hi': absolute bounds for one parameter (repeatable,
   applied last): finite, lo < hi, and lo within the rule of the file's
   density form (AMPGRIDMB lo >= 0 under a RHOFORM NONNEG/MONOTONE header).
@@ -1390,7 +1398,10 @@ finite, zero or a normal double: 5x, 0x10, inf, nan and 1e-320 are errors).
   (active OPTIM RCUT lines are commented out with a warning; the training
   config needs the same RCUT).
 
-Everything that is not an OPTIM line is preserved byte-for-byte. The output
+The rest of the file is kept byte for byte, except the `Bounds are +-X%`
+header and the `# KEY  (+-X%, ...)` group comments, which --pct rewrites,
+the lines --rcut2b, --rcutmb and --rhoform change (above), and the
+commented RCUT lines of a knot-family potential (below). The output
 goes to -o (default: <input>_retargeted.hpotarget, which no other mode of
 tadah refit writes by default: --edit writes refit_edited.hpotarget) or back
 into the input with --in-place. For knot-family potentials the commented
@@ -4019,27 +4030,35 @@ required_max = 1
 INHERIT          = ["ALLOWED_KEYS.config"]
 
 [TASKS.analysis.check_bounds]
-description      = "Validates HPO bounds: runs the pre-flight audit at every corner of the OPTIM box. Returns non-zero if any corner trips a FAIL finding. CI-friendly."
+description      = "Validates the search bounds of a target file: runs the pre-flight audit at every corner of the boxes tadah hpo searches. Returns non-zero if an OPTIM line is refused or any corner trips a FAIL finding. CI-friendly."
 long_description = """
 Reads the hpotarget file of the run (--hpotarget, or an HPOTARGET line of
 the seed configuration: the HPOTARGET line of a seed potential of an
 earlier version, such as a 1.5.x best_pot.tadah, is not read, and a
 WARNING names it with the other lines of the potential check_bounds does
 not read; a run without an hpotarget file is refused, saying where it
-goes), reads the range of every `OPTIM <KEY> (range) <lo> <hi>` line,
-refuses one whose high bound is not above its low bound (a box of zero
-width included), as tadah hpo refuses it, naming the line, samples
+goes) and reads its OPTIM lines as tadah hpo reads them against the
+seed: every value an index list selects (`(1,3)`, `(1-3,5)`, `(1-7:2)`),
+the boxes of an AUTO line as tadah hpo derives them, the values of a
+DM_Embed component path, FIXWEIGHT coefficients through FIXINDEX,
+continued lines, keys in any case. An OPTIM line tadah hpo refuses is
+refused with tadah hpo's reason, naming the line and the file (`tadah
+analysis check_bounds: line N of <file>: <reason>`, then the line). Only
+the OPTIM lines are read, inside a block too: `tadah hpo --check` checks
+the rest of the file. It samples
 corners (full 2^k for k <= 12, otherwise a Latin-hypercube subsample of
 `min(2^k, ceil(k log2(k)))`), and runs the pre-flight audit
 at each corner in the context tadah hpo evaluates: the seed with the
 corner's value of each OPTIM line in its own entry of the key (OPTIM KEY
 (i) sets entry i; the other entries keep the seed's values; a radial grid
-given by a generator is the grid it makes). D2_Knot5, or a knot DM_REAM
+given by a generator is the grid it makes; a DM_Embed component path sets
+the value of its component). D2_Knot5, or a knot DM_REAM
 density, has its largest knot as its cutoff, as in tadah hpo. On a
 D2_mJoin or DM_mJoin line that is the descriptor's own RCUT2B or RCUTMB
 entry. A stated cutoff that differs is replaced, with a WARNING. The
 statistics of the data are computed once, at the largest cutoff of the
-seed and of the corners. Each corner is judged by the rules of AUDIT, with
+seed and of the corners (the RADIUS of a DM_Embed component's density
+included). Each corner is judged by the rules of AUDIT, with
 that corner's cutoff. A corner that breaks a lower limit tadah hpo sets on
 a box is a FAIL finding as well: for a
 DM_REAM seed, which must declare RHOFORM, the limits of the density form
@@ -4048,7 +4067,8 @@ under MONOTONE and for a Gaussian density under NONNEG), and in every form
 a radial bump width > 0 (SGRIDMB of a Blip or Blip5 density, SGRID2B of a
 D2_Blip or D2_Blip5 pair term, alone or on a D2_mJoin line, where the
 entries of another descriptor keep its own rule).
-Returns exit code 0 if all corners pass and 1 if any corner produces a
+Returns exit code 0 if all corners pass, and 1 if the run is refused (an
+OPTIM line tadah hpo refuses among the reasons) or any corner produces a
 FAIL finding.
 """
 examples         = ["tadah analysis check_bounds -c train.tadah --hpotarget config.hpo"]
