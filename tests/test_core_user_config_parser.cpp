@@ -2268,9 +2268,9 @@ TEST_CASE("Config parser: a second line of a potential's key in a file that "
 
 /* Pins: a key that a command takes fewer values of than the key itself (the
  * command's table in the blueprint gives the key a number of its own:
- * OUTFILE of tadah train, tadah refit and tadah analysis bfunc,
- * suggest_bounds and dataset_stats, each of which writes one file) is read
- * with the command's number in a configuration file of that command
+ * OUTFILE of tadah train, tadah refit and tadah analysis bfunc and
+ * suggest_bounds, each of which writes one file) is read with the
+ * command's number in a configuration file of that command
  * (set_command()):
  *  - outer.cfg "OUTFILE a.tadah", "CONFIG inc.cfg", inc.cfg "OUTFILE
  *    b.tadah": "Key OUTFILE is set on line 1 of <outer> and on line 1 of
@@ -2281,9 +2281,17 @@ TEST_CASE("Config parser: a second line of a potential's key in a file that "
  *    read so far give 2" (of tadah refit, ... for the others);
  *  - a parse of no command reads both lines, and both values of one line,
  *    as OUTFILE takes any number of values.
+ * A configuration file of tadah analysis dataset_stats, whose -c needs -o
+ * (the cli_needs of its CONFIG key), refuses the first OUTFILE line of
+ * either file at its line: "Key OUTFILE on line 1 of <outer> is not
+ * accepted here: OUTFILE is the option --outfile (-o) that --config (-c)
+ * of tadah analysis dataset_stats needs on the command line, not a key of
+ * a configuration file of tadah analysis dataset_stats".
  * Before the fix: every parse read both lines and both values (OUTFILE
  * a.tadah b.tadah), and the command wrote the first file, a.tadah, the
- * other ignored without a message. */
+ * other ignored without a message. Before the fix of a key that -c needs
+ * on the command line, tadah analysis dataset_stats was one of the
+ * commands above, with their two messages. */
 TEST_CASE("Config parser: a key a command takes one value of is set once in "
           "a configuration file of that command",
           "[config][config_include][concatenation][command_counts]") {
@@ -2294,8 +2302,7 @@ TEST_CASE("Config parser: a key a command takes one value of is set once in "
   const std::string one =
       dir.write("outfile_one.cfg", "OUTFILE a.tadah b.tadah\n");
   for (const std::string task :
-       {"TRAIN", "REFIT", "ANALYSIS.bfunc", "ANALYSIS.suggest_bounds",
-        "ANALYSIS.dataset_stats"}) {
+       {"TRAIN", "REFIT", "ANALYSIS.bfunc", "ANALYSIS.suggest_bounds"}) {
     INFO("command " << task);
     CoreUserConfigParser parser;
     parser.set_command(task);
@@ -2308,6 +2315,18 @@ TEST_CASE("Config parser: a key a command takes one value of is set once in "
           "Too many values for key OUTFILE on line 1 of " + one +
               ": OUTFILE of " + task_command_words(task) +
               " takes at most 1, and its lines read so far give 2");
+  }
+  {
+    CoreUserConfigParser parser;
+    parser.set_command("ANALYSIS.dataset_stats");
+    for (const std::string &file : {outer, one})
+      CHECK(runtime_error_of([&] { return parser.parse(file); },
+                             "parse " + file) ==
+            "Key OUTFILE on line 1 of " + file +
+                " is not accepted here: OUTFILE is the option --outfile (-o) "
+                "that --config (-c) of tadah analysis dataset_stats needs on "
+                "the command line, not a key of a configuration file of "
+                "tadah analysis dataset_stats");
   }
   const std::vector<std::string> both{"a.tadah", "b.tadah"};
   CHECK(CoreUserConfigParser().parse(outer)("OUTFILE") == both);

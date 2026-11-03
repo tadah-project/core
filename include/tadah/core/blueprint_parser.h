@@ -412,6 +412,23 @@ std::string command_key_role(const std::string &key);
  */
 std::string command_key_text(const std::string &key);
 
+/**
+ * @brief The command-line option of the key @p key (upper case), for a
+ *        message: "--outfile (-o)", "--type"; empty for a key without a
+ *        "--" flag.
+ */
+std::string option_text(const std::string &key);
+
+/**
+ * @brief True when the option -c (--config) of the blueprint task @p task
+ *        needs the option of the key @p key (upper case) on the command
+ *        line (the cli_needs of the task's CONFIG key name it: OUTFILE of
+ *        tadah analysis dataset_stats, RANGE and TYPE of tadah analysis
+ *        bfunc). The command line then always gives the key with -c, and
+ *        its value replaces a line of the key in the configuration file.
+ */
+bool config_needs_option(const std::string &task, const std::string &key);
+
 } // namespace core
 } // namespace tadah
 

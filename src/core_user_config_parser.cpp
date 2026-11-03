@@ -410,12 +410,18 @@ namespace {
     // (BlueprintKey::command_only), at line @p at (its text @p text, "KEY
     // values" or "KEY" and its block): in a potential it is not read, with
     // one notice per key (a potential written before 1.6.0 may hold such a
-    // line, as tadah train wrote what its configuration held); in a
+    // line, as tadah train wrote what its configuration held), but for a
+    // run setting (OUTFILE), which the potential's lines of the run that
+    // wrote it hold and the run-setting rule below skips and lists; in a
     // configuration file of a command that does not read it, it is
-    // refused. True when the line is not read.
+    // refused, and so it is in a configuration file of a command whose -c
+    // needs the key's option on the command line (config_needs_option:
+    // OUTFILE of tadah analysis dataset_stats), whose value would replace
+    // the line. True when the line is not read.
     auto commandOnlyLine = [&](const std::string &uKey, std::size_t at,
                                const std::string &text,
                                std::size_t block_end = 0) {
+      if (potential && potentialRunSetting(ownKeys, uKey)) return false;
       if (potential) {
         report_ignored_key_once(
             uKey, "Key " + uKey,
@@ -431,8 +437,15 @@ namespace {
       if (refused.command.empty()) return false;
       const std::string command = task_command_words(refused.command);
       const std::vector<std::string> readers = commands_reading_key(uKey);
-      if (std::find(readers.begin(), readers.end(), command) != readers.end())
-        return false;
+      if (std::find(readers.begin(), readers.end(), command) != readers.end()) {
+        if (!config_needs_option(refused.command, uKey)) return false;
+        throw std::runtime_error(
+            "Key " + uKey + " on " + where(at, source, state) +
+            " is not accepted here: " + uKey + " is the option " +
+            option_text(uKey) + " that " + option_text("CONFIG") + " of " +
+            command + " needs on the command line, not a key of a "
+            "configuration file of " + command);
+      }
       throw std::runtime_error("Key " + uKey + " on " +
                                where(at, source, state) +
                                " is not accepted here: " +
