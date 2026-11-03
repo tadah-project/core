@@ -90,11 +90,14 @@ TEST_CASE("parse_fixindex: the FIXINDEX values form one list in declaration "
  *  - a count other than FIXWEIGHT's ("FIXINDEX 1,2,3 has 3 indices but
  *    FIXWEIGHT has 1 value; they must pair 1:1 ...");
  *  - a weight named twice ("FIXINDEX 13,13,14 names weight 13 twice"),
- *    since FIXWEIGHT pairs by position.
+ *    since FIXWEIGHT pairs by position; the text ends with that rule as a
+ *    fact, "so FIXINDEX names each weight once".
  * Before the fix: does not compile (no parse_fixindex). The lenient parser
  * removed a repeat with a stderr warning, expanded '14-13' to nothing,
  * dropped 'x' with a stderr line, took '1,,2' as 1, 2 and 0 as an index,
- * and each site reported a count mismatch or "not pinned" instead. */
+ * and each site reported a count mismatch or "not pinned" instead. The
+ * repeat's text then ended with the instruction "so name each weight
+ * once": the repeat cases fail on it. */
 TEST_CASE("parse_fixindex: a refusal names the FIXINDEX text",
           "[utils][indices][fixindex]") {
   const std::string lone =
@@ -106,7 +109,7 @@ TEST_CASE("parse_fixindex: a refusal names the FIXINDEX text",
       "i-th FIXINDEX index).";
   const std::string once =
       " twice; each FIXWEIGHT value pins one weight (the i-th value the "
-      "weight of the i-th index), so name each weight once.";
+      "weight of the i-th index), so FIXINDEX names each weight once.";
   struct Case {
     std::string fixindex;
     std::size_t n_fixweight;
@@ -169,7 +172,10 @@ TEST_CASE("parse_fixindex: a refusal names the FIXINDEX text",
  * only when the list named no more distinct weights than FIXWEIGHT has
  * values, expanding until it named more, so '1,1,2,3' and
  * '1,2,1-4000000000' with two values were count mismatches (this case
- * pinned that); the other count cases pass as well (pins). */
+ * pinned that); the other count cases pass as well (pins). The repeat's
+ * text ended with the instruction "so name each weight once", where it
+ * ends "so FIXINDEX names each weight once": every repeat case fails on
+ * that. */
 TEST_CASE("parse_fixindex: a weight named twice is named before the count",
           "[utils][indices][fixindex]") {
   const std::string pair =
@@ -177,7 +183,7 @@ TEST_CASE("parse_fixindex: a weight named twice is named before the count",
       "i-th FIXINDEX index).";
   const std::string once =
       " twice; each FIXWEIGHT value pins one weight (the i-th value the "
-      "weight of the i-th index), so name each weight once.";
+      "weight of the i-th index), so FIXINDEX names each weight once.";
   struct Case {
     std::string fixindex;
     std::size_t n_fixweight;
