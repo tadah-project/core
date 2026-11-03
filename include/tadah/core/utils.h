@@ -417,8 +417,8 @@ std::vector<size_t> parse_one_based_indices(const std::vector<std::string>& valu
  * descending range (...)"); index 0, and, when @p n_weights is given, an
  * index above it ("FIXINDEX: index 9 (in '2-9') is outside 1-4 (the model
  * has 4 weights)"); a weight named twice among the first n + 1 indices, n
- * the number of FIXWEIGHT values ("FIXINDEX 13,13,14 names weight 13
- * twice; ...", the first weight named again), since FIXWEIGHT pairs by
+ * the number of FIXWEIGHT values ("FIXINDEX 13,13,14 names coefficient
+ * 13 twice; ...", the first weight named again), since FIXWEIGHT pairs by
  * position: so every list with a repeat that names no more distinct
  * weights than FIXWEIGHT has values ('13,13,14' with two values, one per
  * distinct weight, as with three); otherwise a number of indices other

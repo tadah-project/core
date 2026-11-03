@@ -420,9 +420,10 @@ std::vector<size_t> parse_fixindex(const Context& ctx,
     for (size_t i = e.first; out.size() <= n_values; i += e.step) {
       if (!seen.insert(i).second)
         throw std::runtime_error(
-            "FIXINDEX " + list + " names weight " + std::to_string(i) +
-            " twice; each FIXWEIGHT value pins one weight (the i-th value the "
-            "weight of the i-th index), so FIXINDEX names each weight once.");
+            "FIXINDEX " + list + " names coefficient " + std::to_string(i) +
+            " twice; each FIXWEIGHT value fixes one coefficient (the i-th "
+            "value the coefficient of the i-th index), so FIXINDEX names each "
+            "coefficient once.");
       out.push_back(i);
       if (e.last - i < e.step) break;
     }
