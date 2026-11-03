@@ -410,12 +410,15 @@ namespace {
     // (BlueprintKey::command_only), at line @p at (its text @p text, "KEY
     // values" or "KEY" and its block): in a potential it is not read, with
     // one notice per key (a potential written before 1.6.0 may hold such a
-    // line, as tadah train wrote what its configuration held); in a
+    // line, as tadah train wrote what its configuration held), but for a
+    // run setting (OUTFILE), which the potential's lines of the run that
+    // wrote it hold and the run-setting rule below skips and lists; in a
     // configuration file of a command that does not read it, it is
     // refused. True when the line is not read.
     auto commandOnlyLine = [&](const std::string &uKey, std::size_t at,
                                const std::string &text,
                                std::size_t block_end = 0) {
+      if (potential && potentialRunSetting(ownKeys, uKey)) return false;
       if (potential) {
         report_ignored_key_once(
             uKey, "Key " + uKey,

@@ -1380,6 +1380,7 @@ cli_short_flag = ""
 cli_required   = false
 
 [ALLOWED_KEYS.outfile]
+command_only = true
 INHERIT = ["TYPES.STRINGS"]
 description  = "Output file."
 long_description = """
