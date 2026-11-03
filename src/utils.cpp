@@ -422,7 +422,7 @@ std::vector<size_t> parse_fixindex(const Context& ctx,
         throw std::runtime_error(
             "FIXINDEX " + list + " names weight " + std::to_string(i) +
             " twice; each FIXWEIGHT value pins one weight (the i-th value the "
-            "weight of the i-th index), so name each weight once.");
+            "weight of the i-th index), so FIXINDEX names each weight once.");
       out.push_back(i);
       if (e.last - i < e.step) break;
     }

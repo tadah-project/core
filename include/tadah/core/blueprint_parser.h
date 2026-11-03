@@ -13,7 +13,8 @@ namespace core {
 /**
  * @brief The blueprint field `retired` of a key: a table of three non-empty
  *        strings, why the key was retired, what replaces it and how a value
- *        of it converts, and the optional field by_deletion.
+ *        of it converts, and the optional fields by_deletion and
+ *        unconverted.
  *
  * A retired key is accepted in a file so that the potentials that carry it
  * still load: CoreUserConfigParser checks its value against the key's
@@ -38,6 +39,15 @@ struct RetiredKey {
    * does not say.
    */
   bool by_deletion = false;
+  /**
+   * The optional field `unconverted` (true or false; false when absent):
+   * no key converts a line of the key, and deleting the line changes the
+   * fit (EWEIGHT_TEMP, whose Boltzmann factor no key reproduces). A fit's
+   * refusal marks each such line "no key converts it", gives the key's
+   * reason and says to delete the line, and that no key reproduces it. A
+   * key is not both by_deletion and unconverted.
+   */
+  bool unconverted = false;
 };
 
 /**
@@ -318,8 +328,8 @@ public:
    * neither `default_value`, a CLI flag nor examples (after inheritance:
    * `examples = []` overrides those of a TYPES table). A `retired` field
    * must be a table of three non-empty strings, `reason`, `replacement`
-   * and `conversion`, and optionally `by_deletion`, true or false
-   * (RetiredKey), and of no other field; a retired key must define neither
+   * and `conversion`, and optionally `by_deletion` and `unconverted`, each
+   * true or false and not both true (RetiredKey), and of no other field; a retired key must define neither
    * `default_value` nor examples, may keep a CLI flag, and is not
    * deprecated as well.
    *

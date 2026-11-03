@@ -284,10 +284,13 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
     const toml::value &node = table.at("retired");
     const std::string fields =
         "'retired' must be a table of three non-empty strings, reason, "
-        "replacement and conversion, and optionally by_deletion, true or "
-        "false, in key: " + fullKey;
+        "replacement and conversion, and optionally by_deletion and "
+        "unconverted, each true or false and not both true, in key: " +
+        fullKey;
     const bool del = node.is_table() && node.contains("by_deletion");
-    if (!node.is_table() || node.as_table().size() != 3u + (del ? 1u : 0u))
+    const bool unc = node.is_table() && node.contains("unconverted");
+    if (!node.is_table() ||
+        node.as_table().size() != 3u + (del ? 1u : 0u) + (unc ? 1u : 0u))
       throw std::runtime_error(fields);
     auto field = [&](const char *name) {
       if (!node.contains(name) || !node.at(name).is_string())
@@ -306,6 +309,16 @@ BlueprintKey buildBlueprintKey(const std::string &fullKey,
       if (!node.at("by_deletion").is_boolean())
         throw std::runtime_error(fields);
       item.retired.by_deletion = node.at("by_deletion").as_boolean();
+    }
+    // No key converts a line of the key, and deleting it changes the fit
+    // (retired_keys_refusal marks the line so): not a deletion that
+    // converts it as well.
+    if (unc) {
+      if (!node.at("unconverted").is_boolean())
+        throw std::runtime_error(fields);
+      item.retired.unconverted = node.at("unconverted").as_boolean();
+      if (item.retired.unconverted && item.retired.by_deletion)
+        throw std::runtime_error(fields);
     }
     if (!item.deprecated.empty())
       throw std::runtime_error("Key " + fullKey + " is both deprecated and "

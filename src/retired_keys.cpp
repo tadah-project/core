@@ -149,10 +149,22 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
   const bool one = lines.size() == 1;
   std::vector<std::string> named;
   std::vector<std::string> keys;
-  std::size_t marked = 0;  // the lines a deletion converts
+  std::size_t marked = 0;       // the lines a deletion converts
+  std::size_t unconverted = 0;  // the lines no key converts
+  std::vector<std::string> unconverted_keys;
   for (const auto &l : lines) {
-    const std::string mark = deleted_by(l, context, krr2);
-    if (!mark.empty()) ++marked;
+    std::string mark = deleted_by(l, context, krr2);
+    if (!mark.empty()) {
+      ++marked;
+    } else if (retired_entry(l.key).retired.unconverted) {
+      // Deleting the line changes the fit: it is neither converted by a
+      // key nor by its deletion (the field unconverted of `retired`).
+      mark = "; no key converts it";
+      ++unconverted;
+      if (std::find(unconverted_keys.begin(), unconverted_keys.end(),
+                    l.key) == unconverted_keys.end())
+        unconverted_keys.push_back(l.key);
+    }
     named.push_back(line_text(l) + " (" + where(l) + mark + ")");
     if (std::find(keys.begin(), keys.end(), l.key) == keys.end())
       keys.push_back(l.key);
@@ -179,29 +191,43 @@ std::string retired_keys_refusal(const std::vector<RetiredKeyLine> &lines,
   }
   for (const auto &k : keys) {
     const BlueprintKey &info = retired_entry(k);
-    // A key that nothing replaces: its conversion, the deletion, does not
-    // say why, so its reason does.
+    // A key that nothing replaces, or that no key converts: its
+    // conversion, the deletion, does not say why, so its reason does.
     msg += " " + k + ": " +
-           (info.retired.by_deletion ? one_line(info.retired.reason) + " "
-                                     : std::string()) +
+           (info.retired.by_deletion || info.retired.unconverted
+                ? one_line(info.retired.reason) + " "
+                : std::string()) +
            one_line(info.retired.conversion);
   }
   // A retrain does not read a potential's WDBFILE line, so the WDBFILE
   // values of a potential's WDBFILE_AUTO go elsewhere (its conversion).
   const bool wdbfile_auto =
       std::find(keys.begin(), keys.end(), "WDBFILE_AUTO") != keys.end();
-  // What to do with the lines: each marked line deleted, the converted
-  // keys in place of the others.
-  const std::string what_to_do =
-      marked == lines.size()
-          ? " With " + lines_here + " deleted"
-          : " With the converted keys in place of " + lines_here +
-                (marked > 0 ? ", or the marked lines deleted" : "");
+  // What to do with the lines: each marked line deleted, each line no key
+  // converts deleted, the converted keys in place of the others.
+  const std::string unconverted_lines =
+      unconverted == 0 ? std::string()
+                       : "the " + join_and(unconverted_keys) +
+                             (unconverted == 1 ? " line" : " lines");
+  std::string what_to_do;
+  if (marked + unconverted == lines.size()) {
+    what_to_do = " With " + lines_here + " deleted";
+  } else {
+    what_to_do = " With the converted keys in place of " +
+                 (unconverted > 0 ? std::string("the others") : lines_here) +
+                 (marked > 0 ? ", or the marked lines deleted" : "");
+    if (unconverted > 0)
+      what_to_do += std::string(marked > 0 ? "," : "") + " and " +
+                    unconverted_lines + " deleted";
+  }
   msg += what_to_do + file_of_lines +
          (wdbfile_auto ? "; the WDBFILE values of a potential on the command "
                          "line or in a file that includes it"
                        : "") +
-         "), the configuration trains; no coefficients were fitted.";
+         "), the configuration trains" +
+         (unconverted > 0 ? ", and no key reproduces " + unconverted_lines
+                          : std::string()) +
+         "; no coefficients were fitted.";
   return msg;
 }
 
