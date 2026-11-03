@@ -346,6 +346,39 @@ TEST_CASE("BlueprintParser::buildKey reads by_deletion of `retired`",
   }
 }
 
+/* Pins: the optional field unconverted of `retired` says that no key
+ * converts a line of the key and deleting the line changes the fit
+ * (EWEIGHT_TEMP), which a fit's refusal says of each such line (the
+ * retired_keys_refusal cases of test_retired_keys.cpp). buildKey reads
+ * unconverted = true and false; a value that is not true or false, and
+ * unconverted = true with by_deletion = true (a deletion that converts the
+ * line and one that changes the fit), are refused, naming the field and
+ * the key.
+ * Before the fix: there was no unconverted, and a table with it was
+ * refused as a fourth field: the first two checks fail. */
+TEST_CASE("BlueprintParser::buildKey reads unconverted of `retired`",
+          "[BlueprintParser][retired]") {
+  CHECK_NOTHROW(BlueprintParser::buildKey(
+      "KEY", key_table("", kNoExamples, kRetired + "unconverted = true\n")));
+  CHECK_NOTHROW(BlueprintParser::buildKey(
+      "KEY", key_table("", kNoExamples, kRetired + "unconverted = false\n")));
+  for (const std::string bad :
+       {std::string("unconverted = \"true\"\n"),
+        std::string("unconverted = 1\n"),
+        std::string("unconverted = true\nby_deletion = true\n")}) {
+    INFO(bad);
+    std::string msg;
+    try {
+      (void)BlueprintParser::buildKey(
+          "KEY", key_table("", kNoExamples, kRetired + bad));
+    } catch (const std::runtime_error &e) {
+      msg = e.what();
+    }
+    CHECK_THAT(msg, Contains("'retired'") && Contains("unconverted") &&
+                        Contains("KEY"));
+  }
+}
+
 /* Pins: the long description of a retired key does not repeat its
  * one-sentence description, which a page and tadah explain show before
  * it.

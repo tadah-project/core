@@ -522,3 +522,131 @@ TEST_CASE("retired_keys_refusal converts every retired line of M_KRR "
     CHECK(m.find("implementation 2 here") == std::string::npos);
   }
 }
+
+/* Pins: a line of a key that no key converts (the field unconverted of
+ * `retired`: EWEIGHT_TEMP, whose Boltzmann factor no key reproduces) is
+ * marked "no key converts it", counts neither among the lines a converted
+ * key replaces nor among those a deletion converts, and the refusal gives
+ * the key's reason and closes with the line deleted and that no key
+ * reproduces it:
+ *  - alone: "EWEIGHT_TEMP 300 (line 1; no key converts it)", "With this
+ *    line deleted (in the file that has it, a potential's included), the
+ *    configuration trains, and no key reproduces the EWEIGHT_TEMP line; no
+ *    coefficients were fitted.";
+ *  - with EWEIGHT: "With the converted keys in place of the others and the
+ *    EWEIGHT_TEMP line deleted (...)";
+ *  - with FWEIGHT under FORCE false (a line a deletion converts): "With
+ *    these lines deleted (...)";
+ *  - with both: "With the converted keys in place of the others, or the
+ *    marked lines deleted, and the EWEIGHT_TEMP line deleted (...)".
+ * Under M_KRR implementation 2 every line converts by its deletion (the
+ * case above).
+ * Before the fix: the EWEIGHT_TEMP line was not marked, and the refusal
+ * closed "With the converted keys in place of this line (...)" (with
+ * EWEIGHT: "of these lines"), while the conversion it gave said "No key
+ * converts it": every check of the closing fails. */
+TEST_CASE("retired_keys_refusal deletes the line of a key that no key "
+          "converts",
+          "[retired]") {
+  IgnoredKeyNoticeCapture quiet;
+  auto refusal = [](const std::vector<std::string> &lines) {
+    const Context c = CoreUserConfigParser().parse(lines);
+    try {
+      require_no_retired_keys(c, "tadah train");
+    } catch (const std::exception &e) {
+      return std::string(e.what());
+    }
+    return std::string();
+  };
+  const std::string reproduces =
+      "), the configuration trains, and no key reproduces the EWEIGHT_TEMP "
+      "line; no coefficients were fitted.";
+  const std::string reason =
+      "EWEIGHT_TEMP: EWEIGHT_TEMP T multiplied the energy priority of each "
+      "structure by exp(-(E/N - E_min)/(kB T))";
+
+  const std::string alone = refusal({"EWEIGHT_TEMP 300"});
+  INFO(alone);
+  CHECK_THAT(alone, Contains("EWEIGHT_TEMP 300 (line 1; no key converts it)") &&
+                        Contains(reason) && Contains("No key converts it.") &&
+                        Contains(" With this line deleted (in the file that "
+                                 "has it, a potential's included" +
+                                 reproduces));
+  CHECK(alone.find("converted keys") == std::string::npos);
+
+  const std::string with_eweight =
+      refusal({"EWEIGHT 1.0", "EWEIGHT_TEMP 300"});
+  INFO(with_eweight);
+  CHECK_THAT(with_eweight,
+             Contains("EWEIGHT 1.0 (line 1)") &&
+                 Contains("EWEIGHT_TEMP 300 (line 2; no key converts it)") &&
+                 Contains(" With the converted keys in place of the others "
+                          "and the EWEIGHT_TEMP line deleted (in the file "
+                          "that has them, a potential's included" +
+                          reproduces));
+
+  const std::string with_marked =
+      refusal({"FORCE false", "FWEIGHT 1.0", "EWEIGHT_TEMP 300"});
+  INFO(with_marked);
+  CHECK_THAT(with_marked,
+             Contains("FWEIGHT 1.0 (line 2; FORCE false here: converted by "
+                      "deleting the line)") &&
+                 Contains("EWEIGHT_TEMP 300 (line 3; no key converts it)") &&
+                 Contains(" With these lines deleted (in the file that has "
+                          "them, a potential's included" +
+                          reproduces));
+
+  const std::string all = refusal(
+      {"FORCE false", "EWEIGHT 1.0", "FWEIGHT 1.0", "EWEIGHT_TEMP 300"});
+  INFO(all);
+  CHECK_THAT(all, Contains(" With the converted keys in place of the others, "
+                           "or the marked lines deleted, and the EWEIGHT_TEMP "
+                           "line deleted (in the file that has them, a "
+                           "potential's included" +
+                           reproduces));
+}
+
+/* A QUANTITY line, which tadah train of Tadah! 1.5.0 wrote into a potential
+ * when its configuration set the key (no command read it), is a retired
+ * key that a deletion converts: the potential loads, the line recorded and
+ * named in one notice and not stored, and a fit refuses it, marking the
+ * line converted by deleting it and giving the reason. The key is no key
+ * of a command (command_only false) and has no command-line option.
+ * Before the fix: the blueprint had no QUANTITY, so the parse refused the
+ * potential ("Invalid key QUANTITY on line 2 (closest key: ...)"): the
+ * load fails, and so does the blueprint check. */
+TEST_CASE("A QUANTITY line of a 1.5.0 potential loads with one notice, and "
+          "a fit refuses it",
+          "[config][retired]") {
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  REQUIRE(keys.count("QUANTITY") == 1);
+  const BlueprintKey &k = keys.at("QUANTITY");
+  CHECK(k.isRetired());
+  CHECK(k.retired.by_deletion);
+  CHECK_FALSE(k.command_only);
+  CHECK(k.cli_long_flag.empty());
+
+  IgnoredKeyNoticeCapture cap;
+  Context c;
+  REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
+                      "ATOM Ta", "QUANTITY          volume"}));
+  CHECK_FALSE(c.has_stored("QUANTITY"));
+  const std::vector<RetiredKeyLine> r = c.retired_keys();
+  REQUIRE(r.size() == 1);
+  CHECK(r[0].key == "QUANTITY");
+  CHECK(r[0].line == 2);
+  REQUIRE(cap.notices().size() == 1);
+  CHECK_THAT(cap.notices()[0],
+             StartsWith("Retired key QUANTITY (line 2) is ignored"));
+
+  std::string msg;
+  try {
+    require_no_retired_keys(c, "tadah train");
+  } catch (const std::exception &e) {
+    msg = e.what();
+  }
+  INFO(msg);
+  CHECK_THAT(msg, Contains("QUANTITY volume (line 2; converted by deleting "
+                           "the line)") &&
+                      Contains("QUANTITY: QUANTITY was read by no command"));
+}

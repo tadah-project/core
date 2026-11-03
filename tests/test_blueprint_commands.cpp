@@ -382,3 +382,23 @@ TEST_CASE("Blueprint: a command key is named by the commands that read it, "
   CHECK(command_key_text("ANALYTICS") ==
         "ANALYTICS is the option --analytics (-A) of tadah predict");
 }
+
+/* Pins: every command key of the blueprint (BlueprintKey::command_only, an
+ * option of a command line that no configuration file sets) is read by at
+ * least one command: commands_reading_key() of it is not empty, so tadah
+ * explain describes no option that no command line takes.
+ * Before the fix: fails on QUANTITY (ALLOWED_KEYS.quantity, "Generic
+ * quantity.", --quantity), which only the commented stub of tadah
+ * properties ecurve listed: tadah explain QUANTITY printed it with
+ * placeholder examples. */
+TEST_CASE("Blueprint: every command key is read by a command",
+          "[BlueprintParser][commands][command_keys]") {
+  std::size_t command_keys = 0;
+  for (const auto &kv : BlueprintParser::getKeysMapRef()) {
+    if (!kv.second.command_only) continue;
+    ++command_keys;
+    INFO("command key " << kv.first);
+    CHECK_FALSE(commands_reading_key(kv.first).empty());
+  }
+  CHECK(command_keys > 10);
+}

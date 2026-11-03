@@ -60,7 +60,13 @@ std::string retired_keys_notice(const std::vector<RetiredKeyLine> &lines);
  *  WDBFILE_AUTO 0 ("(line 6 of old.tadah; 0: converted by deleting the
  *  line)") and, given the configuration @p context, FWEIGHT with FORCE
  *  false and SWEIGHT with STRESS false ("(line 3 of old.tadah; FORCE false
- *  here: converted by deleting the line)"). When @p context is M_KRR
+ *  here: converted by deleting the line)"). A line of a key that no key
+ *  converts (the field unconverted of `retired`: EWEIGHT_TEMP) is marked
+ *  "(line 1; no key converts it)", the key's reason comes before its
+ *  conversion, and the refusal says to delete it ("With the converted keys
+ *  in place of the others and the EWEIGHT_TEMP line deleted", or "With
+ *  this line deleted") and closes ", and no key reproduces the EWEIGHT_TEMP
+ *  line". When @p context is M_KRR
  *  implementation 2 (MODEL
  *  M_KRR <kernel> 2), whose solve of Tadah! 1.0.0 to 1.5.0, (K + LAMBDA I)
  *  w = t, read no retired key, every line is so marked ("M_KRR
