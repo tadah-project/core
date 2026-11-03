@@ -158,7 +158,11 @@ file, or a TYPE2B or TYPEMB line other than those tadah writes, is refused
 (the Training page of the documentation, Retraining from a potential). A
 line the run does not read, such as the EFILTER line of an included
 potential (the same page), sets nothing. An option of the command line
-takes precedence over the lines of its key.
+takes precedence over the lines of its key. An option that -c of the
+command needs (Needs in the help of the command) replaces a line of its
+key on every run, so a configuration file of the command refuses such a
+line of a key that only some commands read: OUTFILE of tadah analysis
+dataset_stats, RANGE and TYPE of tadah analysis bfunc.
 
 A relative path is relative to the working directory, the directory the
 command runs in, not to the directory of the file that holds the line. This
@@ -1389,10 +1393,14 @@ produces more than one output.
 
 OUTFILE is read by the commands that write a file: tadah train, refit,
 predict, properties pairwise and the data and analysis commands that list
-it. A configuration file of tadah hpo or tadah analysis check_bounds, which
-write files of their own, refuses an OUTFILE line at its line; a
-configuration shared with tadah train gives the potential file of tadah
-train with -o.
+it. Of these, tadah train, tadah refit, tadah analysis suggest_bounds and
+tadah analysis bfunc also read an OUTFILE line of their configuration file
+(-c); the others take it with -o only. A configuration file of tadah
+analysis dataset_stats refuses an OUTFILE line at its line, as its -c needs
+-o. So does a configuration file of tadah hpo, which writes files of its
+own (best_pot.tadah and the others), and one of tadah analysis
+check_bounds, which writes no file; a configuration shared with tadah
+train gives the potential file of tadah train with -o.
 
 OUTFILE is a setting of the run. A potential written by the run has no
 OUTFILE line; its training record lists the OUTFILE of the run that wrote
