@@ -1140,5 +1140,34 @@ std::string command_key_text(const std::string &key) {
   return key + " is " + command_key_role(key);
 }
 
+std::string option_text(const std::string &key) {
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  const auto found = keys.find(key);
+  if (found == keys.end() || found->second.cli_long_flag.rfind("--", 0) != 0)
+    return std::string();
+  std::string option = found->second.cli_long_flag;
+  if (!found->second.cli_short_flag.empty())
+    option += " (" + found->second.cli_short_flag + ")";
+  return option;
+}
+
+bool config_needs_option(const std::string &task, const std::string &key) {
+  const auto &tasks = BlueprintParser::getTasksMapRef();
+  const auto t = tasks.find(task);
+  if (t == tasks.end()) return false;
+  auto needs_it = [&key](const BlueprintKey &k) {
+    if (k.isRetired() || last_word_upper(k.keyName) != "CONFIG") return false;
+    for (const std::string &n : k.cli_needs)
+      if (last_word_upper(n) == key) return true;
+    return false;
+  };
+  for (const BlueprintKey &k : t->second.blueprintKeys)
+    if (needs_it(k)) return true;
+  for (const BlueprintKeyGroup &g : t->second.groups)
+    for (const BlueprintKey &k : g.blueprintKeys)
+      if (needs_it(k)) return true;
+  return false;
+}
+
 } // namespace core
 } // namespace tadah
