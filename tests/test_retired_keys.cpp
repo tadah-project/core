@@ -605,3 +605,48 @@ TEST_CASE("retired_keys_refusal deletes the line of a key that no key "
                            "potential's included" +
                            reproduces));
 }
+
+/* A QUANTITY line, which tadah train of Tadah! 1.5.0 wrote into a potential
+ * when its configuration set the key (no command read it), is a retired
+ * key that a deletion converts: the potential loads, the line recorded and
+ * named in one notice and not stored, and a fit refuses it, marking the
+ * line converted by deleting it and giving the reason. The key is no key
+ * of a command (command_only false) and has no command-line option.
+ * Before the fix: the blueprint had no QUANTITY, so the parse refused the
+ * potential ("Invalid key QUANTITY on line 2 (closest key: ...)"): the
+ * load fails, and so does the blueprint check. */
+TEST_CASE("A QUANTITY line of a 1.5.0 potential loads with one notice, and "
+          "a fit refuses it",
+          "[config][retired]") {
+  const auto &keys = BlueprintParser::getKeysMapRef();
+  REQUIRE(keys.count("QUANTITY") == 1);
+  const BlueprintKey &k = keys.at("QUANTITY");
+  CHECK(k.isRetired());
+  CHECK(k.retired.by_deletion);
+  CHECK_FALSE(k.command_only);
+  CHECK(k.cli_long_flag.empty());
+
+  IgnoredKeyNoticeCapture cap;
+  Context c;
+  REQUIRE_NOTHROW(c = CoreUserConfigParser().parse(std::vector<std::string>{
+                      "ATOM Ta", "QUANTITY          volume"}));
+  CHECK_FALSE(c.has_stored("QUANTITY"));
+  const std::vector<RetiredKeyLine> r = c.retired_keys();
+  REQUIRE(r.size() == 1);
+  CHECK(r[0].key == "QUANTITY");
+  CHECK(r[0].line == 2);
+  REQUIRE(cap.notices().size() == 1);
+  CHECK_THAT(cap.notices()[0],
+             StartsWith("Retired key QUANTITY (line 2) is ignored"));
+
+  std::string msg;
+  try {
+    require_no_retired_keys(c, "tadah train");
+  } catch (const std::exception &e) {
+    msg = e.what();
+  }
+  INFO(msg);
+  CHECK_THAT(msg, Contains("QUANTITY volume (line 2; converted by deleting "
+                           "the line)") &&
+                      Contains("QUANTITY: QUANTITY was read by no command"));
+}
